@@ -163,6 +163,9 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble li{margin:4px 0;line-height:1.6;}
 .bubble code{background:rgba(124,106,255,0.12);padding:2px 7px;border-radius:5px;font-size:.88em;font-family:monospace;color:var(--accent2);}
 .bubble pre{background:rgba(0,0,0,0.4);border:1px solid var(--border-hi);border-radius:10px;padding:14px;margin:10px 0;overflow-x:auto;}
+.bubble .katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;max-width:100%;}
+.bubble .katex{font-size:.92em;}
+.bubble .katex-display>.katex{max-width:100%;overflow-x:auto;}
 .bubble pre code{background:none;padding:0;color:var(--text);}
 .bubble p{margin:6px 0;}
 .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted2);margin:8px 0;font-style:italic;}
@@ -562,9 +565,9 @@ function getApiKey() {
   return key;
 }
 
-async function callAI(text, hist) { return callAIhttp(text, hist); }
+async function callAI(text, hist, imgs=[]) { return callAIhttp(text, hist, imgs); }
 
-async function callAIhttp(text, hist) {
+async function callAIhttp(text, hist, imgs=[]) {
   const key = getApiKey();
   if (!key) throw new Error('Brak klucza API');
 
@@ -607,7 +610,19 @@ has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (b
   for (const m of hist) {
     messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content || m.text || '' });
   }
-  messages.push({ role: 'user', content: text });
+  // Ostatnia wiadomość - z obrazkami jeśli są
+  if (imgs && imgs.length > 0) {
+    const contentParts = [];
+    // Dodaj tekst
+    if (text) contentParts.push({ type: 'text', text: text });
+    // Dodaj wszystkie zdjęcia
+    imgs.forEach(img => {
+      contentParts.push({ type: 'image_url', image_url: { url: img, detail: 'high' } });
+    });
+    messages.push({ role: 'user', content: contentParts });
+  } else {
+    messages.push({ role: 'user', content: text });
+  }
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -694,8 +709,11 @@ async function sendMessage() {
   const msgs = document.getElementById('msgsArea');
   msgs.appendChild(userGroup); scrollDown();
 
+  const attachments_snapshot = [...attachments]; // snapshot przed wyczyszczeniem
   const textAttachments = attachments.filter(a => !a.type.startsWith('image/')).map(a => `[Plik: ${a.file.name}]`).join('\n');
-  const fullText = textAttachments ? text + '\n' + textAttachments : text;
+  const imageCount = attachments.filter(a => a.type.startsWith('image/')).length;
+  const imageNote = imageCount > 0 ? `[Załączono ${imageCount} zdjęcie${imageCount > 1 ? 'cia' : ''} — przeanalizuj je]` : '';
+  const fullText = [text, textAttachments, imageNote].filter(Boolean).join('\n');
   history.push({ role: 'user', content: fullText });
 
   input.value = ''; input.style.height = 'auto';
@@ -711,7 +729,9 @@ async function sendMessage() {
   msgs.appendChild(aiGroup); scrollDown();
 
   try {
-    const response = await callAI(fullText, history);
+    // Zbierz zdjęcia z attachments (już przetworzone)
+    const imageUrls = attachments_snapshot.filter(a => a.type.startsWith('image/')).map(a => a.dataUrl);
+    const response = await callAI(fullText, history, imageUrls);
     const aiBubble = document.getElementById(thId);
     if (!aiBubble) throw new Error('Błąd renderowania');
     aiBubble.removeAttribute('id');

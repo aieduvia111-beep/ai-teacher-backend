@@ -596,7 +596,7 @@ async function solve() {
         return;
       }
     }
-    const jsonSchema = 'Odpowiedz TYLKO w JSON bez markdown, bez żadnego tekstu przed ani po. Format: {"success":true,"problems":[{"question":"pelna tresc zadania","solution":{"steps":["krok 1","krok 2","krok 3"],"final_answer":"ostateczna odpowiedz","explanation":"krotkie wyjasnienie teorii"}}]} - WAZNE: tablica problems musi zawierac WSZYSTKIE zadania ze zdjecia.';
+    const jsonSchema = 'Odpowiedz TYLKO czystym JSON. Format: {"success":true,"problems":[{"question":"tresc zadania","solution":{"steps":["krok 1","krok 2"],"final_answer":"odpowiedz","explanation":"wyjasnienie"}}]}. ZASADY: wzory zapisuj w LaTeX z $ np $x^2$ $\\frac{a}{b}$. Nie uzywaj apostrofow ani cudzyslowow w tekstach. Rozwiaz WSZYSTKIE zadania.';
     const promptText = 'Przeanalizuj WSZYSTKIE zadania widoczne na zdjęciu z przedmiotu: ' + subject + '. Rozwiaz KAZDE z nich krok po kroku. Nie pomijaj żadnego zadania. WAZNE: wzory matematyczne zapisuj w LaTeX z dolarami np. $x^2$ $a_1$ $r^{n-1}$. W JSON backslash musi byc podwojny np. $\\\\frac{a}{b}$ $\\\\sqrt{x}$. ' + jsonSchema;
     const vRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -623,18 +623,20 @@ async function solve() {
     const vData = await vRes.json();
     let rawText = vData.choices[0].message.content.trim();
     rawText = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-    // Napraw backslashe LaTeX w JSON (\frac -> \\frac itp)
-    rawText = rawText.replace(/([^\\])\\([a-zA-Z])/g, '$1\\\\$2');
+    // Wytnij JSON od { do }
+    const jS = rawText.indexOf('{'), jE = rawText.lastIndexOf('}');
+    if(jS !== -1 && jE !== -1) rawText = rawText.slice(jS, jE+1);
     let data;
     try {
       data = JSON.parse(rawText);
     } catch(e) {
-      // Druga próba - agresywniejsza naprawa
-      const fixed = rawText.replace(/\\/g,'\\\\').replace(/\\\\\\/g,'\\\\');
-      try { data = JSON.parse(fixed); } catch(e2) {
-        // Ostatnia deska - usuń problematyczne znaki
-        const safe = rawText.replace(/[\x00-\x1f]/g,' ');
-        data = JSON.parse(safe);
+      try {
+        const clean = rawText.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,' ');
+        data = JSON.parse(clean);
+      } catch(e2) {
+        // Fallback - pokaż tekst AI
+        const lines = rawText.replace(/[{}"\[\]]/g,'').split('\n').filter(l=>l.trim().length>3).slice(0,15);
+        data = { success:true, problems:[{ question:'Analiza zadania', solution:{ steps:lines, final_answer:'', explanation:'' } }] };
       }
     }
     if(!data.success) throw new Error(data.error || 'Blad analizy');
