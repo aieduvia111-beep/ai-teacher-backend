@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Eduvia AI — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c6aff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+/* ═══ RESET & BASE ═══ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100vh;}
+
+/* ═══ DESIGN TOKENS ═══ */
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,.1);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --blue:#38bdf8;--gold:#f5a623;--red:#f87171;--pink:#f472b6;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --r:16px;--r2:12px;
+}
+
+/* ═══ AURORA ═══ */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;filter:blur(110px);animation:afloat 14s ease-in-out infinite;}
+.a1{width:650px;height:650px;background:radial-gradient(circle,rgba(124,106,255,0.18),transparent 70%);top:-200px;right:-80px;}
+.a2{width:480px;height:480px;background:radial-gradient(circle,rgba(34,211,160,0.09),transparent 70%);bottom:-80px;left:-80px;animation-delay:5s;}
+.a3{width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,0.07),transparent 70%);top:45%;left:38%;animation-delay:9s;}
+@keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(18px,-22px) scale(1.04)}66%{transform:translate(-12px,14px) scale(0.97)}}
+
+/* ═══ CANVAS ═══ */
+canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
+
+/* ═══ APP LAYOUT ═══ */
+.app{display:flex;width:100%;min-height:100vh;position:relative;z-index:2;}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{width:220px;flex-shrink:0;background:linear-gradient(180deg,rgba(15,15,24,.98),rgba(7,7,13,.98));border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{display:flex;align-items:center;gap:10px;padding:8px 8px 20px;}
+.brand-logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.9em;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.2);}
+.brand-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;}
+.brand-sub{font-size:.62em;color:var(--muted);}
+.ng{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:14px 8px 5px;}
+.nl{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;font-size:.82em;color:var(--muted2);text-decoration:none;border:1px solid transparent;transition:.18s;}
+.nl:hover{background:rgba(124,106,255,.08);border-color:rgba(124,106,255,.15);color:var(--accent2);}.nl.active{color:#fff;background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(124,106,255,.05));border-color:rgba(124,106,255,.25);}
+
+/* ═══ MAIN ═══ */
+.main{flex:1;min-width:0;padding:28px 30px;display:flex;flex-direction:column;gap:32px;overflow-y:auto;}
+
+/* ═══ HERO ═══ */
+.dash-hero{
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,rgba(124,106,255,.08) 0%,rgba(56,189,248,.04) 50%,rgba(34,211,160,.06) 100%);
+  border:1px solid rgba(124,106,255,.15);
+  border-radius:24px;padding:32px 36px;
+  position:relative;overflow:hidden;
+}
+.dash-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(124,106,255,.08),transparent 60%);pointer-events:none;}
+.hero-date{font-size:.72em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;font-family:var(--h);}
+.hero-name{font-family:var(--h);font-size:2em;font-weight:800;line-height:1.1;color:white;margin-bottom:10px;}
+.hero-nm{background:linear-gradient(110deg,#fff 20%,#a78bfa 55%,#22d3a0 90%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:.85em;color:var(--muted2);max-width:400px;line-height:1.6;font-style:italic;}
+.hero-orb{position:relative;width:100px;height:100px;flex-shrink:0;}
+.orb-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.2);animation:orbSpin 12s linear infinite;}
+.r1{inset:0;animation-duration:12s;}
+.r2{inset:14px;border-color:rgba(56,189,248,.15);animation-duration:8s;animation-direction:reverse;}
+.orb-core{position:absolute;inset:28px;border-radius:50%;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(56,189,248,.1));display:flex;align-items:center;justify-content:center;border:1px solid rgba(124,106,255,.3);}
+@keyframes orbSpin{to{transform:rotate(360deg)}}
+
+/* ═══ SECTION LABEL ═══ */
+.sec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+
+/* ═══ QUICK ACTIONS ═══ */
+.quick-sec{}
+.quick-row{display:flex;gap:12px;}
+.quick-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 16px;border-radius:14px;font-size:.85em;font-weight:700;
+  font-family:var(--h);text-decoration:none;transition:.18s;
+  border:1px solid transparent;
+}
+.qb-chat{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.25);color:#a78bfa;}
+.qb-chat:hover{background:rgba(124,106,255,.2);border-color:rgba(124,106,255,.4);transform:translateY(-1px);}
+.qb-quiz{background:rgba(34,211,160,.1);border-color:rgba(34,211,160,.22);color:#22d3a0;}
+.qb-quiz:hover{background:rgba(34,211,160,.18);border-color:rgba(34,211,160,.35);transform:translateY(-1px);}
+.qb-notes{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.22);color:#f5a623;}
+.qb-notes:hover{background:rgba(245,166,35,.18);border-color:rgba(245,166,35,.35);transform:translateY(-1px);}
+
+/* ═══ TOOLS GRID ═══ */
+.tools-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.tool-card{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:20px;border-radius:18px;text-decoration:none;
+  background:var(--s1);border:1px solid var(--border);
+  position:relative;overflow:hidden;transition:.2s;
+  cursor:pointer;
+}
+.tool-card:hover{border-color:var(--tc-color,rgba(124,106,255,.35));transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3);}
+.tool-card:hover .tc-glow{opacity:1;}
+.tc-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,var(--tc-bg,rgba(124,106,255,.06)),transparent 70%);opacity:0;transition:.25s;pointer-events:none;}
+.tc-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--tc-bg,rgba(124,106,255,.12));color:var(--tc-color,#a78bfa);border:1px solid var(--tc-border,rgba(124,106,255,.2));}
+.tc-body{flex:1;min-width:0;}
+.tc-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;margin-bottom:5px;}
+.tc-desc{font-size:.76em;color:var(--muted2);line-height:1.45;}
+.tc-arrow{font-size:1em;color:var(--muted);transition:.2s;align-self:center;flex-shrink:0;}
+.tool-card:hover .tc-arrow{color:var(--tc-color,#a78bfa);transform:translateX(3px);}
+
+/* Tool colors */
+.tc-chat{--tc-color:#a78bfa;--tc-bg:rgba(124,106,255,.1);--tc-border:rgba(124,106,255,.2);}
+.tc-quiz{--tc-color:#22d3a0;--tc-bg:rgba(34,211,160,.1);--tc-border:rgba(34,211,160,.2);}
+.tc-notes{--tc-color:#f5a623;--tc-bg:rgba(245,166,35,.1);--tc-border:rgba(245,166,35,.2);}
+.tc-exam{--tc-color:#38bdf8;--tc-bg:rgba(56,189,248,.1);--tc-border:rgba(56,189,248,.2);}
+.tc-vision{--tc-color:#f472b6;--tc-bg:rgba(244,114,182,.1);--tc-border:rgba(244,114,182,.2);}
+.tc-voice{--tc-color:#4ade80;--tc-bg:rgba(74,222,128,.1);--tc-border:rgba(74,222,128,.2);}
+.tc-plan{--tc-color:#fb923c;--tc-bg:rgba(251,146,60,.1);--tc-border:rgba(251,146,60,.2);}
+
+/* ═══ FOOTER ═══ */
+.dash-footer{text-align:center;padding:8px 0 4px;}
+.dash-footer-txt{font-size:.68em;color:var(--muted);letter-spacing:.06em;}
+
+/* ═══ HERO STATS ═══ */
+.hero-stats{display:flex;align-items:center;gap:0;margin-top:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 16px;width:fit-content;gap:4px;}
+.hs-item{display:flex;align-items:center;gap:7px;}
+.hs-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8em;flex-shrink:0;}
+.hs-val{font-family:var(--h);font-size:.88em;font-weight:800;}
+.hs-lbl{font-size:.65em;color:var(--muted2);}
+.hs-sep{width:1px;height:28px;background:rgba(255,255,255,.08);margin:0 14px;flex-shrink:0;}
+
+.hero-xpbar{margin-top:12px;width:100%;max-width:380px;}
+.xpbar-track{height:6px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden;position:relative;}
+.xpbar-fill{height:100%;background:linear-gradient(90deg,#7c6aff,#a78bfa,#22d3a0);border-radius:100px;transition:width .8s cubic-bezier(.4,0,.2,1);position:relative;}
+.xpbar-shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:xpshine 2.5s ease-in-out infinite;}
+@keyframes xpshine{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+.xpbar-label{font-size:.62em;color:var(--muted);margin-top:6px;}
+
+/* ═══ CURSOR (desktop) ═══ */
+.cursor{width:10px;height:10px;background:var(--accent2);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .1s;}
+.cursor-ring{width:28px;height:28px;border:1px solid rgba(167,139,250,.4);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:left .12s,top .12s;}
+
+/* ═══ MOBILE ═══ */
+@keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 10px rgba(124,106,255,.4)}50%{box-shadow:0 0 22px rgba(124,106,255,.7)}}
+.m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
+.m-hdr-info{flex:1;min-width:0;}
+.m-hdr-title{font-family:var(--h);font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-sub{font-size:.6em;color:var(--muted);margin-top:1px;}
+.m-burger{width:36px;height:36px;border-radius:8px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
+.m-burger span{width:16px;height:1.5px;background:#a78bfa;border-radius:2px;transition:.2s;}
+.m-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9100;}
+.m-overlay.open{display:block;}
+.m-drawer{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,#0a0a16,#070710);border-right:1px solid rgba(124,106,255,.12);z-index:9200;transform:translateX(-100%);transition:transform .25s ease;padding:20px 12px;overflow-y:auto;}
+.m-drawer.open{transform:translateX(0);}
+.d-brand{display:flex;align-items:center;gap:10px;padding:8px 4px 20px;}
+.d-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.9em;}
+.d-brand-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;}
+.d-brand-sub{font-size:.65em;color:var(--muted);margin-top:1px;}
+.d-sec{font-family:var(--h);font-size:.55em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 8px 5px;}
+.d-link{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;font-size:.82em;color:var(--muted2);text-decoration:none;border:1px solid transparent;margin-bottom:2px;transition:.18s;}
+.d-link.active,.d-link:hover{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.2);color:#a78bfa;}
+.m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,1fr);background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
+.m-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6em;color:var(--muted);text-decoration:none;position:relative;transition:.18s;}
+.m-nb.active{color:#a78bfa;}
+.m-nb-dot{position:absolute;top:6px;width:4px;height:4px;border-radius:50%;background:#7c6aff;}
+
+@media(max-width:768px){
+  .cursor,.cursor-ring{display:none!important;}
+  .m-hdr{display:flex!important;}
+  .m-nav{display:grid!important;}
+  .sidebar{display:none!important;}
+  .app{display:block!important;}
+  .main{
+    padding:14px!important;
+    gap:20px!important;
+    overflow:visible!important;
+    height:auto!important;
+  }
+  .dash-hero{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:16px!important;
+    padding:20px!important;
+    border-radius:18px!important;
+  }
+  .hero-name{font-size:1.5em!important;}
+  .hero-orb{display:none!important;}
+  .quick-row{gap:8px!important;}
+  .quick-btn{padding:11px 10px!important;font-size:.75em!important;border-radius:11px!important;gap:6px!important;}
+  .quick-btn svg{width:15px!important;height:15px!important;}
+  .tools-grid{grid-template-columns:1fr!important;gap:10px!important;}
+  .tool-card{padding:16px!important;border-radius:14px!important;}
+  .hero-stats{flex-wrap:wrap!important;gap:8px!important;width:100%!important;padding:10px 12px!important;}
+  .hs-sep{display:none!important;}
+  .hero-xpbar{max-width:100%!important;}
+  .tc-icon{width:40px!important;height:40px!important;border-radius:10px!important;}
+  .tc-icon svg{width:19px!important;height:19px!important;}
+  .tc-name{font-size:.85em!important;}
+  .tc-desc{font-size:.73em!important;}
+}
+</style>
+
+</head>
+
+<body style="display:block!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;padding-top:56px!important;padding-bottom:68px!important;box-sizing:border-box!important;margin:0!important;">
+
+<canvas id="pc" style="position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;width:100%;height:100%;"></canvas>
+<div class="aurora">
+  <div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div>
+</div>
+
+<header class="m-hdr" id="mHdr"><div class="m-logo"><span>E</span></div><div class="m-hdr-info"><div class="m-hdr-title">Dashboard</div><div class="m-hdr-sub">Twój postęp i narzędzia</div></div><button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button></header>
+<div class="m-overlay" id="mOverlay" onclick="mClose()"></div><nav class="m-drawer" id="mDrawer"><div class="d-brand"><div class="d-logo"><span>E</span></div><div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div></div><div class="d-sec">Narzędzia</div><a class="d-link active" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a><a class="d-link" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a><a class="d-link" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a><a class="d-link" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a><a class="d-link" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a><a class="d-link" href="vision.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a><a class="d-link" href="voice_conversation.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a><a class="d-link" href="lesson_planner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</a></nav>
+<nav class="m-nav"><a class="m-nb active" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span><span class="m-nb-dot"></span></a><a class="m-nb" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a><a class="m-nb" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Quiz</span></a><a class="m-nb" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></a><a class="m-nb" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg><span>Więcej</span></a></nav>
+<div class="m-overlay" id="mOverlay" onclick="mClose()"></div><nav class="m-drawer" id="mDrawer"><div class="d-brand"><div class="d-logo"><span>E</span></div><div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div></div><div class="d-sec">Narzędzia</div><a class="d-link active" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a><a class="d-link" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a><a class="d-link" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a><a class="d-link" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a><a class="d-link" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a><a class="d-link" href="vision.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a><a class="d-link" href="voice_conversation.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a><a class="d-link" href="lesson_planner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</a></nav>
+
+<div class="app">
+
+<!-- SIDEBAR (desktop) -->
+<aside class="sidebar">
+  <div class="brand"><div class="brand-logo"><span class="brand-l">E</span></div><div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div></div>
+  <div class="ng">Główne</div>
+  <a class="nl active" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+  <a class="nl" href="chat.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
+  <a class="nl" href="quiz_app.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a>
+  <div class="ng">Narzędzia</div>
+  <a class="nl" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a>
+  <a class="nl" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany</a>
+  <a class="nl" href="vision.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a>
+  <a class="nl" href="voice_conversation.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a>
+  <a class="nl" href="lesson_planner.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO GREETING -->
+  <section class="dash-hero">
+    <div class="hero-left">
+      <div class="hero-date" id="heroDate"></div>
+      <h1 class="hero-name">Cześć, <span class="hero-nm">Jakub</span> 👋</h1>
+      <p class="hero-sub" id="heroQuote">Ładuję cytat...</p>
+
+      <!-- STATS ROW -->
+      <div class="hero-stats">
+        <div class="hs-item">
+          <div class="hs-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="hs-val" id="hsXP" style="color:#a78bfa;">0 XP</div>
+          <div class="hs-lbl">łącznie</div>
+        </div>
+        <div class="hs-sep"></div>
+        <div class="hs-item">
+          <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">🔥</div>
+          <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
+          <div class="hs-lbl">dni z rzędu</div>
+        </div>
+        <div class="hs-sep"></div>
+        <div class="hs-item">
+          <div class="hs-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="hs-val" id="hsLevel" style="color:#22d3a0;">Poziom 1</div>
+          <div class="hs-lbl" id="hsLevelName">Uczeń</div>
+        </div>
+      </div>
+
+      <!-- XP BAR -->
+      <div class="hero-xpbar">
+        <div class="xpbar-track">
+          <div class="xpbar-fill" id="hsXPBar" style="width:0%"></div>
+          <div class="xpbar-shine"></div>
+        </div>
+        <div class="xpbar-label" id="hsXPNext">0 / 100 XP do następnego poziomu</div>
+      </div>
+    </div>
+    <div class="hero-orb" aria-hidden="true">
+      <div class="orb-ring r1"></div>
+      <div class="orb-ring r2"></div>
+      <div class="orb-core">
+        <svg viewBox="0 0 44 44" fill="none" width="28" height="28">
+          <path d="M22 2C22 2 23.6 14 22 22C20.4 14 22 2 22 2Z" fill="url(#og1)"/>
+          <path d="M22 42C22 42 20.4 30 22 22C23.6 30 22 42 22 42Z" fill="url(#og1)"/>
+          <path d="M42 22C42 22 30 23.6 22 22C30 20.4 42 22 42 22Z" fill="url(#og2)"/>
+          <path d="M2 22C2 22 14 20.4 22 22C14 23.6 2 22 2 22Z" fill="url(#og2)"/>
+          <circle cx="22" cy="22" r="2.5" fill="white" opacity=".9"/>
+          <defs>
+            <linearGradient id="og1" x1="22" y1="2" x2="22" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c6aff"/></linearGradient>
+            <linearGradient id="og2" x1="2" y1="22" x2="42" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#22d3a0"/></linearGradient>
+          </defs>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK ACTIONS -->
+  <section class="quick-sec">
+    <div class="sec-label">⚡ Szybki start</div>
+    <div class="quick-row">
+      <a href="chat.html" class="quick-btn qb-chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Zapytaj AI
+      </a>
+      <a href="quiz_app.html" class="quick-btn qb-quiz">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Nowy Quiz
+      </a>
+      <a href="notes_generator_v2.html" class="quick-btn qb-notes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Notatka
+      </a>
+    </div>
+  </section>
+
+  <!-- TOOLS GRID -->
+  <section class="tools-sec">
+    <div class="sec-label">🛠 Narzędzia AI</div>
+    <div class="tools-grid">
+
+      <a href="chat.html" class="tool-card tc-chat">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Chat AI</div>
+          <div class="tc-desc">Pytaj z każdego przedmiotu — matematyka, fizyka, historia i więcej</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="quiz_app.html" class="tool-card tc-quiz">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Quiz AI</div>
+          <div class="tc-desc">Sprawdź wiedzę — AI generuje pytania dopasowane do Twojego poziomu</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="notes_generator_v2.html" class="tool-card tc-notes">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Notatki AI</div>
+          <div class="tc-desc">Wpisz temat lub wrzuć zdjęcie — dostaniesz notatkę w PDF</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="exam_generator_v2.html" class="tool-card tc-exam">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Sprawdziany AI</div>
+          <div class="tc-desc">Wariant A i B gotowe do druku — z kluczem odpowiedzi</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="vision.html" class="tool-card tc-vision">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Vision AI</div>
+          <div class="tc-desc">Wrzuć zdjęcie zadania — AI rozwiąże je krok po kroku</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="voice_conversation.html" class="tool-card tc-voice">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Voice AI</div>
+          <div class="tc-desc">Rozmawiaj głosem — AI słucha, odpowiada i poprawia wymowę</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+      <a href="lesson_planner.html" class="tool-card tc-plan">
+        <div class="tc-glow"></div>
+        <div class="tc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-name">Plan Nauki</div>
+          <div class="tc-desc">Harmonogram celów, terminy egzaminów i śledzenie postępów</div>
+        </div>
+        <div class="tc-arrow">→</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- MOTIVATIONAL FOOTER -->
+  <div class="dash-footer">
+    <div class="dash-footer-txt">Eduvia AI &mdash; Twój prywatny korepetytor 24/7</div>
+  </div>
+
+</main>
+</div>
+
+
+<div class="cursor"></div>
+<div class="cursor-ring"></div>
+
+<script>
+// Particles
+(function(){
+  const pc=document.getElementById('pc');
+  if(!pc)return;
+  const ctx=pc.getContext('2d');
+  let W,H;
+  function resize(){W=pc.width=innerWidth;H=pc.height=innerHeight;}
+  resize();addEventListener('resize',resize);
+  const pts=Array.from({length:55},()=>({
+    x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+    vx:(Math.random()-.5)*.3,vy:-(Math.random()*.35+.1),
+    r:Math.random()*1.4+.3,a:Math.random()*.3+.05,
+    da:(Math.random()-.5)*.002
+  }));
+  (function loop(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.a+=p.da;
+      if(p.a<.03||p.a>.38)p.da*=-1;
+      if(p.y<-5){p.y=H+5;p.x=Math.random()*W;}
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(167,139,250,${p.a})`;ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  })();
+})();
+
+// Cursor
+(function(){
+  const c=document.querySelector('.cursor'),r=document.querySelector('.cursor-ring');
+  if(!c||!r||window.innerWidth<769)return;
+  document.addEventListener('mousemove',e=>{
+    c.style.left=e.clientX+'px';c.style.top=e.clientY+'px';
+    r.style.left=e.clientX+'px';r.style.top=e.clientY+'px';
+  });
+})();
+
+// Date & quote
+(function(){
+  const D=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"];
+  const M=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+  const d=new Date();
+  const dateStr=D[d.getDay()]+", "+d.getDate()+" "+M[d.getMonth()]+" "+d.getFullYear();
+  const hd=document.getElementById('heroDate');
+  const md=document.getElementById('mobDate');
+  if(hd)hd.textContent=dateStr;
+  if(md)md.textContent=dateStr;
+  const quotes=["Każdy ekspert był kiedyś początkującym. Zacznij dziś.","Sukces to suma małych wysiłków powtarzanych każdego dnia.","Im więcej się uczysz, tym więcej możesz osiągnąć.","Nauka to najlepszy czas, jaki możesz poświęcić sobie.","Wiedza to jedyna rzecz, której nikt Ci nie zabierze."];
+  const q=document.getElementById('heroQuote');
+  if(q)q.textContent='"'+quotes[d.getDay()%quotes.length]+'"';
+})();
+
+// Mobile nav
+(function(){
+  const o=document.getElementById('mOverlay'),d=document.getElementById('mDrawer'),b=document.getElementById('mBurger');
+  function mOpen(){if(d)d.classList.add('open');if(o)o.classList.add('open');if(b)b.classList.add('open');document.body.style.overflow='hidden';}
+  function mClose(){if(d)d.classList.remove('open');if(o)o.classList.remove('open');if(b)b.classList.remove('open');document.body.style.overflow='';}
+  window.mOpen=mOpen;window.mClose=mClose;
+  document.querySelectorAll('.d-link').forEach(l=>l.addEventListener('click',mClose));
+})();
+
+// ═══ XP / STREAK / POZIOM ═══
+(function(){
+  // Definicje poziomów
+  const LEVELS=[
+    {min:0,    max:100,  name:'Uczeń',       icon:'📖'},
+    {min:100,  max:250,  name:'Żak',         icon:'🎒'},
+    {min:250,  max:500,  name:'Student',     icon:'🎓'},
+    {min:500,  max:900,  name:'Scholar',     icon:'⭐'},
+    {min:900,  max:1500, name:'Ekspert',     icon:'🔥'},
+    {min:1500, max:2500, name:'Mistrz',      icon:'💎'},
+    {min:2500, max:4000, name:'Geniusz',     icon:'🚀'},
+    {min:4000, max:9999, name:'Legenda',     icon:'👑'},
+  ];
+
+  function getLevel(xp){
+    for(let i=LEVELS.length-1;i>=0;i--){
+      if(xp>=LEVELS[i].min) return {num:i+1,...LEVELS[i]};
+    }
+    return {num:1,...LEVELS[0]};
+  }
+
+  // Wczytaj dane z localStorage
+  const xp    = parseInt(localStorage.getItem('eduvia_xp')||'0');
+  const streak= parseInt(localStorage.getItem('eduvia_streak')||'0');
+  const lv    = getLevel(xp);
+  const nextXP= lv.max;
+  const pct   = Math.min(100, Math.round(((xp-lv.min)/(lv.max-lv.min))*100));
+
+  // Aktualizuj UI
+  const elXP    = document.getElementById('hsXP');
+  const elStr   = document.getElementById('hsStreak');
+  const elLv    = document.getElementById('hsLevel');
+  const elLvN   = document.getElementById('hsLevelName');
+  const elBar   = document.getElementById('hsXPBar');
+  const elNext  = document.getElementById('hsXPNext');
+
+  if(elXP)    elXP.textContent    = xp.toLocaleString('pl-PL')+' XP';
+  if(elStr)   elStr.textContent   = streak;
+  if(elLv)    elLv.textContent    = 'Poziom '+lv.num;
+  if(elLvN)   elLvN.textContent   = lv.icon+' '+lv.name;
+  if(elNext)  elNext.textContent  = xp+' / '+lv.max+' XP · poziom '+lv.num+' → '+(lv.num+1<9?lv.num+1:lv.num);
+
+  // Animuj pasek po 200ms
+  if(elBar) setTimeout(()=>{ elBar.style.width=pct+'%'; }, 200);
+
+  // Streak check — czy dziś już był
+  const today = new Date().toDateString();
+  const lastDay = localStorage.getItem('eduvia_last_day')||'';
+  if(lastDay !== today){
+    // Nowy dzień — sprawdź czy wczoraj był
+    const yesterday = new Date(Date.now()-86400000).toDateString();
+    if(lastDay === yesterday){
+      const newStreak = streak+1;
+      localStorage.setItem('eduvia_streak', newStreak);
+      localStorage.setItem('eduvia_last_day', today);
+      if(elStr) elStr.textContent = newStreak;
+    } else if(lastDay === ''){
+      // Pierwszy raz
+      localStorage.setItem('eduvia_streak','1');
+      localStorage.setItem('eduvia_last_day', today);
+      if(elStr) elStr.textContent = '1';
+    }
+    // Jeśli przerwa > 1 dzień — streak się resetuje
+    // (nie resetuj teraz, tylko przy następnym dniu bez aktywności)
+  }
+
+  // Funkcja globalna do dodawania XP (dla innych stron)
+  window.eduviaAddXP = function(amount){
+    const cur = parseInt(localStorage.getItem('eduvia_xp')||'0');
+    localStorage.setItem('eduvia_xp', cur+amount);
+    localStorage.setItem('eduvia_last_day', new Date().toDateString());
+  };
+})();
+
+(function(){const D=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"],M=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"],d=new Date(),e=document.getElementById("mobDate");if(e)e.textContent=D[d.getDay()]+", "+d.getDate()+" "+M[d.getMonth()]+" "+d.getFullYear();})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+</script>
+</body>
+</html>

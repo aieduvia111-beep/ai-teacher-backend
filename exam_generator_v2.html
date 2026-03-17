@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eduvia — Sprawdziany AI</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#7c6aff">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.11);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;height:100vh;cursor:none;}
+.cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
+.cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;filter:blur(110px);animation:afloat 14s ease-in-out infinite;}
+.a1{width:650px;height:650px;background:radial-gradient(circle,rgba(124,106,255,.2),transparent 70%);top:-200px;right:-80px;}
+.a2{width:480px;height:480px;background:radial-gradient(circle,rgba(34,211,160,.1),transparent 70%);bottom:-80px;left:-80px;animation-delay:5s;}
+.a3{width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,.08),transparent 70%);top:45%;left:38%;animation-delay:9s;}
+@keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
+body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
+.app{display:flex;width:100%;height:100vh;position:relative;z-index:2;}
+
+@keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 10px rgba(124,106,255,.4)}50%{box-shadow:0 0 22px rgba(124,106,255,.7)}}
+.m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
+.m-hdr-info{flex:1;min-width:0;}
+.m-hdr-title{font-family:var(--h);font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-sub{font-size:.6em;color:var(--muted);margin-top:1px;}
+.m-burger{width:36px;height:36px;border-radius:8px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
+.m-burger span{width:16px;height:1.5px;background:#a78bfa;border-radius:2px;transition:.2s;}
+.m-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9100;}
+.m-overlay.open{display:block;}
+.m-drawer{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,#0a0a16,#070710);border-right:1px solid rgba(124,106,255,.12);z-index:9200;transform:translateX(-100%);transition:transform .25s ease;padding:20px 12px;overflow-y:auto;}
+.m-drawer.open{transform:translateX(0);}
+.d-brand{display:flex;align-items:center;gap:10px;padding:8px 4px 20px;}
+.d-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.9em;}
+.d-brand-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;}
+.d-brand-sub{font-size:.65em;color:var(--muted);margin-top:1px;}
+.d-sec{font-family:var(--h);font-size:.55em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 8px 5px;}
+.d-link{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;font-size:.82em;color:var(--muted2);text-decoration:none;border:1px solid transparent;margin-bottom:2px;transition:.18s;cursor:pointer;}
+.d-link.active,.d-link:hover{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.2);color:#a78bfa;}
+.m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,1fr);background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
+.m-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6em;color:var(--muted);text-decoration:none;position:relative;transition:.18s;cursor:pointer;}
+.m-nb.active{color:#a78bfa;}
+.m-nb-dot{position:absolute;top:6px;width:4px;height:4px;border-radius:50%;background:#7c6aff;}
+
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:linear-gradient(180deg,rgba(15,15,24,.98),rgba(7,7,13,.98));border-right:1px solid var(--border-hi);padding:22px 14px;display:flex;flex-direction:column;position:relative;z-index:10;}
+.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,transparent,rgba(124,106,255,.5) 50%,transparent);}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px;}
+.brand-logo{width:36px;height:36px;border-radius:11px;flex-shrink:0;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.2);position:relative;overflow:hidden;}
+.brand-logo::after{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);pointer-events:none;}
+.brand-l{font-family:var(--h);font-size:1.1em;font-weight:800;color:white;}
+.brand-text{display:flex;flex-direction:column;}
+.brand-name{font-family:var(--h);font-size:1em;font-weight:800;letter-spacing:-.02em;line-height:1;}
+.brand-sub{font-size:.6em;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.ng{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:14px 8px 5px;}
+.nl{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;font-size:.82em;color:var(--muted2);cursor:pointer;transition:all .2s;border:1px solid transparent;position:relative;margin-bottom:1px;text-decoration:none;}
+.nl svg{width:15px;height:15px;flex-shrink:0;opacity:.7;transition:opacity .2s;}
+.nl:hover{color:var(--text);background:var(--s2);}
+.nl:hover svg{opacity:1;}
+.nl.active{color:#fff;background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(124,106,255,.05));border-color:rgba(124,106,255,.25);}
+.nl.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2.5px;background:var(--accent);border-radius:0 3px 3px 0;box-shadow:0 0 10px var(--accent);}
+.nl.active svg{opacity:1;}
+.sb-footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);}
+.xp-wrap{padding:12px;background:var(--s2);border-radius:12px;border:1px solid var(--border-hi);}
+.xp-top{display:flex;justify-content:space-between;margin-bottom:7px;}
+.xp-lv{font-family:var(--h);font-size:.72em;font-weight:700;color:var(--gold);}
+.xp-pts{font-size:.67em;color:var(--muted);}
+.xp-track{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
+.xp-bar{height:100%;width:68%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:100px;position:relative;overflow:hidden;}
+.xp-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:scan 2.5s linear infinite;}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+.xp-sub{font-size:.64em;color:var(--muted);margin-top:4px;text-align:right;}
+
+.main{flex:1;overflow-y:auto;padding:28px 30px;display:flex;flex-direction:column;gap:20px;}
+.main::-webkit-scrollbar{width:3px;}
+.main::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.page-label{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.page-h1{font-family:var(--h);font-size:1.9em;font-weight:800;letter-spacing:-.03em;line-height:1.05;}
+.page-h1 span{background:linear-gradient(110deg,#fff,var(--blue),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:200%;animation:gradMove 4s ease infinite;}
+@keyframes gradMove{0%,100%{background-position:0%}50%{background-position:100%}}
+.page-sub{font-size:.82em;color:var(--muted2);margin-top:4px;font-weight:300;}
+.page-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 16px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:100px;font-family:var(--h);font-size:.72em;font-weight:700;color:var(--blue);letter-spacing:.06em;text-transform:uppercase;}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--gg);animation:blink 2s ease-in-out infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.content-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;flex:1;min-height:0;}
+.form-panel{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:28px;overflow-y:auto;box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);animation:fadeUp .4s ease .1s both;}
+.form-panel::-webkit-scrollbar{width:3px;}
+.form-panel::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
+.info-panel{display:flex;flex-direction:column;gap:12px;}
+.sec-label{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:7px;}
+.sec-label svg{width:13px;height:13px;opacity:.6;}
+.field{margin-bottom:20px;}
+.field-label{font-family:var(--h);font-size:.68em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.field-label svg{width:12px;height:12px;opacity:.7;}
+.input-wrap{position:relative;}
+.input-wrap input{width:100%;padding:13px 46px 13px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.92em;transition:all .25s;outline:none;}
+.input-wrap input::placeholder{color:var(--muted);}
+.input-wrap input:focus{border-color:var(--accent);background:rgba(124,106,255,.04);box-shadow:0 0 0 3px rgba(124,106,255,.08);}
+.input-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex;}
+.input-icon svg{width:15px;height:15px;}
+.przedmiot-wrap{position:relative;}
+.dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--s1);border:1px solid var(--border-hi);border-radius:14px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.6);}
+.dropdown.open{display:block;}
+.dropdown-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .15s;font-size:.88em;color:var(--text);}
+.dropdown-item:first-child{border-radius:14px 14px 0 0;}
+.dropdown-item:last-child{border-radius:0 0 14px 14px;}
+.dropdown-item:hover,.dropdown-item.active-item{background:rgba(124,106,255,.1);color:var(--accent2);}
+.d-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.d-icon svg{width:14px;height:14px;stroke:var(--muted2);}
+.dropdown-item:hover .d-icon svg,.dropdown-item.active-item .d-icon svg{stroke:var(--accent2);}
+.dropdown::-webkit-scrollbar{width:3px;}
+.dropdown::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:4px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.sel-btn{padding:12px 8px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.sel-btn svg{width:16px;height:16px;stroke:currentColor;}
+.sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.sel-btn.active{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.35);color:var(--blue);}
+.slider-row{display:flex;align-items:center;gap:12px;}
+.slider-row input[type=range]{flex:1;height:4px;border-radius:4px;background:var(--s2);outline:none;cursor:pointer;accent-color:var(--accent);}
+.slider-val{font-family:var(--h);font-weight:700;font-size:1em;color:var(--accent2);min-width:32px;text-align:right;}
+.features{display:flex;gap:7px;margin-bottom:20px;}
+.feat{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.feat svg{width:15px;height:15px;stroke:var(--muted2);}
+.feat span{font-size:.64em;color:var(--muted);line-height:1.3;font-family:var(--h);font-weight:700;letter-spacing:.04em;}
+.gen-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--blue),var(--accent));border:none;border-radius:12px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:9px;}
+.gen-btn svg{width:16px;height:16px;stroke:white;flex-shrink:0;}
+.gen-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent 50%);}
+.gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 30px rgba(56,189,248,.3);}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.error-msg{display:none;margin-top:12px;padding:11px 14px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;color:var(--red);font-size:.85em;align-items:center;gap:8px;}
+.error-msg.visible{display:flex;}
+.error-msg svg{width:14px;height:14px;stroke:var(--red);flex-shrink:0;}
+.loading-view{display:none;text-align:center;padding:20px 0;}
+.spinner-ring{width:52px;height:52px;border:2.5px solid var(--border-hi);border-top-color:var(--blue);border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 20px;}
+.loading-view h3{font-family:var(--h);font-size:1.05em;font-weight:700;margin-bottom:5px;}
+.loading-view p{color:var(--muted);font-size:.85em;margin-bottom:22px;}
+.progress-track{background:var(--s2);border-radius:100px;height:3px;overflow:hidden;margin-bottom:20px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));border-radius:100px;width:0%;transition:width .8s ease;}
+.steps-list{list-style:none;text-align:left;}
+.step-item{display:flex;align-items:center;gap:10px;padding:8px 0;color:var(--muted);font-size:.84em;border-bottom:1px solid var(--border);}
+.step-item:last-child{border:none;}
+.step-item.current{color:var(--text);}
+.step-item.done{color:var(--green);}
+.step-dot{width:7px;height:7px;border-radius:50%;background:var(--border-hi);flex-shrink:0;transition:all .3s;}
+.step-item.current .step-dot{background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.step-item.done .step-dot{background:var(--green);}
+.success-view{display:none;text-align:center;padding:20px 0;}
+.success-circle{width:72px;height:72px;background:rgba(56,189,248,.08);border:1.5px solid rgba(56,189,248,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275) both;}
+.success-circle svg{width:28px;height:28px;stroke:var(--blue);}
+@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.success-view h3{font-family:var(--h);font-size:1.15em;font-weight:800;margin-bottom:6px;}
+.success-view p{color:var(--muted);font-size:.85em;margin-bottom:22px;}
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px;background:var(--blue);color:#04111a;font-family:var(--h);font-weight:700;font-size:.9em;border-radius:12px;text-decoration:none;margin-bottom:10px;transition:all .3s;width:100%;}
+.dl-btn svg{width:15px;height:15px;stroke:#04111a;}
+.dl-btn:hover{opacity:.9;transform:translateY(-1px);}
+.reset-btn{width:100%;padding:12px;background:transparent;border:1px solid var(--border-hi);border-radius:11px;color:var(--muted);font-family:var(--b);font-size:.85em;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.reset-btn svg{width:13px;height:13px;stroke:currentColor;}
+.reset-btn:hover{border-color:var(--blue);color:var(--text);}
+.info-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:20px;}
+.info-card:nth-child(1){animation:fadeUp .4s ease .15s both;}
+.info-card:nth-child(2){animation:fadeUp .4s ease .2s both;}
+.info-card:nth-child(3){animation:fadeUp .4s ease .25s both;}
+.info-card-title{font-family:var(--h);font-size:.72em;font-weight:800;margin-bottom:14px;color:var(--text);display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
+.info-card-title svg{width:14px;height:14px;stroke:var(--blue);flex-shrink:0;}
+.stat-mini{display:flex;gap:8px;}
+.sm-item{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center;}
+.sm-n{font-family:var(--h);font-size:1.3em;font-weight:800;transition:all .4s;}
+.sm-d{font-size:.64em;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;font-family:var(--h);}
+.tip{display:flex;gap:10px;padding:10px 11px;border-radius:11px;margin-bottom:5px;transition:all .2s;border:1px solid transparent;}
+.tip:last-child{margin-bottom:0;}
+.tip:hover{background:rgba(56,189,248,.04);border-color:rgba(56,189,248,.12);}
+.tip-ico{flex-shrink:0;margin-top:2px;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.tip-ico svg{width:13px;height:13px;}
+.tip-title{font-family:var(--h);font-size:.73em;font-weight:700;color:var(--blue);margin-bottom:2px;}
+.tip-body{font-size:.71em;color:var(--muted2);line-height:1.55;}
+.recent-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.recent-item:last-child{border:none;}
+.ri-icon{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.15);display:flex;align-items:center;justify-content:center;}
+.ri-icon svg{width:13px;height:13px;stroke:var(--blue);}
+.ri-name{font-size:.81em;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ri-meta{font-size:.69em;color:var(--muted);font-family:var(--h);flex-shrink:0;}
+.empty-recent{text-align:center;padding:18px 0;color:var(--muted);font-size:.8em;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+@media(max-width:768px){
+  .cursor,.cursor-ring{display:none!important;}
+  body{cursor:auto;overflow:auto;height:auto;}
+  html,body{overflow:auto;}
+  .app{display:block;}
+  .sidebar{display:none!important;}
+  .m-hdr{display:flex!important;}
+  .m-nav{display:grid!important;}
+  .main{padding:14px!important;padding-top:70px!important;padding-bottom:74px!important;height:auto!important;overflow:visible!important;}
+  .content-grid{grid-template-columns:1fr!important;}
+  .info-panel{display:none;}
+  .topbar{flex-direction:column;gap:10px;align-items:flex-start;}
+  .page-h1{font-size:1.5em!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="ring"></div>
+<div class="aurora"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
+
+<header class="m-hdr" id="mHdr">
+  <div class="m-logo"><span>E</span></div>
+  <div class="m-hdr-info">
+    <div class="m-hdr-title">Sprawdziany AI</div>
+    <div class="m-hdr-sub">Eduvia — AI Learning Platform</div>
+  </div>
+  <button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button>
+</header>
+
+<div class="m-overlay" id="mOverlay" onclick="mClose()"></div>
+<nav class="m-drawer" id="mDrawer">
+  <div class="d-brand">
+    <div class="d-logo"><span>E</span></div>
+    <div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div>
+  </div>
+  <div class="d-sec">Narzędzia</div>
+  <div class="d-link" onclick="go('dashboard_FINAL.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</div>
+  <div class="d-link" onclick="go('chat.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</div>
+  <div class="d-link" onclick="go('quiz_app.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</div>
+  <div class="d-link" onclick="go('notes_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</div>
+  <div class="d-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</div>
+  <div class="d-link" onclick="go('vision.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
+  <div class="d-link" onclick="go('voice_conversation.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</div>
+  <div class="d-link" onclick="go('lesson_planner.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</div>
+</nav>
+
+<nav class="m-nav">
+  <div class="m-nb" onclick="go('dashboard_FINAL.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></div>
+  <div class="m-nb" onclick="go('chat.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+  <div class="m-nb" onclick="go('quiz_app.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Quiz</span></div>
+  <div class="m-nb" onclick="go('notes_generator_v2.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></div>
+  <div class="m-nb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Testy</span><span class="m-nb-dot"></span></div>
+</nav>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo"><span class="brand-l">E</span></div>
+    <div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div>
+  </div>
+  <div class="ng">Główne</div>
+  <a class="nl" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+  <a class="nl" href="lesson_planner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</a>
+  <div class="ng">Narzędzia</div>
+  <a class="nl" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
+  <a class="nl" href="voice_conversation.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice AI</a>
+  <a class="nl" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Notatki AI</a>
+  <a class="nl active" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a>
+  <a class="nl" href="vision.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a>
+  <a class="nl" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a>
+  <div class="ng">Konto</div>
+  <a class="nl" href="pricing.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</a>
+  <div class="sb-footer">
+    <div class="xp-wrap">
+      <div class="xp-top"><span class="xp-lv" id="sbXpLv">Poziom 1</span><span class="xp-pts" id="sbXpPts">0 / 100 XP</span></div>
+      <div class="xp-track"><div class="xp-bar" id="sbXpBar" style="width:0%"></div></div>
+      <div class="xp-sub" id="sbXpSub">Zacznij generować sprawdziany!</div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-label">Narzędzia AI</div>
+      <div class="page-h1"><span>Sprawdziany AI</span></div>
+      <div class="page-sub">Profesjonalny sprawdzian gotowy do druku</div>
+    </div>
+    <div class="page-badge"><span class="badge-dot"></span>AI aktywny</div>
+  </div>
+
+  <div class="content-grid">
+    <div class="form-panel">
+      <div id="formView">
+        <span class="sec-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Konfiguracja sprawdzianu
+        </span>
+
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+            Temat sprawdzianu
+          </span>
+          <div class="input-wrap">
+            <input type="text" id="temat" placeholder="np. Ułamki zwykłe, Równania liniowe..." autocomplete="off">
+            <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Przedmiot
+          </span>
+          <div class="przedmiot-wrap" id="przedmiotWrap">
+            <div class="input-wrap">
+              <input type="text" id="przedmiotInput" placeholder="Wyszukaj przedmiot..." autocomplete="off" oninput="filterPrzedmioty()" onfocus="showDropdown()" value="Matematyka">
+              <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            </div>
+            <div class="dropdown" id="dropdown"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Poziom edukacji
+          </span>
+          <div class="grid-2">
+            <button class="sel-btn" data-group="klasa" data-val="podstawowka" onclick="select(this,'klasa')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Podstawówka
+            </button>
+            <button class="sel-btn active" data-group="klasa" data-val="liceum" onclick="select(this,'klasa')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              Liceum / Tech.
+            </button>
+            <button class="sel-btn" data-group="klasa" data-val="matura" onclick="select(this,'klasa')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Matura
+            </button>
+            <button class="sel-btn" data-group="klasa" data-val="studia" onclick="select(this,'klasa')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Studia
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Trudność
+          </span>
+          <div class="grid-3">
+            <button class="sel-btn" data-group="trudnosc" data-val="latwa" onclick="select(this,'trudnosc')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              Łatwy
+            </button>
+            <button class="sel-btn active" data-group="trudnosc" data-val="srednia" onclick="select(this,'trudnosc')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              Średni
+            </button>
+            <button class="sel-btn" data-group="trudnosc" data-val="trudna" onclick="select(this,'trudnosc')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              Trudny
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Liczba pytań
+          </span>
+          <div class="slider-row">
+            <input type="range" id="liczbaPytan" min="5" max="30" value="15" oninput="document.getElementById('liczbaPytanVal').textContent=this.value">
+            <span class="slider-val" id="liczbaPytanVal">15</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <div class="feat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>PDF do druku</span>
+          </div>
+          <div class="feat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Klucz odp.</span>
+          </div>
+          <div class="feat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>Skala ocen</span>
+          </div>
+          <div class="feat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>~2 min</span>
+          </div>
+        </div>
+
+        <button class="gen-btn" id="genBtn" onclick="generate()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Generuj sprawdzian
+        </button>
+        <div class="error-msg" id="errMsg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="errText"></span>
+        </div>
+      </div>
+
+      <div class="loading-view" id="loadingView">
+        <div class="spinner-ring"></div>
+        <h3>Generuję sprawdzian...</h3>
+        <p>AI tworzy pytania i buduje PDF</p>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <ul class="steps-list">
+          <li class="step-item current" id="st0"><div class="step-dot"></div>Analizuję temat</li>
+          <li class="step-item" id="st1"><div class="step-dot"></div>Generuję pytania zamknięte</li>
+          <li class="step-item" id="st2"><div class="step-dot"></div>Tworzę zadania obliczeniowe</li>
+          <li class="step-item" id="st3"><div class="step-dot"></div>Renderuję wzory matematyczne</li>
+          <li class="step-item" id="st4"><div class="step-dot"></div>Buduję PDF ze skalą ocen</li>
+        </ul>
+      </div>
+
+      <div class="success-view" id="successView">
+        <div class="success-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h3>Sprawdzian gotowy! 🎉</h3>
+        <p>Profesjonalny PDF z kluczem odpowiedzi i schematem oceniania</p>
+        <a id="dlLink" class="dl-btn" href="#" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Pobierz PDF do druku
+        </a>
+        <button class="reset-btn" onclick="reset()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Wygeneruj kolejny sprawdzian
+        </button>
+      </div>
+    </div>
+
+    <!-- PRAWA KOLUMNA -->
+    <div class="info-panel">
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Twoje statystyki
+        </div>
+        <div class="stat-mini">
+          <div class="sm-item"><div class="sm-n" id="statCount" style="color:var(--blue)">0</div><div class="sm-d">Sprawdziany</div></div>
+          <div class="sm-item"><div class="sm-n" id="statQ" style="color:var(--green)">0</div><div class="sm-d">Pytań łącznie</div></div>
+          <div class="sm-item"><div class="sm-n" id="statXP" style="color:var(--gold)">0</div><div class="sm-d">XP zdobyte</div></div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Ostatnie sprawdziany
+        </div>
+        <div id="recentList">
+          <div class="empty-recent">📋 Brak sprawdzianów — wygeneruj pierwszy!</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Jak dostać najlepszy wynik?
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(56,189,248,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M22 12h-4M6 12H2M12 6V2M12 22v-4"/></svg></div>
+          <div><div class="tip-title">Precyzyjny temat</div><div class="tip-body">Pisz dokładnie: „Twierdzenie Pitagorasa" zamiast „Matematyka"</div></div>
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(34,211,160,.08)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div><div class="tip-title">Dopasuj trudność</div><div class="tip-body">Trudny = pytania problemowe. Łatwy = testy A–D i definicje</div></div>
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(245,166,35,.08)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+          <div><div class="tip-title">Optymalna liczba pytań</div><div class="tip-body">15–20 pytań to idealne 45 minut lekcji</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const cur=document.getElementById('cur'),ring=document.getElementById('ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
+document.querySelectorAll('button,a,.nl,.sel-btn').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='18px';cur.style.height='18px';cur.style.background='var(--blue)';});
+  el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';});
+});
+
+function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
+function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
+function go(u){window.location.href=u;}
+
+// ═══ STORAGE ═══
+const EXAMS_KEY='eduvia_exams_history';
+function getExams(){try{return JSON.parse(localStorage.getItem(EXAMS_KEY)||'[]');}catch{return[];}}
+function saveExam(topic,numQ){
+  const exams=getExams();
+  exams.unshift({topic,numQ,time:Date.now()});
+  if(exams.length>20)exams.pop();
+  localStorage.setItem(EXAMS_KEY,JSON.stringify(exams));
+}
+function timeAgo(ts){
+  const diff=Date.now()-ts,m=60000,h=3600000,d=86400000;
+  if(diff<m)return 'właśnie teraz';
+  if(diff<h)return Math.floor(diff/m)+' min temu';
+  if(diff<2*h)return '1 godz. temu';
+  if(diff<d)return Math.floor(diff/h)+' godz. temu';
+  if(diff<2*d)return 'wczoraj';
+  return Math.floor(diff/d)+' dni temu';
+}
+function animCount(id,target){
+  const el=document.getElementById(id);
+  let c=0;const step=Math.max(1,Math.floor(target/20));
+  const t=setInterval(()=>{c=Math.min(c+step,target);el.textContent=c;if(c>=target)clearInterval(t);},40);
+}
+function renderStats(){
+  const exams=getExams();
+  const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+  const totalQ=exams.reduce((s,e)=>s+(e.numQ||15),0);
+  animCount('statCount',exams.length);
+  animCount('statQ',totalQ);
+  animCount('statXP',xp);
+  const lvl=Math.floor(xp/100)+1,xpInLvl=xp%100;
+  document.getElementById('sbXpLv').textContent='Poziom '+lvl;
+  document.getElementById('sbXpPts').textContent=xp+' / '+(lvl*100)+' XP';
+  document.getElementById('sbXpBar').style.width=xpInLvl+'%';
+  document.getElementById('sbXpSub').textContent=(100-xpInLvl)+' XP do poz. '+(lvl+1);
+  const list=document.getElementById('recentList');
+  if(exams.length===0){list.innerHTML='<div class="empty-recent">📋 Brak sprawdzianów — wygeneruj pierwszy!</div>';return;}
+  list.innerHTML=exams.slice(0,4).map(e=>`
+    <div class="recent-item">
+      <div class="ri-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div class="ri-name">${e.topic}</div>
+      <div class="ri-meta">${timeAgo(e.time)}</div>
+    </div>`).join('');
+}
+
+// ═══ ICONS ═══
+const ICONS_SVG={math:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',zap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',flask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-3 0v6l-4 8a1 1 0 0 0 1 2h10a1 1 0 0 0 1-2l-4-8V3"/></svg>',leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20c9 0 14-8 11-16"/></svg>',scroll:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',monitor:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',scale:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="3" x2="12" y2="21"/><path d="M3 6l9-3 9 3"/><path d="M3 6c0 4 2 6 4.5 7"/><path d="M21 6c0 4-2 6-4.5 7"/></svg>'};
+const PRZEDMIOTY=[{icon:'math',name:'Matematyka'},{icon:'zap',name:'Fizyka'},{icon:'flask',name:'Chemia'},{icon:'leaf',name:'Biologia'},{icon:'scroll',name:'Historia'},{icon:'book',name:'Język polski'},{icon:'globe',name:'Geografia'},{icon:'flag',name:'Język angielski'},{icon:'flag',name:'Język niemiecki'},{icon:'flag',name:'Język francuski'},{icon:'monitor',name:'Informatyka'},{icon:'users',name:'Wiedza o społeczeństwie'},{icon:'scale',name:'Podstawy prawa'}];
+let vals={klasa:'liceum',trudnosc:'srednia',przedmiot:'Matematyka'};
+let stepTimer=null;
+function gi(k){return ICONS_SVG[k]||ICONS_SVG.book;}
+function renderDropdown(lista){document.getElementById('dropdown').innerHTML=lista.map(p=>`<div class="dropdown-item ${p.name===vals.przedmiot?'active-item':''}" onclick="selectPrzedmiot('${p.name}')"><span class="d-icon">${gi(p.icon)}</span>${p.name}</div>`).join('');}
+function showDropdown(){renderDropdown(PRZEDMIOTY);document.getElementById('dropdown').classList.add('open');}
+function filterPrzedmioty(){const q=document.getElementById('przedmiotInput').value.toLowerCase();renderDropdown(PRZEDMIOTY.filter(p=>p.name.toLowerCase().includes(q)));document.getElementById('dropdown').classList.add('open');}
+function selectPrzedmiot(name){vals.przedmiot=name;document.getElementById('przedmiotInput').value=name;document.getElementById('dropdown').classList.remove('open');}
+document.addEventListener('click',e=>{if(!document.getElementById('przedmiotWrap').contains(e.target)){document.getElementById('dropdown').classList.remove('open');const inp=document.getElementById('przedmiotInput').value.trim();const found=PRZEDMIOTY.find(p=>p.name.toLowerCase()===inp.toLowerCase());document.getElementById('przedmiotInput').value=found?found.name:vals.przedmiot;if(found)vals.przedmiot=found.name;}});
+function select(btn,group){document.querySelectorAll(`[data-group="${group}"]`).forEach(b=>b.classList.remove('active'));btn.classList.add('active');vals[group]=btn.dataset.val;}
+
+function startProgress(){
+  const steps=['st0','st1','st2','st3','st4'],targets=[10,30,55,75,90];let i=0;
+  stepTimer=setInterval(()=>{
+    if(i>=steps.length){clearInterval(stepTimer);const last=document.getElementById('st4');let blink=false;stepTimer=setInterval(()=>{blink=!blink;last.style.opacity=blink?'1':'0.45';},700);document.getElementById('loadingView').querySelector('h3').textContent='Finalizuję PDF...';return;}
+    if(i>0)document.getElementById(steps[i-1]).className='step-item done';
+    document.getElementById(steps[i]).className='step-item current';
+    document.getElementById('progressFill').style.width=targets[i]+'%';i++;
+  },8000);
+}
+function finishProgress(){clearInterval(stepTimer);['st0','st1','st2','st3','st4'].forEach(s=>{const el=document.getElementById(s);el.className='step-item done';el.style.opacity='1';});document.getElementById('progressFill').style.width='100%';}
+function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
+
+async function generate(){
+  document.getElementById('errMsg').classList.remove('visible');
+  const temat=document.getElementById('temat').value.trim();
+  if(!temat){showErr('Wpisz temat sprawdzianu.');return;}
+  const numQ=parseInt(document.getElementById('liczbaPytan').value);
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ};
+  document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';document.getElementById('genBtn').disabled=true;startProgress();
+  try{
+    const res=await fetch('http://localhost:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Błąd serwera '+res.status);
+    const ct=res.headers.get('content-type')||'';
+    if(ct.includes('application/pdf')){
+      const blob=await res.blob(),url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
+      link.href=url;link.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}.pdf`;finishProgress();
+      saveExam(temat,numQ);
+      const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+      localStorage.setItem('eduvia_xp',xp+60);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';link.click();renderStats();},600);
+    }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
+  }catch(e){
+    clearInterval(stepTimer);
+    ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');
+    document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';document.getElementById('genBtn').disabled=false;
+    showErr(e.message);
+  }
+}
+function reset(){
+  document.getElementById('successView').style.display='none';document.getElementById('formView').style.display='block';
+  document.getElementById('genBtn').disabled=false;document.getElementById('temat').value='';
+  document.getElementById('errMsg').classList.remove('visible');document.getElementById('progressFill').style.width='0%';
+  ['st0','st1','st2','st3','st4'].forEach((s,i)=>document.getElementById(s).className='step-item'+(i===0?' current':''));
+}
+document.getElementById('temat').addEventListener('keypress',e=>{if(e.key==='Enter')generate();});
+
+renderStats();
+</script>
+</body>
+</html>

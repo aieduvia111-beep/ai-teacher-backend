@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Eduvia — Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.11);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);--red:#f87171;--gold:#f5a623;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;cursor:none;}
+
+#pc{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;filter:blur(120px);animation:af 16s ease-in-out infinite;}
+.a1{width:700px;height:700px;background:radial-gradient(circle,rgba(124,106,255,0.18),transparent 70%);top:-200px;right:-100px;}
+.a2{width:500px;height:500px;background:radial-gradient(circle,rgba(245,166,35,0.08),transparent 70%);bottom:0;left:-100px;animation-delay:6s;}
+.a3{width:400px;height:400px;background:radial-gradient(circle,rgba(34,211,160,0.07),transparent 70%);top:40%;left:40%;animation-delay:10s;}
+@keyframes af{0%,100%{transform:translate(0,0)scale(1);}33%{transform:translate(25px,-25px)scale(1.06);}66%{transform:translate(-18px,18px)scale(0.94);}}
+body::after{content:'';position:fixed;inset:0;opacity:0.45;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:rgba(15,15,24,0.95);border-bottom:1px solid var(--border-hi);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,0.4),transparent);}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer;color:var(--text);}
+.brand-mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:0.9em;box-shadow:0 0 20px var(--ag);}
+.brand-name{font-family:var(--h);font-weight:800;font-size:1em;letter-spacing:-0.02em;color:var(--text);}
+.back-btn{padding:7px 16px;background:transparent;border:1px solid var(--border-hi);border-radius:9px;color:var(--muted2);font-family:var(--b);font-size:0.8em;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:7px;}
+.back-btn:hover{border-color:var(--accent2);color:var(--text);}
+.back-btn svg{width:13px;height:13px;}
+
+/* HERO */
+.hero{text-align:center;padding:72px 24px 56px;position:relative;z-index:5;}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.25);border-radius:100px;font-family:var(--h);font-size:0.72em;font-weight:700;color:var(--gold);letter-spacing:0.06em;margin-bottom:24px;animation:fadeUp 0.5s ease backwards;}
+.hero-h1{font-family:var(--h);font-size:3em;font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:16px;animation:fadeUp 0.5s ease 0.1s backwards;}
+.hero-h1 .grad{background:linear-gradient(120deg,#fff 0%,var(--accent2) 50%,var(--green) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:1em;color:var(--muted2);font-weight:300;max-width:520px;margin:0 auto 40px;line-height:1.7;animation:fadeUp 0.5s ease 0.15s backwards;}
+
+/* TOGGLE */
+.toggle-wrap{display:inline-flex;align-items:center;background:var(--s2);border:1px solid var(--border-hi);border-radius:100px;padding:4px;gap:4px;margin-bottom:56px;animation:fadeUp 0.5s ease 0.2s backwards;}
+.tog-btn{padding:8px 20px;border-radius:100px;border:none;background:transparent;color:var(--muted2);font-family:var(--h);font-size:0.78em;font-weight:700;cursor:pointer;transition:all 0.25s;letter-spacing:0.04em;}
+.tog-btn.active{background:var(--accent);color:white;box-shadow:0 0 16px rgba(124,106,255,0.3);}
+.save-tag{font-size:0.65em;background:rgba(34,211,160,0.15);border:1px solid rgba(34,211,160,0.25);color:var(--green);padding:2px 8px;border-radius:100px;margin-left:4px;font-family:var(--h);font-weight:700;}
+
+/* PLANS */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:980px;margin:0 auto;padding:0 24px 80px;position:relative;z-index:5;}
+
+.plan{
+  background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;
+  padding:28px;position:relative;overflow:hidden;
+  transition:transform 0.3s,box-shadow 0.3s;
+  animation:fadeUp 0.5s ease backwards;
+}
+.plan:hover{transform:translateY(-6px);}
+.plan:nth-child(1){animation-delay:0.25s;}
+.plan:nth-child(2){animation-delay:0.32s;border-color:rgba(124,106,255,0.3);box-shadow:0 0 40px rgba(124,106,255,0.08);}
+.plan:nth-child(3){animation-delay:0.39s;}
+.plan:nth-child(2):hover{box-shadow:0 20px 60px rgba(124,106,255,0.2);}
+
+/* POPULAR badge */
+.popular-tag{position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,var(--accent),#5b4fcf);color:white;font-family:var(--h);font-size:0.65em;font-weight:700;padding:5px 18px;border-radius:0 0 12px 12px;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
+
+.plan-name{font-family:var(--h);font-size:0.72em;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;margin-top:10px;}
+.plan-price{display:flex;align-items:baseline;gap:4px;margin-bottom:6px;}
+.plan-amt{font-family:var(--h);font-size:2.8em;font-weight:800;letter-spacing:-0.04em;line-height:1;}
+.plan-cur{font-family:var(--h);font-size:1em;font-weight:700;color:var(--muted2);margin-top:4px;}
+.plan-period{font-size:0.8em;color:var(--muted);margin-bottom:20px;}
+.plan-period .save{color:var(--green);font-weight:500;}
+
+.plan-btn{
+  width:100%;padding:12px;border-radius:12px;border:none;
+  font-family:var(--h);font-size:0.82em;font-weight:700;cursor:pointer;
+  transition:all 0.25s;letter-spacing:0.04em;margin-bottom:24px;
+}
+.plan-btn.outline{background:transparent;border:1px solid var(--border-hi);color:var(--text);}
+.plan-btn.outline:hover{border-color:var(--accent2);background:rgba(124,106,255,0.06);}
+.plan-btn.primary{background:var(--accent);color:white;box-shadow:0 0 20px rgba(124,106,255,0.25);}
+.plan-btn.primary:hover{background:#8b79ff;box-shadow:0 8px 28px rgba(124,106,255,0.4);transform:translateY(-1px);}
+.plan-btn.gold{background:linear-gradient(135deg,#f5a623,#e8950f);color:white;box-shadow:0 0 20px rgba(245,166,35,0.2);}
+.plan-btn.gold:hover{box-shadow:0 8px 28px rgba(245,166,35,0.35);transform:translateY(-1px);}
+
+.plan-divider{height:1px;background:var(--border);margin-bottom:20px;}
+.plan-feature-label{font-family:var(--h);font-size:0.62em;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.feature{display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;font-size:0.82em;line-height:1.5;}
+.feature svg{width:14px;height:14px;flex-shrink:0;margin-top:2px;}
+.feature.yes svg{color:var(--green);}
+.feature.no svg{color:var(--muted);opacity:0.4;}
+.feature.no{color:var(--muted);}
+
+/* FAQ */
+.faq-section{max-width:680px;margin:0 auto;padding:0 24px 80px;position:relative;z-index:5;}
+.section-label{font-family:var(--h);font-size:0.65em;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:28px;}
+.faq-item{border:1px solid var(--border-hi);border-radius:14px;margin-bottom:8px;overflow:hidden;transition:border-color 0.2s;}
+.faq-item:hover{border-color:rgba(124,106,255,0.2);}
+.faq-q{padding:16px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:0.88em;font-weight:500;}
+.faq-q svg{width:14px;height:14px;color:var(--muted);flex-shrink:0;transition:transform 0.25s;}
+.faq-item.open .faq-q svg{transform:rotate(45deg);color:var(--accent2);}
+.faq-a{font-size:0.82em;color:var(--muted2);line-height:1.7;padding:0 18px 16px;display:none;font-weight:300;}
+.faq-item.open .faq-a{display:block;}
+
+/* BOTTOM CTA */
+.bottom-cta{text-align:center;padding:60px 24px 80px;position:relative;z-index:5;}
+.cta-card{max-width:580px;margin:0 auto;background:linear-gradient(135deg,rgba(124,106,255,0.1),rgba(124,106,255,0.04));border:1px solid rgba(124,106,255,0.2);border-radius:24px;padding:48px 40px;}
+.cta-card h2{font-family:var(--h);font-size:1.6em;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px;}
+.cta-card p{font-size:0.88em;color:var(--muted2);margin-bottom:28px;line-height:1.65;font-weight:300;}
+.cta-big-btn{padding:14px 36px;background:var(--accent);border:none;border-radius:13px;color:white;font-family:var(--h);font-size:0.9em;font-weight:700;cursor:pointer;transition:all 0.25s;box-shadow:0 0 24px rgba(124,106,255,0.25);letter-spacing:0.03em;}
+.cta-big-btn:hover{background:#8b79ff;transform:translateY(-2px);box-shadow:0 10px 32px rgba(124,106,255,0.45);}
+.cta-note{font-size:0.73em;color:var(--muted);margin-top:14px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+.cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
+
+/* ══════════════════════════════
+   MOBILE RESPONSIVE — pricing
+══════════════════════════════ */
+@media (max-width: 768px) {
+  /* cursor off */
+  .cursor { display: none !important; }
+  body { cursor: auto; }
+
+  /* topbar */
+  .topbar { padding: 12px 16px; }
+  .brand-name { font-size: .85em; }
+
+  /* hero */
+  .hero { padding: 40px 18px 32px; }
+  .hero-h1 { font-size: 2em; }
+  .hero-sub { font-size: .88em; margin-bottom: 28px; }
+  .toggle-wrap { margin-bottom: 36px; }
+  .tog-btn { padding: 7px 14px; font-size: .72em; }
+
+  /* plans — 1 kolumna */
+  .plans {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    padding: 0 16px 60px !important;
+    max-width: 100% !important;
+  }
+
+  /* plan card */
+  .plan { padding: 22px 20px; border-radius: 18px; }
+  .plan:hover { transform: none; }
+  .plan:nth-child(2) { order: -1; } /* popular first */
+  .plan-amt { font-size: 2.2em; }
+  .plan-btn { padding: 13px; font-size: .83em; margin-bottom: 20px; }
+  .feature { font-size: .8em; }
+
+  /* popular tag */
+  .popular-tag { font-size: .6em; padding: 4px 14px; }
+
+  /* FAQ */
+  .faq-section { padding: 0 16px 50px; }
+  .faq-q { font-size: .84em; padding: 14px 16px; }
+  .faq-a { font-size: .79em; padding: 0 16px 14px; }
+
+  /* CTA bottom */
+  .bottom-cta { padding: 40px 16px 60px; }
+  .cta-card { padding: 32px 22px; border-radius: 20px; }
+  .cta-card h2 { font-size: 1.35em; }
+  .cta-card p { font-size: .84em; }
+  .cta-big-btn { width: 100%; padding: 14px 24px; font-size: .88em; }
+}
+
+@media (max-width: 380px) {
+  .hero-h1 { font-size: 1.7em; }
+  .plans { padding: 0 12px 50px !important; }
+  .plan { padding: 18px 16px; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="pc"></canvas>
+<div class="aurora"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
+
+<header class="topbar">
+  <a class="brand" href="dashboard_FINAL.html">
+    <div class="brand-mark">E</div>
+    <span class="brand-name">Eduvia</span>
+  </a>
+  <button class="back-btn" onclick="window.location.href='dashboard_FINAL.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Wróć do dashboardu
+  </button>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">✨ Naucz się 3× szybciej z AI</div>
+  <h1 class="hero-h1">Wybierz swój plan<br><span class="grad">Eduvia</span></h1>
+  <p class="hero-sub">Zacznij za darmo. Ulepsz kiedy chcesz. Żadnych ukrytych opłat — tylko czysta nauka z AI.</p>
+
+  <div class="toggle-wrap">
+    <button class="tog-btn active" id="togMonth" onclick="setB('month')">Miesięcznie</button>
+    <button class="tog-btn" id="togYear" onclick="setB('year')">Rocznie <span class="save-tag">−40%</span></button>
+  </div>
+</div>
+
+<!-- PLANS -->
+<div class="plans">
+
+  <!-- FREE -->
+  <div class="plan">
+    <div class="plan-name">Free</div>
+    <div class="plan-price">
+      <span class="plan-amt">0</span>
+      <span class="plan-cur">zł</span>
+    </div>
+    <div class="plan-period">Na zawsze za darmo</div>
+    <button class="plan-btn outline" onclick="window.location.href='dashboard_FINAL.html'">Aktualny plan →</button>
+    <div class="plan-divider"></div>
+    <div class="plan-feature-label">Co dostajesz</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>5 quizów dziennie</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>3 notatki miesięcznie</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Chat AI (10 wiad/dzień)</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Plan nauki (1 przedmiot)</div>
+    <div class="feature no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Voice AI</div>
+    <div class="feature no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Vision AI (zdjęcia zadań)</div>
+    <div class="feature no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>PDF Export</div>
+    <div class="feature no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Sprawdziany wariant A+B</div>
+  </div>
+
+  <!-- PRO — POPULAR -->
+  <div class="plan">
+    <div class="popular-tag">⭐ Najpopularniejszy</div>
+    <div class="plan-name" style="margin-top:28px">Pro</div>
+    <div class="plan-price">
+      <span class="plan-amt" id="proAmt" style="color:var(--accent2)">29</span>
+      <span class="plan-cur">zł</span>
+    </div>
+    <div class="plan-period" id="proPeriod">miesięcznie · anuluj kiedy chcesz</div>
+    <button class="plan-btn primary" onclick="startCheckout('pro')">Kup Pro teraz →</button>
+    <div class="plan-divider"></div>
+    <div class="plan-feature-label">Wszystko z Free, plus:</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> quizów i notatek</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Chat AI bez limitów</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Voice AI</strong> — rozmowa głosem</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Vision AI</strong> — zdjęcia zadań</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>PDF Export notatek i sprawdzianów</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Plan nauki — unlimited przedmiotów</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Sprawdziany wariant A+B</div>
+    <div class="feature no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Priorytetowe wsparcie</div>
+  </div>
+
+  <!-- MAX -->
+  <div class="plan">
+    <div class="plan-name">Max</div>
+    <div class="plan-price">
+      <span class="plan-amt" id="maxAmt" style="color:var(--gold)">59</span>
+      <span class="plan-cur">zł</span>
+    </div>
+    <div class="plan-period" id="maxPeriod">miesięcznie · dla power userów</div>
+    <button class="plan-btn gold" onclick="startCheckout('max')">Kup Max teraz →</button>
+    <div class="plan-divider"></div>
+    <div class="plan-feature-label">Wszystko z Pro, plus:</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Zaawansowane AI</strong> we wszystkich narzędziach</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Priorytetowe wsparcie 24/7</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Historia rozmów i notatek (1 rok)</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Eksport do Google Drive</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Early access nowych funkcji</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Dedykowany plan maturalny AI</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Analityka postępów szczegółowa</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>API dostęp (dla developerów)</div>
+  </div>
+
+</div>
+
+<!-- FAQ -->
+<div class="faq-section">
+  <div class="section-label">Często zadawane pytania</div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Czy mogę anulować subskrypcję w każdej chwili?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Tak, anulowanie jest możliwe w każdej chwili bez żadnych konsekwencji. Po anulowaniu masz dostęp do końca opłaconego okresu, a następnie przechodzisz automatycznie na plan Free.</div>
+  </div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Jak działa Voice AI?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Voice AI używa zaawansowaną AI do rozpoznawania mowy i generowania odpowiedzi. Możesz rozmawiać z AI nauczycielem głosem po polsku lub angielsku — AI odpowiada również głosowo przez TTS.</div>
+  </div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Czym Vision AI różni się od zwykłego Chat AI?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Vision AI rozumie obrazy — wrzuć zdjęcie zadania z podręcznika lub zdjęcie tablicy ze szkoły, a AI rozwiąże je krok po kroku. Chat AI obsługuje tylko tekst.</div>
+  </div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Czy moje dane są bezpieczne?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Płatności obsługuje Stripe — jeden z najbezpieczniejszych procesorów płatności na świecie. Twoje dane karty nigdy nie trafiają na nasze serwery. Dane edukacyjne są szyfrowane i nie są udostępniane stronom trzecim.</div>
+  </div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Czy jest zniżka dla uczniów/studentów?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Tak! Napisz do nas z adresu szkolnego email, a dostaniesz dodatkowe 20% zniżki na plan Pro lub Max. Jesteśmy platformą stworzoną dla uczniów — pomagamy jak możemy.</div>
+  </div>
+</div>
+
+<!-- BOTTOM CTA -->
+<div class="bottom-cta">
+  <div class="cta-card">
+    <h2>Zacznij naukę z AI już dziś 🚀</h2>
+    <p>Dołącz do tysięcy uczniów którzy uczą się szybciej, mądrzej i bez stresu. Plan Free jest darmowy na zawsze.</p>
+    <button class="cta-big-btn" onclick="window.location.href='dashboard_FINAL.html'">Wróć i zacznij za darmo</button>
+    <div class="cta-note">Nie wymagamy karty kredytowej dla planu Free</div>
+  </div>
+</div>
+
+<script>
+// PARTICLES
+const pc=document.getElementById('pc'),ctx=pc.getContext('2d');
+let W,H;
+function rz(){W=pc.width=window.innerWidth;H=pc.height=window.innerHeight;}
+rz();window.addEventListener('resize',rz);
+class D{
+  constructor(){this.reset(true);}
+  reset(init=false){
+    this.x=Math.random()*W;this.y=init?Math.random()*H:H+8;
+    this.vx=(Math.random()-0.5)*0.06;this.vy=-(Math.random()*0.09+0.025);
+    const a=Math.random()<0.02;
+    this.col=a?`rgba(167,139,250,${(0.006+Math.random()*0.007).toFixed(3)})`:`rgba(174,182,194,${(0.013+Math.random()*0.014).toFixed(3)})`;
+    this.r=Math.random()*1.0+0.25;this.life=1;this.decay=Math.random()*0.0006+0.00015;
+  }
+  tick(){this.x+=this.vx;this.y+=this.vy;this.life-=this.decay;if(this.life<=0||this.y<-8||this.x<-8||this.x>W+8)this.reset();}
+  draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=this.col;ctx.fill();}
+}
+const dust=Array.from({length:30},()=>new D());
+function td(){ctx.clearRect(0,0,W,H);dust.forEach(d=>{d.tick();d.draw();});requestAnimationFrame(td);}
+td();
+
+// BILLING TOGGLE
+let billing='month';
+const prices={pro:{month:29,year:17},max:{month:59,year:35}};
+function setB(b){
+  billing=b;
+  document.getElementById('togMonth').classList.toggle('active',b==='month');
+  document.getElementById('togYear').classList.toggle('active',b==='year');
+  document.getElementById('proAmt').textContent=prices.pro[b];
+  document.getElementById('maxAmt').textContent=prices.max[b];
+  document.getElementById('proPeriod').textContent=b==='month'?'miesięcznie · anuluj kiedy chcesz':'miesięcznie (płatne rocznie) · oszczędzasz 144 zł';
+  document.getElementById('maxPeriod').textContent=b==='month'?'miesięcznie · dla power userów':'miesięcznie (płatne rocznie) · oszczędzasz 288 zł';
+}
+
+// CHECKOUT
+function startCheckout(plan){
+  const planNames = {pro:'Pro', max:'Max'};
+  const prices_show = {pro:{month:'49 zł/mies', year:'39 zł/mies'}, max:{month:'99 zł/mies', year:'79 zł/mies'}};
+  const msg = `✅ Dziękujemy za zainteresowanie planem ${planNames[plan] || plan}!\n\n📧 Skontaktuj się z nami aby aktywować plan:\n\nkontakt@eduvia.pl\n\nW temacie wpisz: "Plan ${planNames[plan]} - ${prices_show[plan]?.[billing] || ''}"\n\nOdpiszemy w ciągu 24h! 🚀`;
+  alert(msg);
+}
+
+// FAQ
+function toggleFaq(el){el.classList.toggle('open');}
+</script>
+<div class="cursor" id="cur"></div>
+<script>
+
+// Nawigacja - zawsze relatywna do bieżącego folderu
+function navTo(filename) {
+  const base = window.location.href.replace(/[^/\\]*$/, '');
+  window.location.href = base + filename;
+}
+(function(){
+  const cur=document.getElementById('cur');
+  let mx=0,my=0,cx=0,cy=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  (function loop(){cx+=(mx-cx)*0.18;cy+=(my-cy)*0.18;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(loop);})();
+  document.querySelectorAll('a,button,[onclick]').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{cur.style.width='22px';cur.style.height='22px';cur.style.background='rgba(124,106,255,0.25)';cur.style.border='1.5px solid var(--accent)';});
+    el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';cur.style.border='none';});
+  });
+})();
+</script>
+</body>
+</html>
