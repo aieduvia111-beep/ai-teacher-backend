@@ -250,7 +250,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .topbar{display:none!important;}
   .fi,select.fi{font-size:16px!important;}
   input,select,textarea{font-size:16px!important;}
-  .solve-btn{min-height:48px!important;font-size:.95em!important;}
+  .solve-btn{min-height:48px!important;}
 }
 @media print{
   .sidebar,.topbar,.result-btns{display:none!important;}
@@ -601,8 +601,7 @@ async function solve() {
         return;
       }
     }
-    const jsonSchema = 'Odpowiedz TYLKO w JSON bez markdown, bez żadnego tekstu przed ani po. Format: {"success":true,"problems":[{"question":"pelna tresc zadania","solution":{"steps":["krok 1","krok 2","krok 3"],"final_answer":"ostateczna odpowiedz","explanation":"krotkie wyjasnienie teorii"}}]} - WAZNE: tablica problems musi zawierac WSZYSTKIE zadania ze zdjecia.';
-    const promptText = 'Przeanalizuj WSZYSTKIE zadania widoczne na zdjęciu z przedmiotu: ' + subject + '. Rozwiaz KAZDE z nich krok po kroku. Nie pomijaj żadnego zadania. WAZNE: wzory matematyczne zapisuj w LaTeX z dolarami np. $x^2$ $a_1$ $r^{n-1}$. W JSON backslash musi byc podwojny np. $\\\\frac{a}{b}$ $\\\\sqrt{x}$. ' + jsonSchema;
+    const promptText = 'Jestes pomocnym asystentem edukacyjnym. Przeanalizuj zdjecie i rozwiaz WSZYSTKIE widoczne zadania z przedmiotu: ' + subject + '. Odpowiedz WYLACZNIE czystym JSON (zero tekstu przed ani po). Format odpowiedzi: {"success":true,"problems":[{"question":"pelna tresc zadania","solution":{"steps":["krok 1","krok 2","krok 3"],"final_answer":"odpowiedz","explanation":"wyjasnienie"}}]}. Zasady: wzory pisz prosto bez LaTeX (np x do kwadratu zamiast x^2), nie uzywaj backslashy, rozwiaz kazde zadanie ze zdjecia.';
     const vRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -611,11 +610,13 @@ async function solve() {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        max_tokens: 6000,
-        messages: [{
-          role: 'user',
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Jestes asystentem edukacyjnym. ZAWSZE odpowiadasz WYLACZNIE czystym JSON. Nigdy nie piszesz "I am sorry" ani zadnego tekstu poza JSON. Jezeli nie mozesz przeanalizowac zdjecia, zwroc: {"success":true,"problems":[{"question":"Nie udalo sie odczytac zadania","solution":{"steps":["Sprobuj wyraźniejsze zdjecie"],"final_answer":"brak","explanation":""}}]}' },
+          {role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: imgBase64 } },
+            { type: 'image_url', image_url: { url: imgBase64, detail: 'high' } },
             { type: 'text', text: promptText }
           ]
         }]
@@ -627,22 +628,31 @@ async function solve() {
     }
     const vData = await vRes.json();
     let rawText = vData.choices[0].message.content.trim();
+    // Wyczysc markdown
     rawText = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-    // Napraw backslashe LaTeX w JSON (\frac -> \\frac itp)
-    rawText = rawText.replace(/([^\\])\\([a-zA-Z])/g, '$1\\\\$2');
+    // Wytnij JSON od { do }
+    const jS = rawText.indexOf('{'), jE = rawText.lastIndexOf('}');
+    if(jS !== -1 && jE > jS) rawText = rawText.slice(jS, jE+1);
     let data;
     try {
       data = JSON.parse(rawText);
     } catch(e) {
-      // Druga próba - agresywniejsza naprawa
-      const fixed = rawText.replace(/\\/g,'\\\\').replace(/\\\\\\/g,'\\\\');
-      try { data = JSON.parse(fixed); } catch(e2) {
-        // Ostatnia deska - usuń problematyczne znaki
-        const safe = rawText.replace(/[\x00-\x1f]/g,' ');
-        data = JSON.parse(safe);
+      try {
+        // Usuń znaki kontrolne
+        data = JSON.parse(rawText.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,' '));
+      } catch(e2) {
+        // Fallback - pokaż tekst AI jako rozwiązanie
+        const cleanText = rawText.replace(/[{}"\[\]]/g,' ').replace(/\s+/g,' ').trim();
+        data = { success: true, problems: [{
+          question: 'Analiza zadania',
+          solution: { steps: cleanText.split('.').filter(s=>s.trim().length>3).slice(0,10), final_answer: '', explanation: '' }
+        }]};
       }
     }
-    if(!data.success) throw new Error(data.error || 'Blad analizy');
+    // Nie rzucaj błędu - zawsze pokaż coś
+    if(!data.problems || !data.problems.length) {
+      data = { success: true, problems: [{ question: 'Analiza zadania', solution: { steps: ['Sprobuj wyrazniejsze zdjecie lub inne oswietlenie'], final_answer: '', explanation: '' }}]};
+    }
     const entry = {
       id: Date.now(), subject, mode,
       thumb: imgBase64,
