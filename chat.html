@@ -326,8 +326,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
   .topbar,.page-hero,.page-header{display:none!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;}
   .brand{display:none!important;}
   /* SCROLL FIX — agresywny */
-  html{overflow-y:auto!important;height:auto!important;overflow-x:hidden!important;}
-  body{display:block!important;overflow-y:auto!important;height:auto!important;overflow-x:hidden!important;max-width:100vw!important;}
+  html{overflow-y:auto!important;height:auto!important;}
   .app{display:block!important;width:100%!important;height:auto!important;min-height:auto!important;overflow:visible!important;position:relative!important;flex:none!important;}
   .main{display:block!important;width:100%!important;height:auto!important;min-height:auto!important;overflow:visible!important;flex:none!important;padding:14px!important;box-sizing:border-box!important;}
   .wrap{max-width:100%!important;margin:0!important;padding:0 8px!important;display:block!important;height:auto!important;overflow:visible!important;}
@@ -344,7 +343,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
   .page.active{display:block!important;}
   /* CHAT fixed */
   .main:has(.msgs-area){position:fixed!important;top:56px!important;left:0!important;right:0!important;bottom:60px!important;height:auto!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;padding:0!important;}
-  .msgs-area{flex:1!important;overflow-y:auto!important;padding:10px 12px!important;min-height:200px!important;max-height:calc(100vh - 180px)!important;gap:12px!important;}
+  .msgs-area{flex:1!important;overflow-y:auto!important;padding:10px 12px!important;min-height:0!important;gap:12px!important;}
   .input-area{flex-shrink:0!important;padding:8px 12px 10px!important;border-top:1px solid rgba(255,255,255,.06)!important;background:rgba(7,7,13,.98)!important;}
   .input-box{border-radius:14px!important;}
   .input-box textarea{font-size:16px!important;padding:10px 14px!important;}
@@ -516,9 +515,23 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
       <div class="input-box">
         <textarea id="msgInput" placeholder="Wpisz pytanie lub wrzuć plik..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <div class="ibtns">
-          <button class="ibtn" onclick="document.getElementById('fileInput').click()" title="Dodaj plik lub zdjęcie">
+          <button class="ibtn" onclick="showAttachMenu()" title="Dodaj zdjęcie lub plik" id="attachBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
           </button>
+          <div id="attachMenu" style="display:none;position:absolute;bottom:70px;left:12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+            <button onclick="openCamera()" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:none;color:var(--text);font-family:var(--b);font-size:.85em;cursor:pointer;border-radius:10px;transition:background .15s;" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='none'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Zrób zdjęcie
+            </button>
+            <button onclick="openGallery()" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:none;color:var(--text);font-family:var(--b);font-size:.85em;cursor:pointer;border-radius:10px;transition:background .15s;" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='none'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Galeria zdjęć
+            </button>
+            <button onclick="openFile()" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:none;color:var(--text);font-family:var(--b);font-size:.85em;cursor:pointer;border-radius:10px;transition:background .15s;" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='none'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Wybierz plik
+            </button>
+          </div>
           <button class="ibtn" id="micBtn" onclick="toggleSpeech()" title="Dyktuj głosem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
           </button>
@@ -527,7 +540,10 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
           </button>
         </div>
       </div>
-      <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt" capture="environment" onchange="handleFiles(event)"><input type="file" id="fileInputLib" multiple accept="image/*,.pdf,.doc,.docx,.txt" onchange="handleFiles(event)" style="display:none">
+      <!-- 3 inputy: aparat, galeria, plik -->
+      <input type="file" id="inputCamera" accept="image/*" capture="environment" onchange="handleFiles(event)" style="display:none">
+      <input type="file" id="inputGallery" accept="image/*" multiple onchange="handleFiles(event)" style="display:none">
+      <input type="file" id="inputFile" multiple accept=".pdf,.doc,.docx,.txt,image/*" onchange="handleFiles(event)" style="display:none">
       <div class="input-hint" style="font-size:.62em;opacity:.4;margin-top:4px;">Enter — wyślij &nbsp;·&nbsp; ⇧Enter — nowa linia</div>
     </div>
   </div>
@@ -611,7 +627,6 @@ has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (b
   for (const m of hist) {
     messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content || m.text || '' });
   }
-  // Ostatnia wiadomość — z obrazkami jeśli są
   if (imgs && imgs.length > 0) {
     const parts = [];
     if (text) parts.push({ type: 'text', text: text });
@@ -706,10 +721,10 @@ async function sendMessage() {
   const msgs = document.getElementById('msgsArea');
   msgs.appendChild(userGroup); scrollDown();
 
-  const attachSnap = [...attachments]; // snapshot przed wyczyszczeniem
+  const attachSnap = [...attachments];
   const imageUrls = attachSnap.filter(a => a.type.startsWith('image/')).map(a => a.dataUrl);
   const textAttachments = attachSnap.filter(a => !a.type.startsWith('image/')).map(a => `[Plik: ${a.file.name}]`).join('\n');
-  const imgNote = imageUrls.length > 0 ? `[Załączono ${imageUrls.length} zdjęcie — przeanalizuj je dokładnie i odpowiedz na pytanie użytkownika]` : '';
+  const imgNote = imageUrls.length > 0 ? `[Użytkownik wysłał ${imageUrls.length} zdjęcie. Przeanalizuj je i odpowiedz na podstawie jego treści, nie wymyślaj własnych zadań!]` : '';
   const fullText = [text, textAttachments, imgNote].filter(Boolean).join('\n');
   history.push({ role: 'user', content: fullText });
 
@@ -1134,6 +1149,26 @@ function clearChat() {
     <div class="empty-sub">Pomogę Ci z każdym przedmiotem. Wrzuć zdjęcie zadania lub napisz pytanie.</div>`;
   msgs.appendChild(empty);
 }
+
+function showAttachMenu() {
+  const m = document.getElementById('attachMenu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+function closeAttachMenu() {
+  const m = document.getElementById('attachMenu');
+  if(m) m.style.display = 'none';
+}
+function openCamera() { closeAttachMenu(); document.getElementById('inputCamera').click(); }
+function openGallery() { closeAttachMenu(); document.getElementById('inputGallery').click(); }
+function openFile() { closeAttachMenu(); document.getElementById('inputFile').click(); }
+// Zamknij menu po kliknięciu gdziekolwiek
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('attachBtn');
+  const menu = document.getElementById('attachMenu');
+  if(menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
 
 function scrollDown() { const m = document.getElementById('msgsArea'); requestAnimationFrame(() => m.scrollTo({ top: m.scrollHeight, behavior: 'smooth' })); }
 
