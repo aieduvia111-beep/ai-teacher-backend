@@ -3,16 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VisionAI — Rozwiązywacz Zadań</title>
+<title>Eduvia — Vision AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script>
 MathJax = {
-  tex: {
-    inlineMath: [['$', '$'], ['\\(', '\\)']],
-    displayMath: [['$$', '$$'], ['\\[', '\\]']],
-    processEscapes: true
-  },
+  tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']], processEscapes: true },
   options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
 };
 </script>
@@ -22,840 +18,812 @@ MathJax = {
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
   --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.11);
   --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
-  --green:#22d3a0;--gg:rgba(34,211,160,0.3);--red:#f87171;--gold:#f5a623;
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
   --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;cursor:none;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;height:100vh;cursor:none;}
+.cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
+.cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;filter:blur(110px);animation:afloat 14s ease-in-out infinite;}
+.a1{width:650px;height:650px;background:radial-gradient(circle,rgba(124,106,255,.2),transparent 70%);top:-200px;right:-80px;}
+.a2{width:480px;height:480px;background:radial-gradient(circle,rgba(34,211,160,.1),transparent 70%);bottom:-80px;left:-80px;animation-delay:5s;}
+.a3{width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,.08),transparent 70%);top:45%;left:38%;animation-delay:9s;}
+@keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
+body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
+.app{display:flex;width:100%;height:100vh;position:relative;z-index:2;}
 
-/* GRID BG */
-body::before {
-  content:''; position:fixed; inset:0;
-  background-image: linear-gradient(rgba(124,106,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,106,255,0.03) 1px,transparent 1px);
-  background-size:40px 40px; pointer-events:none; z-index:0;
-}
+/* MOBILE HEADER */
+@keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 10px rgba(124,106,255,.4)}50%{box-shadow:0 0 22px rgba(124,106,255,.7)}}
+.m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
+.m-hdr-info{flex:1;min-width:0;}
+.m-hdr-title{font-family:var(--h);font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-sub{font-size:.6em;color:var(--muted);margin-top:1px;}
+.m-burger{width:36px;height:36px;border-radius:8px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
+.m-burger span{width:16px;height:1.5px;background:#a78bfa;border-radius:2px;transition:.2s;}
+.m-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9100;}
+.m-overlay.open{display:block;}
+.m-drawer{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,#0a0a16,#070710);border-right:1px solid rgba(124,106,255,.12);z-index:9200;transform:translateX(-100%);transition:transform .25s ease;padding:20px 12px;overflow-y:auto;}
+.m-drawer.open{transform:translateX(0);}
+.d-brand{display:flex;align-items:center;gap:10px;padding:8px 4px 20px;}
+.d-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.9em;}
+.d-brand-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;}
+.d-brand-sub{font-size:.65em;color:var(--muted);margin-top:1px;}
+.d-sec{font-family:var(--h);font-size:.55em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 8px 5px;}
+.d-link{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;font-size:.82em;color:var(--muted2);text-decoration:none;border:1px solid transparent;margin-bottom:2px;transition:.18s;cursor:pointer;}
+.d-link svg{width:15px;height:15px;stroke:currentColor;flex-shrink:0;}
+.d-link.active,.d-link:hover{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.2);color:#a78bfa;}
+.m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,1fr);background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
+.m-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6em;color:var(--muted);text-decoration:none;position:relative;transition:.18s;cursor:pointer;}
+.m-nb svg{width:20px;height:20px;stroke:currentColor;}
+.m-nb.active{color:#a78bfa;}
+.m-nb-dot{position:absolute;top:6px;width:4px;height:4px;border-radius:50%;background:#7c6aff;}
 
-/* TOP NAV — identyczny jak w notatkach */
-.topnav {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(10,10,15,0.85);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-hi);
-  padding: 0 32px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.topnav-left { display: flex; align-items: center; gap: 24px; }
-.nav-logo {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--h); font-size: 0.9em; font-weight: 800;
-  color: var(--text); text-decoration: none; letter-spacing: -0.02em;
-}
-.nav-logo-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  box-shadow: 0 0 8px rgba(124,106,255,0.6);
-}
-.nav-links { display: flex; gap: 4px; }
-.nav-link {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 8px;
-  font-size: 0.82em; font-weight: 500; color: var(--muted);
-  text-decoration: none; transition: all 0.2s; border: 1px solid transparent;
-  cursor: pointer; background: none;
-}
-.nav-link:hover { color: var(--text); background: var(--s2); border-color: var(--border); }
-.nav-link.active { color: var(--accent2); background: rgba(124,106,255,0.1); border-color: rgba(124,106,255,0.2); }
-.nav-link svg { width: 14px; height: 14px; flex-shrink: 0; }
-.nav-right { display: flex; align-items: center; gap: 8px; }
-.nav-badge {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 10px; border-radius: 6px;
-  background: rgba(124,106,255,0.08); border: 1px solid rgba(124,106,255,0.2);
-  font-family: var(--h); font-size: 0.7em; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent2);
-}
-
-/* PAGE */
-.page { max-width: 860px; margin: 0 auto; padding: 32px 24px; position: relative; z-index: 1; }
-
-/* PAGE HEADER */
-.page-header { margin-bottom: 32px; }
-.page-header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-.page-icon {
-  width: 42px; height: 42px; border-radius: 12px;
-  background: rgba(124,106,255,0.12); border: 1px solid rgba(124,106,255,0.25);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.page-icon svg { width: 20px; height: 20px; color: var(--accent2); }
-.page-title-wrap h1 {
-  font-family: var(--h); font-size: 1.6em; font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-}
-.page-title-wrap p { color: var(--muted); font-size: 0.85em; margin-top: 2px; }
-
-/* CARD */
-.card {
-  background: var(--s1); border: 1px solid var(--border-hi); border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
-  margin-bottom: 16px;
-}
-.card-label {
-  font-family: var(--h); font-size: 0.7em; font-weight: 700;
-  letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
-  margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
-}
-.card-label svg { width: 13px; height: 13px; }
-.card-label::after {
-  content: ''; flex: 1; height: 1px; background: var(--border-hi); margin-left: 4px;
-}
-
-/* UPLOAD ZONE */
-.upload-zone {
-  border: 1px dashed var(--border-hi); border-radius: 16px; padding: 52px 24px;
-  text-align: center; cursor: pointer; transition: all 0.3s; position: relative;
-  background: var(--s2);
-}
-.upload-zone:hover, .upload-zone.drag-over {
-  border-color: var(--accent); background: rgba(124,106,255,0.04);
-  box-shadow: 0 0 0 4px rgba(124,106,255,0.06);
-}
-.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.upload-icon-wrap {
-  width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px;
-  background: rgba(124,106,255,0.1); border: 1px solid rgba(124,106,255,0.2);
-  display: flex; align-items: center; justify-content: center;
-}
-.upload-icon-wrap svg { width: 24px; height: 24px; color: var(--accent2); }
-.upload-title { font-family: var(--h); font-size: 1em; font-weight: 700; margin-bottom: 6px; }
-.upload-sub { color: var(--muted); font-size: 0.83em; line-height: 1.6; }
-.upload-types {
-  display: inline-flex; gap: 8px; margin-top: 16px;
-}
-.upload-type-tag {
-  padding: 3px 10px; border-radius: 6px; background: var(--s3);
-  border: 1px solid var(--border); font-size: 0.72em; color: var(--muted);
-  font-family: var(--h); font-weight: 600; letter-spacing: 0.04em;
-}
-
-/* PREVIEW */
-.img-preview { display: none; border-radius: 14px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border-hi); }
-.img-preview img { width: 100%; max-height: 380px; object-fit: contain; background: var(--s2); display: block; }
-.img-preview-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; background: var(--s2);
-}
-.img-preview-bar-info { display: flex; align-items: center; gap: 7px; flex: 1; }
-.img-preview-bar-info svg { width: 14px; height: 14px; color: var(--green); flex-shrink: 0; }
-.img-preview-bar-info span { font-size: 0.8em; color: var(--muted); }
-
-/* SETTINGS GRID */
-.settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-@media(max-width: 500px) { .settings-row { grid-template-columns: 1fr; } }
-.field-label {
-  font-family: var(--h); font-size: 0.7em; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-}
-.field-label svg { width: 12px; height: 12px; }
-.fi {
-  width: 100%; padding: 11px 14px; background: var(--s2);
-  border: 1px solid var(--border-hi); border-radius: 10px;
-  color: var(--text); font-family: var(--b); font-size: 0.9em;
-  outline: none; transition: all 0.2s; appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b80' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center;
-  padding-right: 32px;
-}
-.fi:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,106,255,0.1); }
-.fi option { background: #1a1a2e; }
-
-/* TOGGLES */
-.toggle-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.toggle-btn {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 14px; background: var(--s2);
-  border: 1px solid var(--border); border-radius: 10px;
-  color: var(--muted); font-size: 0.82em; cursor: pointer; transition: all 0.2s;
-  font-family: var(--b); font-weight: 500;
-}
-.toggle-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
-.toggle-btn.on {
-  background: rgba(124,106,255,0.12); border-color: rgba(124,106,255,0.35);
-  color: var(--accent2);
-}
-
-/* SOLVE BTN */
-.solve-btn {
-  width: 100%; padding: 16px; background: var(--accent); border: none;
-  border-radius: 12px; color: white; font-family: var(--h);
-  font-size: 0.95em; font-weight: 700; cursor: pointer; transition: all 0.25s;
-  position: relative; overflow: hidden; display: flex; align-items: center;
-  justify-content: center; gap: 8px;
-}
-.solve-btn svg { width: 16px; height: 16px; }
-.solve-btn::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-}
-.solve-btn:hover:not(:disabled) {
-  background: #8b7aff; transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(124,106,255,0.4);
-}
-.solve-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
-
-/* DIVIDER */
-.divider { height: 1px; background: var(--border); margin: 20px 0; }
-
-/* LOADING */
-.loading-card { text-align: center; padding: 64px 24px; }
-.spinner-wrap { position: relative; width: 56px; height: 56px; margin: 0 auto 24px; }
-.spinner-ring {
-  width: 56px; height: 56px; border: 2px solid var(--border-hi);
-  border-top-color: var(--accent); border-radius: 50%;
-  animation: spin 0.85s linear infinite;
-}
-.spinner-inner {
-  position: absolute; inset: 10px; border-radius: 50%;
-  background: rgba(124,106,255,0.08); border: 1px solid rgba(124,106,255,0.15);
-}
-.loading-steps { display: flex; flex-direction: column; gap: 10px; max-width: 260px; margin: 24px auto 0; text-align: left; }
-.loading-step {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 0.83em; color: var(--muted); padding: 8px 12px;
-  border-radius: 8px; border: 1px solid transparent; transition: all 0.4s;
-}
-.loading-step svg { width: 14px; height: 14px; flex-shrink: 0; }
-.loading-step.done {
-  color: var(--green); background: rgba(34,211,160,0.06);
-  border-color: rgba(34,211,160,0.15);
-}
-
-/* RESULT */
-.result-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 12px; }
-.result-title { font-family: var(--h); font-size: 1.1em; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-.result-title svg { width: 18px; height: 18px; color: var(--green); }
-.badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 6px;
-  font-size: 0.72em; font-weight: 700; font-family: var(--h);
-}
-.badge svg { width: 11px; height: 11px; }
-.badge-green { background: rgba(34,211,160,0.1); border: 1px solid rgba(34,211,160,0.25); color: var(--green); }
-.badge-accent { background: rgba(124,106,255,0.1); border: 1px solid rgba(124,106,255,0.25); color: var(--accent2); }
-.badge-gold { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); color: var(--gold); }
-
-/* PROBLEM CARD */
-.problem-card { background: var(--s2); border: 1px solid var(--border-hi); border-radius: 16px; padding: 22px; margin-bottom: 12px; }
-.problem-nr {
-  font-family: var(--h); font-size: 0.68em; font-weight: 700;
-  letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
-  margin-bottom: 12px; display: flex; align-items: center; gap: 7px;
-}
-.problem-nr::before { content: ''; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; }
-.problem-q {
-  font-size: 0.95em; line-height: 1.7; margin-bottom: 20px;
-  padding: 14px 16px; background: var(--s1); border-radius: 10px;
-  border-left: 2px solid var(--accent);
-}
-
-/* STEPS */
-.steps-title {
-  font-family: var(--h); font-size: 0.7em; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-  margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
-}
-.steps-title svg { width: 13px; height: 13px; }
-.step-item { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
-.step-num {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: rgba(124,106,255,0.12); border: 1px solid rgba(124,106,255,0.25);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--h); font-weight: 800; font-size: 0.75em;
-  color: var(--accent2); flex-shrink: 0; margin-top: 2px;
-}
-.step-content { flex: 1; font-size: 0.9em; line-height: 1.7; }
-
-/* ANSWER BOX */
-.answer-box {
-  background: rgba(34,211,160,0.06); border: 1px solid rgba(34,211,160,0.2);
-  border-radius: 12px; padding: 16px 18px; margin-top: 16px;
-}
-.box-label {
-  font-family: var(--h); font-size: 0.68em; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
-  display: flex; align-items: center; gap: 6px;
-}
-.box-label svg { width: 12px; height: 12px; }
-.answer-box .box-label { color: var(--green); }
-.answer-val { font-size: 1em; font-weight: 500; line-height: 1.6; }
-
-/* EXPLAIN BOX */
-.explain-box {
-  background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.15);
-  border-radius: 12px; padding: 16px 18px; margin-top: 10px;
-}
-.explain-box .box-label { color: var(--gold); }
-
-/* SIMILAR BOX */
-.similar-box {
-  background: rgba(124,106,255,0.05); border: 1px solid rgba(124,106,255,0.15);
-  border-radius: 12px; padding: 16px 18px; margin-top: 10px;
-}
-.similar-box .box-label { color: var(--accent2); }
-.similar-item { display: flex; gap: 10px; font-size: 0.86em; margin-bottom: 8px; line-height: 1.6; }
-.similar-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex-shrink: 0; }
-
-/* RESULT BTNS */
-.result-btns { display: flex; gap: 10px; margin-top: 20px; }
-.btn-secondary {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 12px; background: transparent; border: 1px solid var(--border-hi);
-  border-radius: 10px; color: var(--muted); font-family: var(--b);
-  font-size: 0.88em; cursor: pointer; transition: all 0.2s;
-}
-.btn-secondary svg { width: 14px; height: 14px; }
-.btn-secondary:hover { border-color: var(--accent2); color: var(--text); }
-.btn-primary-sm {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 12px; background: var(--accent); border: none; border-radius: 10px;
-  color: white; font-family: var(--h); font-size: 0.86em; font-weight: 700;
-  cursor: pointer; transition: all 0.2s;
-}
-.btn-primary-sm svg { width: 14px; height: 14px; }
-.btn-primary-sm:hover { background: #8b7aff; }
-
-/* ERR */
-.err-box {
-  display: none; margin-top: 12px; padding: 11px 14px;
-  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.18);
-  border-radius: 8px; color: #f87171; font-size: 0.83em;
-  display: none; align-items: center; gap: 8px;
-}
-.err-box svg { width: 14px; height: 14px; flex-shrink: 0; }
-
-/* HISTORIA */
-.history-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px;
-  background: var(--s2); border-radius: 12px; margin-bottom: 8px;
-  cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
-}
-.history-item:hover { border-color: var(--border-hi); }
-.history-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--s3); flex-shrink: 0; }
-.history-info { flex: 1; min-width: 0; }
-.history-subject { font-family: var(--h); font-size: 0.75em; font-weight: 700; color: var(--accent2); }
-.history-preview { font-size: 0.8em; color: var(--muted); margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.history-time { font-size: 0.72em; color: var(--muted); flex-shrink: 0; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.fade-in { animation: fadeUp 0.35s ease; }
-/* ═══ SIDEBAR ═══ */
-.sidebar{width:220px;flex-shrink:0;background:linear-gradient(180deg,rgba(15,15,24,0.98),rgba(7,7,13,0.98));border-right:1px solid var(--border-hi);padding:22px 14px;display:flex;flex-direction:column;position:relative;z-index:10;overflow-y:auto;}
-.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,transparent,rgba(124,106,255,0.5) 50%,transparent);}
-.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px;margin-bottom:4px;}
-.brand-logo{width:36px;height:36px;border-radius:11px;flex-shrink:0;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(124,106,255,0.45),inset 0 1px 0 rgba(255,255,255,0.2);position:relative;overflow:hidden;}
-.brand-logo::after{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent);pointer-events:none;}
-.brand-l{font-family:var(--h);font-size:1.1em;font-weight:800;color:white;letter-spacing:-0.05em;}
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:linear-gradient(180deg,rgba(15,15,24,.98),rgba(7,7,13,.98));border-right:1px solid var(--border-hi);padding:22px 14px;display:flex;flex-direction:column;position:relative;z-index:10;}
+.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,transparent,rgba(124,106,255,.5) 50%,transparent);}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px;}
+.brand-logo{width:36px;height:36px;border-radius:11px;flex-shrink:0;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.2);position:relative;overflow:hidden;}
+.brand-logo::after{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);pointer-events:none;}
+.brand-l{font-family:var(--h);font-size:1.1em;font-weight:800;color:white;}
 .brand-text{display:flex;flex-direction:column;}
-.brand-name{font-family:var(--h);font-size:1em;font-weight:800;letter-spacing:-0.02em;line-height:1;}
-.brand-sub{font-size:0.6em;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
-.ng{font-family:var(--h);font-size:0.58em;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);padding:14px 8px 5px;}
-.nl{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;font-size:0.82em;color:var(--muted2)!important;cursor:pointer;transition:all 0.2s;border:1px solid transparent;position:relative;margin-bottom:1px;text-decoration:none!important;}
-.nl svg{width:15px!important;height:15px!important;flex-shrink:0;opacity:0.7;transition:opacity 0.2s;}
-.nl:hover{color:var(--text)!important;background:var(--s2);}
+.brand-name{font-family:var(--h);font-size:1em;font-weight:800;letter-spacing:-.02em;line-height:1;}
+.brand-sub{font-size:.6em;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.ng{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:14px 8px 5px;}
+.nl{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;font-size:.82em;color:var(--muted2);cursor:pointer;transition:all .2s;border:1px solid transparent;position:relative;margin-bottom:1px;text-decoration:none;}
+.nl svg{width:15px;height:15px;flex-shrink:0;opacity:.7;transition:opacity .2s;}
+.nl:hover{color:var(--text);background:var(--s2);}
 .nl:hover svg{opacity:1;}
-.nl.active{color:#fff!important;background:linear-gradient(135deg,rgba(124,106,255,0.15),rgba(124,106,255,0.05));border-color:rgba(124,106,255,0.25);}
+.nl.active{color:#fff;background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(124,106,255,.05));border-color:rgba(124,106,255,.25);}
 .nl.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2.5px;background:var(--accent);border-radius:0 3px 3px 0;box-shadow:0 0 10px var(--accent);}
 .nl.active svg{opacity:1;}
 .sb-footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);}
 .xp-wrap{padding:12px;background:var(--s2);border-radius:12px;border:1px solid var(--border-hi);}
 .xp-top{display:flex;justify-content:space-between;margin-bottom:7px;}
-.xp-lv{font-family:var(--h);font-size:0.72em;font-weight:700;color:var(--gold);}
-.xp-pts{font-size:0.67em;color:var(--muted);}
+.xp-lv{font-family:var(--h);font-size:.72em;font-weight:700;color:var(--gold);}
+.xp-pts{font-size:.67em;color:var(--muted);}
 .xp-track{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;}
 .xp-bar{height:100%;width:68%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:100px;position:relative;overflow:hidden;}
-.xp-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent);animation:xpscan 2.5s linear infinite;}
-@keyframes xpscan{0%{transform:translateX(-100%);}100%{transform:translateX(300%);}}
-.xp-sub{font-size:0.64em;color:var(--muted);margin-top:4px;text-align:right;}
-.cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
-.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
-.ab{position:absolute;border-radius:50%;filter:blur(140px);animation:afloat 18s ease-in-out infinite;}
-.a1{width:800px;height:800px;background:radial-gradient(circle,rgba(124,106,255,0.18) 0%,transparent 65%);top:-280px;right:-160px;}
-.a2{width:600px;height:600px;background:radial-gradient(circle,rgba(34,211,160,0.09) 0%,transparent 65%);bottom:-180px;left:-120px;animation-delay:8s;}
-.a3{width:400px;height:400px;background:radial-gradient(circle,rgba(248,113,113,0.06) 0%,transparent 65%);top:50%;left:40%;transform:translate(-50%,-50%);animation-delay:4s;animation-duration:22s;}
-@keyframes afloat{0%,100%{transform:translate(0,0) scale(1);}35%{transform:translate(35px,-35px) scale(1.06);}65%{transform:translate(-22px,22px) scale(0.94);}}
-.main{flex:1;overflow-y:auto;position:relative;z-index:2;min-width:0;}
+.xp-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:scan 2.5s linear infinite;}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+.xp-sub{font-size:.64em;color:var(--muted);margin-top:4px;text-align:right;}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:28px 30px;display:flex;flex-direction:column;gap:20px;}
+.main::-webkit-scrollbar{width:3px;}
+.main::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.page-label{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.page-h1{font-family:var(--h);font-size:1.9em;font-weight:800;letter-spacing:-.03em;line-height:1.05;}
+.page-h1 span{background:linear-gradient(110deg,#fff,var(--accent2),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:200%;animation:gradMove 4s ease infinite;}
+@keyframes gradMove{0%,100%{background-position:0%}50%{background-position:100%}}
+.page-sub{font-size:.82em;color:var(--muted2);margin-top:4px;font-weight:300;}
+.page-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 16px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:100px;font-family:var(--h);font-size:.72em;font-weight:700;color:var(--accent2);letter-spacing:.06em;text-transform:uppercase;}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--gg);animation:blink 2s ease-in-out infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* GRID */
+.content-grid{display:grid;grid-template-columns:1fr 320px;gap:16px;flex:1;min-height:0;}
+.form-panel{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:28px;overflow-y:auto;box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);animation:fadeUp .4s ease .1s both;}
+.form-panel::-webkit-scrollbar{width:3px;}
+.form-panel::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
+.info-panel{display:flex;flex-direction:column;gap:12px;}
+.info-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:20px;}
+.info-card:nth-child(1){animation:fadeUp .4s ease .15s both;}
+.info-card:nth-child(2){animation:fadeUp .4s ease .2s both;}
+.info-card:nth-child(3){animation:fadeUp .4s ease .25s both;}
+.info-card-title{font-family:var(--h);font-size:.72em;font-weight:800;margin-bottom:14px;color:var(--text);display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
+.info-card-title svg{width:14px;height:14px;stroke:var(--accent2);flex-shrink:0;}
+.sec-label{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:7px;}
+.sec-label svg{width:13px;height:13px;opacity:.6;}
+.field{margin-bottom:20px;}
+.field-label{font-family:var(--h);font-size:.68em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.field-label svg{width:12px;height:12px;opacity:.7;}
+
+/* PRZYCISKI APARAT/GALERIA */
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.capture-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--cbc,rgba(124,106,255,.05)),transparent 60%);pointer-events:none;}
+.capture-btn:hover{border-color:var(--cbh,rgba(124,106,255,.4));transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.3);}
+.cam-btn{--cbc:rgba(124,106,255,.06);--cbh:rgba(124,106,255,.4);}
+.gal-btn{--cbc:rgba(34,211,160,.05);--cbh:rgba(34,211,160,.4);}
+.cb-icon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+.cam-btn .cb-icon{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);}
+.gal-btn .cb-icon{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);}
+.cb-icon svg{width:20px;height:20px;}
+.cam-btn .cb-icon svg{stroke:var(--accent2);}
+.gal-btn .cb-icon svg{stroke:var(--green);}
+.cb-title{font-family:var(--h);font-size:.84em;font-weight:700;color:var(--text);}
+.cb-sub{font-size:.71em;color:var(--muted);text-align:center;line-height:1.45;}
+.or-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.or-line{flex:1;height:1px;background:var(--border-hi);}
+.or-text{font-size:.7em;color:var(--muted);font-family:var(--h);font-weight:700;letter-spacing:.06em;}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed var(--border-hi);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .3s;position:relative;margin-bottom:18px;}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(124,106,255,.04);}
+.upload-zone input{display:none;}
+.upload-icon-wrap{width:42px;height:42px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}
+.upload-icon-wrap svg{width:18px;height:18px;stroke:var(--accent2);}
+.upload-zone h4{font-family:var(--h);font-size:.85em;font-weight:700;color:var(--text);margin-bottom:4px;}
+.upload-zone p{color:var(--muted);font-size:.75em;}
+
+/* PREVIEW */
+.preview-wrap{display:none;position:relative;margin-bottom:14px;}
+.preview-wrap img{width:100%;max-height:280px;object-fit:contain;border-radius:12px;border:1px solid var(--border-hi);background:var(--s2);}
+.remove-img{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);border:none;border-radius:8px;color:white;padding:5px 10px;cursor:pointer;font-size:.78em;font-family:var(--b);transition:all .2s;display:flex;align-items:center;gap:5px;}
+.remove-img svg{width:11px;height:11px;stroke:white;}
+.remove-img:hover{background:rgba(248,113,113,.85);}
+
+/* SELECT */
+.fi{width:100%;padding:12px 32px 12px 14px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.92em;outline:none;transition:all .25s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b80' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.fi:focus{border-color:var(--accent);background-color:rgba(124,106,255,.04);box-shadow:0 0 0 3px rgba(124,106,255,.08);}
+.fi option{background:#1a1a2e;}
+.settings-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+
+/* TOGGLES */
+.toggle-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px;}
+.toggle-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:9px;color:var(--muted2);font-size:.78em;cursor:pointer;transition:all .2s;font-family:var(--b);font-weight:500;}
+.toggle-btn svg{width:12px;height:12px;flex-shrink:0;}
+.toggle-btn.on{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.3);color:var(--accent2);}
+
+/* GEN BTN */
+.gen-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:12px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:9px;}
+.gen-btn svg{width:16px;height:16px;stroke:white;flex-shrink:0;}
+.gen-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent 50%);}
+.gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 30px rgba(124,106,255,.4);}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* ERROR */
+.error-msg{display:none;margin-top:12px;padding:11px 14px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;color:var(--red);font-size:.85em;align-items:center;gap:8px;}
+.error-msg.visible{display:flex;}
+.error-msg svg{width:14px;height:14px;stroke:var(--red);flex-shrink:0;}
+
+/* LOADING */
+.loading-view{display:none;text-align:center;padding:20px 0;}
+.spinner-ring{width:52px;height:52px;border:2.5px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 20px;}
+.loading-view h3{font-family:var(--h);font-size:1.05em;font-weight:700;margin-bottom:5px;}
+.loading-view p{color:var(--muted);font-size:.85em;margin-bottom:22px;}
+.progress-track{background:var(--s2);border-radius:100px;height:3px;overflow:hidden;margin-bottom:20px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:100px;width:0%;transition:width .8s ease;}
+.steps-list{list-style:none;text-align:left;}
+.ls-item{display:flex;align-items:center;gap:10px;padding:8px 0;color:var(--muted);font-size:.84em;border-bottom:1px solid var(--border);}
+.ls-item:last-child{border:none;}
+.ls-item.current{color:var(--text);}
+.ls-item.done{color:var(--green);}
+.ls-dot{width:7px;height:7px;border-radius:50%;background:var(--border-hi);flex-shrink:0;transition:all .3s;}
+.ls-item.current .ls-dot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+.ls-item.done .ls-dot{background:var(--green);}
+
+/* WYNIKI */
+.result-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;}
+.result-title{font-family:var(--h);font-size:1em;font-weight:800;display:flex;align-items:center;gap:8px;}
+.result-title svg{width:16px;height:16px;stroke:var(--green);}
+.badge-row{display:flex;gap:6px;flex-wrap:wrap;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:.7em;font-weight:700;font-family:var(--h);}
+.badge svg{width:11px;height:11px;}
+.badge-green{background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.25);color:var(--green);}
+.badge-accent{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.25);color:var(--accent2);}
+.problem-card{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:20px;margin-bottom:10px;}
+.problem-nr{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+.problem-nr::before{content:'';width:3px;height:11px;background:var(--accent);border-radius:2px;}
+.problem-q{font-size:.93em;line-height:1.7;margin-bottom:18px;padding:13px 15px;background:var(--s1);border-radius:10px;border-left:2px solid var(--accent);}
+.steps-title{font-family:var(--h);font-size:.67em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.steps-title svg{width:12px;height:12px;}
+.step-r{display:flex;gap:11px;margin-bottom:11px;align-items:flex-start;}
+.step-num{width:24px;height:24px;border-radius:7px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.25);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.72em;color:var(--accent2);flex-shrink:0;margin-top:2px;}
+.step-content{flex:1;font-size:.88em;line-height:1.7;}
+.answer-box{background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.2);border-radius:11px;padding:14px 16px;margin-top:14px;}
+.explain-box{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:11px;padding:14px 16px;margin-top:9px;}
+.similar-box{background:rgba(124,106,255,.05);border:1px solid rgba(124,106,255,.15);border-radius:11px;padding:14px 16px;margin-top:9px;}
+.box-label{font-family:var(--h);font-size:.66em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px;}
+.box-label svg{width:11px;height:11px;}
+.answer-box .box-label{color:var(--green);}
+.explain-box .box-label{color:var(--gold);}
+.similar-box .box-label{color:var(--accent2);}
+.answer-val{font-size:.95em;font-weight:500;line-height:1.6;}
+.similar-item{display:flex;gap:9px;font-size:.84em;margin-bottom:7px;line-height:1.6;}
+.similar-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:9px;flex-shrink:0;}
+.result-btns{display:flex;gap:9px;margin-top:18px;}
+.btn-secondary{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;background:transparent;border:1px solid var(--border-hi);border-radius:10px;color:var(--muted);font-family:var(--b);font-size:.85em;cursor:pointer;transition:all .2s;}
+.btn-secondary svg{width:13px;height:13px;}
+.btn-secondary:hover{border-color:var(--accent2);color:var(--text);}
+.btn-accent{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;background:var(--accent);border:none;border-radius:10px;color:white;font-family:var(--h);font-size:.84em;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-accent svg{width:13px;height:13px;}
+.btn-accent:hover{background:#8b7aff;}
+
+/* INFO PANEL */
+.stat-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sm-item{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:12px 10px;text-align:center;}
+.sm-n{font-family:var(--h);font-size:1.3em;font-weight:800;}
+.sm-d{font-size:.62em;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;font-family:var(--h);}
+.tip{display:flex;gap:10px;padding:10px 11px;border-radius:10px;margin-bottom:5px;transition:all .2s;border:1px solid transparent;}
+.tip:last-child{margin-bottom:0;}
+.tip:hover{background:rgba(124,106,255,.04);border-color:rgba(124,106,255,.12);}
+.tip-ico{flex-shrink:0;margin-top:2px;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.tip-ico svg{width:13px;height:13px;}
+.tip-title{font-family:var(--h);font-size:.73em;font-weight:700;color:var(--accent2);margin-bottom:2px;}
+.tip-body{font-size:.71em;color:var(--muted2);line-height:1.55;}
+
+/* HISTORIA */
+.history-item{display:flex;align-items:center;gap:11px;padding:11px;background:var(--s2);border-radius:11px;margin-bottom:7px;cursor:pointer;transition:all .2s;border:1px solid transparent;}
+.history-item:hover{border-color:var(--border-hi);}
+.history-thumb{width:40px;height:40px;border-radius:8px;object-fit:cover;background:var(--s3);flex-shrink:0;}
+.history-info{flex:1;min-width:0;}
+.history-subject{font-family:var(--h);font-size:.73em;font-weight:700;color:var(--accent2);}
+.history-preview{font-size:.78em;color:var(--muted);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.history-time{font-size:.7em;color:var(--muted);flex-shrink:0;}
+
+/* MODAL APARAT */
+.camera-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;}
+.camera-modal.open{display:flex;}
+.camera-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:22px;width:min(480px,94vw);box-shadow:0 40px 80px rgba(0,0,0,.6);}
+.camera-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.camera-title{font-family:var(--h);font-size:.95em;font-weight:800;}
+.camera-close{width:30px;height:30px;border-radius:8px;background:var(--s2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.camera-close:hover{background:var(--s3);}
+.camera-close svg{width:14px;height:14px;stroke:var(--muted);}
+#cameraVideo{width:100%;border-radius:12px;background:#000;display:block;max-height:300px;object-fit:cover;border:1px solid var(--border-hi);}
+.camera-snap{width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:11px;color:white;font-family:var(--h);font-size:.88em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
+.camera-snap svg{width:15px;height:15px;stroke:white;}
+.camera-snap:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,106,255,.4);}
+.camera-switch{width:100%;margin-top:7px;padding:10px;background:transparent;border:1px solid var(--border-hi);border-radius:10px;color:var(--muted);font-family:var(--b);font-size:.82em;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.camera-switch svg{width:13px;height:13px;stroke:currentColor;}
+.camera-switch:hover{color:var(--text);border-color:var(--accent2);}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* MOBILE */
+@media(max-width:768px){
+  .cursor,.cursor-ring{display:none!important;}
+  body{cursor:auto;overflow:auto;height:auto;}
+  html,body{overflow:auto;}
+  .app{display:block;}
+  .sidebar{display:none!important;}
+  .m-hdr{display:flex!important;}
+  .m-nav{display:grid!important;}
+  .main{padding:14px!important;padding-top:70px!important;padding-bottom:74px!important;height:auto!important;overflow:visible!important;}
+  .content-grid{grid-template-columns:1fr!important;}
+  .info-panel{display:none;}
+  .topbar{flex-direction:column;gap:10px;align-items:flex-start;}
+  .page-h1{font-size:1.5em!important;}
+  .capture-grid{grid-template-columns:1fr 1fr;}
+  .settings-row{grid-template-columns:1fr;}
+  .result-btns{flex-direction:column;}
+}
 </style>
 </head>
 <body>
-<div class="aurora"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
-<aside class="sidebar">
-  <div class="brand"><div class="brand-logo"><span class="brand-l">E</span></div><div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div></div>
-  <div class="ng">Główne</div>
-  <a class="nl" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
-  <a class="nl" href="lesson_planner.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</a>
-  <div class="ng">Narzędzia</div>
-  <a class="nl" href="quiz_app.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Quiz AI</a>
-  <a class="nl" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Notatki AI</a>
-  <a class="nl" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a>
-  <a class="nl active" href="vision.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6s4-4 11-4 11 4 11 4v4s-4 4-11 4S1 10 1 10V6z"/><circle cx="12" cy="8" r="2"/></svg>Vision AI</a>
-  <a class="nl" href="chat.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
-  <a class="nl" href="voice_conversation.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice AI</a>
-  <div class="ng">Konto</div>
-  <a class="nl" href="pricing.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</a>
-  <div class="sb-footer"><div class="xp-wrap"><div class="xp-top"><span class="xp-lv">⚡ Poziom 8</span><span class="xp-pts">1240 / 1500 XP</span></div><div class="xp-track"><div class="xp-bar"></div></div><div class="xp-sub">260 XP do poz. 9</div></div></div>
-</aside>
-<div class="main">
-<div class="page">
 
-  <!-- PAGE HEADER -->
-  <div class="page-header">
-    <div class="page-header-top">
-      <div class="page-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 8 0M12 17l0 4"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>
-      <div class="page-title-wrap">
-        <h1>VisionAI</h1>
-        <p>Wrzuć zdjęcie zadania — dostaniesz rozwiązanie krok po kroku</p>
-      </div>
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="ring"></div>
+<div class="aurora"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
+
+<!-- MOBILE HEADER -->
+<header class="m-hdr" id="mHdr">
+  <div class="m-logo"><span>E</span></div>
+  <div class="m-hdr-info">
+    <div class="m-hdr-title">Vision AI</div>
+    <div class="m-hdr-sub">Eduvia — AI Learning Platform</div>
+  </div>
+  <button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button>
+</header>
+
+<!-- MOBILE DRAWER -->
+<div class="m-overlay" id="mOverlay" onclick="mClose()"></div>
+<nav class="m-drawer" id="mDrawer">
+  <div class="d-brand">
+    <div class="d-logo"><span>E</span></div>
+    <div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div>
+  </div>
+  <div class="d-sec">Glowne</div>
+  <div class="d-link" onclick="go('dashboard_FINAL.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</div>
+  <div class="d-link" onclick="go('lesson_planner.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</div>
+  <div class="d-sec">Narzedzia</div>
+  <div class="d-link" onclick="go('chat.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</div>
+  <div class="d-link" onclick="go('voice_conversation.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice AI</div>
+  <div class="d-link" onclick="go('notes_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Notatki AI</div>
+  <div class="d-link" onclick="go('exam_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</div>
+  <div class="d-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
+  <div class="d-link" onclick="go('quiz_app.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</div>
+  <div class="d-sec">Konto</div>
+  <div class="d-link" onclick="go('pricing.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</div>
+</nav>
+
+<!-- DOLNA NAWIGACJA MOBILE -->
+<nav class="m-nav">
+  <div class="m-nb" onclick="go('dashboard_FINAL.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></div>
+  <div class="m-nb" onclick="go('chat.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
+  <div class="m-nb" onclick="go('notes_generator_v2.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></div>
+  <div class="m-nb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Vision</span><span class="m-nb-dot"></span></div>
+  <div class="m-nb" onclick="go('exam_generator_v2.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Testy</span></div>
+</nav>
+
+<div class="app">
+
+<!-- SIDEBAR — identyczny jak notatki, ta sama kolejnosc -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo"><span class="brand-l">E</span></div>
+    <div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div>
+  </div>
+  <div class="ng">Glowne</div>
+  <a class="nl" href="dashboard_FINAL.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard
+  </a>
+  <a class="nl" href="lesson_planner.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki
+  </a>
+  <div class="ng">Narzedzia</div>
+  <a class="nl" href="chat.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI
+  </a>
+  <a class="nl" href="voice_conversation.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice AI
+  </a>
+  <a class="nl" href="notes_generator_v2.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Notatki AI
+  </a>
+  <a class="nl" href="exam_generator_v2.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI
+  </a>
+  <a class="nl active" href="vision.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI
+  </a>
+  <a class="nl" href="quiz_app.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI
+  </a>
+  <div class="ng">Konto</div>
+  <a class="nl" href="pricing.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium
+  </a>
+  <div class="sb-footer">
+    <div class="xp-wrap">
+      <div class="xp-top"><span class="xp-lv" id="sbXpLv">Poziom 1</span><span class="xp-pts" id="sbXpPts">0 / 100 XP</span></div>
+      <div class="xp-track"><div class="xp-bar" id="sbXpBar" style="width:0%"></div></div>
+      <div class="xp-sub" id="sbXpSub">Zacznij skanowac zadania!</div>
     </div>
   </div>
+</aside>
 
-  <!-- UPLOAD SECTION -->
-  <div id="sectionUpload">
-    <div class="card">
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-label">Narzedzia AI</div>
+      <div class="page-h1"><span>Vision AI</span></div>
+      <div class="page-sub">Zrob zdjecie zadania — rozwiazanie krok po kroku</div>
+    </div>
+    <div class="page-badge"><span class="badge-dot"></span>AI aktywny</div>
+  </div>
 
-      <div class="card-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Załaduj zdjęcie
-      </div>
+  <div class="content-grid">
 
-      <!-- PREVIEW -->
-      <div class="img-preview" id="imgPreview">
-        <img id="previewImg" src="" alt="Zdjęcie zadania">
-        <div class="img-preview-bar">
-          <div class="img-preview-bar-info">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Zdjęcie wgrane — gotowe do analizy</span>
-          </div>
-          <button class="btn-secondary" style="flex:none;padding:6px 12px;font-size:0.78em;gap:5px" onclick="clearImage()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Usuń
+    <!-- LEWA: FORMULARZ -->
+    <div class="form-panel">
+      <div id="formView">
+        <span class="sec-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Zaladuj zdjecie zadania
+        </span>
+
+        <!-- PODGLAD -->
+        <div class="preview-wrap" id="previewWrap">
+          <img id="previewImg" src="" alt="Podglad">
+          <button class="remove-img" onclick="removeImage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Usun
           </button>
         </div>
-      </div>
 
-      <!-- DROP ZONE -->
-      <div class="upload-zone" id="uploadZone" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
-        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
-        <div class="upload-icon-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <!-- KAFELKI APARAT / GALERIA -->
+        <div class="capture-grid" id="captureGrid">
+          <button class="capture-btn cam-btn" onclick="openCamera()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div class="cb-title">Zrob zdjecie</div>
+            <div class="cb-sub">Aparat telefonu<br>lub kamery</div>
+          </button>
+          <button class="capture-btn gal-btn" onclick="pickFile()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div class="cb-title">Wybierz z galerii</div>
+            <div class="cb-sub">Zdjecie lub skan<br>z urzadzenia</div>
+          </button>
         </div>
-        <div class="upload-title">Wrzuć zdjęcie zadania</div>
-        <div class="upload-sub">Matematyka, fizyka, chemia, biologia, historia<br>Przeciągnij i upuść lub kliknij</div>
-        <div class="upload-types">
-          <span class="upload-type-tag">JPG</span>
-          <span class="upload-type-tag">PNG</span>
-          <span class="upload-type-tag">WEBP</span>
-          <span class="upload-type-tag">max 10 MB</span>
-        </div>
-      </div>
 
-      <div class="divider"></div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(event)">
 
-      <!-- SETTINGS -->
-      <div class="settings-row">
-        <div>
-          <span class="field-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-            Przedmiot
-          </span>
-          <select class="fi" id="subject">
-            <option value="matematyka">Matematyka</option>
-            <option value="fizyka">Fizyka</option>
-            <option value="chemia">Chemia</option>
-            <option value="biologia">Biologia</option>
-            <option value="historia">Historia</option>
-            <option value="polski">Język polski</option>
-            <option value="geografia">Geografia</option>
-            <option value="informatyka">Informatyka</option>
-            <option value="angielski">Angielski</option>
-            <option value="inne">Inne</option>
-          </select>
+        <div class="or-row" id="orRow">
+          <div class="or-line"></div>
+          <span class="or-text">lub przeciagnij</span>
+          <div class="or-line"></div>
         </div>
-        <div>
+
+        <div class="upload-zone" id="uploadZone" onclick="pickFile()">
+          <div class="upload-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <h4>Kliknij lub przeciagnij zdjecie tutaj</h4>
+          <p>JPG, PNG, WEBP — max 10 MB</p>
+        </div>
+
+        <!-- USTAWIENIA -->
+        <div class="settings-row">
+          <div>
+            <span class="field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Przedmiot
+            </span>
+            <select class="fi" id="subject">
+              <option value="matematyka">Matematyka</option>
+              <option value="fizyka">Fizyka</option>
+              <option value="chemia">Chemia</option>
+              <option value="biologia">Biologia</option>
+              <option value="historia">Historia</option>
+              <option value="polski">Jezyk polski</option>
+              <option value="geografia">Geografia</option>
+              <option value="informatyka">Informatyka</option>
+              <option value="angielski">Angielski</option>
+              <option value="inne">Inne</option>
+            </select>
+          </div>
+          <div>
+            <span class="field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+              Tryb
+            </span>
+            <select class="fi" id="mode">
+              <option value="solve">Rozwiaz krok po kroku</option>
+              <option value="check">Sprawdz czy dobrze</option>
+              <option value="explain">Wyjasni temat</option>
+              <option value="grade">Ocen rozwiazanie</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
           <span class="field-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            Tryb analizy
+            Opcje dodatkowe
           </span>
-          <select class="fi" id="mode">
-            <option value="solve">Rozwiąż krok po kroku</option>
-            <option value="check">Sprawdź czy dobrze</option>
-            <option value="explain">Tylko wyjaśnij temat</option>
-            <option value="grade">Oceń moje rozwiązanie</option>
-          </select>
+          <div class="toggle-row">
+            <button class="toggle-btn on" id="togSteps" onclick="toggle('steps')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>
+              Kroki
+            </button>
+            <button class="toggle-btn on" id="togSimilar" onclick="toggle('similar')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              Podobne
+            </button>
+            <button class="toggle-btn on" id="togExplain" onclick="toggle('explain')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Wyjasnienie
+            </button>
+          </div>
+        </div>
+
+        <button class="gen-btn" id="genBtn" onclick="solve()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Wgraj zdjecie aby zaczac
+        </button>
+        <div class="error-msg" id="errMsg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span id="errText"></span>
         </div>
       </div>
 
-      <div style="margin-bottom:20px">
-        <span class="field-label" style="margin-bottom:10px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          Opcje dodatkowe
-        </span>
-        <div class="toggle-row">
-          <button class="toggle-btn on" id="togSteps" onclick="toggle('steps')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            Kroki rozwiązania
-          </button>
-          <button class="toggle-btn on" id="togSimilar" onclick="toggle('similar')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-            Podobne zadania
-          </button>
-          <button class="toggle-btn on" id="togExplain" onclick="toggle('explain')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            Wyjaśnienie teorii
-          </button>
-        </div>
+      <!-- LOADING -->
+      <div class="loading-view" id="loadingView">
+        <div class="spinner-ring"></div>
+        <h3>GPT-4o analizuje zdjecie...</h3>
+        <p id="loadingSub">Rozpoznaje zadanie i generuje rozwiazanie</p>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <ul class="steps-list">
+          <li class="ls-item current" id="st0"><div class="ls-dot"></div>Rozpoznawanie obrazu</li>
+          <li class="ls-item" id="st1"><div class="ls-dot"></div>Identyfikacja zadan</li>
+          <li class="ls-item" id="st2"><div class="ls-dot"></div>Rozwiazywanie krok po kroku</li>
+          <li class="ls-item" id="st3"><div class="ls-dot"></div>Generowanie wyjasnienia</li>
+          <li class="ls-item" id="st4"><div class="ls-dot"></div>Formatowanie odpowiedzi</li>
+        </ul>
       </div>
 
-      <button class="solve-btn" id="solveBtn" onclick="solve()" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 8 0M12 17l0 4"/></svg>
-        Wgraj zdjęcie aby zacząć
-      </button>
-      <div class="err-box" id="errBox" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span id="errText"></span>
-      </div>
+      <!-- WYNIKI -->
+      <div id="resultView" style="display:none"></div>
     </div>
 
-    <!-- HISTORIA -->
-    <div id="historySection" style="display:none">
-      <div class="card">
-        <div class="card-label">
+    <!-- PRAWA: INFO -->
+    <div class="info-panel">
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Twoje skany
+        </div>
+        <div class="stat-mini">
+          <div class="sm-item">
+            <div class="sm-n" id="statTotal" style="color:var(--accent2)">0</div>
+            <div class="sm-d">Lacznie</div>
+          </div>
+          <div class="sm-item">
+            <div class="sm-n" id="statToday" style="color:var(--green)">0</div>
+            <div class="sm-d">Dzisiaj</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card" id="historyCard" style="display:none">
+        <div class="info-card-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Historia sesji
         </div>
         <div id="historyList"></div>
       </div>
+
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Wskazowki
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(124,106,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div><div class="tip-title">Ostre zdjecie</div><div class="tip-body">Stabilny telefon i dobre oswietlenie = lepsze wyniki AI</div></div>
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(34,211,160,.08)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+          <div><div class="tip-title">Cale zadanie w kadrze</div><div class="tip-body">Upewnij sie ze cala tresc jest widoczna na zdjeciu</div></div>
+        </div>
+        <div class="tip">
+          <div class="tip-ico" style="background:rgba(245,166,35,.08)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+          <div><div class="tip-title">Wybierz przedmiot</div><div class="tip-body">Poprawny przedmiot pomaga AI lepiej zrozumiec kontekst</div></div>
+        </div>
+      </div>
     </div>
+
   </div>
+</main>
+</div>
 
-  <!-- LOADING -->
-  <div class="card loading-card" id="sectionLoading" style="display:none">
-    <div class="spinner-wrap">
-      <div class="spinner-ring"></div>
-      <div class="spinner-inner"></div>
+<!-- MODAL APARAT -->
+<div class="camera-modal" id="cameraModal">
+  <div class="camera-box">
+    <div class="camera-header">
+      <div class="camera-title">Zrob zdjecie zadania</div>
+      <button class="camera-close" onclick="closeCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <h3 style="font-family:var(--h);font-size:1em;margin-bottom:6px">Analizuję zdjęcie...</h3>
-    <p style="color:var(--muted);font-size:0.82em">To może zająć kilkanaście sekund</p>
-    <div class="loading-steps" id="loadingSteps">
-      <div class="loading-step" id="ls1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        Rozpoznawanie obrazu
-      </div>
-      <div class="loading-step" id="ls2">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        Identyfikacja zadań
-      </div>
-      <div class="loading-step" id="ls3">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>
-        Rozwiązywanie krok po kroku
-      </div>
-      <div class="loading-step" id="ls4">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Formatowanie odpowiedzi
-      </div>
-    </div>
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="cameraCanvas" style="display:none"></canvas>
+    <button class="camera-snap" onclick="snapPhoto()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Zrob zdjecie
+    </button>
+    <button class="camera-switch" onclick="switchCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+      Obroc kamere
+    </button>
   </div>
-
-  <!-- WYNIKI -->
-  <div id="sectionResult" style="display:none" class="fade-in"></div>
-
 </div>
 
 <script>
-// STATE
-let imgBase64 = null;
-let opts = { steps: true, similar: true, explain: true };
-let history = [];
-try { history = JSON.parse(localStorage.getItem('vision_history') || '[]'); } catch(e) {}
+let imgBase64=null,opts={steps:true,similar:true,explain:true},history=[],cameraStream=null,facingMode='environment',stepTimer=null;
+try{history=JSON.parse(localStorage.getItem('vision_history')||'[]');}catch(e){}
+const SL={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Jezyk polski',geografia:'Geografia',informatyka:'Informatyka',angielski:'Angielski',inne:'Inne'};
 
-const SUBJECT_LABELS = {
-  matematyka:'Matematyka', fizyka:'Fizyka', chemia:'Chemia',
-  biologia:'Biologia', historia:'Historia', polski:'Język polski',
-  geografia:'Geografia', informatyka:'Informatyka', angielski:'Angielski', inne:'Inne'
-};
+/* INIT */
+renderStats();renderHistory();
 
-renderHistory();
+/* NAV */
+function go(u){window.location.href=u;}
+function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
+function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
 
-// UPLOAD
-function handleFile(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    imgBase64 = e.target.result;
-    document.getElementById('previewImg').src = imgBase64;
-    document.getElementById('imgPreview').style.display = 'block';
-    document.getElementById('uploadZone').style.display = 'none';
-    const btn = document.getElementById('solveBtn');
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>Rozwiąż zadanie`;
-  };
-  reader.readAsDataURL(file);
+/* DRAG */
+const zone=document.getElementById('uploadZone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processFile(f);});
+
+/* PLIK */
+function pickFile(){document.getElementById('fileInput').click();}
+function handleFile(e){const f=e.target.files[0];if(f)processFile(f);}
+function processFile(f){
+  if(!f.type.startsWith('image/')){showErr('Wybierz plik graficzny (JPG, PNG, WEBP)');return;}
+  if(f.size>10*1024*1024){showErr('Plik za duzy — max 10 MB');return;}
+  const r=new FileReader();r.onload=e=>setImage(e.target.result);r.readAsDataURL(f);
 }
 
-function clearImage() {
-  imgBase64 = null;
-  document.getElementById('imgPreview').style.display = 'none';
-  document.getElementById('uploadZone').style.display = 'block';
-  const btn = document.getElementById('solveBtn');
-  btn.disabled = true;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 8 0M12 17l0 4"/></svg>Wgraj zdjęcie aby zacząć`;
-  document.getElementById('fileInput').value = '';
+/* APARAT */
+async function openCamera(){document.getElementById('cameraModal').classList.add('open');await startCamera();}
+async function startCamera(){
+  try{
+    if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1920},height:{ideal:1080}}});
+    document.getElementById('cameraVideo').srcObject=cameraStream;
+  }catch(e){alert('Brak dostepu do kamery. Uzyj galerii.');closeCamera();}
+}
+function closeCamera(){
+  document.getElementById('cameraModal').classList.remove('open');
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+}
+function switchCamera(){facingMode=facingMode==='environment'?'user':'environment';startCamera();}
+function snapPhoto(){
+  const v=document.getElementById('cameraVideo'),c=document.getElementById('cameraCanvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  closeCamera();setImage(c.toDataURL('image/jpeg',.9));
 }
 
-function dragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
-function dragLeave(e) { document.getElementById('uploadZone').classList.remove('drag-over'); }
-function dropFile(e) {
-  e.preventDefault();
-  document.getElementById('uploadZone').classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) handleFile(file);
+/* USTAW ZDJECIE */
+function setImage(dataUrl){
+  imgBase64=dataUrl;
+  document.getElementById('previewImg').src=dataUrl;
+  document.getElementById('previewWrap').style.display='block';
+  document.getElementById('captureGrid').style.display='none';
+  document.getElementById('orRow').style.display='none';
+  document.getElementById('uploadZone').style.display='none';
+  const btn=document.getElementById('genBtn');
+  btn.disabled=false;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Rozwiaz zadanie →';
+  hideErr();
+}
+function removeImage(){
+  imgBase64=null;
+  document.getElementById('previewWrap').style.display='none';
+  document.getElementById('captureGrid').style.display='grid';
+  document.getElementById('orRow').style.display='flex';
+  document.getElementById('uploadZone').style.display='block';
+  document.getElementById('fileInput').value='';
+  const btn=document.getElementById('genBtn');
+  btn.disabled=true;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Wgraj zdjecie aby zaczac';
+  hideErr();
 }
 
-function toggle(key) {
-  opts[key] = !opts[key];
-  const btn = document.getElementById('tog' + key.charAt(0).toUpperCase() + key.slice(1));
-  btn.classList.toggle('on', opts[key]);
+/* TOGGLES */
+function toggle(key){opts[key]=!opts[key];const id='tog'+key.charAt(0).toUpperCase()+key.slice(1);document.getElementById(id).className='toggle-btn'+(opts[key]?' on':'');}
+
+/* LOADING */
+function startProgress(){
+  const st=['st0','st1','st2','st3','st4'],tg=[15,35,55,75,92];
+  let i=0;
+  stepTimer=setInterval(()=>{
+    if(i>=st.length){clearInterval(stepTimer);return;}
+    if(i>0)document.getElementById(st[i-1]).className='ls-item done';
+    document.getElementById(st[i]).className='ls-item current';
+    document.getElementById('progressFill').style.width=tg[i]+'%';
+    i++;
+  },5000);
+}
+function finishProgress(){
+  clearInterval(stepTimer);
+  ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).className='ls-item done');
+  document.getElementById('progressFill').style.width='100%';
 }
 
-function animateLoadingSteps() {
-  ['ls1','ls2','ls3','ls4'].forEach((id, i) => {
-    setTimeout(() => document.getElementById(id)?.classList.add('done'), i * 3500);
-  });
-}
-
-async function solve() {
-  if (!imgBase64) return;
-  const err = document.getElementById('errBox');
-  err.style.display = 'none';
-
-  document.getElementById('sectionUpload').style.display = 'none';
-  document.getElementById('sectionLoading').style.display = 'block';
-  document.getElementById('sectionResult').style.display = 'none';
-  animateLoadingSteps();
-
-  const compressed = await compressImage(imgBase64, 1024, 0.85);
-  const b64 = compressed.split('base64,')[1];
-  const subject = document.getElementById('subject').value;
-  const mode = document.getElementById('mode').value;
-
-  try {
-    const res = await fetch('http://localhost:8000/api/v1/vision/solve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: b64, subject, mode, show_steps: opts.steps, generate_similar: opts.similar, show_explanation: opts.explain })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error || 'Błąd analizy');
-
-    const entry = {
-      id: Date.now(), subject, mode, thumb: imgBase64,
-      preview: data.problems?.[0]?.question?.slice(0,80) || 'Analiza zadania',
-      time: new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'}),
-      result: data
-    };
-    history.unshift(entry);
-    if (history.length > 10) history = history.slice(0, 10);
-    try { localStorage.setItem('vision_history', JSON.stringify(history)); } catch(e) {}
-
-    renderResult(data, subject);
-  } catch(e) {
-    document.getElementById('sectionLoading').style.display = 'none';
-    document.getElementById('sectionUpload').style.display = 'block';
-    document.getElementById('errText').textContent = e.message;
-    err.style.display = 'flex';
+/* SOLVE */
+async function solve(){
+  if(!imgBase64)return;
+  hideErr();
+  document.getElementById('formView').style.display='none';
+  document.getElementById('loadingView').style.display='block';
+  document.getElementById('resultView').style.display='none';
+  startProgress();
+  const compressed=await compressImage(imgBase64,1024,.85);
+  const b64=compressed.split('base64,')[1];
+  const subject=document.getElementById('subject').value;
+  const mode=document.getElementById('mode').value;
+  try{
+    const res=await fetch('http://localhost:8000/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    if(!res.ok)throw new Error('Blad serwera '+res.status);
+    const data=await res.json();
+    if(!data.success)throw new Error(data.error||'Blad analizy');
+    finishProgress();
+    setTimeout(()=>{
+      const entry={id:Date.now(),subject,mode,thumb:imgBase64,preview:data.problems?.[0]?.question?.slice(0,80)||'Analiza zadania',time:new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}),result:data};
+      history.unshift(entry);if(history.length>10)history=history.slice(0,10);
+      try{localStorage.setItem('vision_history',JSON.stringify(history));}catch(e){}
+      renderResult(data,subject);renderStats();renderHistory();
+    },400);
+  }catch(e){
+    finishProgress();clearInterval(stepTimer);
+    document.getElementById('loadingView').style.display='none';
+    document.getElementById('formView').style.display='block';
+    showErr(e.message);
   }
 }
 
-function compressImage(base64, maxPx, quality) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width, h = img.height;
-      if (w > maxPx || h > maxPx) {
-        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
-        else { w = Math.round(w * maxPx / h); h = maxPx; }
-      }
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', quality));
+/* KOMPRESJA */
+function compressImage(base64,maxPx,quality){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg',quality));
     };
-    img.src = base64;
+    img.src=base64;
   });
 }
 
-function renderResult(data, subject) {
-  document.getElementById('sectionLoading').style.display = 'none';
-  const problems = data.problems || [];
-
-  let html = `<div class="card"><div class="result-header">
-    <div class="result-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-      Rozwiązanie gotowe
-    </div>
-    <div class="badge-row">
-      <span class="badge badge-green">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        ${problems.length} ${problems.length === 1 ? 'zadanie' : 'zadań'}
-      </span>
-      <span class="badge badge-accent">${SUBJECT_LABELS[subject]||subject}</span>
-    </div>
-  </div>`;
-
-  if (problems.length === 0) {
-    html += `<div style="font-size:0.93em;line-height:1.8">${formatText(data.analysis||data.text||'Brak odpowiedzi')}</div>`;
-  } else {
-    problems.forEach((p, i) => {
-      html += `<div class="problem-card"><div class="problem-nr">Zadanie ${i+1} z ${problems.length}</div>`;
-      if (p.question) html += `<div class="problem-q">${formatText(p.question)}</div>`;
-
-      if (opts.steps && p.solution?.steps?.length > 0) {
-        html += `<div class="steps-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Rozwiązanie krok po kroku</div>`;
-        p.solution.steps.forEach((step, si) => {
-          html += `<div class="step-item"><div class="step-num">${si+1}</div><div class="step-content">${formatText(step)}</div></div>`;
-        });
-      } else if (p.solution && typeof p.solution === 'string') {
-        html += `<div class="steps-title">Rozwiązanie</div><div style="font-size:0.9em;line-height:1.8;margin-bottom:12px">${formatText(p.solution)}</div>`;
-      }
-
-      if (p.solution?.final_answer) {
-        html += `<div class="answer-box">
-          <div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Odpowiedź</div>
-          <div class="answer-val">${formatText(p.solution.final_answer)}</div>
-        </div>`;
-      }
-
-      if (opts.explain && p.solution?.explanation) {
-        html += `<div class="explain-box">
-          <div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Wyjaśnienie teorii</div>
-          <div style="font-size:0.87em;line-height:1.7">${formatText(p.solution.explanation)}</div>
-        </div>`;
-      }
-
-      if (opts.similar && p.similar_problems?.length > 0) {
-        html += `<div class="similar-box">
-          <div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>Podobne zadania</div>`;
-        p.similar_problems.forEach(sp => {
-          html += `<div class="similar-item"><div class="similar-dot"></div><div>${formatText(sp)}</div></div>`;
-        });
-        html += '</div>';
-      }
-      html += '</div>';
-    });
-  }
-
-  html += `<div class="result-btns">
-    <button class="btn-secondary" onclick="newScan()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 8 0M12 17l0 4"/></svg>
-      Nowe zdjęcie
-    </button>
-    <button class="btn-primary-sm" onclick="window.print()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      Drukuj
-    </button>
-  </div></div>`;
-
-  const el = document.getElementById('sectionResult');
-  el.innerHTML = html;
-  el.style.display = 'block';
-  renderMath(el);
-  renderHistory();
+/* RENDER */
+function renderResult(data,subject){
+  document.getElementById('loadingView').style.display='none';
+  const problems=data.problems||[];
+  let html=`<div class="result-header"><div class="result-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Rozwiazanie gotowe</div><div class="badge-row"><span class="badge badge-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>${problems.length} ${problems.length===1?'zadanie':problems.length<5?'zadania':'zadan'}</span><span class="badge badge-accent">${SL[subject]||subject}</span></div></div>`;
+  if(!problems.length){html+=`<div style="font-size:.9em;line-height:1.8">${formatText(data.analysis||data.text||'Brak odpowiedzi')}</div>`;}
+  else{problems.forEach((p,i)=>{
+    html+=`<div class="problem-card"><div class="problem-nr">Zadanie ${i+1} z ${problems.length}</div>`;
+    if(p.question)html+=`<div class="problem-q">${formatText(p.question)}</div>`;
+    if(opts.steps&&p.solution?.steps?.length>0){
+      html+=`<div class="steps-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>Rozwiazanie krok po kroku</div>`;
+      p.solution.steps.forEach((step,si)=>html+=`<div class="step-r"><div class="step-num">${si+1}</div><div class="step-content">${formatText(step)}</div></div>`);
+    }else if(p.solution&&typeof p.solution==='string'){html+=`<div class="steps-title">Rozwiazanie</div><div style="font-size:.88em;line-height:1.8;margin-bottom:10px">${formatText(p.solution)}</div>`;}
+    if(p.solution?.final_answer)html+=`<div class="answer-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Odpowiedz</div><div class="answer-val">${formatText(p.solution.final_answer)}</div></div>`;
+    if(opts.explain&&p.solution?.explanation)html+=`<div class="explain-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg>Wyjasnienie teorii</div><div style="font-size:.86em;line-height:1.7">${formatText(p.solution.explanation)}</div></div>`;
+    if(opts.similar&&p.similar_problems?.length>0){html+=`<div class="similar-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Podobne zadania</div>`;p.similar_problems.forEach(sp=>html+=`<div class="similar-item"><div class="similar-dot"></div><div>${formatText(sp)}</div></div>`);html+='</div>';}
+    html+='</div>';
+  });}
+  html+=`<div class="result-btns"><button class="btn-secondary" onclick="newScan()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Nowe zdjecie</button><button class="btn-accent" onclick="window.print()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Drukuj</button></div>`;
+  const el=document.getElementById('resultView');el.innerHTML=html;el.style.display='block';
+  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([el]).catch(()=>{});
 }
 
-function formatText(text) {
-  if (!text) return '';
-
-  // 1. Wyciągnij ALL wzory matematyczne i zastąp placeholderami
-  //    Obsługuje: $...$, $$...$$
-  const mathPlaceholders = [];
-  text = text.replace(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g, (m) => {
-    mathPlaceholders.push(m);
-    return '\x01M' + (mathPlaceholders.length - 1) + '\x01';
-  });
-
-  // 2. HTML escape TYLKO na tekście (nie wzorach)
-  text = text.replace(/&/g, '&amp;')
-             .replace(/</g, '&lt;')
-             .replace(/>/g, '&gt;');
-
-  // 3. Markdown bold/italic
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-  // 4. Newlines → <br>
-  text = text.replace(/\n/g, '<br>');
-
-  // 5. Przywróć wzory BEZ HTML escape (MathJax sam je przetworzy)
-  text = text.replace(/\x01M(\d+)\x01/g, (_, i) => mathPlaceholders[+i]);
-
+/* FORMAT */
+function formatText(text){
+  if(!text)return'';
+  const mp=[];
+  text=text.replace(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g,m=>{mp.push(m);return'\x01M'+(mp.length-1)+'\x01';});
+  text=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  text=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  text=text.replace(/\*(.*?)\*/g,'<em>$1</em>');
+  text=text.replace(/\n/g,'<br>');
+  text=text.replace(/\x01M(\d+)\x01/g,(_,i)=>mp[+i]);
   return text;
 }
 
-function renderMath(el) {
-  if (window.MathJax && MathJax.typesetPromise) {
-    MathJax.typesetPromise([el]).catch(e => console.warn('MathJax:', e));
-  }
+/* HISTORIA */
+function renderHistory(){
+  if(!history.length){document.getElementById('historyCard').style.display='none';return;}
+  document.getElementById('historyCard').style.display='block';
+  document.getElementById('historyList').innerHTML=history.slice(0,4).map(h=>`<div class="history-item" onclick="loadHistory(${h.id})"><img class="history-thumb" src="${h.thumb}" onerror="this.style.display='none'"><div class="history-info"><div class="history-subject">${SL[h.subject]||h.subject}</div><div class="history-preview">${h.preview}</div></div><div class="history-time">${h.time}</div></div>`).join('');
+}
+function loadHistory(id){const e=history.find(h=>h.id===id);if(e){document.getElementById('formView').style.display='none';renderResult(e.result,e.subject);}}
+function newScan(){document.getElementById('resultView').style.display='none';document.getElementById('formView').style.display='block';removeImage();}
+
+/* STATSY */
+function renderStats(){
+  document.getElementById('statTotal').textContent=history.length;
+  const today=new Date().toDateString();
+  document.getElementById('statToday').textContent=history.filter(h=>new Date(h.id).toDateString()===today).length;
 }
 
-function renderHistory() {
-  if (!history.length) { document.getElementById('historySection').style.display = 'none'; return; }
-  document.getElementById('historySection').style.display = 'block';
-  document.getElementById('historyList').innerHTML = history.slice(0,5).map(h => `
-    <div class="history-item" onclick="loadHistory(${h.id})">
-      <img class="history-thumb" src="${h.thumb}" onerror="this.style.display='none'">
-      <div class="history-info">
-        <div class="history-subject">${SUBJECT_LABELS[h.subject]||h.subject}</div>
-        <div class="history-preview">${h.preview}</div>
-      </div>
-      <div class="history-time">${h.time}</div>
-    </div>`).join('');
-}
+/* ERR */
+function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
+function hideErr(){document.getElementById('errMsg').classList.remove('visible');}
 
-function loadHistory(id) {
-  const entry = history.find(h => h.id === id);
-  if (entry) renderResult(entry.result, entry.subject);
-}
-
-function newScan() {
-  document.getElementById('sectionResult').style.display = 'none';
-  document.getElementById('sectionUpload').style.display = 'block';
-  clearImage();
-  renderHistory();
-}
-</script>
-</div>
-<div class="cursor" id="cur"></div>
-<script>
+/* CURSOR */
 (function(){
-  const c=document.getElementById('cur');
-  let mx=0,my=0,cx=0,cy=0;
+  const c=document.getElementById('cur'),r=document.getElementById('ring');
+  let mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
   document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
-  (function loop(){cx+=(mx-cx)*0.18;cy+=(my-cy)*0.18;c.style.left=cx+'px';c.style.top=cy+'px';requestAnimationFrame(loop);})();
-  document.querySelectorAll('a,.nl,button,input,select,textarea,[onclick]').forEach(el=>{
-    el.addEventListener('mouseenter',()=>{c.style.width='22px';c.style.height='22px';c.style.background='rgba(124,106,255,0.25)';c.style.border='1.5px solid var(--accent)';});
-    el.addEventListener('mouseleave',()=>{c.style.width='10px';c.style.height='10px';c.style.background='var(--accent)';c.style.border='none';});
+  (function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
+  document.querySelectorAll('a,.nl,button,input,select,.capture-btn,.history-item').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{c.style.width='20px';c.style.height='20px';c.style.background='rgba(124,106,255,.2)';c.style.border='1.5px solid var(--accent)';r.style.width='40px';r.style.height='40px';});
+    el.addEventListener('mouseleave',()=>{c.style.width='10px';c.style.height='10px';c.style.background='var(--accent)';c.style.border='none';r.style.width='32px';r.style.height='32px';});
   });
 })();
 </script>
 </body>
+</html>
