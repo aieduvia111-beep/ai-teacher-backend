@@ -254,6 +254,52 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .topbar{flex-direction:column;gap:10px;align-items:flex-start;}
   .page-h1{font-size:1.5em!important;}
 }
+
+/* ── UPLOAD MULTI-ZDJECIA ── */
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.capture-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--cbc,rgba(124,106,255,.05)),transparent 60%);pointer-events:none;}
+.capture-btn:hover{border-color:var(--cbh,rgba(124,106,255,.4));transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.3);}
+.cam-btn{--cbc:rgba(124,106,255,.06);--cbh:rgba(124,106,255,.4);}
+.gal-btn{--cbc:rgba(34,211,160,.05);--cbh:rgba(34,211,160,.4);}
+.cb-icon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+.cam-btn .cb-icon{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);}
+.gal-btn .cb-icon{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);}
+.cam-btn .cb-icon svg{stroke:var(--accent2);}
+.gal-btn .cb-icon svg{stroke:var(--green);}
+.cb-icon svg{width:20px;height:20px;}
+.cb-title{font-family:var(--h);font-size:.84em;font-weight:700;color:var(--text);}
+.cb-sub{font-size:.71em;color:var(--muted);text-align:center;line-height:1.45;}
+/* Miniaturki zdjec */
+.photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.photo-thumb{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--s2);border:1px solid var(--border-hi);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-thumb-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;}
+.photo-thumb-del:hover{background:rgba(248,113,113,.7);}
+.photo-thumb-del svg{width:10px;height:10px;stroke:white;stroke-width:2.5;}
+.photo-add-more{border-radius:10px;aspect-ratio:1;background:var(--s2);border:2px dashed var(--border-hi);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.2s;}
+.photo-add-more:hover{border-color:var(--accent);background:rgba(124,106,255,.04);}
+.photo-add-more svg{width:18px;height:18px;stroke:var(--muted);}
+.photo-add-more span{font-size:.65em;color:var(--muted);font-family:var(--h);font-weight:700;}
+.photos-count{font-size:.72em;color:var(--muted2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.photos-count span{color:var(--accent2);font-weight:700;}
+/* Camera modal */
+.camera-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;}
+.camera-modal.open{display:flex;}
+.camera-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:22px;width:min(480px,94vw);box-shadow:0 40px 80px rgba(0,0,0,.6);}
+.camera-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.camera-title{font-family:var(--h);font-size:.95em;font-weight:800;}
+.camera-close{width:30px;height:30px;border-radius:8px;background:var(--s2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.camera-close:hover{background:var(--s3);}
+.camera-close svg{width:14px;height:14px;stroke:var(--muted);}
+#cameraVideo{width:100%;border-radius:12px;background:#000;display:block;max-height:300px;object-fit:cover;border:1px solid var(--border-hi);}
+.camera-snap{width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:11px;color:white;font-family:var(--h);font-size:.88em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
+.camera-snap svg{width:15px;height:15px;stroke:white;}
+.camera-snap:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,106,255,.4);}
+.camera-switch{width:100%;margin-top:7px;padding:10px;background:transparent;border:1px solid var(--border-hi);border-radius:10px;color:var(--muted);font-family:var(--b);font-size:.82em;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.camera-switch svg{width:13px;height:13px;stroke:currentColor;}
+.camera-switch:hover{color:var(--text);border-color:var(--accent2);}
+
 </style>
 </head>
 <body>
@@ -363,61 +409,38 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           Konfiguracja notatki
         </span>
 
-        <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('topic',this)">
+        <!-- UPLOAD ZDJECIA (jak w exam) -->
+        <div class="sec-label" style="margin-top:0;margin-bottom:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Zaladuj zdjecia (opcjonalne)
+        </div>
+        <div id="photosWrap"></div>
+        <div class="capture-grid" id="captureGrid">
+          <button class="capture-btn cam-btn" onclick="openCamera()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div class="cb-title">Zrob zdjecie</div>
+            <div class="cb-sub">Aparat telefonu<br>lub kamery</div>
+          </button>
+          <button class="capture-btn gal-btn" onclick="pickFiles()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div class="cb-title">Wybierz z galerii</div>
+            <div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
+          </button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+
+        <div class="field">
+          <span class="field-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-            Z tematu
-          </button>
-          <button class="tab-btn" onclick="switchTab('image',this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Ze zdjęcia
-          </button>
-        </div>
-
-        <div class="tab-content active" id="tabTopic">
-          <div class="field">
-            <span class="field-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-              Temat notatki
-            </span>
-            <div class="input-wrap">
-              <input type="text" id="temat" placeholder="np. Całki oznaczone, DNA, I Wojna Światowa..." maxlength="100">
-              <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" id="tabImage">
-          <div class="field">
-            <span class="field-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Zdjęcie notatek / tablicy / zadania
-            </span>
-            <div class="preview-wrap" id="previewWrap">
-              <img id="previewImg" src="" alt="Podgląd">
-              <button class="remove-img" onclick="removeImage()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                Usuń
-              </button>
-            </div>
-            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-              <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
-              <div class="upload-icon-wrap">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              </div>
-              <h4>Kliknij lub przeciągnij zdjęcie</h4>
-              <p>JPG, PNG, WEBP — tablica, notatki, zadania z książki</p>
-            </div>
-            <div class="field" style="margin-top:14px;margin-bottom:0;">
-              <span class="field-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Kontekst (opcjonalne)
-              </span>
-              <div class="input-wrap">
-                <input type="text" id="imageContext" placeholder="np. To jest zadanie z fizyki klasy 2 liceum...">
-                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
-              </div>
-            </div>
+            Temat notatki
+          </span>
+          <div class="input-wrap">
+            <input type="text" id="temat" placeholder="np. Całki oznaczone, DNA, I Wojna Światowa..." maxlength="100">
+            <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
           </div>
         </div>
 
@@ -635,27 +658,11 @@ function animCount(id,target){
 }
 
 // ═══ LOGIKA ═══
-let level='liceum',currentTab='topic',imageBase64=null,stepTimer=null;
-function switchTab(tab,btn){
-  currentTab=tab;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tabTopic').classList.toggle('active',tab==='topic');
-  document.getElementById('tabImage').classList.toggle('active',tab==='image');
-}
+let level='liceum',photos=[],stepTimer=null;
+
 function setLevel(btn){document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');level=btn.dataset.val;}
 
-const zone=document.getElementById('uploadZone');
-zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
-zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
-zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processFile(f);});
-function handleFile(e){if(e.target.files[0])processFile(e.target.files[0]);}
-function processFile(file){
-  const r=new FileReader();
-  r.onload=e=>{imageBase64=e.target.result.split(',')[1];document.getElementById('previewImg').src=e.target.result;document.getElementById('previewWrap').style.display='block';document.getElementById('uploadZone').style.display='none';};
-  r.readAsDataURL(file);
-}
-function removeImage(){imageBase64=null;document.getElementById('previewWrap').style.display='none';document.getElementById('uploadZone').style.display='block';document.getElementById('fileInput').value='';}
+
 
 function startProgress(fromImg){
   const steps=['st0','st1','st2','st3','st4'],targets=[15,35,55,75,90];
@@ -684,17 +691,13 @@ async function generate(){
   document.getElementById('errMsg').classList.remove('visible');
   let body={klasa:level};
   let topicName='';
-  if(currentTab==='topic'){
-    const t=document.getElementById('temat').value.trim();
-    if(!t){showErr('Wpisz temat notatki.');return;}
-    body.temat=t;topicName=t;
-  }else{
-    if(!imageBase64){showErr('Wgraj zdjęcie.');return;}
-    body.temat=document.getElementById('imageContext').value.trim()||'Analiza z obrazka';
-    body.image=imageBase64;topicName=body.temat;
-  }
+  const t=document.getElementById('temat').value.trim();
+  if(!t && photos.length===0){showErr('Wpisz temat notatki lub dodaj zdjecie.');return;}
+  if(t){body.temat=t;topicName=t;}
+  if(photos.length>0){body.images=photos;body.image=photos[0];if(!topicName)topicName='Analiza ze zdjecia';}
+  if(!body.temat)body.temat=topicName;
   document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';
-  startProgress(currentTab==='image');
+  startProgress(photos.length>0);
   try{
     const res=await fetch('http://localhost:8000/api/v1/notes-pdf/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
@@ -717,14 +720,148 @@ async function generate(){
 }
 function reset(){
   document.getElementById('successView').style.display='none';document.getElementById('formView').style.display='block';
-  document.getElementById('temat').value='';document.getElementById('imageContext').value='';
+  document.getElementById('temat').value='';
   document.getElementById('errMsg').classList.remove('visible');document.getElementById('progressFill').style.width='0%';
-  removeImage();['st0','st1','st2','st3','st4'].forEach((s,i)=>document.getElementById(s).className='step-item'+(i===0?' current':''));
+  clearPhotos();['st0','st1','st2','st3','st4'].forEach((s,i)=>document.getElementById(s).className='step-item'+(i===0?' current':''));
 }
 document.getElementById('temat').addEventListener('keypress',e=>{if(e.key==='Enter')generate();});
 
 // Init
 renderStats();
+
+
+/* ── KAMERA JS (jak Vision) ── */
+let cameraStream=null,facingMode="environment";
+
+
+
+
+
+/* ── MULTI-ZDJECIA ── */
+
+function renderPhotos(){
+  const wrap=document.getElementById('photosWrap');
+  const grid=document.getElementById('captureGrid');
+  if(!wrap)return;
+  if(photos.length===0){
+    wrap.innerHTML='';
+    if(grid)grid.style.display='grid';
+    return;
+  }
+  // Ukryj kafelki gdy sa juz zdjecia
+  if(grid)grid.style.display='none';
+  let html='<div class="photos-count">Dodano: <span>'+photos.length+'</span> '+
+    (photos.length===1?'zdjecie':(photos.length<5?'zdjecia':'zdjeciach'))+'</div>';
+  html+='<div class="photos-grid">';
+  photos.forEach((b64,i)=>{
+    html+='<div class="photo-thumb"><img src="data:image/jpeg;base64,'+b64+'">'
+      +'<button class="photo-thumb-del" onclick="removePhoto('+i+')">'
+      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      +'</button></div>';
+  });
+  // Przycisk dodaj wiecej (max 15)
+  if(photos.length<15){
+    html+='<div class="photo-add-more" onclick="pickFiles()">'
+      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+      +'<span>Dodaj</span></div>';
+  }
+  html+='</div>';
+  // Przycisk wyczysc wszystko
+  html+='<button onclick="clearPhotos()" style="width:100%;padding:8px;background:transparent;border:1px solid var(--border-hi);border-radius:9px;color:var(--muted);font-size:.76em;cursor:pointer;margin-bottom:12px;font-family:var(--b);transition:.2s;" onmouseover=\"this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'\" onmouseout=\"this.style.borderColor=\'var(--border-hi)\';this.style.color=\'var(--muted)\'\">Wyczysc wszystkie zdjecia</button>';
+  wrap.innerHTML=html;
+}
+
+function removePhoto(i){
+  photos.splice(i,1);
+  renderPhotos();
+}
+
+function clearPhotos(){
+  photos=[];
+  renderPhotos();
+  const grid=document.getElementById('captureGrid');
+  if(grid)grid.style.display='grid';
+}
+
+function pickFiles(){
+  const inp=document.getElementById('fileInput');
+  if(inp)inp.click();
+}
+
+function handleFiles(e){
+  const files=Array.from(e.target.files);
+  files.forEach(f=>{
+    if(!f.type.startsWith('image/'))return;
+    if(photos.length>=15)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      photos.push(ev.target.result.split(',')[1]);
+      renderPhotos();
+    };
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+
+async function openCamera(){
+  document.getElementById('cameraModal').classList.add('open');
+  await startCamera();
+}
+
+async function startCamera(){
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}},audio:false});
+    document.getElementById('cameraVideo').srcObject=cameraStream;
+  }catch(e){
+    closeCamera();
+    showErr('Brak dostepu do kamery. Wybierz zdjecie z galerii.');
+  }
+}
+
+function closeCamera(){
+  document.getElementById('cameraModal').classList.remove('open');
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+}
+
+async function snapPhoto(){
+  const video=document.getElementById('cameraVideo');
+  const canvas=document.getElementById('cameraCanvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const b64=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
+  photos.push(b64);
+  renderPhotos();
+  closeCamera();
+}
+
+function switchCamera(){
+  facingMode=facingMode==='environment'?'user':'environment';
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  startCamera();
+}
 </script>
+
+<!-- MODAL APARAT -->
+<div class="camera-modal" id="cameraModal">
+  <div class="camera-box">
+    <div class="camera-header">
+      <div class="camera-title">Zrob zdjecie zadania</div>
+      <button class="camera-close" onclick="closeCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="cameraCanvas" style="display:none"></canvas>
+    <button class="camera-snap" onclick="snapPhoto()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Zrob zdjecie
+    </button>
+    <button class="camera-switch" onclick="switchCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+      Obroc kamere
+    </button>
+  </div>
+</div>
 </body>
 </html>

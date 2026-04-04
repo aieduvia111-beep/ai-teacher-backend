@@ -216,6 +216,52 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .topbar{flex-direction:column;gap:10px;align-items:flex-start;}
   .page-h1{font-size:1.5em!important;}
 }
+/* ── UPLOAD MULTI-ZDJECIA ── */
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.capture-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--cbc,rgba(124,106,255,.05)),transparent 60%);pointer-events:none;}
+.capture-btn:hover{border-color:var(--cbh,rgba(124,106,255,.4));transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.3);}
+.cam-btn{--cbc:rgba(124,106,255,.06);--cbh:rgba(124,106,255,.4);}
+.gal-btn{--cbc:rgba(34,211,160,.05);--cbh:rgba(34,211,160,.4);}
+.cb-icon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+.cam-btn .cb-icon{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);}
+.gal-btn .cb-icon{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);}
+.cam-btn .cb-icon svg{stroke:var(--accent2);}
+.gal-btn .cb-icon svg{stroke:var(--green);}
+.cb-icon svg{width:20px;height:20px;}
+.cb-title{font-family:var(--h);font-size:.84em;font-weight:700;color:var(--text);}
+.cb-sub{font-size:.71em;color:var(--muted);text-align:center;line-height:1.45;}
+/* Miniaturki zdjec */
+.photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.photo-thumb{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--s2);border:1px solid var(--border-hi);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-thumb-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;}
+.photo-thumb-del:hover{background:rgba(248,113,113,.7);}
+.photo-thumb-del svg{width:10px;height:10px;stroke:white;stroke-width:2.5;}
+.photo-add-more{border-radius:10px;aspect-ratio:1;background:var(--s2);border:2px dashed var(--border-hi);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.2s;}
+.photo-add-more:hover{border-color:var(--accent);background:rgba(124,106,255,.04);}
+.photo-add-more svg{width:18px;height:18px;stroke:var(--muted);}
+.photo-add-more span{font-size:.65em;color:var(--muted);font-family:var(--h);font-weight:700;}
+.photos-count{font-size:.72em;color:var(--muted2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.photos-count span{color:var(--accent2);font-weight:700;}
+/* Camera modal */
+.camera-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;}
+.camera-modal.open{display:flex;}
+.camera-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:22px;width:min(480px,94vw);box-shadow:0 40px 80px rgba(0,0,0,.6);}
+.camera-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.camera-title{font-family:var(--h);font-size:.95em;font-weight:800;}
+.camera-close{width:30px;height:30px;border-radius:8px;background:var(--s2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.camera-close:hover{background:var(--s3);}
+.camera-close svg{width:14px;height:14px;stroke:var(--muted);}
+#cameraVideo{width:100%;border-radius:12px;background:#000;display:block;max-height:300px;object-fit:cover;border:1px solid var(--border-hi);}
+.camera-snap{width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:11px;color:white;font-family:var(--h);font-size:.88em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
+.camera-snap svg{width:15px;height:15px;stroke:white;}
+.camera-snap:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,106,255,.4);}
+.camera-switch{width:100%;margin-top:7px;padding:10px;background:transparent;border:1px solid var(--border-hi);border-radius:10px;color:var(--muted);font-family:var(--b);font-size:.82em;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.camera-switch svg{width:13px;height:13px;stroke:currentColor;}
+.camera-switch:hover{color:var(--text);border-color:var(--accent2);}
+
+
 </style>
 </head>
 <body>
@@ -302,6 +348,30 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
           Konfiguracja sprawdzianu
         </span>
+
+        <!-- UPLOAD MULTI-ZDJECIA -->
+        <div class="sec-label" style="margin-top:0;margin-bottom:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Zaladuj zdjecia (opcjonalne)
+        </div>
+        <div id="photosWrap"></div>
+        <div class="capture-grid" id="captureGrid">
+          <button class="capture-btn cam-btn" onclick="openCamera()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div class="cb-title">Zrob zdjecie</div>
+            <div class="cb-sub">Aparat telefonu<br>lub kamery</div>
+          </button>
+          <button class="capture-btn gal-btn" onclick="pickFiles()">
+            <div class="cb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div class="cb-title">Wybierz z galerii</div>
+            <div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
+          </button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
 
         <div class="field">
           <span class="field-label">
@@ -609,6 +679,112 @@ function reset(){
 document.getElementById('temat').addEventListener('keypress',e=>{if(e.key==='Enter')generate();});
 
 renderStats();
+
+/* ── MULTI-ZDJECIA ── */
+let photos=[];
+let cameraStream=null,facingMode='environment';
+
+function renderPhotos(){
+  const wrap=document.getElementById('photosWrap');
+  const grid=document.getElementById('captureGrid');
+  if(!wrap)return;
+  if(photos.length===0){
+    wrap.innerHTML='';
+    if(grid)grid.style.display='grid';
+    return;
+  }
+  // Ukryj kafelki gdy sa juz zdjecia
+  if(grid)grid.style.display='none';
+  let html='<div class="photos-count">Dodano: <span>'+photos.length+'</span> '+
+    (photos.length===1?'zdjecie':(photos.length<5?'zdjecia':'zdjeciach'))+'</div>';
+  html+='<div class="photos-grid">';
+  photos.forEach((b64,i)=>{
+    html+='<div class="photo-thumb"><img src="data:image/jpeg;base64,'+b64+'">'
+      +'<button class="photo-thumb-del" onclick="removePhoto('+i+')">'
+      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      +'</button></div>';
+  });
+  // Przycisk dodaj wiecej (max 15)
+  if(photos.length<15){
+    html+='<div class="photo-add-more" onclick="pickFiles()">'
+      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+      +'<span>Dodaj</span></div>';
+  }
+  html+='</div>';
+  // Przycisk wyczysc wszystko
+  html+='<button onclick="clearPhotos()" style="width:100%;padding:8px;background:transparent;border:1px solid var(--border-hi);border-radius:9px;color:var(--muted);font-size:.76em;cursor:pointer;margin-bottom:12px;font-family:var(--b);transition:.2s;" onmouseover=\"this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'\" onmouseout=\"this.style.borderColor=\'var(--border-hi)\';this.style.color=\'var(--muted)\'\">Wyczysc wszystkie zdjecia</button>';
+  wrap.innerHTML=html;
+}
+
+function removePhoto(i){
+  photos.splice(i,1);
+  renderPhotos();
+}
+
+function clearPhotos(){
+  photos=[];
+  renderPhotos();
+  const grid=document.getElementById('captureGrid');
+  if(grid)grid.style.display='grid';
+}
+
+function pickFiles(){
+  const inp=document.getElementById('fileInput');
+  if(inp)inp.click();
+}
+
+function handleFiles(e){
+  const files=Array.from(e.target.files);
+  files.forEach(f=>{
+    if(!f.type.startsWith('image/'))return;
+    if(photos.length>=15)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      photos.push(ev.target.result.split(',')[1]);
+      renderPhotos();
+    };
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+
+async function openCamera(){
+  document.getElementById('cameraModal').classList.add('open');
+  await startCamera();
+}
+
+async function startCamera(){
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}},audio:false});
+    document.getElementById('cameraVideo').srcObject=cameraStream;
+  }catch(e){
+    closeCamera();
+    showErr('Brak dostepu do kamery. Wybierz zdjecie z galerii.');
+  }
+}
+
+function closeCamera(){
+  document.getElementById('cameraModal').classList.remove('open');
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+}
+
+async function snapPhoto(){
+  const video=document.getElementById('cameraVideo');
+  const canvas=document.getElementById('cameraCanvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const b64=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
+  photos.push(b64);
+  renderPhotos();
+  closeCamera();
+}
+
+function switchCamera(){
+  facingMode=facingMode==='environment'?'user':'environment';
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  startCamera();
+}
 </script>
 </body>
 </html>
