@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 import os
 
-# Ścieżka absolutna do folderu static
+# Ścieżka do folderu static
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from .config import settings
@@ -14,7 +14,8 @@ from .database import engine, Base
 from .openai_vision import (
     analyze_image_with_gpt4_vision,
     vision_analyze_homework,
-    vision_analyze_diagram
+    vision_analyze_diagram,
+    solve_homework_vision
 )
 from .openai_exam import (
     generate_exam_from_image,
@@ -36,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ══ ROUTERY ══
 try:
     from .api.chat import router as chat_router
     app.include_router(chat_router)
@@ -111,7 +113,7 @@ except Exception as e:
 async def root():
     return {
         "status": "online",
-        "message": "AI Teacher API is running!",
+        "message": "AI Teacher API is running! 🚀",
         "endpoints": {
             "health": "/health",
             "docs": "/docs",
@@ -209,7 +211,7 @@ class QuizResponse(BaseModel):
     error: Optional[str] = None
 
 
-# ══ ENDPOINTY ══
+# ══ ENDPOINTY VISION ══
 @app.post("/api/v1/vision/analyze", response_model=VisionResponse)
 async def analyze_image(request: VisionRequest):
     try:
@@ -224,7 +226,7 @@ async def analyze_math(request: VisionRequest):
         result = await vision_analyze_homework(request.image)
         return VisionResponse(success=True, analysis=result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return VisionResponse(success=False, analysis="", error=str(e))
 
 @app.post("/api/v1/vision/analyze-diagram", response_model=VisionResponse)
 async def analyze_diagram(request: VisionRequest):
@@ -232,65 +234,93 @@ async def analyze_diagram(request: VisionRequest):
         result = await vision_analyze_diagram(request.image)
         return VisionResponse(success=True, analysis=result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return VisionResponse(success=False, analysis="", error=str(e))
 
 @app.post("/api/v1/vision/solve")
 async def vision_solve(request: VisionRequest):
     try:
-        from .openai_vision import solve_homework_vision
-        result = solve_homework_vision(
+        # ← NAPRAWIONE: await zamiast zwykłego call
+        result = await solve_homework_vision(
             image_base64=request.image,
             subject=request.subject,
             mode=request.mode,
-            show_steps=True,
-            generate_similar=True,
-            show_explanation=True,
         )
         return result
     except Exception as e:
         return {"success": False, "error": str(e), "problems": []}
 
+
+# ══ ENDPOINTY EXAM ══
 @app.post("/api/v1/exam/generate", response_model=ExamResponse)
 async def generate_exam(request: ExamRequest):
     try:
-        result = await generate_exam_from_image(request.image, request.difficulty, request.num_questions, request.include_open_questions)
-        return ExamResponse(success=True, exam=result["exam"]) if result["success"] else ExamResponse(success=False, error=result.get("error"))
+        result = await generate_exam_from_image(
+            request.image, request.difficulty,
+            request.num_questions, request.include_open_questions
+        )
+        if result["success"]:
+            return ExamResponse(success=True, exam=result["exam"])
+        return ExamResponse(success=False, error=result.get("error"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ══ ENDPOINTY NOTES ══
 @app.post("/api/v1/notes/generate", response_model=NotesResponse)
 async def generate_notes(request: NotesRequest):
     try:
         result = await generate_notes_from_image(request.image, request.style)
-        return NotesResponse(success=True, notes=result["notes"], style=result["style"]) if result["success"] else NotesResponse(success=False, error=result.get("error"))
+        if result["success"]:
+            return NotesResponse(success=True, notes=result["notes"], style=result["style"])
+        return NotesResponse(success=False, error=result.get("error"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/notes/generate-topic", response_model=NotesTopicResponse)
 async def generate_notes_topic(request: NotesTopicRequest):
     try:
-        result = await generate_notes_from_topic(request.topic, request.level, request.subject, request.style, request.details)
-        return NotesTopicResponse(success=True, notes=result["notes"], topic=result["topic"], level=result["level"], subject=result["subject"], style=result["style"]) if result["success"] else NotesTopicResponse(success=False, error=result.get("error"))
+        result = await generate_notes_from_topic(
+            request.topic, request.level, request.subject,
+            request.style, request.details
+        )
+        if result["success"]:
+            return NotesTopicResponse(
+                success=True, notes=result["notes"], topic=result["topic"],
+                level=result["level"], subject=result["subject"], style=result["style"]
+            )
+        return NotesTopicResponse(success=False, error=result.get("error"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ══ ENDPOINTY QUIZ ══
 @app.post("/api/v1/quiz/generate", response_model=QuizResponse)
 async def generate_quiz(request: QuizRequest):
     try:
-        result = await generate_quiz_from_image(request.image, request.num_questions, request.difficulty)
-        return QuizResponse(success=True, quiz=result["quiz"]) if result["success"] else QuizResponse(success=False, error=result.get("error"))
+        result = await generate_quiz_from_image(
+            request.image, request.num_questions, request.difficulty
+        )
+        if result["success"]:
+            return QuizResponse(success=True, quiz=result["quiz"])
+        return QuizResponse(success=False, error=result.get("error"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/quiz/generate-topic", response_model=QuizResponse)
 async def generate_quiz_topic(request: QuizTopicRequest):
     try:
-        result = await generate_quiz_from_topic(request.topic, request.subject, request.level, request.num_questions, request.difficulty)
-        return QuizResponse(success=True, quiz=result["quiz"]) if result["success"] else QuizResponse(success=False, error=result.get("error"))
+        result = await generate_quiz_from_topic(
+            request.topic, request.subject, request.level,
+            request.num_questions, request.difficulty
+        )
+        if result["success"]:
+            return QuizResponse(success=True, quiz=result["quiz"])
+        return QuizResponse(success=False, error=result.get("error"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ══ STARTUP ══
 @app.on_event("startup")
 async def startup():
     print("=" * 60)

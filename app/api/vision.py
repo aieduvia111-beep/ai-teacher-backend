@@ -1,45 +1,53 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import base64, os, json
-import openai
+from typing import Optional
+from ..openai_vision import (
+    analyze_image_with_gpt4_vision,
+    vision_analyze_homework,
+    vision_analyze_diagram,
+    solve_homework_vision
+)
 
-router = APIRouter(prefix="/vision", tags=["Vision"])
+router = APIRouter(prefix="/api/v1/vision", tags=["Vision"])
 
-class SolveRequest(BaseModel):
+class VisionRequest(BaseModel):
     image: str
-    subject: str = "matematyka"
-    mode: str = "solve"
-    show_steps: bool = True
-    generate_similar: bool = True
-    show_explanation: bool = True
-
-@router.post("/solve")
-async def solve_problem(req: SolveRequest):
-    try:
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        prompt = f"Jestes nauczycielem. Przedmiot: {req.subject}. Rozwiaz WSZYSTKIE zadania ze zdjecia krok po kroku po polsku. Odpowiedz TYLKO w JSON: {{\"success\":true,\"problems\":[{{\"question\":\"tresc\",\"solution\":{{\"steps\":[\"krok1\",\"krok2\"],\"final_answer\":\"odpowiedz\",\"explanation\":\"wyjasnienie\"}}}}]}}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role":"user","content":[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{req.image}","detail":"high"}},{"type":"text","text":prompt}]}],
-            max_tokens=2000,
-            response_format={"type":"json_object"}
-        )
-        return json.loads(response.choices[0].message.content)
-    except Exception as e:
-        return {"success":False,"error":str(e),"problems":[]}
+    subject: Optional[str] = "matematyka"
+    mode: Optional[str] = "solve"
+    prompt: Optional[str] = None
 
 @router.post("/analyze")
-async def analyze(file: UploadFile = File(...), prompt: str = None):
-    if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="Wymagany obraz")
+async def analyze(request: VisionRequest):
     try:
-        image_base64 = base64.b64encode(await file.read()).decode('utf-8')
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role":"user","content":[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_base64}"}},{"type":"text","text":prompt or "Opisz zdjecie po polsku."}]}],
-            max_tokens=1000
-        )
-        return {"success":True,"analysis":response.choices[0].message.content}
+        result = await analyze_image_with_gpt4_vision(request.image, request.prompt)
+        return {"success": True, "analysis": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "analysis": "", "error": str(e)}
+
+@router.post("/analyze-math")
+async def analyze_math(request: VisionRequest):
+    try:
+        result = await vision_analyze_homework(request.image)
+        return {"success": True, "analysis": result}
+    except Exception as e:
+        return {"success": False, "analysis": "", "error": str(e)}
+
+@router.post("/analyze-diagram")
+async def analyze_diagram(request: VisionRequest):
+    try:
+        result = await vision_analyze_diagram(request.image)
+        return {"success": True, "analysis": result}
+    except Exception as e:
+        return {"success": False, "analysis": "", "error": str(e)}
+
+@router.post("/solve")
+async def solve(request: VisionRequest):
+    try:
+        result = await solve_homework_vision(
+            image_base64=request.image,
+            subject=request.subject,
+            mode=request.mode,
+        )
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e), "problems": []}

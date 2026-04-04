@@ -6,13 +6,9 @@
 <title>Eduvia — Vision AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script>
-MathJax = {
-  tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']], processEscapes: true },
-  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
-};
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -24,10 +20,16 @@ MathJax = {
   --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;overflow:hidden;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;height:100vh;cursor:none;}
+html,body{height:100%;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.lightbox.open{opacity:1;pointer-events:all;}
+.lightbox img{max-width:94vw;max-height:94vh;border-radius:10px;box-shadow:0 0 80px rgba(124,106,255,.25);object-fit:contain;}
+.lightbox-close{position:absolute;top:18px;right:18px;width:38px;height:38px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:50%;color:white;font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;line-height:1;}
+.lightbox-close:hover{background:rgba(255,255,255,.22);}
 .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
 .ab{position:absolute;border-radius:50%;filter:blur(110px);animation:afloat 14s ease-in-out infinite;}
 .a1{width:650px;height:650px;background:radial-gradient(circle,rgba(124,106,255,.2),transparent 70%);top:-200px;right:-80px;}
@@ -35,7 +37,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;he
 .a3{width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,.08),transparent 70%);top:45%;left:38%;animation-delay:9s;}
 @keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
 body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
-.app{display:flex;width:100%;height:100vh;position:relative;z-index:2;}
+.app{display:flex;width:100%;min-height:100vh;position:relative;z-index:2;}
 
 /* MOBILE HEADER */
 @keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
@@ -95,7 +97,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .xp-sub{font-size:.64em;color:var(--muted);margin-top:4px;text-align:right;}
 
 /* MAIN */
-.main{flex:1;overflow-y:auto;padding:28px 30px;display:flex;flex-direction:column;gap:20px;}
+.main{flex:1;overflow-y:visible;padding:28px 30px;display:flex;flex-direction:column;gap:20px;}
 .main::-webkit-scrollbar{width:3px;}
 .main::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
 .topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
@@ -298,6 +300,8 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .settings-row{grid-template-columns:1fr;}
   .result-btns{flex-direction:column;}
 }
+
+@media print{html,body{height:auto!important;overflow:visible!important;background:white!important;color:black!important;}.sidebar,.info-panel,.m-hdr,.m-nav,.aurora,.cursor,.cursor-ring,.gen-btn,.result-btns{display:none!important;}.main{overflow:visible!important;padding:0!important;}.problem-card{background:white!important;border:1px solid #ddd!important;color:black!important;page-break-inside:avoid;}}
 </style>
 </head>
 <body>
@@ -416,7 +420,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
         <!-- PODGLAD -->
         <div class="preview-wrap" id="previewWrap">
-          <img id="previewImg" src="" alt="Podglad">
+          <img id="previewImg" src="" alt="Podglad" onclick="openLightbox(this.src)" style="cursor:zoom-in" title="Kliknij aby powiększyć">
           <button class="remove-img" onclick="removeImage()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             Usun
@@ -443,19 +447,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
         <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(event)">
 
-        <div class="or-row" id="orRow">
-          <div class="or-line"></div>
-          <span class="or-text">lub przeciagnij</span>
-          <div class="or-line"></div>
-        </div>
 
-        <div class="upload-zone" id="uploadZone" onclick="pickFile()">
-          <div class="upload-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </div>
-          <h4>Kliknij lub przeciagnij zdjecie tutaj</h4>
-          <p>JPG, PNG, WEBP — max 10 MB</p>
-        </div>
 
         <!-- USTAWIENIA -->
         <div class="settings-row">
@@ -525,7 +517,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
       <!-- LOADING -->
       <div class="loading-view" id="loadingView">
         <div class="spinner-ring"></div>
-        <h3>GPT-4o analizuje zdjecie...</h3>
+        <h3>AI analizuje zdjecie...</h3>
         <p id="loadingSub">Rozpoznaje zadanie i generuje rozwiazanie</p>
         <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
         <ul class="steps-list">
@@ -627,11 +619,7 @@ function go(u){window.location.href=u;}
 function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
 function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
 
-/* DRAG */
-const zone=document.getElementById('uploadZone');
-zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
-zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
-zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processFile(f);});
+/* DRAG removed - no uploadZone */
 
 /* PLIK */
 function pickFile(){document.getElementById('fileInput').click();}
@@ -669,8 +657,6 @@ function setImage(dataUrl){
   document.getElementById('previewImg').src=dataUrl;
   document.getElementById('previewWrap').style.display='block';
   document.getElementById('captureGrid').style.display='none';
-  document.getElementById('orRow').style.display='none';
-  document.getElementById('uploadZone').style.display='none';
   const btn=document.getElementById('genBtn');
   btn.disabled=false;
   btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Rozwiaz zadanie →';
@@ -680,8 +666,6 @@ function removeImage(){
   imgBase64=null;
   document.getElementById('previewWrap').style.display='none';
   document.getElementById('captureGrid').style.display='grid';
-  document.getElementById('orRow').style.display='flex';
-  document.getElementById('uploadZone').style.display='block';
   document.getElementById('fileInput').value='';
   const btn=document.getElementById('genBtn');
   btn.disabled=true;
@@ -723,7 +707,7 @@ async function solve(){
   const subject=document.getElementById('subject').value;
   const mode=document.getElementById('mode').value;
   try{
-    const res=await fetch('https://ai-teacher-backend-wghb.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    const res=await fetch((window.location.protocol==='file:'||!window.location.hostname?'http://127.0.0.1:8000':window.location.origin)+'/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     const data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad analizy');
@@ -762,7 +746,7 @@ function renderResult(data,subject){
   document.getElementById('loadingView').style.display='none';
   const problems=data.problems||[];
   let html=`<div class="result-header"><div class="result-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Rozwiazanie gotowe</div><div class="badge-row"><span class="badge badge-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>${problems.length} ${problems.length===1?'zadanie':problems.length<5?'zadania':'zadan'}</span><span class="badge badge-accent">${SL[subject]||subject}</span></div></div>`;
-  if(!problems.length){html+=`<div style="font-size:.9em;line-height:1.8">${formatText(data.analysis||data.text||'Brak odpowiedzi')}</div>`;}
+  if(!problems.length){var txt=data.analysis||data.text||'';if(txt)html+=`<div style="font-size:.9em;line-height:1.8;padding:16px 0">${formatText(txt)}</div>`;else html+=`<div style="color:var(--red);font-size:.9em">Blad. Sprawdz terminal.</div>`;}
   else{problems.forEach((p,i)=>{
     html+=`<div class="problem-card"><div class="problem-nr">Zadanie ${i+1} z ${problems.length}</div>`;
     if(p.question)html+=`<div class="problem-q">${formatText(p.question)}</div>`;
@@ -772,32 +756,123 @@ function renderResult(data,subject){
     }else if(p.solution&&typeof p.solution==='string'){html+=`<div class="steps-title">Rozwiazanie</div><div style="font-size:.88em;line-height:1.8;margin-bottom:10px">${formatText(p.solution)}</div>`;}
     if(p.solution?.final_answer)html+=`<div class="answer-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Odpowiedz</div><div class="answer-val">${formatText(p.solution.final_answer)}</div></div>`;
     if(opts.explain&&p.solution?.explanation)html+=`<div class="explain-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg>Wyjasnienie teorii</div><div style="font-size:.86em;line-height:1.7">${formatText(p.solution.explanation)}</div></div>`;
+    if(p.solution?.alternative_method&&p.solution.alternative_method.trim().toLowerCase()!=='brak'&&p.solution.alternative_method.length>10){html+=`<div style="margin-top:10px;padding:12px 14px;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:12px"><div class="box-label" style="color:var(--gold);margin-bottom:6px">Alternatywna metoda</div><div style="font-size:.86em;line-height:1.7">${formatText(p.solution.alternative_method)}</div></div>`;}
     if(opts.similar&&p.similar_problems?.length>0){html+=`<div class="similar-box"><div class="box-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Podobne zadania</div>`;p.similar_problems.forEach(sp=>html+=`<div class="similar-item"><div class="similar-dot"></div><div>${formatText(sp)}</div></div>`);html+='</div>';}
     html+='</div>';
   });}
-  html+=`<div class="result-btns"><button class="btn-secondary" onclick="newScan()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Nowe zdjecie</button><button class="btn-accent" onclick="window.print()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Drukuj</button></div>`;
+  html+=`<div class="result-btns"><button class="btn-secondary" onclick="newScan()">Nowe zdjecie</button><button class="btn-secondary" onclick="copyResult(this)">Kopiuj</button><button class="btn-accent" onclick="window.print()">Drukuj</button></div>`;
   const el=document.getElementById('resultView');el.innerHTML=html;el.style.display='block';
-  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([el]).catch(()=>{});
+  setTimeout(()=>renderLatex(el),100);
 }
 
 /* FORMAT */
-function formatText(text){
-  if(!text)return'';
-  const mp=[];
-  text=text.replace(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g,m=>{mp.push(m);return'\x01M'+(mp.length-1)+'\x01';});
-  text=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  text=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-  text=text.replace(/\*(.*?)\*/g,'<em>$1</em>');
-  text=text.replace(/\n/g,'<br>');
-  text=text.replace(/\x01M(\d+)\x01/g,(_,i)=>mp[+i]);
-  return text;
+function renderLatex(el){
+  if(typeof renderMathInElement==='undefined'){
+    setTimeout(()=>renderLatex(el),300);
+    return;
+  }
+  // Renderuj kazde zadanie osobno - blad w jednym nie zatrzyma reszty
+  var cards=el.querySelectorAll('.problem-card');
+  if(cards.length>0){
+    cards.forEach(function(card){
+      try{
+        renderMathInElement(card,{
+          delimiters:[
+            {left:'$$',right:'$$',display:true},
+            {left:'$',right:'$',display:false},
+            {left:'\\[',right:'\\]',display:true},
+            {left:'\\(',right:'\\)',display:false}
+          ],
+          throwOnError:false,
+          strict:false,
+          trust:true
+        });
+      }catch(e){}
+    });
+  } else {
+    try{
+      renderMathInElement(el,{
+        delimiters:[
+          {left:'$$',right:'$$',display:true},
+          {left:'$',right:'$',display:false},
+          {left:'\\[',right:'\\]',display:true},
+          {left:'\\(',right:'\\)',display:false}
+        ],
+        throwOnError:false,
+        strict:false,
+        trust:true
+      });
+    }catch(e){}
+  }
 }
+
+function formatText(t){
+  if(!t)return'';
+  t=String(t);
+
+  // KROK 1: Normalizuj podwojne backslashe
+  t=t.replace(/\\\\/g,'\\');
+
+  // KROK 1b: Usun artefakty Unicode (□ U+25A1 i podobne kwadraty z OCR/AI)
+  t=t.replace(/[\u25a0-\u25ff\u2400-\u244f\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'');
+
+  // KROK 2: Naprawa obcietych komend
+  t=t.replace(/(^|[^a-zA-Z\\])rac\{/g,'$1\\frac{');
+  t=t.replace(/(^|[^a-zA-Z\\])ext\{/g,'$1\\text{');
+  t=t.replace(/(^|[^a-zA-Z\\])qrt(\[|\{)/g,'$1\\sqrt$2');
+  t=t.replace(/(^|[^a-zA-Z\\])imes(\s|$|\{)/g,'$1\\times$2');
+
+  // KROK 3: Spacja przed \komenda gdy poprzedza cyfra/litera
+  t=t.replace(/([0-9a-zA-Z])(\\[a-zA-Z])/g,'$1 $2');
+
+  // KROK 4: Chron istniejace $...$
+  var ph=[];
+  t=t.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$/g,function(m){
+    ph.push(m);return'PHSTART'+(ph.length-1)+'PHEND';
+  });
+
+  // KROK 5: Owiaj komendy LaTeX
+  t=t.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\})*(?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]))*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})?/g,
+    function(m){if(m.indexOf('PHSTART')!==-1)return m;return'$'+m+'$';}
+  );
+  t=t.replace(/\\[a-zA-Z]+(?![a-zA-Z{$\[])/g,
+    function(m){if(m.indexOf('PHSTART')!==-1)return m;return'$'+m+'$';}
+  );
+
+  // KROK 6: Potegi/indeksy
+  t=t.replace(/([a-zA-Z0-9])([_^])(\{[^{}]+\}|[0-9]+(?:\.[0-9]+)?)/g,'$$$1$2$3$$');
+
+  // KROK 7: Przywroc $...$
+  t=t.replace(/PHSTART(\d+)PHEND/g,function(_,i){return ph[parseInt(i)];});
+
+  // KROK 8: KLUCZOWE - wyrzuc dolary ktore sa wewnatrz {} bo psuja LaTeX
+  // np. $\frac{3 $\times$ 9}{9}$ -> $\frac{3 \times 9}{9}$
+  var prev='';
+  while(prev!==t){
+    prev=t;
+    t=t.replace(/\{([^{}]*)\$([^${}]+)\$([^{}]*)\}/g,function(m,a,inner,b){
+      return'{'+a+inner+b+'}';
+    });
+  }
+
+  // KROK 9: Napraw podwojne $$ nie-display (artefakt z krokow 5+6)
+  t=t.replace(/\$\$([^$\n]{1,100})\$\$/g,function(m,inner){
+    if(/^\s*\\/.test(inner))return m;
+    return'$'+inner.trim()+'$';
+  });
+
+  t=t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\*(.*?)\*/g,'<em>$1</em>');
+  t=t.replace(/\n/g,'<br>');
+  return t;
+}
+
 
 /* HISTORIA */
 function renderHistory(){
   if(!history.length){document.getElementById('historyCard').style.display='none';return;}
   document.getElementById('historyCard').style.display='block';
-  document.getElementById('historyList').innerHTML=history.slice(0,4).map(h=>`<div class="history-item" onclick="loadHistory(${h.id})"><img class="history-thumb" src="${h.thumb}" onerror="this.style.display='none'"><div class="history-info"><div class="history-subject">${SL[h.subject]||h.subject}</div><div class="history-preview">${h.preview}</div></div><div class="history-time">${h.time}</div></div>`).join('');
+  document.getElementById('historyList').innerHTML=history.slice(0,4).map(h=>`<div class="history-item" onclick="loadHistory(${h.id})"><img class="history-thumb" src="${h.thumb}" onerror="this.style.display='none'"><div class="history-info"><div class="history-subject">${SL[h.subject]||h.subject}</div><div class="history-preview">${h.preview.replace(/\$[^$]+\$/g,"[wzor]")}</div></div><div class="history-time">${h.time}</div></div>`).join('');
 }
 function loadHistory(id){const e=history.find(h=>h.id===id);if(e){document.getElementById('formView').style.display='none';renderResult(e.result,e.subject);}}
 function newScan(){document.getElementById('resultView').style.display='none';document.getElementById('formView').style.display='block';removeImage();}
@@ -814,6 +889,12 @@ function showErr(msg){document.getElementById('errText').textContent=msg;documen
 function hideErr(){document.getElementById('errMsg').classList.remove('visible');}
 
 /* CURSOR */
+function copyResult(btn){var el=document.getElementById('resultView');navigator.clipboard.writeText(el.innerText||'').then(function(){var o=btn.innerHTML;btn.innerHTML='Skopiowano!';setTimeout(function(){btn.innerHTML=o;},2000);}).catch(function(){});}
+document.addEventListener('wheel',function(e){var m=document.querySelector('.main');if(m){m.style.overflowY='auto';m.scrollTop+=e.deltaY;}},{passive:true});
+function openLightbox(src){document.getElementById('lightboxImg').src=src;document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbox();});
+
 (function(){
   const c=document.getElementById('cur'),r=document.getElementById('ring');
   let mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
@@ -825,5 +906,9 @@ function hideErr(){document.getElementById('errMsg').classList.remove('visible')
   });
 })();
 </script>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
 </body>
 </html>
