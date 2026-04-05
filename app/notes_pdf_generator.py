@@ -16,6 +16,12 @@ import os, io, re, json, math
 from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
+# ── POLSKIE ZNAKI W MATPLOTLIB ──────────────────────────────
+import matplotlib as _mpl
+_mpl.rcParams['font.family'] = 'DejaVu Sans'
+_mpl.rcParams['axes.unicode_minus'] = False
+# ─────────────────────────────────────────────────────────────
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
@@ -74,30 +80,30 @@ FMB= 'DJ-MB' if _OK else 'Courier-Bold'
 # NOWA PALETA KOLORÓW — Premium Dark
 # ============================================================
 # Tła
-BG_PAGE     = '#0a0a10'   # Bardzo ciemne tło strony
-BG_CARD     = '#12121c'   # Karta/sekcja
-BG_CARD2    = '#0f0f1a'   # Alternatywna karta
-BG_CODE     = '#090912'   # Tło kodu/przykładu
-BG_ACCENT   = '#1a1030'   # Tło z akcentem fioletowym
-BG_GREEN    = '#081510'   # Tło z akcentem zielonym
-BG_GOLD     = '#111000'   # Tło z akcentem złotym
-BG_RED      = '#130808'   # Tło z akcentem czerwonym
-BG_BLUE     = '#080c18'   # Tło z akcentem niebieskim
+BG_PAGE     = '#FFFFFF'   # Bardzo ciemne tło strony
+BG_CARD     = '#F8F7FF'   # Karta/sekcja
+BG_CARD2    = '#F0EEFF'   # Alternatywna karta
+BG_CODE     = '#F0FFF8'   # Tło kodu/przykładu
+BG_ACCENT   = '#F0EEFF'   # Tło z akcentem fioletowym
+BG_GREEN    = '#F0FFF8'   # Tło z akcentem zielonym
+BG_GOLD     = '#FFFBF0'   # Tło z akcentem złotym
+BG_RED      = '#FFF5F5'   # Tło z akcentem czerwonym
+BG_BLUE     = '#EBF5FF'   # Tło z akcentem niebieskim
 
 # Akcenty
-ACC_PURPLE  = '#7c6aff'   # Główny fiolet
-ACC_CYAN    = '#22d3a0'   # Zielony/turkus
-ACC_GOLD    = '#fbbf24'   # Złoty
-ACC_ORANGE  = '#f97316'   # Pomarańczowy
-ACC_BLUE    = '#38bdf8'   # Niebieski
-ACC_PINK    = '#f472b6'   # Różowy
-ACC_RED     = '#ef4444'   # Czerwony
+ACC_PURPLE  = '#6C5CE7'   # Główny fiolet
+ACC_CYAN    = '#00B894'   # Zielony/turkus
+ACC_GOLD    = '#D4A017'   # Złoty
+ACC_ORANGE  = '#E05A00'   # Pomarańczowy
+ACC_BLUE    = '#0984E3'   # Niebieski
+ACC_PINK    = '#D63085'   # Różowy
+ACC_RED     = '#C0392B'   # Czerwony
 
 # Tekst
-TXT_MAIN    = '#f0f0f8'   # Główny tekst
-TXT_SUB     = '#c0c0d8'   # Podrzędny tekst
-TXT_MUTED   = '#6b6b8a'   # Wyciszony tekst
-TXT_WHITE   = '#ffffff'
+TXT_MAIN    = '#1A1A2E'   # Główny tekst
+TXT_SUB     = '#2D3436'   # Podrzędny tekst
+TXT_MUTED   = '#636E72'   # Wyciszony tekst
+TXT_WHITE   = '#1A1A2E'
 
 # ReportLab kolory
 C_BG   = colors.HexColor(BG_PAGE)
@@ -115,7 +121,7 @@ PW, PH = A4
 
 # Paleta gradientów sekcji
 SECTION_ACCENTS = [ACC_PURPLE, ACC_CYAN, ACC_GOLD, ACC_ORANGE, ACC_BLUE, ACC_PINK]
-SECTION_BG      = [BG_ACCENT,  BG_GREEN, BG_GOLD,  BG_RED,    BG_BLUE,  '#130818']
+SECTION_BG      = [BG_ACCENT,  BG_GREEN, BG_GOLD,  BG_RED,    BG_BLUE,  '#FFF0FA']
 
 # ============================================================
 # HELPER
@@ -171,14 +177,14 @@ def render_formula_png(formula: str, width_pt: float = 475) -> bytes | None:
     w_inch = max(1.0, width_pt / 72.0)
     from PIL import Image as _PILf; import io as _iof
     try:
-        fig = plt.figure(figsize=(w_inch, 1.2), dpi=150)
+        fig = plt.figure(figsize=(w_inch, 1.2), dpi=200)
         fig.patch.set_facecolor(BG_ACCENT)
         ax = fig.add_axes([0, 0, 1, 1])
         ax.set_facecolor(BG_ACCENT); ax.axis('off')
         ax.text(0.5, 0.5, f, fontsize=22, ha='center', va='center',
                color=TXT_MAIN, transform=ax.transAxes)
         buf = _iof.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight',
+        plt.savefig(buf, format='png', dpi=200, bbox_inches='tight',
                    facecolor=BG_ACCENT, edgecolor='none', pad_inches=0.12)
         plt.close(fig); buf.seek(0)
         rgb = _PILf.open(buf).convert('RGB')
@@ -204,7 +210,7 @@ def formula_to_rl_image(formula: str, width_pt: float = 475) -> RLImage | None:
 
 def _render_text_png(tekst, width_pt, height_pt=28, fontsize=9, color=TXT_MAIN, bg=BG_PAGE, bold=False):
     from PIL import Image as _PILT; import io as _iot; import re as _re_rt
-    DPI = 150
+    DPI = 200
     W_IN = max(0.5, width_pt / 72)
     fw = "bold" if bold else "normal"
     if '$' in tekst:
@@ -289,7 +295,7 @@ def add_page_bg(c, doc):
 
     # Subtelna siatka (bardzo delikatna)
     try: c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.04)
-    except: c.setStrokeColor(colors.HexColor('#1a1a2a'))
+    except: c.setStrokeColor(colors.HexColor('#DFE6E9'))
     c.setLineWidth(0.4)
     for x in range(0, int(w)+1, 48):
         c.line(x, 0, x, h)
@@ -304,7 +310,7 @@ def add_page_bg(c, doc):
         c.circle(-20, h + 20, r, fill=1, stroke=0)
 
     # Header bar — elegancki ciemny pas
-    c.setFillColor(colors.HexColor('#0d0d16'))
+    c.setFillColor(colors.HexColor('#FFFFFF'))
     c.rect(0, h - 38, w, 38, fill=1, stroke=0)
 
     # Kolorowy pasek na górze (gradientowy efekt przez 3 prostokąty)
@@ -324,7 +330,7 @@ def add_page_bg(c, doc):
     c.drawRightString(w - 14, h - 24, f"str. {pg}")
 
     # Footer bar
-    c.setFillColor(colors.HexColor('#0d0d16'))
+    c.setFillColor(colors.HexColor('#FFFFFF'))
     c.rect(0, 0, w, 22, fill=1, stroke=0)
     c.setFillColor(colors.HexColor(ACC_PURPLE))
     c.rect(0, 0, w, 1.5, fill=1, stroke=0)
@@ -338,14 +344,14 @@ def add_page_bg(c, doc):
 # ============================================================
 def draw_cover(c, tytul, podtytul, klasa):
     w, h = PW, PH
-    c.setFillColor(colors.HexColor('#07070e'))
+    c.setFillColor(colors.HexColor('#FFFFFF'))
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
     # Duże glowy w tle
     for i in range(16):
         alpha = max(0.0, 0.12 - i * 0.007)
         try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
-        except: c.setFillColorRGB(*hex2rgb('#2a2060'))
+        except: c.setFillColorRGB(*hex2rgb('#E0D8FF'))
         c.circle(w * 0.5, h * 0.5, 80 + i * 28, fill=1, stroke=0)
 
     for i in range(10):
@@ -365,7 +371,7 @@ def draw_cover(c, tytul, podtytul, klasa):
     for y in range(0, int(h)+1, 40): c.line(0, y, w, y)
 
     # Top brand bar
-    c.setFillColor(colors.HexColor('#0d0d1a'))
+    c.setFillColor(colors.HexColor('#F8F7FF'))
     c.rect(0, h - 52, w, 52, fill=1, stroke=0)
     c.setFillColor(colors.HexColor(ACC_PURPLE))
     c.rect(0, h - 52, w, 2.5, fill=1, stroke=0)
@@ -380,7 +386,7 @@ def draw_cover(c, tytul, podtytul, klasa):
 
     # Badge poziom
     bx, by, bw, bh2 = w/2 - 55, h - 50 - 32, 110, 22
-    c.setFillColor(colors.HexColor('#1a1030'))
+    c.setFillColor(colors.HexColor('#F0EEFF'))
     c.roundRect(bx, by, bw, bh2, 11, fill=1, stroke=0)
     c.setStrokeColor(colors.HexColor(ACC_PURPLE)); c.setLineWidth(1)
     c.roundRect(bx, by, bw, bh2, 11, fill=0, stroke=1)
@@ -408,7 +414,7 @@ def draw_cover(c, tytul, podtytul, klasa):
     c.drawCentredString(w/2, ty - 4, podtytul)
 
     # Separator linia
-    c.setStrokeColor(colors.HexColor('#2a2a4a')); c.setLineWidth(1)
+    c.setStrokeColor(colors.HexColor('#DFE6E9')); c.setLineWidth(1)
     c.line(w/2 - 120, ty - 22, w/2 + 120, ty - 22)
 
     # Data
@@ -445,7 +451,7 @@ class SectionHeader(Flowable):
     def draw(self):
         c = self.canv; W = self.width; H = self.height
         acc = self.accent
-        bg_col = '#13131f'
+        bg_col = '#F8F7FF'
 
         # Tło karty
         c.setFillColor(colors.HexColor(bg_col))
@@ -491,7 +497,7 @@ class ConceptCard(Flowable):
     def draw(self):
         c = self.canv; W = self.width; H = self.height
         ACCENTS = [ACC_PURPLE, ACC_CYAN, ACC_GOLD, ACC_ORANGE]
-        BG_LIST = ['#111028', '#081510', '#0f0d00', '#100800']
+        BG_LIST = ['#F0EEFF','#F0FFF8','#FFFBF0','#FFF5F5','#EBF5FF','#FFF0FA']
         acc = ACCENTS[self.idx % 4]
         bg  = BG_LIST[self.idx % 4]
 
@@ -573,7 +579,7 @@ class MindMapItem(Flowable):
     def draw(self):
         c = self.canv; indent = self.poziom * 28; avail = self.width - indent; H = self.height
         COLS = [ACC_PURPLE, ACC_CYAN, TXT_MUTED]
-        BG_MM = ['#1a1030', '#081510', '#0d0d14']
+        BG_MM = ['#F0EEFF', '#F0FFF8', '#FFFFFF']
         col = COLS[min(self.poziom, 2)]
         bg  = BG_MM[min(self.poziom, 2)]
         c.setFillColor(colors.HexColor(bg))
@@ -676,9 +682,9 @@ def get_styles():
                                         spaceBefore=24, spaceAfter=12,
                                         letterSpacing=1.5),
         "summary": ParagraphStyle("summ", fontName=FN, fontSize=10.5, leading=17,
-                                  textColor=colors.HexColor(TXT_MAIN), spaceAfter=5),
+                                  textColor=colors.HexColor('#1A1A2E'), spaceAfter=5),
         "bullet_item": ParagraphStyle("bi", fontName=FN, fontSize=10, leading=15,
-                                      textColor=colors.HexColor(TXT_MAIN),
+                                      textColor=colors.HexColor('#1A1A2E'),
                                       leftIndent=12, spaceAfter=4),
         "ciekawostka": ParagraphStyle("ciek", fontName=FI, fontSize=9.5, leading=14,
                                       textColor=colors.HexColor(ACC_GOLD),
@@ -731,7 +737,7 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     ax_h.set_facecolor(accent_color); ax_h.axis('off')
     poj_clean = pojecie.replace('$','')[:38]
     ax_h.text(0.5, 0.5, poj_clean, fontsize=9, fontweight='bold',
-              color='white', ha='center', va='center', transform=ax_h.transAxes, clip_on=True)
+              color='#1A1A2E', ha='center', va='center', transform=ax_h.transAxes, clip_on=True)
     # Body
     ax_b = fig.add_axes([0.04, 0.02, 0.92, 0.68])
     ax_b.set_facecolor(BG_CARD); ax_b.axis('off')
@@ -989,7 +995,7 @@ class PremiumNotesGenerator:
                     # ZAWSZE przez _render_text_png - jednakowy font
                     from PIL import Image as _PILl; import io as _iol
                     png_l = _render_text_png(tekst, W-4, 26, fontsize=10,
-                                             color='#c8f0d8', bg=BG_GREEN)
+                                             color='#1A4A32', bg=BG_GREEN)
                     if png_l:
                         _pl = _PILl.open(_iol.BytesIO(png_l)).size[1]
                         rows.append([RLImage(_iol.BytesIO(png_l), width=W-4, height=_pl/150*72)])
@@ -1039,7 +1045,7 @@ class PremiumNotesGenerator:
             story.append(Spacer(1, 8))
             from PIL import Image as _PILdl; import io as _iodl
             _png_dl = _render_text_png("  " + dlaczego, W-4, 28, fontsize=10.5,
-                                       color='#d0f0ff', bg=BG_BLUE)
+                                       color='#0A3060', bg=BG_BLUE)
             if _png_dl:
                 _pil_dl = _PILdl.open(_iodl.BytesIO(_png_dl))
                 p_dl = RLImage(_iodl.BytesIO(_png_dl), width=W-4,
@@ -1125,7 +1131,7 @@ class PremiumNotesGenerator:
                                           height=_pc.size[1]/150*72)
                     # Zwykły tekst - Paragraph z identycznym fontem
                     return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
-                        fontSize=10, textColor=colors.HexColor(TXT_MAIN), alignment=1))
+                        fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
                 nagl_cells = [Paragraph(st(_l2u(n)), ParagraphStyle("th", fontName=FB,
                     fontSize=10, textColor=C_W, alignment=1)) for n in nagl]
@@ -1134,11 +1140,11 @@ class PremiumNotesGenerator:
                     ('BACKGROUND',(0,0),(-1,0), colors.HexColor(ACC_PURPLE)),
                     ('TEXTCOLOR',(0,0),(-1,0), C_W),
                     ('ROWBACKGROUNDS',(0,1),(-1,-1),
-                     [colors.HexColor('#111120'), colors.HexColor('#0e0e1c')]),
+                     [colors.HexColor('#F8F7FF'), colors.HexColor('#F0EEFF')]),
                     ('TEXTCOLOR',(0,1),(-1,-1), colors.HexColor(TXT_MAIN)),
                     ('FONTNAME',(0,1),(-1,-1), FN),('FONTSIZE',(0,1),(-1,-1), 10),
                     ('ALIGN',(0,0),(-1,-1),'CENTER'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-                    ('GRID',(0,0),(-1,-1), 0.5, colors.HexColor('#2a2a3a')),
+                    ('GRID',(0,0),(-1,-1), 0.5, colors.HexColor('#DFE6E9')),
                     ('LINEBELOW',(0,0),(-1,0), 2, colors.HexColor(ACC_PURPLE)),
                     ('TOPPADDING',(0,0),(-1,-1), 12),('BOTTOMPADDING',(0,0),(-1,-1), 12),
                     ('LEFTPADDING',(0,0),(-1,-1), 8),('RIGHTPADDING',(0,0),(-1,-1), 8),
@@ -1208,7 +1214,7 @@ class PremiumNotesGenerator:
                 opcje = q.get('opcje', [])
                 odp = q.get('odpowiedz', 'A')
                 wyjasn = q.get('wyjasnienie', '')
-                bg_quiz = '#0f0f18' if i % 2 == 0 else '#0d0d16'
+                bg_quiz = '#F8F7FF' if i % 2 == 0 else '#FFFFFF'
 
                 # Pytanie
                 from PIL import Image as _PILpyt; import io as _iopyt
@@ -1228,7 +1234,7 @@ class PremiumNotesGenerator:
                     ltr = op[0] if op else '?'
                     is_correct = (ltr == odp)
                     col = ACC_CYAN if is_correct else TXT_MUTED
-                    bg_op = '#081a10' if is_correct else bg_quiz
+                    bg_op = '#F0FFF8' if is_correct else bg_quiz
                     # ZAWSZE przez _render_text_png - jednakowy rozmiar czcionki
                     from PIL import Image as _PILop; import io as _ioop
                     _png_op = _render_text_png(f'  {op}', W-8, 28, fontsize=11,
@@ -1241,7 +1247,7 @@ class PremiumNotesGenerator:
                         op_elem = Paragraph(st(f'  {op}'),
                             ParagraphStyle("opp", fontName=FN, fontSize=11,
                                            textColor=colors.HexColor(col)))
-                    border_col = ACC_CYAN if is_correct else '#2a2a3a'
+                    border_col = ACC_CYAN if is_correct else '#DFE6E9'
                     t_op = Table([[op_elem]], colWidths=[W])
                     t_op.setStyle(TableStyle([
                         ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
@@ -1286,7 +1292,7 @@ class PremiumNotesGenerator:
                 if not linia.endswith('.'): linia += '.'
                 from PIL import Image as _PILps2; import io as _iops2
                 _png_ps = _render_text_png(linia, W-32, 28, fontsize=10.5,
-                                           color=TXT_MAIN, bg='#101028')
+                                           color=TXT_MAIN, bg='#F0EEFF')
                 if _png_ps:
                     _pil_ps = _PILps2.open(_iops2.BytesIO(_png_ps))
                     rows_ps.append([RLImage(_iops2.BytesIO(_png_ps), width=W-32,
@@ -1295,7 +1301,7 @@ class PremiumNotesGenerator:
                     rows_ps.append([Paragraph(st(linia), S['summary'])])
             t = Table(rows_ps, colWidths=[W])
             t.setStyle(TableStyle([
-                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor('#101028')),
+                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor('#F0EEFF')),
                 ('LEFTPADDING',(0,0),(-1,-1), 20),('RIGHTPADDING',(0,0),(-1,-1), 20),
                 ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
                 ('LINEBELOW',(0,-1),(-1,-1), 3, colors.HexColor(ACC_CYAN)),

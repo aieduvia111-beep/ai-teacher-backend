@@ -699,7 +699,7 @@ async function generate(){
   document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';
   startProgress(photos.length>0);
   try{
-    const res=await fetch('http://localhost:8000/api/v1/notes-pdf/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('http://100.115.92.195:8000/api/v1/notes-pdf/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('application/pdf')){

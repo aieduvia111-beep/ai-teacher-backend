@@ -652,7 +652,7 @@ async function generate(){
   const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ};
   document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';document.getElementById('genBtn').disabled=true;startProgress();
   try{
-    const res=await fetch('http://localhost:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('http://100.115.92.195:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('application/pdf')){
