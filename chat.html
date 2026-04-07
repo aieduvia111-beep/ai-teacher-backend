@@ -703,61 +703,110 @@ document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style
 // STATE
 let history = [], attachments = [], isThinking = false;
 
-// ═══ LATEX RENDER (wzorowany na vision.html) ═══
+// ═══ LATEX RENDER — identyczny z vision.html ═══
 function renderLatex(el) {
   if (typeof renderMathInElement === 'undefined') { setTimeout(() => renderLatex(el), 300); return; }
-  try {
-    renderMathInElement(el, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false },
-        { left: '\\[', right: '\\]', display: true },
-        { left: '\\(', right: '\\)', display: false }
-      ],
-      throwOnError: false,
-      strict: false,
-      trust: true
+  // Renderuj każdą bąbelkę osobno — błąd w jednej nie zatrzyma reszty
+  var bubbles = el.querySelectorAll ? el.querySelectorAll('.bubble') : [];
+  if (bubbles.length > 0) {
+    bubbles.forEach(function(b) {
+      try {
+        renderMathInElement(b, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false, strict: false, trust: true
+        });
+      } catch(e) {}
     });
-  } catch(e) {}
+  } else {
+    try {
+      renderMathInElement(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false, strict: false, trust: true
+      });
+    } catch(e) {}
+  }
 }
 
-// ═══ FORMAT TEXT — naprawia LaTeX z AI zanim trafi do DOM ═══
+// ═══ FORMAT TEXT — 9-krokowy, identyczny z vision.html ═══
 function formatText(t) {
   if (!t) return '';
   t = String(t);
-  // Normalizuj podwójne backslashe (JSON escaping)
+
+  // KROK 1: Normalizuj podwójne backslashe
   t = t.replace(/\\\\/g, '\\');
-  // Usuń artefakty Unicode
+
+  // KROK 1b: Usuń artefakty Unicode (□ i podobne kwadraty z OCR/AI)
   t = t.replace(/[\u25a0-\u25ff\u2400-\u244f\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
-  // Naprawa obciętych komend LaTeX
+
+  // KROK 2: Naprawa obciętych komend
   t = t.replace(/(^|[^a-zA-Z\\])rac\{/g, '$1\\frac{');
   t = t.replace(/(^|[^a-zA-Z\\])ext\{/g, '$1\\text{');
   t = t.replace(/(^|[^a-zA-Z\\])qrt(\[|\{)/g, '$1\\sqrt$2');
   t = t.replace(/(^|[^a-zA-Z\\])imes(\s|$|\{)/g, '$1\\times$2');
 
-  // Zabezpiecz istniejące bloki $...$ i $$...$$
-  const safe = [];
-  t = t.replace(/\$\$[\s\S]+?\$\$/g, m => { safe.push(m); return '\x00S'+( safe.length-1)+'\x00'; });
-  t = t.replace(/\$[^\$\n]+?\$/g,    m => { safe.push(m); return '\x00S'+( safe.length-1)+'\x00'; });
+  // KROK 3: Spacja przed \komenda gdy poprzedza cyfra/litera
+  t = t.replace(/([0-9a-zA-Z])(\\[a-zA-Z])/g, '$1 $2');
 
-  // Auto-owij samodzielne komendy LaTeX w $...$
-  // Np. \Delta, \frac{...}{...}, \sqrt{...}, \times itp.
-  t = t.replace(/\\[a-zA-Z]+(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\]]*\])*/g, match => {
-    return '$' + match + '$';
+  // KROK 4: Chroń istniejące $...$
+  var ph = [];
+  t = t.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$/g, function(m) {
+    ph.push(m); return 'PHSTART' + (ph.length - 1) + 'PHEND';
   });
 
-  // Przywróć zabezpieczone bloki
-  t = t.replace(/\x00S(\d+)\x00/g, (_, i) => safe[+i]);
+  // KROK 5: Owij komendy LaTeX w $...$
+  t = t.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\})*(?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]))*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})?/g,
+    function(m) { if (m.indexOf('PHSTART') !== -1) return m; return '$' + m + '$'; }
+  );
+  t = t.replace(/\\[a-zA-Z]+(?![a-zA-Z{$\[])/g,
+    function(m) { if (m.indexOf('PHSTART') !== -1) return m; return '$' + m + '$'; }
+  );
+
+  // KROK 6: Potęgi/indeksy np. x^2 → $x^2$
+  t = t.replace(/([a-zA-Z0-9])([_^])(\{[^{}]+\}|[0-9]+(?:\.[0-9]+)?)/g, '$$$1$2$3$$');
+
+  // KROK 7: Przywróć chronione $...$
+  t = t.replace(/PHSTART(\d+)PHEND/g, function(_, i) { return ph[parseInt(i)]; });
+
+  // KROK 8: KLUCZOWE — wyrzuć dolary wewnątrz {} bo psują LaTeX
+  // np. $\frac{3 $\times$ 9}{9}$ → $\frac{3 \times 9}{9}$
+  var prev = '';
+  while (prev !== t) {
+    prev = t;
+    t = t.replace(/\{([^{}]*)\$([^${}]+)\$([^{}]*)\}/g, function(m, a, inner, b) {
+      return '{' + a + inner + b + '}';
+    });
+  }
+
+  // KROK 9: Napraw podwójne $$ nie-display (artefakt z kroków 5+6)
+  t = t.replace(/\$\$([^$\n]{1,100})\$\$/g, function(m, inner) {
+    if (/^\s*\\/.test(inner)) return m;
+    return '$' + inner.trim() + '$';
+  });
+
   return t;
 }
 
 // Renderuj markdown chroniąc bloki LaTeX przed marked
 function renderMarkdownWithLatex(text) {
+  // Najpierw formatText — naprawia LaTeX z AI
+  const fixed = formatText(text);
   const placeholders = [];
-  let safe = text
-    .replace(/\$\$[\s\S]+?\$\$/g, m => { placeholders.push(m); return 'LATEXBLOCK'+(placeholders.length-1)+'END'; })
-    .replace(/\$[^\$\n]+?\$/g,    m => { placeholders.push(m); return 'LATEXBLOCK'+(placeholders.length-1)+'END'; });
+  // Chroń bloki LaTeX przed marked (który niszczy backslashe)
+  let safe = fixed
+    .replace(/\$\$[\s\S]+?\$\$/g, m => { placeholders.push(m); return 'LATEXBLOCK' + (placeholders.length - 1) + 'END'; })
+    .replace(/\$[^\$\n]+?\$/g,    m => { placeholders.push(m); return 'LATEXBLOCK' + (placeholders.length - 1) + 'END'; });
   let html = marked.parse(safe);
+  // Przywróć LaTeX
   html = html.replace(/LATEXBLOCK(\d+)END/g, (_, i) => placeholders[+i]);
   return html;
 }
@@ -817,7 +866,8 @@ CHART — dla danych liczbowych: {"title":"...","labels":[...],"values":[...]}
 
 ZAWSZE dodaj diagram lub chart dla: biologia, chemia, fizyka, historia (chronologia/etapy), matematyka (algorytm/wzory).
 ZAWSZE podaj 2-3 prawdziwe linki Wikipedia PL lub źródeł edukacyjnych pasujących do tematu.
-has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (blok) dla wzorów — NIGDY \\( \\) ani \\[ \\]`
+has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (blok) dla wzorów.
+Gdy widzisz zdjecie z zadaniami lub liste zadan - ROZWIAZ KAZDE zadanie osobno krok po kroku. Numeruj: ## Zadanie 1, ## Zadanie 2 itd. Kazde zadanie kompletnie z pelnym rozwiazaniem i odpowiedzia.`
   }];
 
   for (const m of hist) {
@@ -840,7 +890,7 @@ has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (b
     },
     body: JSON.stringify({
       model: 'gpt-4o',
-      max_tokens: 2000,
+      max_tokens: 4000,
       response_format: { type: 'json_object' },
       messages
     })
@@ -920,7 +970,7 @@ async function sendMessage() {
   const attachSnap = [...attachments];
   const imageUrls = attachSnap.filter(a => a.type.startsWith('image/')).map(a => a.dataUrl);
   const textAttachments = attachSnap.filter(a => !a.type.startsWith('image/')).map(a => `[Plik: ${a.file.name}]`).join('\n');
-  const imgNote = imageUrls.length > 0 ? `[Uzytkownik wyslal ${imageUrls.length} zdjecie — przeanalizuj jego tresc i odpowiedz na podstawie tego co widzisz na zdjęciu, nie wymyslaj własnych zadań!]` : '';
+  const imgNote = imageUrls.length > 0 ? `[Uzytkownik wyslal zdjecie z zadaniami. ROZWIAZ KAZDE widoczne zadanie krok po kroku. Nie pomijaj zadnych. Kazde zadanie osobno z pelnym rozwiazaniem.]` : '';
   const fullText = [text, textAttachments, imgNote].filter(Boolean).join('\n');
   history.push({ role: 'user', content: fullText });
 
@@ -950,21 +1000,21 @@ async function sendMessage() {
 
     enrichBubble(aiBubble);
 
-    // Renderuj LaTeX we wszystkich elementach odpowiedzi
-    setTimeout(() => renderLatex(aiGroup), 80);
+    // renderLatex po enrichBubble — używamy requestAnimationFrame dla pewności
+    requestAnimationFrame(() => renderLatex(aiGroup));
 
     if (response.diagram) {
       const d = buildDiagram(response.diagram);
       if (d) {
         aiGroup.appendChild(d);
-        setTimeout(() => renderLatex(d), 80);
+        requestAnimationFrame(() => renderLatex(d));
       }
     }
     if (response.chart) {
       const ch = buildChart(response.chart);
       if (ch) {
         aiGroup.appendChild(ch);
-        setTimeout(() => renderLatex(ch), 80);
+        requestAnimationFrame(() => renderLatex(ch));
       }
     }
 
@@ -1021,6 +1071,8 @@ async function sendMessage() {
     }
 
     history.push({ role: 'assistant', content: response.text || '' });
+    // Finalny pass — po dodaniu WSZYSTKICH elementów
+    setTimeout(() => renderLatex(aiGroup), 200);
     scrollDown();
 
   } catch (err) {
@@ -1076,6 +1128,7 @@ function enrichBubble(bubble) {
 
 async function streamMarkdown(el, text) {
   el.innerHTML = ''; el.classList.add('typing');
+  // formatText raz — już uwzględniony w renderMarkdownWithLatex
   const fixed = formatText(text);
   const SPEED = 12, FAST_AFTER = 120;
   let i = 0, displayed = '';
@@ -1083,16 +1136,20 @@ async function streamMarkdown(el, text) {
     function tick() {
       if (i >= fixed.length) {
         el.classList.remove('typing');
-        el.innerHTML = renderMarkdownWithLatex(fixed);
-        renderLatex(el);
-        const m = document.getElementById('msgsArea');
-        if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
+        // Wstaw HTML — renderMarkdownWithLatex dostaje raw text (sam woła formatText)
+        el.innerHTML = renderMarkdownWithLatex(text);
+        // renderLatex po wyrenderowaniu przez przeglądarkę
+        requestAnimationFrame(() => {
+          renderLatex(el);
+          const m = document.getElementById('msgsArea');
+          if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
+        });
         resolve();
         return;
       }
       const chunk = i > FAST_AFTER ? 4 : 1;
       displayed += fixed.slice(i, i + chunk); i += chunk;
-      // Podczas animacji plain text (szybko), na końcu pełny render
+      // Podczas animacji: plain text — nie dotykamy HTML
       el.textContent = displayed;
       const m = document.getElementById('msgsArea');
       if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;

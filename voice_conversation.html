@@ -497,6 +497,7 @@ let stream=null, camStream=null, mediaRecorder=null, audioChunks=[];
 let isRec=false, isProc=false, isSpeak=false;
 let muted=false, camOn=true;
 let hist=[], curAudio=null, apiKey=null;
+let sessionActive=false, ttsAbort=null;
 let facing='environment'; // domyślnie tylna kamera
 let _actx=null, _an=null, _ms=null;
 let errTmr=null;
@@ -521,6 +522,7 @@ function getKey(){
 async function initSes(){
   const key=getKey(); if(!key) return;
   g('perm').classList.add('hidden');
+  sessionActive=true;
   setOrb('idle');
   if(!navigator.mediaDevices?.getUserMedia){showErr('Użyj Chrome.');g('perm').classList.remove('hidden');return;}
   try{
@@ -616,15 +618,20 @@ async function process(){
 
 // TTS
 async function tts(text,key){
+  if(!sessionActive) return;
   setHint('Odpowiadam...'); isSpeak=true; setOrb('speaking');
+  ttsAbort=new AbortController();
   try{
-    const r=await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'tts-1',input:text,voice:'nova',speed:1.1,response_format:'mp3'})});
+    const r=await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'tts-1',input:text,voice:'nova',speed:1.1,response_format:'mp3'}),signal:ttsAbort.signal});
     if(!r.ok) throw new Error('TTS '+r.status);
+    if(!sessionActive) return;
     const url=URL.createObjectURL(await r.blob());
+    if(!sessionActive){URL.revokeObjectURL(url);return;}
     curAudio=new Audio(url); curAudio.muted=muted;
     try{const s=_actx.createMediaElementSource(curAudio);s.connect(_an);_an.connect(_actx.destination);animLive();}catch(e){}
     await new Promise(res=>{curAudio.onended=()=>{URL.revokeObjectURL(url);res();};curAudio.onerror=()=>{URL.revokeObjectURL(url);res();};curAudio.play().catch(()=>res());});
-  }finally{isSpeak=false;curAudio=null;}
+  }catch(e){if(e.name==='AbortError')return;}
+  finally{isSpeak=false;curAudio=null;ttsAbort=null;}
 }
 
 // MESSAGES
@@ -686,7 +693,9 @@ async function flipCam(){
   }catch(e){console.warn('flip fail',e);}
 }
 function endSes(){
-  if(curAudio){curAudio.pause();curAudio=null;}
+  sessionActive=false;
+  if(ttsAbort){ttsAbort.abort();ttsAbort=null;}
+  if(curAudio){curAudio.onended=null;curAudio.onerror=null;curAudio.pause();curAudio=null;}
   stream?.getTracks().forEach(t=>t.stop()); stream=null;
   camStream?.getTracks().forEach(t=>t.stop()); camStream=null;
   if(_actx){_actx.close().catch(()=>{});_actx=null;}
