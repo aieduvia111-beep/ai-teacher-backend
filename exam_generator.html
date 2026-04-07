@@ -446,6 +446,27 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
         <div class="field">
           <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Wariant
+          </span>
+          <div class="grid-3">
+            <button class="sel-btn active" data-group="wariant" data-val="A" onclick="select(this,'wariant')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+              Wariant A
+            </button>
+            <button class="sel-btn" data-group="wariant" data-val="B" onclick="select(this,'wariant')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+              Wariant B
+            </button>
+            <button class="sel-btn" data-group="wariant" data-val="AB" onclick="select(this,'wariant')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Oba (A+B)
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             Liczba pytań
           </span>
@@ -470,7 +491,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           </div>
           <div class="feat">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>~2 min</span>
+            <span id="featTimeExam">~2 min</span>
           </div>
         </div>
 
@@ -622,7 +643,7 @@ function renderStats(){
 // ═══ ICONS ═══
 const ICONS_SVG={math:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',zap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',flask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-3 0v6l-4 8a1 1 0 0 0 1 2h10a1 1 0 0 0 1-2l-4-8V3"/></svg>',leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20c9 0 14-8 11-16"/></svg>',scroll:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',monitor:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',scale:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="3" x2="12" y2="21"/><path d="M3 6l9-3 9 3"/><path d="M3 6c0 4 2 6 4.5 7"/><path d="M21 6c0 4-2 6-4.5 7"/></svg>'};
 const PRZEDMIOTY=[{icon:'math',name:'Matematyka'},{icon:'zap',name:'Fizyka'},{icon:'flask',name:'Chemia'},{icon:'leaf',name:'Biologia'},{icon:'scroll',name:'Historia'},{icon:'book',name:'Język polski'},{icon:'globe',name:'Geografia'},{icon:'flag',name:'Język angielski'},{icon:'flag',name:'Język niemiecki'},{icon:'flag',name:'Język francuski'},{icon:'monitor',name:'Informatyka'},{icon:'users',name:'Wiedza o społeczeństwie'},{icon:'scale',name:'Podstawy prawa'}];
-let vals={klasa:'liceum',trudnosc:'srednia',przedmiot:'Matematyka'};
+let vals={klasa:'liceum',trudnosc:'srednia',przedmiot:'Matematyka',wariant:'A'};
 let stepTimer=null;
 function gi(k){return ICONS_SVG[k]||ICONS_SVG.book;}
 function renderDropdown(lista){document.getElementById('dropdown').innerHTML=lista.map(p=>`<div class="dropdown-item ${p.name===vals.przedmiot?'active-item':''}" onclick="selectPrzedmiot('${p.name}')"><span class="d-icon">${gi(p.icon)}</span>${p.name}</div>`).join('');}
@@ -644,25 +665,58 @@ function startProgress(){
 function finishProgress(){clearInterval(stepTimer);['st0','st1','st2','st3','st4'].forEach(s=>{const el=document.getElementById(s);el.className='step-item done';el.style.opacity='1';});document.getElementById('progressFill').style.width='100%';}
 function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
 
+async function fetchWariant(temat,numQ,wariant){
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant};
+  const res=await fetch('http://100.115.92.195:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok)throw new Error('Błąd serwera '+res.status);
+  const ct=res.headers.get('content-type')||'';
+  if(!ct.includes('application/pdf')){const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
+  return await res.blob();
+}
+
 async function generate(){
   document.getElementById('errMsg').classList.remove('visible');
   const temat=document.getElementById('temat').value.trim();
   if(!temat){showErr('Wpisz temat sprawdzianu.');return;}
   const numQ=parseInt(document.getElementById('liczbaPytan').value);
-  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ};
-  document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';document.getElementById('genBtn').disabled=true;startProgress();
+  const wariant=vals.wariant||'A';
+  document.getElementById('formView').style.display='none';
+  document.getElementById('loadingView').style.display='block';
+  document.getElementById('genBtn').disabled=true;
+  startProgress();
   try{
-    const res=await fetch('http://100.115.92.195:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok)throw new Error('Błąd serwera '+res.status);
-    const ct=res.headers.get('content-type')||'';
-    if(ct.includes('application/pdf')){
-      const blob=await res.blob(),url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
-      link.href=url;link.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}.pdf`;finishProgress();
+    if(wariant==='AB'){
+      // Generuj A i B sekwencyjnie
+      document.getElementById('loadingView').querySelector('h3').textContent='Generuję Wariant A...';
+      const blobA=await fetchWariant(temat,numQ,'A');
+      document.getElementById('loadingView').querySelector('h3').textContent='Generuję Wariant B...';
+      const blobB=await fetchWariant(temat,numQ,'B');
+      finishProgress();
+      saveExam(temat,numQ);
+      const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+      localStorage.setItem('eduvia_xp',xp+120);
+      // Pobierz oba pliki
+      const linkA=document.createElement('a');
+      linkA.href=URL.createObjectURL(blobA);
+      linkA.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantA.pdf`;
+      linkA.click();
+      setTimeout(()=>{
+        const linkB=document.createElement('a');
+        linkB.href=URL.createObjectURL(blobB);
+        linkB.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantB.pdf`;
+        linkB.click();
+      },1000);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';renderStats();},600);
+    } else {
+      const blob=await fetchWariant(temat,numQ,wariant);
+      const url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
+      link.href=url;link.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariant${wariant}.pdf`;
+      finishProgress();
       saveExam(temat,numQ);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       localStorage.setItem('eduvia_xp',xp+60);
       setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';link.click();renderStats();},600);
-    }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
+    }
   }catch(e){
     clearInterval(stepTimer);
     ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');

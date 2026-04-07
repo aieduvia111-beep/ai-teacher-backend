@@ -166,6 +166,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble pre code{background:none;padding:0;color:var(--text);}
 .bubble p{margin:6px 0;}
 .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted2);margin:8px 0;font-style:italic;}
+.bubble .katex{font-size:1em;}.bubble .katex-display{margin:10px 0;overflow-x:auto;}
 .bubble hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
 .bubble-img{max-width:260px;border-radius:12px;margin-top:8px;border:1px solid var(--border-hi);}
 .file-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:11px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);font-size:.77em;color:var(--accent2);margin-top:6px;}
@@ -702,6 +703,65 @@ document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style
 // STATE
 let history = [], attachments = [], isThinking = false;
 
+// ═══ LATEX RENDER (wzorowany na vision.html) ═══
+function renderLatex(el) {
+  if (typeof renderMathInElement === 'undefined') { setTimeout(() => renderLatex(el), 300); return; }
+  try {
+    renderMathInElement(el, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false }
+      ],
+      throwOnError: false,
+      strict: false,
+      trust: true
+    });
+  } catch(e) {}
+}
+
+// ═══ FORMAT TEXT — naprawia LaTeX z AI zanim trafi do DOM ═══
+function formatText(t) {
+  if (!t) return '';
+  t = String(t);
+  // Normalizuj podwójne backslashe (JSON escaping)
+  t = t.replace(/\\\\/g, '\\');
+  // Usuń artefakty Unicode
+  t = t.replace(/[\u25a0-\u25ff\u2400-\u244f\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+  // Naprawa obciętych komend LaTeX
+  t = t.replace(/(^|[^a-zA-Z\\])rac\{/g, '$1\\frac{');
+  t = t.replace(/(^|[^a-zA-Z\\])ext\{/g, '$1\\text{');
+  t = t.replace(/(^|[^a-zA-Z\\])qrt(\[|\{)/g, '$1\\sqrt$2');
+  t = t.replace(/(^|[^a-zA-Z\\])imes(\s|$|\{)/g, '$1\\times$2');
+
+  // Zabezpiecz istniejące bloki $...$ i $$...$$
+  const safe = [];
+  t = t.replace(/\$\$[\s\S]+?\$\$/g, m => { safe.push(m); return '\x00S'+( safe.length-1)+'\x00'; });
+  t = t.replace(/\$[^\$\n]+?\$/g,    m => { safe.push(m); return '\x00S'+( safe.length-1)+'\x00'; });
+
+  // Auto-owij samodzielne komendy LaTeX w $...$
+  // Np. \Delta, \frac{...}{...}, \sqrt{...}, \times itp.
+  t = t.replace(/\\[a-zA-Z]+(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\]]*\])*/g, match => {
+    return '$' + match + '$';
+  });
+
+  // Przywróć zabezpieczone bloki
+  t = t.replace(/\x00S(\d+)\x00/g, (_, i) => safe[+i]);
+  return t;
+}
+
+// Renderuj markdown chroniąc bloki LaTeX przed marked
+function renderMarkdownWithLatex(text) {
+  const placeholders = [];
+  let safe = text
+    .replace(/\$\$[\s\S]+?\$\$/g, m => { placeholders.push(m); return 'LATEXBLOCK'+(placeholders.length-1)+'END'; })
+    .replace(/\$[^\$\n]+?\$/g,    m => { placeholders.push(m); return 'LATEXBLOCK'+(placeholders.length-1)+'END'; });
+  let html = marked.parse(safe);
+  html = html.replace(/LATEXBLOCK(\d+)END/g, (_, i) => placeholders[+i]);
+  return html;
+}
+
 // ═══ OPENAI API ═══
 function getApiKey() {
   let key = localStorage.getItem('eduvia_openai_key');
@@ -890,24 +950,21 @@ async function sendMessage() {
 
     enrichBubble(aiBubble);
 
-    const _txt = response.text || '';
-    const _hasmath = response.has_latex || /\$\$|\$[^$]|\\\(|\\\[/.test(_txt);
-    if (_hasmath && window.renderMathInElement) {
-      renderMathInElement(aiBubble, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }], throwOnError: false });
-    }
+    // Renderuj LaTeX we wszystkich elementach odpowiedzi
+    setTimeout(() => renderLatex(aiGroup), 80);
 
     if (response.diagram) {
       const d = buildDiagram(response.diagram);
       if (d) {
         aiGroup.appendChild(d);
-        if (window.renderMathInElement) renderMathInElement(d, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }], throwOnError: false });
+        setTimeout(() => renderLatex(d), 80);
       }
     }
     if (response.chart) {
       const ch = buildChart(response.chart);
       if (ch) {
         aiGroup.appendChild(ch);
-        if (window.renderMathInElement) renderMathInElement(ch, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }], throwOnError: false });
+        setTimeout(() => renderLatex(ch), 80);
       }
     }
 
@@ -1019,12 +1076,26 @@ function enrichBubble(bubble) {
 
 async function streamMarkdown(el, text) {
   el.innerHTML = ''; el.classList.add('typing');
-  const SPEED = 12, FAST_AFTER = 120; let i = 0, displayed = '';
+  const fixed = formatText(text);
+  const SPEED = 12, FAST_AFTER = 120;
+  let i = 0, displayed = '';
   await new Promise(resolve => {
     function tick() {
-      if (i >= text.length) { el.classList.remove('typing'); el.innerHTML = marked.parse(text); resolve(); return; }
-      const chunk = i > FAST_AFTER ? 4 : 1; displayed += text.slice(i, i + chunk); i += chunk; el.textContent = displayed;
-      const m = document.getElementById('msgsArea'); if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
+      if (i >= fixed.length) {
+        el.classList.remove('typing');
+        el.innerHTML = renderMarkdownWithLatex(fixed);
+        renderLatex(el);
+        const m = document.getElementById('msgsArea');
+        if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
+        resolve();
+        return;
+      }
+      const chunk = i > FAST_AFTER ? 4 : 1;
+      displayed += fixed.slice(i, i + chunk); i += chunk;
+      // Podczas animacji plain text (szybko), na końcu pełny render
+      el.textContent = displayed;
+      const m = document.getElementById('msgsArea');
+      if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
       setTimeout(tick, i > FAST_AFTER ? 4 : SPEED);
     }
     tick();
