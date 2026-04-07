@@ -53,9 +53,11 @@ ZASADY dla pola text:
 - Używaj **pogrubień** dla kluczowych pojęć
 - Używaj ## dla nagłówków sekcji
 - Wzory matematyczne/chemiczne ZAWSZE w LaTeX: $$wzor$$ dla bloków, $wzor$ inline
-- Krótkie akapity max 3 zdania
-- Zakończ pytaniem zachęcającym do dalszej rozmowy
 - Emoji są OK ale nie przesadzaj
+- Gdy uczeń wysyła zdjęcie z zadaniami lub listę zadań - ROZWIĄŻ KAŻDE z nich osobno krok po kroku
+- Gdy jest wiele zadań - numeruj je ## Zadanie 1, ## Zadanie 2 itd.
+- Każde zadanie rozwiąż DOKŁADNIE i KOMPLETNIE - nie skracaj, nie pomijaj kroków
+- Podaj pełne obliczenia i odpowiedź końcową dla każdego zadania
 
 ZASADY dla title:
 - Maksymalnie 5 słów
@@ -77,16 +79,27 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
             raw = await websocket.receive_text()
             message_data = json.loads(raw)
             user_message = message_data.get("text", "").strip()
+            image_data = message_data.get("image", None)
 
-            if not user_message:
+            if not user_message and not image_data:
                 continue
 
             print(f"📨 Pytanie: {user_message[:80]}")
 
+            # Buduj content - tekst + opcjonalne zdjecie
+            if image_data:
+                img_b64 = image_data.split("base64,")[1] if "base64," in image_data else image_data
+                user_content = [
+                    {"type": "text", "text": user_message or "Przeanalizuj to zdjecie. Rozwiaz WSZYSTKIE widoczne zadania krok po kroku. Kazde zadanie osobno z pelnym rozwiazaniem."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}", "detail": "high"}}
+                ]
+            else:
+                user_content = user_message
+
             # Dodaj do historii
             conversation_history.append({
                 "role": "user",
-                "content": user_message
+                "content": user_content
             })
 
             # Ogranicz historię do ostatnich 10 wiadomości
@@ -96,12 +109,12 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
             try:
                 # Wywołaj OpenAI
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4o",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         *conversation_history
                     ],
-                    max_tokens=1500,
+                    max_tokens=4000,
                     temperature=0.7,
                     response_format={"type": "json_object"}
                 )

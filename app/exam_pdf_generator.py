@@ -111,59 +111,53 @@ PW, PH = A4
 # PROMPT
 # ============================================================
 EXAM_PROMPT = """Jestes doswiadczonym nauczycielem z 15-letnim stazem.
-Tworzysz PROFESJONALNY SPRAWDZIAN dla ucznia na poziomie: {klasa}
-TEMAT: {temat}
-TRUDNOSC: {trudnosc}
-LICZBA PYTAN: {liczba_pytan}
+Tworzysz PROFESJONALNY SPRAWDZIAN.
 
-Zwroc TYLKO czysty JSON (bez markdown, bez backticks).
+PARAMETRY:
+- POZIOM UCZNIA: {klasa}
+- TEMAT: {temat}
+- TRUDNOSC: {trudnosc}
+- LICZBA PYTAN: {liczba_pytan}
 
-=== CO OZNACZA POZIOM TRUDNOSCI ===
-Poziom "latwa":
-  - Proste obliczenia z konkretnymi malymi liczbami
-  - Jeden krok do odpowiedzi
-  - Przyklad DOBRY: "Oblicz 1/2 + 1/4"
-  - Przyklad ZLY (za trudne): "Rozwiaz rownanie z ulamkami"
+POZIOM UCZNIA - ZAKRES MATERIALU:
+- podstawowka: klasy 4-8, ulamki, procenty, prosta geometria, rowrania liniowe
+- liceum: funkcje, rownania kwadratowe, trygonometria, pochodne, logarytmy
+- matura: pelny zakres matury, zadania jak w CKE
+- studia: matematyka akademicka
 
-Poziom "srednia":
-  - 2-3 kroki obliczen
-  - Liczby mniejsze przyjazne ale nie trywialne
-  - Przyklad DOBRY: "Oblicz 3/4 * 8/9 i uprosz wynik"
-  - Przyklad ZLY (za latwe): "Czy 3/4 > 1/2?"
-  - Przyklad ZLY (za trudne): "Uklad rownan z ulamkami"
+TRUDNOSC ZADAN (w ramach poziomu {klasa}):
+- latwa: 1 krok, proste obliczenia z danego poziomu
+- srednia: 2-3 kroki, typowe zadania z danego poziomu
+- trudna: wielokrokowe, najtrudniejsze z danego poziomu
 
-Poziom "trudna":
-  - Wielokrokowe obliczenia, kombinacja operacji
-  - Zadania wymagajace myslenia, nie tylko liczenia
-  - Zastosowania praktyczne, zadania tekstowe z pulapkami
-  - Przyklad DOBRY: "Oblicz (2/3 + 3/4) : (5/6 - 1/3) i porownaj z 1"
-  - Przyklad ZLY (za latwe): "Dodaj dwa ulamki"
+PRZYKLAD POPRAWNY: liceum + trudna = trudne zadania licealne
+PRZYKLAD BLEDNY: liceum + trudna = zadania z podstawowki
 
-NAKAZ: KAZDЕ pytanie MUSI odpowiadac wybranemu poziomowi trudnosci "{trudnosc}"
-ZAKAZ: na poziomie "trudna" dawania pytan z poziomu "latwa"
-ZAKAZ: na poziomie "latwa" dawania pytan z poziomu "trudna"
+NAKAZ: Material dostosowany do poziomu {klasa}
+NAKAZ: Trudnosc dostosowana do {trudnosc} w ramach {klasa}
+ZAKAZ: Zadania z innego poziomu niz {klasa}
 
-=== WZORY MATEMATYCZNE ===
-KRYTYCZNE: w JSON backslash musi byc podwojny: \\frac, \\sqrt, \\cdot, \\times, \\int
-KRYTYCZNE: KAZDY wzor matematyczny MUSI byc otoczony znakami dolara: $wzor$
-KRYTYCZNE: NIE uzywaj \\left, \\right, \\displaystyle, \\limits — matplotlib ich nie obsługuje
-Przyklady POPRAWNE:
-  - "$\\frac{{a}}{{b}}$"
-  - "$\\int_a^b f(x)\\,dx$"
-  - "$x^2 + y^2$"
-  - "$\\sqrt{{4}}$"
-  - "Oblicz $\\int_0^2 (3x^2+2)\\,dx$"
-Przyklad BLEDNY: "\int_a^b f(x) dx" (bez dolarow i bez podwojnego backslash)
-Przyklad BLEDNY: "\\left(\\frac{{a}}{{b}}\\right)" (uzywasz left/right — ZAKAZ)
+TRUDNOSC SZCZEGOLY:
+Latwa: proste obliczenia, 1 krok
+Srednia: 2-3 kroki, liczby przyjazne
+Trudna: wielokrokowe, kombinacja operacji, zadania tekstowe z pulapkami
 
-=== ZASADY ===
-NAKAZ: pytania musza byc KONKRETNE, obliczeniowe lub analityczne
-NAKAZ: kazde pytanie ma JASNO okreslona liczbe punktow
-NAKAZ: dystraktory (bledne odpowiedzi) musza byc REALISTYCZNE — nie oczywiste
-NAKAZ: zadania otwarte musza miec schemat oceniania krok po kroku
-NAKAZ: trudnosc rosnaca — latwiejsze pytania na poczatku
-ZAKAZ: pytan pamieciowych bez sensu ("kto odkryl X w roku Y")
-ZAKAZ: oczywistych dystraktorow
+NAKAZ: KAZDE pytanie odpowiada trudnosci {trudnosc}
+ZAKAZ: na trudna dawac pytania z latwa i odwrotnie
+
+WZORY MATEMATYCZNE:
+KRYTYCZNE: backslash podwojny w JSON: \\frac, \\sqrt, \\cdot, \\times
+KRYTYCZNE: KAZDY wzor w dolarach: $wzor$
+ZAKAZ: \\left, \\right, \\displaystyle, \\limits
+POPRAWNE: "$\\frac{{a}}{{b}}$", "$x^2 + y^2$", "$\\sqrt{{4}}$"
+
+ZASADY:
+- Pytania konkretne i obliczeniowe
+- Kazde pytanie z jasna liczba punktow
+- Dystraktory realistyczne
+- Zadania otwarte ze schematem oceniania
+- Trudnosc rosnaca w obrebie sekcji
+- Po polsku, konkretne liczby
 
 === STRUKTURA JSON ===
 {{

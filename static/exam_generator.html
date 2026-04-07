@@ -666,8 +666,8 @@ function finishProgress(){clearInterval(stepTimer);['st0','st1','st2','st3','st4
 function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
 
 async function fetchWariant(temat,numQ,wariant){
-  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant};
-  const res=await fetch('http://100.115.92.195:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
+  const res=await fetch(((window.location.protocol==='file:'||!window.location.hostname)?'http://127.0.0.1:8000':window.location.origin)+'/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
   if(!ct.includes('application/pdf')){const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
@@ -676,8 +676,9 @@ async function fetchWariant(temat,numQ,wariant){
 
 async function generate(){
   document.getElementById('errMsg').classList.remove('visible');
-  const temat=document.getElementById('temat').value.trim();
-  if(!temat){showErr('Wpisz temat sprawdzianu.');return;}
+  let temat=document.getElementById('temat').value.trim();
+  if(photos.length>0&&!temat)temat='Analiza ze zdjecia';
+  if(!temat && photos.length===0){showErr('Wpisz temat sprawdzianu lub dodaj zdjecie.');return;}
   const numQ=parseInt(document.getElementById('liczbaPytan').value);
   const wariant=vals.wariant||'A';
   document.getElementById('formView').style.display='none';
