@@ -16,6 +16,51 @@ import os, io, re, json, math
 from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
+
+def _txt_png(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
+             bold=False, align='left'):
+    """Renderuje tekst jako PNG przez matplotlib - gwarantuje polskie znaki."""
+    import io as _io_tp; from PIL import Image as _PIL_tp
+    w_in = max(0.3, w_pt / 72.0)
+    # Szacuj wysokosc
+    chars_per_line = max(15, int(w_in * 72 / (fontsize * 0.58)))
+    words = str(tekst).split()
+    lines = []; line = ''
+    for word in words:
+        test = (line + ' ' + word).strip()
+        if len(test) > chars_per_line and line:
+            lines.append(line); line = word
+        else:
+            line = test
+    if line: lines.append(line)
+    n = max(1, len(lines))
+    h_in = max(0.25, n * fontsize / 72.0 * 1.8 + 0.08)
+    fw = 'bold' if bold else 'normal'
+    ha = 'center' if align == 'center' else 'left'
+    x0 = 0.5 if align == 'center' else 0.01
+    fig = plt.figure(figsize=(w_in, h_in), dpi=180)
+    fig.patch.set_facecolor(bg)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_facecolor(bg); ax.axis('off')
+    ax.text(x0, 0.97, '\n'.join(lines), fontsize=fontsize,
+            fontweight=fw, color=color, ha=ha, va='top',
+            transform=ax.transAxes, linespacing=1.45)
+    buf = _io_tp.BytesIO()
+    plt.savefig(buf, format='png', dpi=180, facecolor=bg,
+                edgecolor='none', bbox_inches='tight', pad_inches=0.02)
+    plt.close(fig); buf.seek(0)
+    return _PIL_tp.open(buf).convert('RGB')
+
+def _txt_rl(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
+            bold=False, align='left'):
+    """Zwraca RLImage z tekstem - polskie znaki zawsze działają."""
+    from PIL import Image as _PIL_rl; import io as _io_rl
+    img = _txt_png(tekst, w_pt, fontsize, color, bg, bold, align)
+    buf = _io_rl.BytesIO(); img.save(buf, 'PNG'); buf.seek(0)
+    w_in_px, h_in_px = img.size
+    h_pt = h_in_px / 180.0 * 72.0
+    return RLImage(buf, width=w_pt, height=h_pt)
+
 # ── POLSKIE ZNAKI W MATPLOTLIB ──────────────────────────────
 import matplotlib as _mpl
 _mpl.rcParams['font.family'] = 'DejaVu Sans'
@@ -27,6 +72,7 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
 from reportlab.platypus.flowables import Flowable
 from reportlab.lib.styles import ParagraphStyle
@@ -67,6 +113,20 @@ def _reg_fonts():
                 pdfmetrics.registerFont(TTFont('DJ-MB',paths['mb']))
                 return True
             except: pass
+    # Auto-install na Render/Ubuntu
+    try:
+        import subprocess
+        subprocess.run(['apt-get','install','-y','fonts-dejavu-core'],
+                       capture_output=True, timeout=30)
+        p = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+        if os.path.exists(p):
+            pdfmetrics.registerFont(TTFont('DJ',   p))
+            pdfmetrics.registerFont(TTFont('DJ-B', p.replace('Sans.','Sans-Bold.')))
+            pdfmetrics.registerFont(TTFont('DJ-I', p.replace('Sans.','Sans-Oblique.')))
+            pdfmetrics.registerFont(TTFont('DJ-M', p.replace('Sans.','SansMono.')))
+            pdfmetrics.registerFont(TTFont('DJ-MB',p.replace('Sans.','SansMono-Bold.')))
+            return True
+    except: pass
     return False
 
 _OK = _reg_fonts()
@@ -132,6 +192,49 @@ def st(t):
 def hex2rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16)/255 for i in (0, 2, 4))
+
+def _canvas_draw_text(c, tekst, x, y, width_pt, fontsize=10, color='#1A1A2E',
+                      bg=None, bold=False, align='left'):
+    """Rysuje tekst jako PNG (matplotlib) na canvas ReportLab — gwarantuje polskie znaki."""
+    import io as _iocd
+    from PIL import Image as _PILcd
+    DPI = 220
+    W_IN = max(0.5, width_pt / 72.0)
+    H_IN = max(0.25, fontsize / 72.0 * 2.8)
+    fw = 'bold' if bold else 'normal'
+    ha = 'center' if align == 'center' else 'left'
+    x0 = 0.5 if align == 'center' else 0.01
+    bg_c = bg if bg else '#FFFFFF00'
+    use_alpha = bg is None
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    if use_alpha:
+        fig.patch.set_alpha(0)
+    else:
+        fig.patch.set_facecolor(bg)
+    ax = fig.add_axes([0, 0, 1, 1])
+    if use_alpha:
+        ax.patch.set_alpha(0)
+    else:
+        ax.set_facecolor(bg)
+    ax.axis('off')
+    ax.text(x0, 0.5, str(tekst), fontsize=fontsize, fontweight=fw,
+            color=color, ha=ha, va='center', transform=ax.transAxes)
+    buf = _iocd.BytesIO()
+    plt.savefig(buf, format='png', dpi=DPI,
+                facecolor='none' if use_alpha else bg,
+                edgecolor='none', bbox_inches='tight', pad_inches=0.01)
+    plt.close(fig)
+    buf.seek(0)
+    img = _PILcd.open(buf).convert('RGBA')
+    iw, ih = img.size
+    h_pt = (ih / DPI) * 72
+    w_pt = (iw / DPI) * 72
+    buf2 = _iocd.BytesIO()
+    img.save(buf2, 'PNG')
+    buf2.seek(0)
+    from reportlab.lib.utils import ImageReader
+    c.drawImage(ImageReader(buf2), x, y - h_pt * 0.75, width=w_pt, height=h_pt,
+                mask='auto')
 
 def _sanitize_latex(f: str) -> str:
     import re; B = chr(92)
@@ -289,53 +392,44 @@ def add_page_bg(c, doc):
     w, h = A4
     c.saveState()
 
-    # Główne tło
-    c.setFillColor(colors.HexColor(BG_PAGE))
+    # Biale tlo
+    c.setFillColor(colors.HexColor('#FFFFFF'))
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
-    # Subtelna siatka (bardzo delikatna)
-    try: c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.04)
-    except: c.setStrokeColor(colors.HexColor('#DFE6E9'))
-    c.setLineWidth(0.4)
-    for x in range(0, int(w)+1, 48):
-        c.line(x, 0, x, h)
-    for y in range(0, int(h)+1, 48):
-        c.line(0, y, w, y)
+    # Bardzo subtelny glow gorny lewy
+    for i in range(5):
+        alpha = max(0.0, 0.04 - i*0.007)
+        try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
+        except: pass
+        c.circle(0, h, 100 + i*35, fill=1, stroke=0)
 
-    # Gradient glow w lewym górnym rogu
-    for i in range(8):
-        r = 160 + i * 22
-        alpha = max(0.0, 0.06 - i * 0.007)
-        c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
-        c.circle(-20, h + 20, r, fill=1, stroke=0)
-
-    # Header bar — elegancki ciemny pas
-    c.setFillColor(colors.HexColor('#FFFFFF'))
-    c.rect(0, h - 38, w, 38, fill=1, stroke=0)
-
-    # Kolorowy pasek na górze (gradientowy efekt przez 3 prostokąty)
-    c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, h-38, w*0.4, 2, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_CYAN));   c.rect(w*0.4, h-38, w*0.35, 2, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_GOLD));   c.rect(w*0.75, h-38, w*0.25, 2, fill=1, stroke=0)
-
-    # Logo/marka w headerze
-    c.setFont(FB, 8); c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.drawString(14, h - 24, "EDUVIA")
+    # HEADER
+    c.setFillColor(colors.HexColor('#FAFAFA'))
+    c.rect(0, h-34, w, 34, fill=1, stroke=0)
+    c.setStrokeColor(colors.HexColor('#E8E8F0')); c.setLineWidth(0.5)
+    c.line(0, h-34, w, h-34)
+    # 3-kolorowa linia akcentowa na samej gorze
+    c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, h-2, w*0.45, 2, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_CYAN));   c.rect(w*0.45, h-2, w*0.30, 2, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_GOLD));   c.rect(w*0.75, h-2, w*0.25, 2, fill=1, stroke=0)
+    # Logo
+    c.setFont(FB, 8.5); c.setFillColor(colors.HexColor(ACC_PURPLE))
+    c.drawString(14, h-22, "EDUVIA")
     c.setFont(FN, 7); c.setFillColor(colors.HexColor(TXT_MUTED))
-    c.drawString(56, h - 24, "AI PREMIUM NOTES")
-
-    # Numer strony — prawo
+    c.drawString(60, h-22, "AI PREMIUM NOTES")
+    # Numer strony
     c.setFont(FN, 7.5); c.setFillColor(colors.HexColor(TXT_MUTED))
-    pg = str(doc.page)
-    c.drawRightString(w - 14, h - 24, f"str. {pg}")
+    c.drawRightString(w-14, h-22, "str. " + str(doc.page))
 
-    # Footer bar
-    c.setFillColor(colors.HexColor('#FFFFFF'))
+    # FOOTER
+    c.setFillColor(colors.HexColor('#FAFAFA'))
     c.rect(0, 0, w, 22, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.rect(0, 0, w, 1.5, fill=1, stroke=0)
+    c.setStrokeColor(colors.HexColor('#E8E8F0')); c.setLineWidth(0.5)
+    c.line(0, 22, w, 22)
+    # Linia kolor na dole
+    c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, 0, w, 1.5, fill=1, stroke=0)
     c.setFont(FN, 6.5); c.setFillColor(colors.HexColor(TXT_MUTED))
-    c.drawCentredString(w/2, 7, "Eduvia AI  ·  Ucz się mądrzej, nie ciężej  ·  eduvia.pl")
+    c.drawCentredString(w/2, 7, "Eduvia AI  |  eduvia.pl")
 
     c.restoreState()
 
@@ -344,199 +438,278 @@ def add_page_bg(c, doc):
 # ============================================================
 def draw_cover(c, tytul, podtytul, klasa):
     w, h = PW, PH
-    c.setFillColor(colors.HexColor('#FFFFFF'))
+
+    # TLO: glebokie granatowe
+    c.setFillColor(colors.HexColor('#06060F'))
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
-    # Duże glowy w tle
-    for i in range(16):
-        alpha = max(0.0, 0.12 - i * 0.007)
+    # Fioletowy glow - centrum
+    for i in range(20):
+        alpha = max(0.0, 0.22 - i*0.011)
         try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
-        except: c.setFillColorRGB(*hex2rgb('#E0D8FF'))
-        c.circle(w * 0.5, h * 0.5, 80 + i * 28, fill=1, stroke=0)
+        except: pass
+        c.circle(w*0.5, h*0.5, 60 + i*28, fill=1, stroke=0)
 
+    # Zielony glow - prawy rog
+    for i in range(12):
+        alpha = max(0.0, 0.14 - i*0.011)
+        try: c.setFillColorRGB(*hex2rgb(ACC_CYAN), alpha=alpha)
+        except: pass
+        c.circle(w*0.92, h*0.18, 40 + i*20, fill=1, stroke=0)
+
+    # Zloty glow - lewy dol
     for i in range(10):
-        alpha = max(0.0, 0.08 - i * 0.007)
-        c.setFillColorRGB(*hex2rgb(ACC_CYAN), alpha=alpha)
-        c.circle(w * 0.1, h * 0.2, 60 + i * 22, fill=1, stroke=0)
+        alpha = max(0.0, 0.10 - i*0.009)
+        try: c.setFillColorRGB(*hex2rgb(ACC_GOLD), alpha=alpha)
+        except: pass
+        c.circle(w*0.08, h*0.82, 35 + i*16, fill=1, stroke=0)
 
-    for i in range(8):
-        alpha = max(0.0, 0.06 - i * 0.006)
-        c.setFillColorRGB(*hex2rgb(ACC_GOLD), alpha=alpha)
-        c.circle(w * 0.9, h * 0.8, 50 + i * 20, fill=1, stroke=0)
-
-    # Subtelna siatka
-    c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.06)
+    # Siatka - bardzo subtelna
+    try: c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.06)
+    except: c.setStrokeColor(colors.HexColor('#1A1A3A'))
     c.setLineWidth(0.3)
-    for x in range(0, int(w)+1, 40): c.line(x, 0, x, h)
-    for y in range(0, int(h)+1, 40): c.line(0, y, w, y)
+    for x in range(0, int(w)+1, 36): c.line(x, 0, x, h)
+    for y in range(0, int(h)+1, 36): c.line(0, y, w, y)
 
-    # Top brand bar
-    c.setFillColor(colors.HexColor('#F8F7FF'))
-    c.rect(0, h - 52, w, 52, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.rect(0, h - 52, w, 2.5, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_CYAN))
-    c.rect(w * 0.38, h - 52, w * 0.24, 2.5, fill=1, stroke=0)
-
-    # Brand name
+    # GORNY PASEK brand
+    c.setFillColor(colors.HexColor('#0A0A1E'))
+    c.rect(0, h-50, w, 50, fill=1, stroke=0)
+    # Kolorowe paski
+    c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, h-50, w*0.5, 2.5, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_CYAN));   c.rect(w*0.5, h-50, w*0.3, 2.5, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_GOLD));   c.rect(w*0.8, h-50, w*0.2, 2.5, fill=1, stroke=0)
+    # Nazwa
     c.setFont(FB, 11); c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.drawString(16, h - 34, "EDUVIA")
-    c.setFont(FN, 8); c.setFillColor(colors.HexColor(TXT_MUTED))
-    c.drawString(72, h - 34, "AI PREMIUM NOTES")
-
-    # Badge poziom
-    bx, by, bw, bh2 = w/2 - 55, h - 50 - 32, 110, 22
-    c.setFillColor(colors.HexColor('#F0EEFF'))
-    c.roundRect(bx, by, bw, bh2, 11, fill=1, stroke=0)
+    c.drawString(16, h-33, "EDUVIA")
+    c.setFont(FN, 8); c.setFillColor(colors.HexColor('#666699'))
+    c.drawString(70, h-33, "AI PREMIUM NOTES")
+    # Poziom badge - prawy
+    c.setFillColor(colors.HexColor('#151530'))
+    c.roundRect(w-120, h-46, 106, 22, 11, fill=1, stroke=0)
     c.setStrokeColor(colors.HexColor(ACC_PURPLE)); c.setLineWidth(1)
-    c.roundRect(bx, by, bw, bh2, 11, fill=0, stroke=1)
-    c.setFont(FB, 8); c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.drawCentredString(w/2, by + 7, f"POZIOM: {klasa.upper()}")
+    c.roundRect(w-120, h-46, 106, 22, 11, fill=0, stroke=1)
+    c.setFont(FB, 7.5); c.setFillColor(colors.HexColor(ACC_PURPLE))
+    c.drawCentredString(w-67, h-37, "POZIOM: " + klasa.upper())
 
-    # Główny tytuł
+    # DIVIDER
+    c.setStrokeColor(colors.HexColor(ACC_PURPLE)); c.setLineWidth(1.5)
+    c.line(40, h*0.63, w-40, h*0.63)
+    c.setStrokeColor(colors.HexColor(ACC_CYAN)); c.setLineWidth(0.8)
+    c.line(40, h*0.63-5, w*0.6, h*0.63-5)
+
+    # TYTUL - duzy bialy przez matplotlib
     words = tytul.split()
-    c.setFont(FB, 34)
-    if len(tytul) > 24 and len(words) > 2:
-        mid = len(words) // 2
+    if len(tytul) > 22 and len(words) > 2:
+        mid = len(words)//2
         line1 = " ".join(words[:mid])
         line2 = " ".join(words[mid:])
-        c.setFillColor(C_W)
-        c.drawCentredString(w/2, h * 0.52, line1)
-        c.drawCentredString(w/2, h * 0.46, line2)
-        ty = h * 0.40
+        _canvas_draw_text(c, line1, 40, h*0.555, w-80, fontsize=40, color='white', bold=True, align='center')
+        _canvas_draw_text(c, line2, 40, h*0.475, w-80, fontsize=40, color='white', bold=True, align='center')
+        ty = h*0.40
     else:
-        c.setFillColor(C_W)
-        c.drawCentredString(w/2, h * 0.49, tytul)
-        ty = h * 0.43
+        _canvas_draw_text(c, tytul, 40, h*0.52, w-80, fontsize=40, color='white', bold=True, align='center')
+        ty = h*0.44
 
-    # Podtytuł
-    c.setFont(FI, 13); c.setFillColor(colors.HexColor(ACC_CYAN))
-    c.drawCentredString(w/2, ty - 4, podtytul)
+    # PODTYTUL
+    _canvas_draw_text(c, podtytul, 40, ty - 4, w-80, fontsize=13, color=ACC_CYAN, align='center')
 
-    # Separator linia
-    c.setStrokeColor(colors.HexColor('#DFE6E9')); c.setLineWidth(1)
-    c.line(w/2 - 120, ty - 22, w/2 + 120, ty - 22)
+    # DATA
+    c.setFont(FN, 9); c.setFillColor(colors.HexColor('#555577'))
+    c.drawCentredString(w/2, ty - 28, datetime.now().strftime('%d.%m.%Y'))
 
-    # Data
-    c.setFont(FN, 10); c.setFillColor(colors.HexColor(TXT_MUTED))
-    c.drawCentredString(w/2, ty - 38, datetime.now().strftime('%d.%m.%Y'))
-
-    # Narożne ozdoby
-    for bx2, by2 in [(28, 70), (w - 28, 70)]:
-        c.setStrokeColor(colors.HexColor(ACC_PURPLE)); c.setLineWidth(1.5)
-        c.setFillColor(colors.HexColor(ACC_PURPLE))
-        c.circle(bx2, by2, 4, fill=1, stroke=0)
-        for r in [12, 22]:
-            c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.15)
-            c.circle(bx2, by2, r, fill=1, stroke=0)
-
-    # Bottom bar
-    c.setFillColor(colors.HexColor(ACC_PURPLE))
-    c.rect(0, 0, w, 6, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor(ACC_CYAN))
-    c.rect(w * 0.38, 0, w * 0.24, 6, fill=1, stroke=0)
+    # DOLNY PASEK
+    c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, 0, w, 9, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_CYAN));   c.rect(w*0.38, 0, w*0.24, 9, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(ACC_GOLD));   c.rect(w*0.78, 0, w*0.22, 9, fill=1, stroke=0)
 
     c.showPage()
 
 # ============================================================
 # NOWE FLOWABLES — PREMIUM REDESIGN
 # ============================================================
+
+# ────────────────────────────────────────────────────────
+# UI elementy — Table+Paragraph (polskie znaki 100%)
+# ────────────────────────────────────────────────────────
+def make_label(text, accent=None, width=515):
+    acc = accent or ACC_PURPLE
+    s = ParagraphStyle('lbl', fontName=FB, fontSize=8,
+                       textColor=colors.white, leading=12)
+    t = Table([[Paragraph(text, s)]], colWidths=[width])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0),(-1,-1), colors.HexColor(acc)),
+        ('TOPPADDING',    (0,0),(-1,-1), 6),
+        ('BOTTOMPADDING', (0,0),(-1,-1), 6),
+        ('LEFTPADDING',   (0,0),(-1,-1), 10),
+        ('RIGHTPADDING',  (0,0),(-1,-1), 10),
+        ('LINEABOVE',     (0,0),(-1, 0), 0.8, colors.HexColor('#E0E0EE')),
+    ]))
+    return t
+
+def make_section_header(number, text, accent=None, width=515):
+    acc = accent or ACC_PURPLE
+    sn = ParagraphStyle('shn', fontName=FB, fontSize=10,
+                        textColor=colors.white, alignment=1, leading=14)
+    st2 = ParagraphStyle('sht', fontName=FB, fontSize=12,
+                         textColor=colors.HexColor('#1A1A2E'), leading=16)
+    t = Table([[Paragraph('%02d'%number, sn), Paragraph(text, st2)]],
+              colWidths=[36, width-36])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0),(0,-1),  colors.HexColor(acc)),
+        ('BACKGROUND',    (1,0),(-1,-1), colors.HexColor('#F5F4FF')),
+        ('VALIGN',        (0,0),(-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0),(-1,-1), 12),
+        ('BOTTOMPADDING', (0,0),(-1,-1), 12),
+        ('LEFTPADDING',   (0,0),(0,-1),  4),
+        ('LEFTPADDING',   (1,0),(-1,-1), 14),
+        ('RIGHTPADDING',  (0,0),(-1,-1), 10),
+    ]))
+    return t
+
+def make_timeline_item(rok, opis, width=515):
+    sr = ParagraphStyle('tlr', fontName=FB, fontSize=10,
+                        textColor=colors.HexColor(ACC_PURPLE), leading=14)
+    so = ParagraphStyle('tlo', fontName=FN, fontSize=9,
+                        textColor=colors.HexColor('#2D3436'), leading=14)
+    t = Table([[Paragraph(str(rok), sr), Paragraph(opis, so)]],
+              colWidths=[65, width-65])
+    t.setStyle(TableStyle([
+        ('VALIGN',        (0,0),(-1,-1), 'TOP'),
+        ('TOPPADDING',    (0,0),(-1,-1), 3),
+        ('BOTTOMPADDING', (0,0),(-1,-1), 3),
+        ('LEFTPADDING',   (0,0),(-1,-1), 6),
+        ('RIGHTPADDING',  (0,0),(-1,-1), 6),
+        ('LINEBEFORE',    (0,0),(0,-1),  3, colors.HexColor(ACC_PURPLE)),
+    ]))
+    return t
+
+def make_mindmap_item(poziom, tekst, width=515):
+    indent = poziom * 28
+    avail  = width - indent
+    if poziom == 0:
+        s = ParagraphStyle('mm0', fontName=FB, fontSize=10,
+                            textColor=colors.white, leading=14)
+        t = Table([[Paragraph(tekst, s)]], colWidths=[avail])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0),(-1,-1), colors.HexColor(ACC_PURPLE)),
+            ('TOPPADDING',    (0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
+            ('LEFTPADDING',   (0,0),(-1,-1), 14),('RIGHTPADDING', (0,0),(-1,-1), 14),
+        ]))
+    elif poziom == 1:
+        s = ParagraphStyle('mm1', fontName=FB, fontSize=9,
+                            textColor=colors.HexColor('#1A1A2E'), leading=13)
+        t = Table([[Paragraph('▸  '+tekst, s)]], colWidths=[avail])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0),(-1,-1), colors.HexColor('#F2F0FF')),
+            ('TOPPADDING',    (0,0),(-1,-1), 6),('BOTTOMPADDING',(0,0),(-1,-1), 6),
+            ('LEFTPADDING',   (0,0),(-1,-1), 14),
+            ('BOX',           (0,0),(-1,-1), 1, colors.HexColor(ACC_PURPLE)),
+        ]))
+    else:
+        s = ParagraphStyle('mm2', fontName=FN, fontSize=8.5,
+                            textColor=colors.HexColor('#2D3436'), leading=13)
+        t = Table([[Paragraph('•  '+tekst, s)]], colWidths=[avail])
+        t.setStyle(TableStyle([
+            ('TOPPADDING',    (0,0),(-1,-1), 4),('BOTTOMPADDING',(0,0),(-1,-1), 4),
+            ('LEFTPADDING',   (0,0),(-1,-1), 14),
+        ]))
+    if indent > 0:
+        outer = Table([['', t]], colWidths=[indent, avail])
+        outer.setStyle(TableStyle([
+            ('TOPPADDING',    (0,0),(-1,-1), 0),('BOTTOMPADDING',(0,0),(-1,-1), 0),
+            ('LEFTPADDING',   (0,0),(-1,-1), 0),('RIGHTPADDING', (0,0),(-1,-1), 0),
+        ]))
+        return outer
+    return t
+
+
 class SectionHeader(Flowable):
-    """Elegancki nagłówek sekcji z numerem i kolorowym akcentem."""
-    def __init__(self, number, text, accent=ACC_PURPLE, width=515):
+    def __init__(self, number, text, accent=None, width=515):
         super().__init__()
         self.number = number; self.text = text
-        self.accent = accent; self.width = width; self.height = 52
+        self.accent = accent or ACC_PURPLE
+        self.width = width; self.height = 44
 
     def draw(self):
         c = self.canv; W = self.width; H = self.height
         acc = self.accent
-        bg_col = '#F8F7FF'
 
-        # Tło karty
-        c.setFillColor(colors.HexColor(bg_col))
-        c.roundRect(0, 0, W, H, 10, fill=1, stroke=0)
+        # Tlo - bardzo jasny odcien akcentu
+        c.setFillColor(colors.HexColor('#F5F4FF'))
+        try:
+            r,g,b = hex2rgb(acc)
+            c.setFillColorRGB(r, g, b, alpha=0.06)
+        except:
+            pass
+        c.roundRect(0, 0, W, H, 7, fill=1, stroke=0)
 
-        # Lewy pasek gradientowy
+        # Lewy gruby pasek koloru
         c.setFillColor(colors.HexColor(acc))
-        c.roundRect(0, 0, 5, H, 2, fill=1, stroke=0)
+        c.roundRect(0, 0, 5, H, 3, fill=1, stroke=0)
 
-        # Delikatna ramka
-        c.setStrokeColorRGB(*hex2rgb(acc), alpha=0.25)
-        c.setLineWidth(0.8)
-        c.roundRect(0, 0, W, H, 10, fill=0, stroke=1)
+        # Kolo z numerem
+        cx, cy = 27, H//2
 
-        # Kółko z numerem
-        cx, cy = 26, H // 2
-        c.setFillColorRGB(*hex2rgb(acc), alpha=0.15)
-        c.circle(cx, cy, 16, fill=1, stroke=0)
-        c.setStrokeColor(colors.HexColor(acc)); c.setLineWidth(1.5)
-        c.circle(cx, cy, 16, fill=0, stroke=1)
         c.setFillColor(colors.HexColor(acc))
-        c.setFont(FB, 10); c.drawCentredString(cx, cy - 4, f"{self.number:02d}")
+        c.circle(cx, cy, 13, fill=1, stroke=0)
+        c.setFont(FB, 9)
+        c.setFillColor(colors.white)
+        c.drawCentredString(cx, cy-3, "%02d" % self.number)
 
-        # Tytuł
-        c.setFillColor(C_W); c.setFont(FB, 13)
-        c.drawString(50, H // 2 - 5, self.text[:60])
+        # Tytul
+        _canvas_draw_text(c, self.text[:65], 50, cy + 4, W - 60,
+                          fontsize=12, color='#1A1A2E', bold=True)
 
-        # Mała linia dekoracyjna po prawej
-        c.setStrokeColorRGB(*hex2rgb(acc), alpha=0.3); c.setLineWidth(1)
-        txt_w = c.stringWidth(self.text[:60], FB, 13)
-        c.line(54 + txt_w + 10, cy, W - 16, cy)
+        # Linia po prawej
+        try:
+            r,g,b = hex2rgb(acc)
+            c.setStrokeColorRGB(r, g, b, alpha=0.25)
+        except:
+            c.setStrokeColor(colors.HexColor('#DFE6E9'))
+        c.setLineWidth(1)
+        est_tw = len(self.text[:65]) * 7
+        if 52 + est_tw + 12 < W - 10:
+            c.line(52 + est_tw + 12, cy, W - 10, cy)
+
 
 
 class ConceptCard(Flowable):
-    """Karta pojęcia — nowy premium wygląd."""
     def __init__(self, pojecie, definicja, idx, width):
         super().__init__()
         self.pojecie = pojecie; self.definicja = definicja
         self.idx = idx; self.width = width
-        lines = max(2, len(definicja) // 46 + 1)
-        self.height = 66 + lines * 13
+        nlines = max(2, len(definicja)//50 + 1)
+        self.height = 56 + nlines * 13
 
     def draw(self):
         c = self.canv; W = self.width; H = self.height
         ACCENTS = [ACC_PURPLE, ACC_CYAN, ACC_GOLD, ACC_ORANGE]
-        BG_LIST = ['#F0EEFF','#F0FFF8','#FFFBF0','#FFF5F5','#EBF5FF','#FFF0FA']
+        BGS = ['#F2F0FF', '#EDFFF8', '#FFF8E8', '#FFF2F0']
         acc = ACCENTS[self.idx % 4]
-        bg  = BG_LIST[self.idx % 4]
+        bg  = BGS[self.idx % 4]
 
-        # Tło karty z zaokrągleniem
+        # Tlo karty
         c.setFillColor(colors.HexColor(bg))
-        c.roundRect(0, 2, W, H - 4, 12, fill=1, stroke=0)
+        c.roundRect(0, 2, W, H-4, 10, fill=1, stroke=0)
 
-        # Cienka ramka w kolorze akcentu
-        c.setStrokeColorRGB(*hex2rgb(acc), alpha=0.4); c.setLineWidth(1)
-        c.roundRect(0, 2, W, H - 4, 12, fill=0, stroke=1)
-
-        # Header z pojęciem
-        c.setFillColorRGB(*hex2rgb(acc), alpha=0.18)
-        c.roundRect(0, H - 32, W, 30, 12, fill=1, stroke=0)
-        c.rect(0, H - 22, W, 10, fill=1, stroke=0)
-
-        # Pasek akcentu na górze karty
+        # Gorny pasek koloru
         c.setFillColor(colors.HexColor(acc))
-        c.roundRect(0, H - 6, W, 6, 3, fill=1, stroke=0)
+        c.roundRect(0, H-24, W, 24, 10, fill=1, stroke=0)
+        c.rect(0, H-18, W, 10, fill=1, stroke=0)
 
-        # Pojęcie
-        c.setFillColor(C_W); c.setFont(FB, 9.5)
-        p = self.pojecie[:34] + "..." if len(self.pojecie) > 34 else self.pojecie
-        c.drawString(10, H - 22, p)
+        # Pojecie - BIALY na kolorowym pasku
+        p = self.pojecie[:36] + "..." if len(self.pojecie) > 36 else self.pojecie
+        _canvas_draw_text(c, p, 10, H - 10, W - 20,
+                          fontsize=9, color='white', bold=True)
 
-        # Definicja
+        # Definicja - CIEMNY na jasnym tle - przez matplotlib
         import re as _re2
         defn = _re2.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), self.definicja)
-        defn = defn.replace('\\','').replace('\\int','∫').replace('\\sum','Σ')
-        defn = defn.replace('\\to','→').replace('\\rightarrow','→').replace('\\cdot','·')
-        c.setFillColor(colors.HexColor(TXT_SUB)); c.setFont(FN, 8.5)
-        words = defn.split(); line = ""; y = H - 36
-        for word in words:
-            test = (line + " " + word).strip()
-            if c.stringWidth(test, FN, 8.5) < W - 18: line = test
-            else:
-                if y < 12: c.drawString(10, y, line + "..."); break
-                c.drawString(10, y, line); y -= 12; line = word
-        if line and y >= 12: c.drawString(10, y, line)
+        defn = defn.replace('\\','').replace('\\int','int').replace('\\sum','sum')
+        defn = defn.replace('\\to','->').replace('\\rightarrow','->').replace('\\cdot','*')
+        _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16,
+                          fontsize=8, color='#2D3436', bg=bg)
+
 
 
 class TimelineItem(Flowable):
@@ -544,60 +717,169 @@ class TimelineItem(Flowable):
         super().__init__()
         self.rok = str(rok); self.opis = opis
         self.is_last = is_last; self.width = width
-        self.height = 38 + max(1, len(opis) // 58 + 1) * 13
+        self.height = 36 + max(1, len(opis)//60+1)*13
 
     def draw(self):
         c = self.canv; H = self.height
+        # Linia pionowa
         if not self.is_last:
-            c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.3)
-            c.setLineWidth(2); c.line(26, -8, 26, 0)
-        # Kółko na osi czasu
-        c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.2)
-        c.circle(26, H - 18, 9, fill=1, stroke=0)
+            try: c.setStrokeColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.25)
+            except: c.setStrokeColor(colors.HexColor('#DFE6E9'))
+            c.setLineWidth(2); c.line(24, -6, 24, 0)
+        # Kolo
+        try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=0.15)
+        except: c.setFillColor(colors.HexColor('#F0EEFF'))
+        c.circle(24, H-16, 9, fill=1, stroke=0)
         c.setFillColor(colors.HexColor(ACC_PURPLE))
-        c.circle(26, H - 18, 5, fill=1, stroke=0)
-        c.setFillColor(colors.HexColor(BG_PAGE)); c.circle(26, H - 18, 2, fill=1, stroke=0)
+        c.circle(24, H-16, 5, fill=1, stroke=0)
         # Rok
-        c.setFillColor(colors.HexColor(ACC_CYAN)); c.setFont(FB, 10)
-        c.drawString(44, H - 22, self.rok)
+        _canvas_draw_text(c, self.rok, 40, H - 12, 60,
+                          fontsize=10, color=ACC_PURPLE, bold=True)
         # Opis
-        c.setFillColor(colors.HexColor(TXT_SUB)); c.setFont(FN, 9)
-        words = self.opis.split(); line = ""; y = H - 34
-        for word in words:
-            test = (line + " " + word).strip()
-            if c.stringWidth(test, FN, 9) < self.width - 58: line = test
-            else: c.drawString(44, y, line); y -= 13; line = word
-        if line: c.drawString(44, y, line)
+        _canvas_draw_text(c, self.opis, 40, H - 28, self.width - 55,
+                          fontsize=9, color='#2D3436')
+
 
 
 class MindMapItem(Flowable):
     def __init__(self, poziom, tekst, width):
         super().__init__()
         self.poziom = poziom; self.tekst = tekst; self.width = width
-        self.height = 30 if poziom == 0 else 24
+        self.height = 36 if poziom==0 else 30 if poziom==1 else 26
 
     def draw(self):
-        c = self.canv; indent = self.poziom * 28; avail = self.width - indent; H = self.height
-        COLS = [ACC_PURPLE, ACC_CYAN, TXT_MUTED]
-        BG_MM = ['#F0EEFF', '#F0FFF8', '#FFFFFF']
-        col = COLS[min(self.poziom, 2)]
-        bg  = BG_MM[min(self.poziom, 2)]
-        c.setFillColor(colors.HexColor(bg))
-        c.roundRect(indent, 2, avail, H - 4, 6, fill=1, stroke=0)
-        if self.poziom < 2:
-            c.setStrokeColorRGB(*hex2rgb(col), alpha=0.35); c.setLineWidth(0.8)
-            c.roundRect(indent, 2, avail, H - 4, 6, fill=0, stroke=1)
-        c.setFillColor(colors.HexColor(col))
-        c.roundRect(indent, 2, 4, H - 4, 2, fill=1, stroke=0)
-        fs = [11, 9.5, 8.5][min(self.poziom, 2)]
-        fw = [FB, FB, FN][min(self.poziom, 2)]
-        c.setFont(fw, fs); c.setFillColor(C_W if self.poziom < 2 else colors.HexColor(TXT_MUTED))
-        c.drawString(indent + 12, H // 2 - fs // 3, self.tekst[:72])
+        c = self.canv; indent = self.poziom*30; avail = self.width-indent; H = self.height
+        if self.poziom == 0:
+            c.setFillColor(colors.HexColor(ACC_PURPLE))
+            c.roundRect(indent, 2, avail, H-4, 6, fill=1, stroke=0)
+            _canvas_draw_text(c, self.tekst[:62], indent + 12, H - 5, avail - 24,
+                              fontsize=11, color='white', bold=True)
+        elif self.poziom == 1:
+            c.setFillColor(colors.HexColor('#F2F0FF'))
+            c.roundRect(indent, 2, avail, H-4, 5, fill=1, stroke=0)
+            c.setStrokeColor(colors.HexColor(ACC_PURPLE)); c.setLineWidth(1)
+            c.roundRect(indent, 2, avail, H-4, 5, fill=0, stroke=1)
+            c.setFillColor(colors.HexColor(ACC_PURPLE))
+            c.roundRect(indent+5, H//2-3, 5, 6, 2, fill=1, stroke=0)
+            _canvas_draw_text(c, '  ' + self.tekst[:72], indent + 14, H - 5, avail - 24,
+                              fontsize=9.5, color='#1A1A2E', bold=True)
+        else:
+            c.setFillColor(colors.HexColor(ACC_CYAN))
+            c.circle(indent+8, H//2, 4, fill=1, stroke=0)
+            _canvas_draw_text(c, self.tekst[:82], indent + 20, H - 4, self.width - indent - 28,
+                              fontsize=9, color='#2D3436')
+
+
+
+def get_styles():
+    return {
+        "body": ParagraphStyle("body", fontName=FN, fontSize=10.5, leading=19,
+                               textColor=colors.HexColor(TXT_SUB), spaceAfter=5),
+        "section_label": ParagraphStyle("sl", fontName=FB, fontSize=8, leading=12,
+                                        textColor=colors.HexColor(TXT_MUTED),
+                                        spaceBefore=24, spaceAfter=12,
+                                        letterSpacing=1.5),
+        "summary": ParagraphStyle("summ", fontName=FN, fontSize=10.5, leading=17,
+                                  textColor=colors.HexColor('#1A1A2E'), spaceAfter=5),
+        "bullet_item": ParagraphStyle("bi", fontName=FN, fontSize=10, leading=15,
+                                      textColor=colors.HexColor('#1A1A2E'),
+                                      leftIndent=12, spaceAfter=4),
+        "ciekawostka": ParagraphStyle("ciek", fontName=FI, fontSize=9.5, leading=14,
+                                      textColor=colors.HexColor(ACC_GOLD),
+                                      spaceAfter=4, leftIndent=10),
+        "example_header": ParagraphStyle("exh", fontName=FB, fontSize=8, leading=11,
+                                         textColor=colors.HexColor(ACC_CYAN),
+                                         spaceAfter=3, leftIndent=14),
+        "error_text": ParagraphStyle("err", fontName=FB, fontSize=10, leading=15,
+                                     textColor=colors.HexColor('#ff6b6b'),
+                                     leftIndent=8, spaceAfter=3),
+        "hint_text": ParagraphStyle("hint", fontName=FN, fontSize=9.5, leading=14,
+                                    textColor=colors.HexColor(ACC_CYAN),
+                                    leftIndent=8, spaceAfter=3),
+    }
+
+# ============================================================
+# SEKCJA LABEL Z OZDOBNIKIEM
+# ============================================================
+class SectionLabel(Flowable):
+    def __init__(self, text, accent=None, width=515):
+        super().__init__()
+        self.text = text
+        self.accent = accent or ACC_PURPLE
+        self.width = width; self.height = 26
+
+    def draw(self):
+        c = self.canv; W = self.width; acc = self.accent
+        c.setStrokeColor(colors.HexColor('#E0E0EE'))
+        c.setLineWidth(0.8); c.line(0, 11, W, 11)
+        est_w = len(self.text) * 5.5 + 20
+        c.setFillColor(colors.HexColor(acc))
+        c.roundRect(0, 3, est_w, 17, 4, fill=1, stroke=0)
+        _canvas_draw_text(c, self.text, 5, 16, est_w - 6,
+                          fontsize=7.5, color='#FFFFFF', bold=True)
+
+
 
 
 # ============================================================
-# PROMPT
+# GŁÓWNA KLASA
 # ============================================================
+def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_px=110):
+    import io as _io2
+    DPI = 150; W_IN = width_px / 72; H_IN = 1.95
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    fig.patch.set_facecolor(BG_CARD)
+    # Header
+    ax_h = fig.add_axes([0, 0.72, 1, 0.28])
+    ax_h.set_facecolor(accent_color); ax_h.axis('off')
+    poj_clean = pojecie.replace('$','')[:38]
+    ax_h.text(0.5, 0.5, poj_clean, fontsize=9, fontweight='bold',
+              color='#1A1A2E', ha='center', va='center', transform=ax_h.transAxes, clip_on=True)
+    # Body
+    ax_b = fig.add_axes([0.04, 0.02, 0.92, 0.68])
+    ax_b.set_facecolor(BG_CARD); ax_b.axis('off')
+    # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
+    import re as _re_def
+    defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
+    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
+    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
+    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
+    defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
+    defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
+    # Utnij po pełnym zdaniu (nie w środku słowa)
+    if len(defn_clean) > 200:
+        # Znajdź ostatnią kropkę przed limitem
+        cut = defn_clean[:210].rfind('.')
+        if cut < 100:  # Za krótko - utnij po ostatnim spacji
+            cut = defn_clean[:210].rfind(' ')
+        defn = defn_clean[:cut+1] if cut > 0 else defn_clean[:200] + '...'
+    else:
+        defn = defn_clean
+    _cpl = max(18, int((W_IN * 0.88) * 72 / (7.2 * 0.63)))
+    _ld, _bd, _im = [], '', False
+    for _ch in defn:
+        if _ch == '$': _im = not _im
+        _bd += _ch
+        if _ch == ' ' and not _im and len(_bd) > _cpl:
+            _ld.append(_bd.rstrip()); _bd = ''
+    if _bd.strip(): _ld.append(_bd.strip())
+    if not _ld: _ld = [defn]
+    ax_b.text(0.5, 0.97, '\n'.join(_ld), fontsize=7.2, color=TXT_SUB,
+              ha='center', va='top', transform=ax_b.transAxes, multialignment='center', linespacing=1.5)
+    try:
+        from PIL import Image as _PIL_c; import io as _io_c
+        _buf_c = _io_c.BytesIO()
+        plt.savefig(_buf_c, format="png", dpi=DPI, facecolor=BG_CARD, edgecolor="none")
+        plt.close(fig); _buf_c.seek(0)
+        _rgb_c = _PIL_c.open(_buf_c).convert("RGB")
+        _out_c = _io_c.BytesIO(); _rgb_c.save(_out_c, "PNG"); _out_c.seek(0)
+        return _out_c.read()
+    except:
+        try: plt.close(fig)
+        except: pass
+        return None
+
+
 PROMPT = """Jestes doswiadczonym nauczycielem matematyki z 15-letnim stazem i autorem materialow edukacyjnych.
 Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
 TEMAT: {temat}
@@ -662,13 +944,22 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 }}
 
 === WYMAGANIA ===
-- kluczowe_pojecia: 4-5, KAZDE z intuicja + przykladem
-- sekcje: 3-4, KAZDA z przykladem krok-po-kroku
-- bledy_uczniow: DOKLADNIE 3, KAZDY z przykladem
-- quiz: DOKLADNIE 4 pytania
-- do_zapamietania: DOKLADNIE 5
+- kluczowe_pojecia: {n_pojecia}, KAZDE z intuicja + przykladem
+- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem krok-po-kroku
+- bledy_uczniow: DOKLADNIE {n_bledy}, KAZDY z przykladem
+- quiz: DOKLADNIE {n_quiz} pytania
+- do_zapamietania: DOKLADNIE {n_zapamietaj}
 - Caly tekst PO POLSKU
 - KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
+
+
+# Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
+SIZE_CONFIG = {
+    2: dict(n_pojecia='2',   n_sekcje=2, n_bledy=1, n_quiz=2, n_zapamietaj=3),   # Szybka
+    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5),   # Normalna (default)
+    4: dict(n_pojecia='4-5', n_sekcje=4, n_bledy=3, n_quiz=4, n_zapamietaj=5),   # Dokładna
+    5: dict(n_pojecia='5-6', n_sekcje=5, n_bledy=3, n_quiz=6, n_zapamietaj=6),   # Mega
+}
 
 # ============================================================
 # STYLE
@@ -707,21 +998,25 @@ class SectionLabel(Flowable):
     def __init__(self, text, accent=ACC_PURPLE, width=515):
         super().__init__()
         self.text = text; self.accent = accent
-        self.width = width; self.height = 20
+        self.width = width; self.height = 24
 
     def draw(self):
         c = self.canv; W = self.width
         acc = self.accent
-        # Linia z ikoną
-        c.setStrokeColorRGB(*hex2rgb(acc), alpha=0.5); c.setLineWidth(1)
-        c.line(0, 8, W, 8)
-        # Tło dla tekstu
-        tw = c.stringWidth(self.text, FB, 7.5) + 16
-        c.setFillColor(colors.HexColor(BG_PAGE))
-        c.rect(0, 2, tw, 14, fill=1, stroke=0)
-        # Tekst
-        c.setFillColor(colors.HexColor(acc)); c.setFont(FB, 7.5)
-        c.drawString(4, 5, self.text)
+        # Linia pozioma
+        try:
+            r, g, b = hex2rgb(acc)
+            c.setStrokeColorRGB(r, g, b, alpha=0.45)
+        except:
+            c.setStrokeColor(colors.HexColor(acc))
+        c.setLineWidth(1); c.line(0, 10, W, 10)
+        # Tło tagu
+        est_w = len(self.text) * 5.5 + 18
+        c.setFillColor(colors.HexColor(acc))
+        c.roundRect(0, 3, est_w, 16, 4, fill=1, stroke=0)
+        # Tekst przez matplotlib
+        _canvas_draw_text(c, self.text, 4, 14, est_w - 4,
+                          fontsize=7.5, color='#FFFFFF', bold=True)
 
 
 # ============================================================
@@ -882,8 +1177,10 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str) -> dict:
-        prompt = PROMPT.format(temat=temat, klasa=klasa)
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3) -> dict:
+        cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
+        prompt = PROMPT.format(temat=temat, klasa=klasa, **cfg)
+        max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
         r = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -895,7 +1192,7 @@ class PremiumNotesGenerator:
                 )},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7, max_tokens=5500,
+            temperature=0.7, max_tokens=max_tok,
         )
         return self._robust_json_parse(r.choices[0].message.content.strip())
 
@@ -1133,8 +1430,15 @@ class PremiumNotesGenerator:
                     return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
                         fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
-                nagl_cells = [Paragraph(st(_l2u(n)), ParagraphStyle("th", fontName=FB,
-                    fontSize=10, textColor=C_W, alignment=1)) for n in nagl]
+                def _nagl_cell(n, cw):
+                    txt = _l2u(n)
+                    png = _render_text_png(txt, cw-8, 24, fontsize=10, color='#FFFFFF', bg=ACC_PURPLE, bold=True)
+                    if png:
+                        from PIL import Image as _PILnh; import io as _ionh
+                        _pnh = _PILnh.open(_ionh.BytesIO(png))
+                        return RLImage(_ionh.BytesIO(png), width=cw-8, height=_pnh.size[1]/150*72)
+                    return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
+                nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
                 t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
                 t.setStyle(TableStyle([
                     ('BACKGROUND',(0,0),(-1,0), colors.HexColor(ACC_PURPLE)),
@@ -1198,7 +1502,7 @@ class PremiumNotesGenerator:
         # ── QUIZ ─────────────────────────────────────────────
         quiz = data.get('quiz', [])
         if quiz:
-            story.append(PageBreak())
+            story.append(Spacer(1, 30))
             story.append(SectionLabel("QUIZ SPRAWDZAJĄCY", ACC_RED, W))
             story.append(Spacer(1, 12))
 
@@ -1229,40 +1533,45 @@ class PremiumNotesGenerator:
                         ParagraphStyle("pytp", fontName=FB, fontSize=12,
                                        textColor=colors.HexColor(TXT_WHITE))))
 
-                # Opcje
+                # Opcje - przez matplotlib (polskie znaki)
                 for op in opcje:
                     ltr = op[0] if op else '?'
                     is_correct = (ltr == odp)
-                    col = ACC_CYAN if is_correct else TXT_MUTED
                     bg_op = '#F0FFF8' if is_correct else bg_quiz
-                    # ZAWSZE przez _render_text_png - jednakowy rozmiar czcionki
+                    col_op = ACC_CYAN if is_correct else '#2D3436'
+                    op_clean = _l2u(str(op))
                     from PIL import Image as _PILop; import io as _ioop
-                    _png_op = _render_text_png(f'  {op}', W-8, 28, fontsize=11,
-                                               color=col, bg=bg_op)
+                    _png_op = _render_text_png('  ' + op_clean, W-4, 26,
+                                               fontsize=11, color=col_op, bg=bg_op,
+                                               bold=is_correct)
                     if _png_op:
                         _pil_op = _PILop.open(_ioop.BytesIO(_png_op))
-                        _h_op = _pil_op.size[1] / 150 * 72
-                        op_elem = RLImage(_ioop.BytesIO(_png_op), width=W-8, height=_h_op)
+                        t_op_img = RLImage(_ioop.BytesIO(_png_op), width=W-4,
+                                           height=_pil_op.size[1]/150*72)
+                        t_op = Table([[t_op_img]], colWidths=[W])
+                        t_op.setStyle(TableStyle([
+                            ('BACKGROUND', (0,0),(-1,-1), colors.HexColor(bg_op)),
+                            ('TOPPADDING', (0,0),(-1,-1), 4),
+                            ('BOTTOMPADDING',(0,0),(-1,-1), 4),
+                            ('LEFTPADDING', (0,0),(-1,-1), 0),
+                            ('RIGHTPADDING',(0,0),(-1,-1), 4),
+                            ('LINEBEFORE',  (0,0),(0,-1), 3,
+                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
+                        ]))
                     else:
-                        op_elem = Paragraph(st(f'  {op}'),
-                            ParagraphStyle("opp", fontName=FN, fontSize=11,
-                                           textColor=colors.HexColor(col)))
-                    border_col = ACC_CYAN if is_correct else '#DFE6E9'
-                    t_op = Table([[op_elem]], colWidths=[W])
-                    t_op.setStyle(TableStyle([
-                        ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
-                        ('TOPPADDING',(0,0),(-1,-1), 3),('BOTTOMPADDING',(0,0),(-1,-1), 3),
-                        ('LEFTPADDING',(0,0),(-1,-1), 2),('RIGHTPADDING',(0,0),(-1,-1), 4),
-                        ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(border_col)),
-                    ]))
-                    t_op.setStyle(TableStyle([
-                        ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
-                        ('TOPPADDING',(0,0),(-1,-1), 3),('BOTTOMPADDING',(0,0),(-1,-1), 3),
-                        ('LEFTPADDING',(0,0),(-1,-1), 2),('RIGHTPADDING',(0,0),(-1,-1), 4),
-                        ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(border_col)),
-                    ]))
+                        fw_op = FB if is_correct else FN
+                        s_op = ParagraphStyle('op_'+ltr, fontName=fw_op, fontSize=11,
+                                              textColor=colors.HexColor(col_op), leading=16)
+                        t_op = Table([[Paragraph('  '+st(op_clean), s_op)]], colWidths=[W])
+                        t_op.setStyle(TableStyle([
+                            ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
+                            ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
+                            ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 8),
+                            ('LINEBEFORE',(0,0),(0,-1), 3,
+                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
+                        ]))
                     story.append(t_op)
-                    story.append(Spacer(1, 2))
+                    story.append(Spacer(1, 3))
 
                 # Wyjaśnienie
                 wyjasn_clean = wyjasn.replace('\\n', ' | ').replace('\n', ' | ')
@@ -1339,6 +1648,36 @@ class PremiumNotesGenerator:
                 story.append(t_dz)
                 story.append(Spacer(1, 8))
 
+        # ── ZAMKNIĘCIE PREMIUM ─────────────────────────────
+        story.append(Spacer(1, 30))
+        # Gradient banner zamykający
+        from reportlab.platypus.flowables import Flowable as _Flowable
+        class _ClosingBanner(_Flowable):
+            def __init__(self, w):
+                super().__init__(); self.width = w; self.height = 90
+            def draw(self):
+                c = self.canv; W = self.width; H = self.height
+                # Gradient tlo
+                for i in range(20):
+                    alpha = max(0, 0.18 - i*0.009)
+                    try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
+                    except: c.setFillColor(colors.HexColor(ACC_PURPLE))
+                    c.roundRect(0, H - i*5, W, 5+i*5, 8, fill=1, stroke=0)
+                # Pasek akcentowy
+                c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, H-4, W, 4, fill=1, stroke=0)
+                c.setFillColor(colors.HexColor(ACC_CYAN)); c.rect(W*0.4, H-4, W*0.3, 4, fill=1, stroke=0)
+                c.setFillColor(colors.HexColor(ACC_GOLD)); c.rect(W*0.8, H-4, W*0.2, 4, fill=1, stroke=0)
+                # Tekst
+                _canvas_draw_text(c, "EDUVIA AI PREMIUM NOTES", W*0.05, H - 18, W*0.9,
+                                  fontsize=11, color=ACC_PURPLE, bold=True, align='center')
+                _canvas_draw_text(c, "Notatka wygenerowana przez AI • eduvia.pl", W*0.05, H - 42, W*0.9,
+                                  fontsize=9, color=TXT_MUTED, align='center')
+                # Gwiazdki dekoracyjne
+                for xi, col in [(0.15, ACC_CYAN), (0.5, ACC_GOLD), (0.85, ACC_PURPLE)]:
+                    c.setFillColor(colors.HexColor(col))
+                    c.circle(W*xi, H*0.22, 5, fill=1, stroke=0)
+        story.append(_ClosingBanner(W))
+
         # Build PDF
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -1347,9 +1686,642 @@ class PremiumNotesGenerator:
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum") -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3) -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa)
+        data = self._get_content_from_gpt(temat, klasa, num_sections)
+        print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
+
+        cover_buf = io.BytesIO()
+        c = canvas_module.Canvas(cover_buf, pagesize=A4)
+        draw_cover(c, data.get('tytul', temat), data.get('podtytul','Notatka edukacyjna'), klasa)
+        c.save(); cover_buf.seek(0)
+
+        content_bytes = self._build_content_pages(data)
+
+        writer = PdfWriter()
+        for reader in [PdfReader(cover_buf), PdfReader(io.BytesIO(content_bytes))]:
+            for page in reader.pages:
+                writer.add_page(page)
+
+        safe = re.sub(r'[^\w\s-]', '', temat)[:40].strip().replace(' ', '_')
+        filename = f"Notatka_{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        with open(filename, 'wb') as f:
+            writer.write(f)
+        print(f"[Eduvia] Gotowe: {filename}")
+        return filename
+
+
+class PremiumNotesGenerator:
+
+    def __init__(self, api_key: str):
+        from openai import OpenAI
+        self.client = OpenAI(api_key=api_key)
+        self.styles = get_styles()
+
+    def _fix_json_escapes(self, raw):
+        import re
+        raw = re.sub(r'^```json\s*', '', raw); raw = re.sub(r'^```\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw); raw = raw.strip()
+        B = chr(92); CTRL = {chr(12): B+B+'f', chr(13): B+B+'r', chr(11): B+B+'v', chr(8): B+B+'b'}
+        result = []; i = 0; in_string = False
+        while i < len(raw):
+            c = raw[i]
+            if not in_string:
+                if c == '"': in_string = True
+                result.append(c); i += 1; continue
+            if c == '"': in_string = False; result.append(c); i += 1; continue
+            if c == B:
+                if i+1 < len(raw):
+                    nc = raw[i+1]
+                    if nc == B: result.append(B); result.append(B); i += 2
+                    elif nc == '"': result.append(B); result.append('"'); i += 2
+                    else: result.append(B); result.append(B); i += 1
+                else: result.append(B); result.append(B); i += 1
+            elif c in CTRL: result.append(CTRL[c]); i += 1
+            else: result.append(c); i += 1
+        return ''.join(result)
+
+    def _robust_json_parse(self, raw: str) -> dict:
+        import re as _re
+        raw = _re.sub(r'^```json\s*', '', raw, flags=_re.MULTILINE)
+        raw = _re.sub(r'^```\s*', '', raw, flags=_re.MULTILINE)
+        raw = _re.sub(r'\s*```$', '', raw, flags=_re.MULTILINE)
+        raw = raw.strip()
+        m = _re.search(r'\{', raw)
+        if m: raw = raw[m.start():]
+        depth = 0; end_idx = len(raw)
+        for i, ch in enumerate(raw):
+            if ch == '{': depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0: end_idx = i + 1; break
+        raw = raw[:end_idx]
+
+        def _fix_strings(s):
+            result = []; in_str = False; i = 0; B = chr(92)
+            VALID_AFTER_BS = set('"\\u/') | set('0123456789')
+            while i < len(s):
+                c = s[i]
+                if not in_str:
+                    if c == '"': in_str = True
+                    result.append(c); i += 1; continue
+                if c == '"':
+                    n_bs = 0; j = len(result) - 1
+                    while j >= 0 and result[j] == B: n_bs += 1; j -= 1
+                    if n_bs % 2 == 0: in_str = False
+                    result.append(c); i += 1
+                elif c == '\n': result.append(B); result.append('n'); i += 1
+                elif c == '\r': i += 1
+                elif c == '\t': result.append(B); result.append('t'); i += 1
+                elif c == B:
+                    if i+1 < len(s):
+                        nc = s[i+1]
+                        if nc == B or nc in VALID_AFTER_BS:
+                            result.append(B); result.append(nc); i += 2
+                        else: result.append(B); result.append(B); i += 1
+                    else: result.append(B); result.append(B); i += 1
+                else: result.append(c); i += 1
+            return ''.join(result)
+
+        def _fix_tc(s):
+            return _re.sub(r',\s*([}\]])', r'\1', s)
+
+        for attempt in [
+            lambda r: json.loads(r),
+            lambda r: json.loads(_fix_strings(r)),
+            lambda r: json.loads(_fix_tc(_fix_strings(r))),
+            lambda r: json.loads(_re.sub(r'(?<!\\)\\(?!["\\bfnrtu/])', r'\\\\', r)),
+        ]:
+            try: return attempt(raw)
+            except: pass
+
+        try:
+            result = {}
+            for field in ['tytul','podtytul','dlaczego_wazne','podsumowanie']:
+                m2 = _re.search(rf'"{field}"\s*:\s*"((?:[^"\\]|\\.)*)"', raw, _re.DOTALL)
+                if m2:
+                    try: result[field] = json.loads('"' + m2.group(1) + '"')
+                    except: result[field] = m2.group(1).replace('\\n', '\n')
+            if result.get('tytul'):
+                for k in ['kluczowe_pojecia','sekcje','bledy_uczniow','timeline','schemat_myslowy','quiz','do_zapamietania']:
+                    result.setdefault(k, [])
+                result.setdefault('tabela_porownawcza', {})
+                return result
+        except: pass
+        raise ValueError(f"JSON parse failed:\n{raw[:300]}")
+
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3) -> dict:
+        cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
+        prompt = PROMPT.format(temat=temat, klasa=klasa, **cfg)
+        max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
+        r = self.client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
+                    "Wzory TYLKO w formacie $...$. "
+                    "KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape). "
+                    "Zero backticks, zero markdown, zero komentarzy."
+                )},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7, max_tokens=max_tok,
+        )
+        return self._robust_json_parse(r.choices[0].message.content.strip())
+
+    def _build_content_pages(self, data: dict) -> bytes:
+        S = self.styles; W = PW - 80; story = []
+
+        # ── POJĘCIA ──────────────────────────────────────────
+        pojecia = data.get('kluczowe_pojecia', [])
+        if pojecia:
+            story.append(SectionLabel("KLUCZOWE POJĘCIA", ACC_PURPLE, W))
+            story.append(Spacer(1, 10))
+            card_w = (W - 14) / 2
+            CONCEPT_COLORS = [ACC_PURPLE, ACC_CYAN, ACC_GOLD, ACC_ORANGE]
+            for i in range(0, len(pojecia), 2):
+                pair = pojecia[i:i+2]
+                row = []
+                for j, p in enumerate(pair):
+                    png = _render_concept_png(p.get('pojecie',''), p.get('definicja',''),
+                                              CONCEPT_COLORS[(i+j) % 4], int(card_w), 110)
+                    if png:
+                        from PIL import Image as PILImg
+                        pil = PILImg.open(io.BytesIO(png))
+                        scale = card_w / (pil.size[0] / 120 * 72)
+                        h_pt = (pil.size[1] / 120 * 72) * scale
+                        row.append(RLImage(io.BytesIO(png), width=card_w, height=h_pt))
+                    else:
+                        row.append(ConceptCard(p.get('pojecie',''), p.get('definicja',''), i+j, card_w))
+                if len(row) == 1: row.append('')
+                t = Table([row], colWidths=[card_w, card_w])
+                t.setStyle(TableStyle([
+                    ('LEFTPADDING',(0,0),(-1,-1),5),('RIGHTPADDING',(0,0),(-1,-1),5),
+                    ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),12),
+                    ('VALIGN',(0,0),(-1,-1),'TOP')
+                ]))
+                story.append(t)
+
+        # ── SEKCJE ───────────────────────────────────────────
+        for i, s in enumerate(data.get('sekcje', [])):
+            acc = SECTION_ACCENTS[i % len(SECTION_ACCENTS)]
+            story.append(Spacer(1, 22))
+            story.append(SectionHeader(i + 1, s.get('tytul',''), accent=acc, width=W))
+            story.append(Spacer(1, 16))
+
+            # Treść
+            if s.get('tresc'):
+                for linia in s['tresc'].replace('\\n', '\n').split('\n'):
+                    if not linia.strip(): continue
+                    # Zawsze przez _render_text_png dla spójności fontu
+                    from PIL import Image as _PILtr; import io as _iotr
+                    _png_tr = _render_text_png(linia.strip(), W, 28,
+                                               fontsize=10.5, color=TXT_SUB, bg=BG_PAGE)
+                    if _png_tr:
+                        _pil_tr = _PILtr.open(_iotr.BytesIO(_png_tr))
+                        story.append(RLImage(_iotr.BytesIO(_png_tr), width=W,
+                                             height=_pil_tr.size[1]/150*72))
+                    else:
+                        story.append(Paragraph(st(linia.strip()), S['body']))
+                story.append(Spacer(1, 10))
+
+            # Wzory — każdy w osobnym "boksie"
+            for wzor in s.get('wzory', []):
+                if wzor and wzor.strip() and len(wzor.strip()) > 3:
+                    story.append(Spacer(1, 8))
+                    img = formula_to_rl_image(wzor.strip(), width_pt=W * 0.78)
+                    if img:
+                        # Owiń w tabelę z tłem
+                        t_f = Table([[img]], colWidths=[W])
+                        t_f.setStyle(TableStyle([
+                            ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_ACCENT)),
+                            ('TOPPADDING',(0,0),(-1,-1), 10),
+                            ('BOTTOMPADDING',(0,0),(-1,-1), 10),
+                            ('LEFTPADDING',(0,0),(-1,-1), 20),
+                            ('ALIGN',(0,0),(-1,-1),'CENTER'),
+                            ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(acc)),
+                        ]))
+                        story.append(t_f)
+                    else:
+                        story.append(Paragraph(f"  {st(wzor)}", ParagraphStyle("wzf",
+                            fontName=FM, fontSize=10, textColor=colors.HexColor(ACC_CYAN), spaceAfter=4)))
+                    story.append(Spacer(1, 6))
+
+            # Przykład — nowy premium styl
+            przyklad = s.get('przyklad', '')
+            if przyklad and przyklad.strip():
+                story.append(Spacer(1, 8))
+                linie = przyklad.strip().replace('\\n', '\n').split('\n')
+                rows = []
+                # Header przykładu
+                rows.append([Paragraph(
+                    "  > PRZYKLAD",
+                    ParagraphStyle("przH", fontName=FB, fontSize=8, leading=12,
+                                   textColor=colors.HexColor(ACC_CYAN), leftIndent=8)
+                )])
+                for linia in linie:
+                    if not linia.strip(): continue
+                    tekst = "   " + linia.strip()
+                    # ZAWSZE przez _render_text_png - jednakowy font
+                    from PIL import Image as _PILl; import io as _iol
+                    png_l = _render_text_png(tekst, W-4, 26, fontsize=10,
+                                             color='#1A4A32', bg=BG_GREEN)
+                    if png_l:
+                        _pl = _PILl.open(_iol.BytesIO(png_l)).size[1]
+                        rows.append([RLImage(_iol.BytesIO(png_l), width=W-4, height=_pl/150*72)])
+                    else:
+                        rows.append([Paragraph(
+                            f"   {st(linia.strip())}",
+                            ParagraphStyle("prz", fontName=FM, fontSize=10, leading=16,
+                                           textColor=colors.HexColor('#c8f0d8'), leftIndent=14)
+                        )])
+                t_prz = Table(rows, colWidths=[W])
+                t_prz.setStyle(TableStyle([
+                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_GREEN)),
+                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(ACC_CYAN)),
+                    ('TOPPADDING',(0,0),(-1,-1), 6),('BOTTOMPADDING',(0,0),(-1,-1), 8),
+                    ('LEFTPADDING',(0,0),(-1,-1), 0),('RIGHTPADDING',(0,0),(-1,-1), 10),
+                ]))
+                story.append(t_prz)
+                story.append(Spacer(1, 6))
+
+            # Ciekawostka
+            ciek = s.get('ciekawostka', '')
+            if ciek and ciek.strip():
+                story.append(Spacer(1, 4))
+                from PIL import Image as _PILck; import io as _iock
+                _png_ck = _render_text_png("  * " + ciek, W, 28, fontsize=10,
+                                           color=ACC_GOLD, bg=BG_GOLD)
+                if _png_ck:
+                    _pil_ck = _PILck.open(_iock.BytesIO(_png_ck))
+                    ciek_para = RLImage(_iock.BytesIO(_png_ck), width=W,
+                                        height=_pil_ck.size[1]/150*72)
+                else:
+                    ciek_para = Paragraph(st("  * " + ciek), S['ciekawostka'])
+                t_c = Table([[ciek_para]], colWidths=[W])
+                t_c.setStyle(TableStyle([
+                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_GOLD)),
+                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(ACC_GOLD)),
+                    ('TOPPADDING',(0,0),(-1,-1), 6),('BOTTOMPADDING',(0,0),(-1,-1), 6),
+                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 10),
+                ]))
+                story.append(t_c)
+
+        # ── DLACZEGO WAŻNE ───────────────────────────────────
+        dlaczego = data.get('dlaczego_wazne', '')
+        if dlaczego and dlaczego.strip():
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("DLACZEGO MUSISZ TO UMIEĆ?", ACC_BLUE, W))
+            story.append(Spacer(1, 8))
+            from PIL import Image as _PILdl; import io as _iodl
+            _png_dl = _render_text_png("  " + dlaczego, W-4, 28, fontsize=10.5,
+                                       color='#0A3060', bg=BG_BLUE)
+            if _png_dl:
+                _pil_dl = _PILdl.open(_iodl.BytesIO(_png_dl))
+                p_dl = RLImage(_iodl.BytesIO(_png_dl), width=W-4,
+                               height=_pil_dl.size[1]/150*72)
+            else:
+                p_dl = Paragraph(st("  " + dlaczego), S['body'])
+            t_dl = Table([[p_dl]], colWidths=[W])
+            t_dl.setStyle(TableStyle([
+                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_BLUE)),
+                ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_BLUE)),
+                ('TOPPADDING',(0,0),(-1,-1), 10),('BOTTOMPADDING',(0,0),(-1,-1), 10),
+                ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 12),
+            ]))
+            story.append(t_dl)
+
+        # ── BŁĘDY UCZNIÓW ────────────────────────────────────
+        bledy = data.get('bledy_uczniow', [])
+        if bledy:
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("BŁĘDY KTÓRE ROBI 7/10 UCZNIÓW", ACC_RED, W))
+            story.append(Spacer(1, 8))
+            for idx_b, bl in enumerate(bledy):
+                rows_b = []
+                from PIL import Image as _PILbl; import io as _iobl
+
+                def _bl_png(tekst, col):
+                    png = _render_text_png(tekst, W-4, 28, fontsize=10,
+                                          color=col, bg=BG_RED)
+                    if png:
+                        pil = _PILbl.open(_iobl.BytesIO(png))
+                        return RLImage(_iobl.BytesIO(png), width=W-4,
+                                       height=pil.size[1]/150*72)
+                    return Paragraph(st(tekst), ParagraphStyle("fb", fontName=FN,
+                        fontSize=10, textColor=colors.HexColor(col)))
+
+                blad_txt = f"  X  BLAD #{idx_b+1}: {bl.get('blad','')}"
+                rows_b.append([_bl_png(blad_txt, '#ff6b6b')])
+                if bl.get('dlaczego'):
+                    rows_b.append([_bl_png("  Dlaczego: " + bl['dlaczego'], '#ffaa88')])
+                if bl.get('jak_zapamietac'):
+                    rows_b.append([_bl_png("  Trick: " + bl['jak_zapamietac'], ACC_CYAN)])
+                t_b = Table(rows_b, colWidths=[W])
+                t_b.setStyle(TableStyle([
+                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_RED)),
+                    ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_RED)),
+                    ('TOPPADDING',(0,0),(-1,-1), 4),('BOTTOMPADDING',(0,0),(-1,-1), 4),
+                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 12),
+                ]))
+                story.append(t_b)
+                story.append(Spacer(1, 8))
+
+        # ── TABELA PORÓWNAWCZA ───────────────────────────────
+        tab = data.get('tabela_porownawcza', {})
+        if tab and tab.get('wiersze'):
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("TABELA PORÓWNAWCZA", ACC_PURPLE, W))
+            story.append(Spacer(1, 8))
+            nagl = tab.get('naglowki', []); wiersze = tab.get('wiersze', [])
+            if nagl and wiersze:
+                col_w = W / len(nagl)
+                def _l2u(s):
+                    import re as _r2; s = str(s).strip()
+                    s = _r2.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'\1/\2', s)
+                    for src, dst in [('\\int','∫'),('\\infty','∞'),('\\pi','π'),
+                                     ('\\alpha','α'),('\\beta','β'),('\\gamma','γ'),
+                                     ('\\Delta','Δ'),('\\delta','δ'),('\\sigma','σ'),
+                                     ('\\leq','≤'),('\\geq','≥'),('\\neq','≠'),
+                                     ('\\rightarrow','→'),('\\to','→'),('\\cdot','·')]:
+                        s = s.replace(src, dst)
+                    s = _r2.sub(r'[\\{}_^]','',s).replace('$','').strip()
+                    return s
+                def _cell(val):
+                    s = str(val).strip()
+                    # Zawsze renderuj tak samo - tekst przez PNG z identycznym fontem
+                    if '$' in s or '\\' in s:
+                        # Wzór - renderuj przez matplotlib z IDENTYCZNYM rozmiarem
+                        png = _render_text_png(s, col_w - 8, 28, fontsize=11,
+                                               color=TXT_MAIN, bg=BG_CARD2)
+                        if png:
+                            from PIL import Image as _PILc; import io as _ioc
+                            _pc = _PILc.open(_ioc.BytesIO(png))
+                            return RLImage(_ioc.BytesIO(png), width=col_w-8,
+                                          height=_pc.size[1]/150*72)
+                    # Zwykły tekst - Paragraph z identycznym fontem
+                    return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
+                        fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
+                safe_w = [[_cell(c) for c in row] for row in wiersze]
+                def _nagl_cell(n, cw):
+                    txt = _l2u(n)
+                    png = _render_text_png(txt, cw-8, 24, fontsize=10, color='#FFFFFF', bg=ACC_PURPLE, bold=True)
+                    if png:
+                        from PIL import Image as _PILnh; import io as _ionh
+                        _pnh = _PILnh.open(_ionh.BytesIO(png))
+                        return RLImage(_ionh.BytesIO(png), width=cw-8, height=_pnh.size[1]/150*72)
+                    return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
+                nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
+                t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND',(0,0),(-1,0), colors.HexColor(ACC_PURPLE)),
+                    ('TEXTCOLOR',(0,0),(-1,0), C_W),
+                    ('ROWBACKGROUNDS',(0,1),(-1,-1),
+                     [colors.HexColor('#F8F7FF'), colors.HexColor('#F0EEFF')]),
+                    ('TEXTCOLOR',(0,1),(-1,-1), colors.HexColor(TXT_MAIN)),
+                    ('FONTNAME',(0,1),(-1,-1), FN),('FONTSIZE',(0,1),(-1,-1), 10),
+                    ('ALIGN',(0,0),(-1,-1),'CENTER'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+                    ('GRID',(0,0),(-1,-1), 0.5, colors.HexColor('#DFE6E9')),
+                    ('LINEBELOW',(0,0),(-1,0), 2, colors.HexColor(ACC_PURPLE)),
+                    ('TOPPADDING',(0,0),(-1,-1), 12),('BOTTOMPADDING',(0,0),(-1,-1), 12),
+                    ('LEFTPADDING',(0,0),(-1,-1), 8),('RIGHTPADDING',(0,0),(-1,-1), 8),
+                    ('ROWHEIGHT',(0,1),(-1,-1), 44),
+                ]))
+                story.append(t)
+
+        # ── OŚ CZASU ─────────────────────────────────────────
+        tl = data.get('timeline', [])
+        if tl:
+            import re as _re
+            def _rok_sort(item):
+                m = _re.search(r'(\d{3,4})', str(item.get('rok','')))
+                val = int(m.group(1)) if m else 9999
+                return -val if 'p.n.e' in str(item.get('rok','')) else val
+            tl = sorted(tl, key=_rok_sort)
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("OŚ CZASU", ACC_CYAN, W))
+            story.append(Spacer(1, 10))
+            for i, item in enumerate(tl):
+                story.append(TimelineItem(item.get('rok',''), item.get('opis',''),
+                                          (i == len(tl)-1), W))
+                story.append(Spacer(1, 4))
+
+        # ── SCHEMAT MYŚLOWY ──────────────────────────────────
+        sch = data.get('schemat_myslowy', [])
+        if sch:
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("MAPA MYŚLOWA", ACC_PURPLE, W))
+            story.append(Spacer(1, 10))
+            for item in sch:
+                tekst_sch = item.get('tekst', '')
+                poziom_sch = item.get('poziom', 0)
+                if '$' in tekst_sch:
+                    png_sch = _render_text_png(tekst_sch, W - poziom_sch*28 - 20, 24,
+                                               fontsize=9.5,
+                                               color=[ACC_PURPLE, ACC_CYAN, TXT_MUTED][min(poziom_sch,2)],
+                                               bg=[BG_ACCENT, BG_GREEN, BG_PAGE][min(poziom_sch,2)])
+                    if png_sch:
+                        from PIL import Image as _PILsch; import io as _iosch
+                        _psch = _PILsch.open(_iosch.BytesIO(png_sch))
+                        story.append(RLImage(_iosch.BytesIO(png_sch),
+                                             width=W-poziom_sch*28-20,
+                                             height=_psch.size[1]/130*72))
+                    else:
+                        story.append(MindMapItem(poziom_sch, tekst_sch, W))
+                else:
+                    story.append(MindMapItem(poziom_sch, tekst_sch, W))
+                story.append(Spacer(1, 4))
+
+        # ── QUIZ ─────────────────────────────────────────────
+        quiz = data.get('quiz', [])
+        if quiz:
+            story.append(Spacer(1, 30))
+            story.append(SectionLabel("QUIZ SPRAWDZAJĄCY", ACC_RED, W))
+            story.append(Spacer(1, 12))
+
+            def _qpng(tekst, w, h, fs, col, bg, bold=False):
+                png = smart_png(tekst, w, h, fontsize=fs, color=col, bg=bg, bold=bold)
+                if not png: return None
+                import io as _ioQZ; from PIL import Image as _PILQZ
+                im = _PILQZ.open(_ioQZ.BytesIO(png))
+                return RLImage(_ioQZ.BytesIO(png), width=w, height=im.size[1]/110*72)
+
+            for i, q in enumerate(quiz):
+                pytanie = q.get('pytanie', '')
+                opcje = q.get('opcje', [])
+                odp = q.get('odpowiedz', 'A')
+                wyjasn = q.get('wyjasnienie', '')
+                bg_quiz = '#F8F7FF' if i % 2 == 0 else '#FFFFFF'
+
+                # Pytanie
+                from PIL import Image as _PILpyt; import io as _iopyt
+                _png_pyt = _render_text_png(f"Pytanie {i+1}: {pytanie}", W-4, 30,
+                                            fontsize=12, color=TXT_WHITE, bg=bg_quiz, bold=True)
+                if _png_pyt:
+                    _pil_pyt = _PILpyt.open(_iopyt.BytesIO(_png_pyt))
+                    story.append(RLImage(_iopyt.BytesIO(_png_pyt), width=W-4,
+                                        height=_pil_pyt.size[1]/150*72))
+                else:
+                    story.append(Paragraph(st(f'Pytanie {i+1}: {pytanie}'),
+                        ParagraphStyle("pytp", fontName=FB, fontSize=12,
+                                       textColor=colors.HexColor(TXT_WHITE))))
+
+                # Opcje - przez matplotlib (polskie znaki)
+                for op in opcje:
+                    ltr = op[0] if op else '?'
+                    is_correct = (ltr == odp)
+                    bg_op = '#F0FFF8' if is_correct else bg_quiz
+                    col_op = ACC_CYAN if is_correct else '#2D3436'
+                    op_clean = _l2u(str(op))
+                    from PIL import Image as _PILop; import io as _ioop
+                    _png_op = _render_text_png('  ' + op_clean, W-4, 26,
+                                               fontsize=11, color=col_op, bg=bg_op,
+                                               bold=is_correct)
+                    if _png_op:
+                        _pil_op = _PILop.open(_ioop.BytesIO(_png_op))
+                        t_op_img = RLImage(_ioop.BytesIO(_png_op), width=W-4,
+                                           height=_pil_op.size[1]/150*72)
+                        t_op = Table([[t_op_img]], colWidths=[W])
+                        t_op.setStyle(TableStyle([
+                            ('BACKGROUND', (0,0),(-1,-1), colors.HexColor(bg_op)),
+                            ('TOPPADDING', (0,0),(-1,-1), 4),
+                            ('BOTTOMPADDING',(0,0),(-1,-1), 4),
+                            ('LEFTPADDING', (0,0),(-1,-1), 0),
+                            ('RIGHTPADDING',(0,0),(-1,-1), 4),
+                            ('LINEBEFORE',  (0,0),(0,-1), 3,
+                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
+                        ]))
+                    else:
+                        fw_op = FB if is_correct else FN
+                        s_op = ParagraphStyle('op_'+ltr, fontName=fw_op, fontSize=11,
+                                              textColor=colors.HexColor(col_op), leading=16)
+                        t_op = Table([[Paragraph('  '+st(op_clean), s_op)]], colWidths=[W])
+                        t_op.setStyle(TableStyle([
+                            ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
+                            ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
+                            ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 8),
+                            ('LINEBEFORE',(0,0),(0,-1), 3,
+                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
+                        ]))
+                    story.append(t_op)
+                    story.append(Spacer(1, 3))
+
+                # Wyjaśnienie
+                wyjasn_clean = wyjasn.replace('\\n', ' | ').replace('\n', ' | ')
+                from PIL import Image as _PILwj; import io as _iowj
+                _png_wj = _render_text_png("  Wyjaśnienie: " + wyjasn_clean, W-4, 26,
+                                           fontsize=9.5, color=ACC_GOLD, bg=BG_GOLD)
+                if _png_wj:
+                    _pil_wj = _PILwj.open(_iowj.BytesIO(_png_wj))
+                    story.append(RLImage(_iowj.BytesIO(_png_wj), width=W-4,
+                                        height=_pil_wj.size[1]/150*72))
+                else:
+                    story.append(Paragraph(st(f'  Wyjaśnienie: {wyjasn_clean}'),
+                        ParagraphStyle("wjp", fontName=FI, fontSize=9.5,
+                                       textColor=colors.HexColor(ACC_GOLD))))
+                story.append(Spacer(1, 24))
+
+        # ── PODSUMOWANIE ─────────────────────────────────────
+        story.append(Spacer(1, 20))
+        story.append(SectionLabel("PODSUMOWANIE", ACC_CYAN, W))
+        story.append(Spacer(1, 10))
+        if data.get('podsumowanie'):
+            podsum = data['podsumowanie'].replace('\\n', '\n')
+            rows_ps = []
+            for linia in podsum.split('. '):
+                linia = linia.strip()
+                if not linia: continue
+                if not linia.endswith('.'): linia += '.'
+                from PIL import Image as _PILps2; import io as _iops2
+                _png_ps = _render_text_png(linia, W-32, 28, fontsize=10.5,
+                                           color=TXT_MAIN, bg='#F0EEFF')
+                if _png_ps:
+                    _pil_ps = _PILps2.open(_iops2.BytesIO(_png_ps))
+                    rows_ps.append([RLImage(_iops2.BytesIO(_png_ps), width=W-32,
+                                            height=_pil_ps.size[1]/150*72)])
+                else:
+                    rows_ps.append([Paragraph(st(linia), S['summary'])])
+            t = Table(rows_ps, colWidths=[W])
+            t.setStyle(TableStyle([
+                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor('#F0EEFF')),
+                ('LEFTPADDING',(0,0),(-1,-1), 20),('RIGHTPADDING',(0,0),(-1,-1), 20),
+                ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
+                ('LINEBELOW',(0,-1),(-1,-1), 3, colors.HexColor(ACC_CYAN)),
+                ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_CYAN)),
+            ]))
+            story.append(t)
+
+        # ── DO ZAPAMIĘTANIA ──────────────────────────────────
+        dz = data.get('do_zapamietania', [])
+        if dz:
+            story.append(Spacer(1, 20))
+            story.append(SectionLabel("DO ZAPAMIĘTANIA", ACC_GOLD, W))
+            story.append(Spacer(1, 10))
+            BULLETS = ["(1)","(2)","(3)","(4)","(5)"]
+            COLORS_DZ = [ACC_PURPLE, ACC_CYAN, ACC_RED, ACC_GOLD, ACC_BLUE]
+            for j, f in enumerate(dz):
+                col_dz = COLORS_DZ[j % 5]
+                tekst = f"{BULLETS[j%5]}  {f}"
+                from PIL import Image as _PILdz2; import io as _iodz2
+                _png_dz = _render_text_png(tekst, W-4, 28, fontsize=10.5,
+                                           color=col_dz, bg=BG_CARD)
+                if _png_dz:
+                    _pil_dz = _PILdz2.open(_iodz2.BytesIO(_png_dz))
+                    para_dz = RLImage(_iodz2.BytesIO(_png_dz), width=W-4,
+                                      height=_pil_dz.size[1]/150*72)
+                else:
+                    para_dz = Paragraph(st(tekst), S['bullet_item'])
+                t_dz = Table([[para_dz]], colWidths=[W])
+                t_dz.setStyle(TableStyle([
+                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_CARD)),
+                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(col_dz)),
+                    ('TOPPADDING',(0,0),(-1,-1), 5),('BOTTOMPADDING',(0,0),(-1,-1), 5),
+                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 10),
+                ]))
+                story.append(t_dz)
+                story.append(Spacer(1, 8))
+
+        # ── ZAMKNIĘCIE PREMIUM ─────────────────────────────
+        story.append(Spacer(1, 30))
+        # Gradient banner zamykający
+        from reportlab.platypus.flowables import Flowable as _Flowable
+        class _ClosingBanner(_Flowable):
+            def __init__(self, w):
+                super().__init__(); self.width = w; self.height = 90
+            def draw(self):
+                c = self.canv; W = self.width; H = self.height
+                # Gradient tlo
+                for i in range(20):
+                    alpha = max(0, 0.18 - i*0.009)
+                    try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
+                    except: c.setFillColor(colors.HexColor(ACC_PURPLE))
+                    c.roundRect(0, H - i*5, W, 5+i*5, 8, fill=1, stroke=0)
+                # Pasek akcentowy
+                c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, H-4, W, 4, fill=1, stroke=0)
+                c.setFillColor(colors.HexColor(ACC_CYAN)); c.rect(W*0.4, H-4, W*0.3, 4, fill=1, stroke=0)
+                c.setFillColor(colors.HexColor(ACC_GOLD)); c.rect(W*0.8, H-4, W*0.2, 4, fill=1, stroke=0)
+                # Tekst
+                _canvas_draw_text(c, "EDUVIA AI PREMIUM NOTES", W*0.05, H - 18, W*0.9,
+                                  fontsize=11, color=ACC_PURPLE, bold=True, align='center')
+                _canvas_draw_text(c, "Notatka wygenerowana przez AI • eduvia.pl", W*0.05, H - 42, W*0.9,
+                                  fontsize=9, color=TXT_MUTED, align='center')
+                # Gwiazdki dekoracyjne
+                for xi, col in [(0.15, ACC_CYAN), (0.5, ACC_GOLD), (0.85, ACC_PURPLE)]:
+                    c.setFillColor(colors.HexColor(col))
+                    c.circle(W*xi, H*0.22, 5, fill=1, stroke=0)
+        story.append(_ClosingBanner(W))
+
+        # Build PDF
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                leftMargin=44, rightMargin=44,
+                                topMargin=55, bottomMargin=35)
+        doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
+        return buf.getvalue()
+
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3) -> str:
+        print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
+        data = self._get_content_from_gpt(temat, klasa, num_sections)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()

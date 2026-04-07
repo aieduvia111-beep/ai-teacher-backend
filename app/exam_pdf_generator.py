@@ -7,6 +7,9 @@ Na tym samym poziomie co generator notatek.
 import io, re, json, os, tempfile, datetime
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib as _mpl
+_mpl.rcParams['font.family'] = 'DejaVu Sans'
+_mpl.rcParams['axes.unicode_minus'] = False
 import matplotlib.pyplot as plt
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -52,6 +55,39 @@ def _register_fonts():
     return 'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique'
 
 FN, FB, FI = _register_fonts()
+
+def _canvas_pl(c, tekst: str, x: float, y: float, width_pt: float,
+               fontsize=9, color='#1E1B4B', bold=False, align='left', bg=None):
+    """Rysuje tekst z polskimi znakami na canvas — przezroczyste tło."""
+    from reportlab.lib.utils import ImageReader
+    from PIL import Image as _PIL
+    DPI = 150
+    W_IN = max(0.5, width_pt / 72)
+    H_IN = max(0.25, fontsize / 72.0 * 2.0)
+    col = color.lstrip('#')
+    rgb = tuple(int(col[i:i+2], 16)/255 for i in (0, 2, 4))
+    ha = 'center' if align == 'center' else ('right' if align == 'right' else 'left')
+    xa = 0.5 if align == 'center' else (0.98 if align == 'right' else 0.01)
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    fig.patch.set_alpha(0)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_facecolor((0, 0, 0, 0)); ax.axis('off')
+    ax.text(xa, 0.5, tekst, fontsize=fontsize,
+            fontweight='bold' if bold else 'normal',
+            color=rgb, ha=ha, va='center', transform=ax.transAxes)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', dpi=DPI, transparent=True, edgecolor='none')
+    plt.close(fig); buf.seek(0)
+    pil = _PIL.open(buf).convert('RGBA')
+    pw, ph = pil.size
+    h_pt = ph / DPI * 72
+    out = io.BytesIO(); pil.save(out, 'PNG'); out.seek(0)
+    img_r = ImageReader(out)
+    if align == 'center':
+        x = x - width_pt / 2
+    elif align == 'right':
+        x = x - width_pt
+    c.drawImage(img_r, x, y - h_pt * 0.65, width=width_pt, height=h_pt, mask='auto')
 
 # ============================================================
 # KOLORY — jasny motyw dla sprawdzianu (do druku!)
@@ -108,9 +144,17 @@ ZAKAZ: na poziomie "trudna" dawania pytan z poziomu "latwa"
 ZAKAZ: na poziomie "latwa" dawania pytan z poziomu "trudna"
 
 === WZORY MATEMATYCZNE ===
-KRYTYCZNE: w JSON backslash musi byc podwojny: \\frac, \\sqrt, \\cdot, \\times
-Przyklady POPRAWNE: "$\\frac{{a}}{{b}}$", "$x^2 + y^2$", "$\\sqrt{{4}}$", "$\\cdot$"
-Przyklad BLEDNY: "$ rac{{a}}{{b}}$" lub "$\frac{{a}}{{b}}$" (pojedynczy backslash)
+KRYTYCZNE: w JSON backslash musi byc podwojny: \\frac, \\sqrt, \\cdot, \\times, \\int
+KRYTYCZNE: KAZDY wzor matematyczny MUSI byc otoczony znakami dolara: $wzor$
+KRYTYCZNE: NIE uzywaj \\left, \\right, \\displaystyle, \\limits — matplotlib ich nie obsługuje
+Przyklady POPRAWNE:
+  - "$\\frac{{a}}{{b}}$"
+  - "$\\int_a^b f(x)\\,dx$"
+  - "$x^2 + y^2$"
+  - "$\\sqrt{{4}}$"
+  - "Oblicz $\\int_0^2 (3x^2+2)\\,dx$"
+Przyklad BLEDNY: "\int_a^b f(x) dx" (bez dolarow i bez podwojnego backslash)
+Przyklad BLEDNY: "\\left(\\frac{{a}}{{b}}\\right)" (uzywasz left/right — ZAKAZ)
 
 === ZASADY ===
 NAKAZ: pytania musza byc KONKRETNE, obliczeniowe lub analityczne
@@ -195,10 +239,11 @@ def _fix_latex(tekst: str) -> str:
 
 def _render_math_png(tekst: str, width_pt: float, fontsize: float = 11,
                      color: str = '#1E1B4B', bg: str = '#FFFFFF') -> bytes | None:
-    """Renderuje tekst z LaTeX jako PNG — jasne tło dla druku."""
+    """Renderuje tekst (z LaTeX) jako przezroczyste PNG przez matplotlib."""
     from PIL import Image as _PIL
     DPI = 150
     W_IN = max(0.5, width_pt / 72)
+    # Zawijanie tekstu
     cpl = max(20, int(W_IN * 72 / (fontsize * 0.58)))
     linie, bufor, in_m = [], "", False
     for ch in tekst:
@@ -209,20 +254,20 @@ def _render_math_png(tekst: str, width_pt: float, fontsize: float = 11,
     if bufor.strip(): linie.append(bufor.strip())
     if not linie: linie = [tekst]
     n = len(linie)
-    H_IN = max(0.28, 0.38 * n + 0.10)
+    H_IN = max(0.3, n * fontsize / 72.0 * 1.9 + 0.08)
     full = "\n".join(linie)
     try:
         fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
-        fig.patch.set_facecolor(bg)
+        fig.patch.set_alpha(0)
         ax = fig.add_axes([0.0, 0.0, 1.0, 1.0])
-        ax.set_facecolor(bg); ax.axis("off")
-        ax.text(0.008, 0.96, full, fontsize=fontsize, color=color,
+        ax.set_facecolor((0, 0, 0, 0)); ax.axis("off")
+        ax.text(0.008, 0.97, full, fontsize=fontsize, color=color,
                 ha="left", va="top", transform=ax.transAxes, linespacing=1.5)
         buf = io.BytesIO()
-        plt.savefig(buf, format="png", dpi=DPI, facecolor=bg, edgecolor="none")
+        plt.savefig(buf, format="png", dpi=DPI, transparent=True, edgecolor="none")
         plt.close(fig); buf.seek(0)
-        rgb = _PIL.open(buf).convert("RGB")
-        out = io.BytesIO(); rgb.save(out, "PNG"); out.seek(0)
+        rgba = _PIL.open(buf).convert("RGBA")
+        out = io.BytesIO(); rgba.save(out, "PNG"); out.seek(0)
         return out.read()
     except:
         try: plt.close(fig)
@@ -234,17 +279,20 @@ def _render_formula_png(formula: str, width_pt: float = 400) -> bytes | None:
     from PIL import Image as _PIL
     f = formula.strip()
     if not f.startswith('$'): f = '$' + f + '$'
+    f_inner = f[1:-1]
+    f_inner = _sanitize_mathtext(f_inner)
+    f = '$' + f_inner + '$'
     W_IN = max(1.0, width_pt / 72)
     try:
-        fig = plt.figure(figsize=(W_IN, 0.65), dpi=150)
+        fig = plt.figure(figsize=(W_IN, 0.75), dpi=180)
         fig.patch.set_facecolor('#FFFFFF')
         ax = fig.add_axes([0, 0, 1, 1])
         ax.set_facecolor('#FFFFFF'); ax.axis('off')
-        ax.text(0.5, 0.5, f, fontsize=20, ha='center', va='center',
+        ax.text(0.5, 0.5, f, fontsize=22, ha='center', va='center',
                 color='#1E1B4B', transform=ax.transAxes)
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight',
-                    facecolor='#FFFFFF', edgecolor='none', pad_inches=0.06)
+        plt.savefig(buf, format='png', dpi=180, bbox_inches='tight',
+                    facecolor='#FFFFFF', edgecolor='none', pad_inches=0.08)
         plt.close(fig); buf.seek(0)
         from PIL import Image as PIL2
         rgb = PIL2.open(buf).convert('RGB')
@@ -256,23 +304,26 @@ def _render_formula_png(formula: str, width_pt: float = 400) -> bytes | None:
         return None
 
 def _png_to_rl(png: bytes, width_pt: float):
-    """Konwertuje PNG bytes na ReportLab Image."""
+    """Konwertuje PNG bytes na ReportLab Image z przezroczystością."""
     from reportlab.platypus import Image as RLImage
     from PIL import Image as PIL
     pil = PIL.open(io.BytesIO(png))
     pw, ph = pil.size
-    scale = width_pt / (pw / 130 * 72)
-    h_pt = (ph / 130 * 72) * scale
-    return RLImage(io.BytesIO(png), width=width_pt, height=h_pt)
+    scale = width_pt / (pw / 150 * 72)
+    h_pt = (ph / 150 * 72) * scale
+    img = RLImage(io.BytesIO(png), width=width_pt, height=h_pt)
+    img._mask = 'auto'
+    return img
 
 def _math_line(tekst: str, width_pt: float, fontsize=11,
                color='#1E1B4B', bg='#FFFFFF', styl=None):
-    """Zwraca PNG jeśli jest $, inaczej Paragraph."""
+    """Zawsze renderuje przez matplotlib PNG — polskie znaki 100%."""
     from reportlab.platypus import Image as RLImage
     tekst = _fix_latex(str(tekst))
-    if '$' in str(tekst):
-        png = _render_math_png(str(tekst), width_pt, fontsize, color, bg)
-        if png: return _png_to_rl(png, width_pt)
+    png = _render_math_png(str(tekst), width_pt, fontsize, color, bg)
+    if png:
+        return _png_to_rl(png, width_pt)
+    # fallback
     if styl: return Paragraph(str(tekst), styl)
     return Paragraph(str(tekst), _styles()['body'])
 
@@ -364,11 +415,10 @@ class OpenQuestionHeader(Flowable):
         c = self.canv
         c.setFillColor(C_ACCENT2)
         c.rect(0, 0, self.width, self.height, fill=1, stroke=0)
-        c.setFillColor(colors.white)
-        c.setFont(FB, 12)
-        c.drawString(12, 10, f"Zadanie {self.nr}")
-        c.setFont(FN, 10)
-        c.drawRightString(self.width - 12, 10, f"{self.punkty} punktów")
+        _canvas_pl(c, f"Zadanie {self.nr}", 12, 10, self.width / 2,
+                   fontsize=12, color='#FFFFFF', bold=True, bg='#7C3AED')
+        _canvas_pl(c, f"{self.punkty} punktow", self.width - 12, 10, self.width / 2,
+                   fontsize=10, color='#FFFFFF', align='right', bg='#7C3AED')
 
 class SectionHeader(Flowable):
     """Nagłówek sekcji sprawdzianu."""
@@ -383,12 +433,10 @@ class SectionHeader(Flowable):
         c.setStrokeColor(C_BORDER)
         c.setLineWidth(1.5)
         c.roundRect(0, 0, self.width, self.height, 8, fill=0, stroke=1)
-        c.setFillColor(C_ACCENT)
-        c.setFont(FB, 12)
-        c.drawString(14, 28, self.nazwa)
-        c.setFillColor(C_MUTED)
-        c.setFont(FI, 9)
-        c.drawString(14, 12, self.instrukcja[:90])
+        _canvas_pl(c, self.nazwa, 14, 28, self.width - 28,
+                   fontsize=12, color='#4F46E5', bold=True)
+        _canvas_pl(c, self.instrukcja[:90], 14, 12, self.width - 28,
+                   fontsize=9, color='#6B7280')
 
 # ============================================================
 # OKŁADKA SPRAWDZIANU
@@ -420,33 +468,26 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     c.setFillColor(C_ACCENT)
     c.circle(w - 55, h - 55, 28, fill=1, stroke=0)
     c.setFillColor(colors.white)
-    c.setFont(FB, 11)
-    c.drawCentredString(w - 55, h - 63, "Wariant")
     c.setFont(FB, 20)
     c.drawCentredString(w - 55, h - 48, wariant)
 
     # Tytuł
     tytul = data.get('tytul', 'Sprawdzian')
-    c.setFillColor(C_ACCENT)
-    c.setFont(FB, 20)
-    # Zawijaj jeśli długi
     if len(tytul) > 35:
         words = tytul.split()
         line1 = " ".join(words[:len(words)//2])
         line2 = " ".join(words[len(words)//2:])
-        c.drawCentredString(w/2, h - 145, line1)
-        c.drawCentredString(w/2, h - 168, line2)
+        _canvas_pl(c, line1, w/2, h - 145, w - 80, fontsize=20, color='#4F46E5', bold=True, align='center')
+        _canvas_pl(c, line2, w/2, h - 168, w - 80, fontsize=20, color='#4F46E5', bold=True, align='center')
         y_after = h - 190
     else:
-        c.drawCentredString(w/2, h - 155, tytul)
+        _canvas_pl(c, tytul, w/2, h - 155, w - 80, fontsize=20, color='#4F46E5', bold=True, align='center')
         y_after = h - 180
 
     # Przedmiot / klasa
-    c.setFillColor(C_MUTED)
-    c.setFont(FN, 11)
     info = f"{data.get('przedmiot','')}"
     if data.get('klasa'): info += f"  |  {data.get('klasa','')}"
-    c.drawCentredString(w/2, y_after, info)
+    _canvas_pl(c, info, w/2, y_after, w - 80, fontsize=11, color='#6B7280', align='center')
 
     # Linia
     c.setStrokeColor(C_BORDER)
@@ -489,7 +530,8 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     c.roundRect(40, field_y, w - 80, 42, 8, fill=0, stroke=1)
     c.setFillColor(C_MUTED)
     c.setFont(FN, 8)
-    c.drawString(52, field_y + 30, "IMIĘ I NAZWISKO")
+    _canvas_pl(c, "IMIĘ I NAZWISKO", 52, field_y + 30, w - 104,
+               fontsize=8, color='#6B7280')
     c.setStrokeColor(C_BORDER)
     c.setLineWidth(0.5)
     c.line(52, field_y + 18, w - 52, field_y + 18)
@@ -515,7 +557,7 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     c.setStrokeColor(C_BORDER)
     c.roundRect(40, scale_y, w - 80, 54, 8, fill=0, stroke=1)
     c.setFillColor(C_MUTED); c.setFont(FN, 8)
-    c.drawString(52, scale_y + 42, "SKALA OCEN")
+    _canvas_pl(c, "SKALA OCEN", 52, scale_y + 42, 120, fontsize=8, color='#6B7280')
     max_pkt = data.get('punkty_lacznie', 30)
     oceny = [
         (f"{int(max_pkt*0.92)}–{max_pkt}", "6", C_ACCENT),
@@ -546,9 +588,7 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
         c.setLineWidth(1)
         c.roundRect(40, instr_y, w - 80, 48, 8, fill=0, stroke=1)
         c.setFillColor(C_GOLD); c.setFont(FB, 9)
-        c.drawString(52, instr_y + 35, "📋 INSTRUKCJA:")
-        c.setFillColor(C_TEXT); c.setFont(FN, 8.5)
-        # Zawijaj instrukcję
+        c.drawString(52, instr_y + 35, "INSTRUKCJA:")
         words = instr.split()
         line, lines = "", []
         for word in words:
@@ -556,12 +596,14 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
             else: line = (line + " " + word).strip()
         if line: lines.append(line)
         for j, l in enumerate(lines[:2]):
-            c.drawString(52, instr_y + 22 - j * 13, l)
+            _canvas_pl(c, l, 52, instr_y + 22 - j * 13, w - 104,
+                       fontsize=8.5, color='#1E1B4B')
 
     # Stopka
     c.setFillColor(C_MUTED)
     c.setFont(FN, 7)
-    c.drawCentredString(w/2, 18, "Wygenerowano przez Eduvia AI • Nie kopiować • Chronione prawem autorskim")
+    _canvas_pl(c, "Wygenerowano przez Eduvia AI • Nie kopiowac • Chronione prawem autorskim",
+               w/2, 18, w - 80, fontsize=7, color='#6B7280', align='center')
 
 # ============================================================
 # STRONA KLUCZA ODPOWIEDZI
@@ -581,7 +623,8 @@ def _draw_answer_key_page(story, data, S, W):
 
     for sekcja in data.get('sekcje', []):
         story.append(Spacer(1, 8))
-        story.append(Paragraph(sekcja.get('nazwa', ''), S['section']))
+        story.append(_math_line(sekcja.get('nazwa', ''), W, fontsize=12,
+                                color='#4F46E5', bg='#FFFFFF', styl=S['section']))
         story.append(Spacer(1, 6))
 
         if sekcja.get('typ') == 'zamkniete':
@@ -622,7 +665,8 @@ def _draw_answer_key_page(story, data, S, W):
             for p in sekcja.get('pytania', []):
                 story.append(Spacer(1, 8))
                 nr_txt = f"Zadanie {p.get('nr','?')} ({p.get('punkty','?')} pkt)"
-                story.append(Paragraph(nr_txt, S['bold']))
+                story.append(_math_line(nr_txt, W, fontsize=10.5,
+                                        color='#1E1B4B', bg='#FFFFFF', styl=S['bold']))
                 odp = p.get('odpowiedz_modelowa', '')
                 if odp:
                     el = _math_line("Odpowiedź: " + odp, W, fontsize=9.5,
@@ -631,7 +675,8 @@ def _draw_answer_key_page(story, data, S, W):
                     story.append(Spacer(1, 4))
                 schema = p.get('schemat_oceniania', [])
                 if schema:
-                    story.append(Paragraph("Schemat oceniania:", S['small']))
+                    story.append(_math_line("Schemat oceniania:", W, fontsize=8.5,
+                                            color='#6B7280', bg='#FFFFFF', styl=S['small']))
                     for krok in schema:
                         el = _math_line("• " + krok, W, fontsize=9,
                                        color='#6B7280', bg='#FFFFFF', styl=S['schema'])
@@ -658,13 +703,13 @@ def _add_page_bg(c, doc):
     c.rect(0, h-4, w, 4, fill=1, stroke=0)
     # Nagłówek strony
     c.setFont(FN, 8); c.setFillColor(C_MUTED)
-    c.drawString(20, h - 20, "Eduvia AI — Sprawdzian")
-    c.drawRightString(w - 20, h - 20, f"Strona {doc.page}")
+    _canvas_pl(c, "Eduvia AI — Sprawdzian", 20, h - 20, 200, fontsize=8, color='#6B7280')
+    c.setFont(FN, 8); c.setFillColor(C_MUTED)
+    _canvas_pl(c, f"Strona {doc.page}", w - 220, h - 20, 200, fontsize=8, color='#6B7280', align='right')
     # Dolna linia
     c.setStrokeColor(C_BORDER); c.setLineWidth(0.5)
     c.line(20, 20, w - 20, 20)
-    c.setFont(FN, 7); c.setFillColor(C_MUTED)
-    c.drawCentredString(w/2, 8, "Wygenerowano przez Eduvia AI")
+    _canvas_pl(c, "Wygenerowano przez Eduvia AI", w/2, 8, 300, fontsize=7, color='#6B7280', align='center')
     c.restoreState()
 
 def _build_exam_pages(data: dict) -> bytes:
@@ -804,15 +849,16 @@ class ExamGenerator:
             trudnosc=trudnosc, liczba_pytan=liczba_pytan
         )
         r = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content":
                     "Jestes nauczycielem tworzacym sprawdziany. "
                     "Odpowiadasz TYLKO czystym JSON. Zero backticks. "
+                    "KRYTYCZNE: poziom trudnosci MUSI byc scisle przestrzegany. "
                     "Znaki nowej linii w stringach jako \\n."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7, max_tokens=5500,
+            temperature=0.5, max_tokens=5500,
         )
         raw = r.choices[0].message.content.strip()
         raw = self._fix_json(raw)
@@ -826,18 +872,20 @@ class ExamGenerator:
                 return {}
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
-                      trudnosc: str = "srednia", liczba_pytan: int = 12) -> str:
-        print(f"[ExamGen] Generuję: '{temat}' | {klasa} | {trudnosc}")
+                      trudnosc: str = "srednia", liczba_pytan: int = 12,
+                      wariant: str = "A") -> str:
+        print(f"[ExamGen] Generuję: '{temat}' | {klasa} | {trudnosc} | Wariant {wariant}")
         data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan)
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
+        data['wariant'] = wariant
         print(f"[ExamGen] Sprawdzian: '{data.get('tytul','?')}'")
 
         # Okładka
         cover_buf = io.BytesIO()
         from reportlab.pdfgen import canvas as rl_canvas
         c = rl_canvas.Canvas(cover_buf, pagesize=A4)
-        _draw_exam_cover(c, data)
+        _draw_exam_cover(c, data, wariant=wariant)
         c.save(); cover_buf.seek(0)
 
         # Strony z pytaniami + klucz
@@ -850,7 +898,7 @@ class ExamGenerator:
                 writer.add_page(page)
 
         safe = re.sub(r'[^\w]', '_', temat)[:40]
-        fname = f"Sprawdzian_{safe}.pdf"
+        fname = f"Sprawdzian_{safe}_wariant{wariant}.pdf"
         with open(fname, 'wb') as f:
             writer.write(f)
         print(f"[ExamGen] Plik: {fname}")

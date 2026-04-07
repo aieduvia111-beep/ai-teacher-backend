@@ -255,6 +255,21 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .page-h1{font-size:1.5em!important;}
 }
 
+/* ── SELEKTOR KARTEK ── */
+.pages-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:2px;}
+.pages-btn{padding:10px 4px 9px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.72em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;position:relative;overflow:hidden;}
+.pages-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:.2s;pointer-events:none;}
+.pages-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.pages-btn.active{border-color:rgba(124,106,255,.45);color:var(--accent2);background:rgba(124,106,255,.1);}
+.pages-btn.active::before{opacity:1;background:linear-gradient(135deg,rgba(124,106,255,.06),transparent);}
+.pb-num{font-size:1.55em;font-weight:800;line-height:1;font-family:var(--h);}
+.pb-label{font-size:.65em;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:1px;line-height:1.3;}
+.pages-btn.active .pb-label{color:var(--muted2);}
+.pages-info{margin-top:9px;padding:9px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:10px;display:flex;align-items:center;gap:9px;transition:all .25s;}
+.pi-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 6px var(--ag);}
+.pi-text{font-size:.75em;color:var(--muted2);line-height:1.45;}
+.pi-text strong{color:var(--accent2);font-family:var(--h);}
+
 /* ── UPLOAD MULTI-ZDJECIA ── */
 .capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
 .capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
@@ -469,6 +484,36 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           </div>
         </div>
 
+        <!-- SELEKTOR LICZBY KARTEK -->
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Ile kartek?
+          </span>
+          <div class="pages-grid">
+            <button class="pages-btn" data-pages="2" data-sections="2" onclick="setPages(this)">
+              <span class="pb-num" style="font-size:.9em;margin-bottom:2px">Szybka</span>
+              <span class="pb-label">notatka<br>~4 str.</span>
+            </button>
+            <button class="pages-btn active" data-pages="4" data-sections="3" onclick="setPages(this)">
+              <span class="pb-num" style="font-size:.9em;margin-bottom:2px">Normalna</span>
+              <span class="pb-label">notatka<br>~8 str.</span>
+            </button>
+            <button class="pages-btn" data-pages="6" data-sections="4" onclick="setPages(this)">
+              <span class="pb-num" style="font-size:.9em;margin-bottom:2px">Dokładna</span>
+              <span class="pb-label">notatka<br>~11 str.</span>
+            </button>
+            <button class="pages-btn" data-pages="8" data-sections="5" onclick="setPages(this)">
+              <span class="pb-num" style="font-size:.9em;margin-bottom:2px">Mega</span>
+              <span class="pb-label">notatka<br>~15 str.</span>
+            </button>
+          </div>
+          <div class="pages-info" id="pagesInfo">
+            <div class="pi-dot"></div>
+            <div class="pi-text" id="pagesInfoText"><strong>Normalna notatka</strong> — pojęcia, 3 sekcje z przykładami, quiz, oś czasu, mapa myślowa</div>
+          </div>
+        </div>
+
         <div class="features">
           <div class="feat">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -484,7 +529,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           </div>
           <div class="feat">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>~2 min</span>
+            <span id="featTime">~2 min</span>
           </div>
         </div>
 
@@ -658,7 +703,24 @@ function animCount(id,target){
 }
 
 // ═══ LOGIKA ═══
-let level='liceum',photos=[],stepTimer=null;
+let level='liceum', pages=4, numSections=3, photos=[], stepTimer=null;
+
+const PAGES_INFO = {
+  2: '<strong>Szybka notatka</strong> — kluczowe pojęcia, 2 sekcje z przykładami, quiz (2 pytania)',
+  4: '<strong>Normalna notatka</strong> — pojęcia, 3 sekcje z przykładami, quiz, oś czasu, mapa myślowa',
+  6: '<strong>Dokładna notatka</strong> — 4 sekcje, więcej przykładów, tabela porównawcza, quiz (4 pytania)',
+  8: '<strong>Mega notatka</strong> — 5 sekcji, pogłębione przykłady, pełny quiz (6 pytań), kompletne podsumowanie',
+};
+const PAGES_TIME = {2:'~1 min', 4:'~2 min', 6:'~3 min', 8:'~4 min'};
+
+function setPages(btn){
+  document.querySelectorAll('.pages-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  pages = parseInt(btn.dataset.pages);
+  numSections = parseInt(btn.dataset.sections);
+  document.getElementById('pagesInfoText').innerHTML = PAGES_INFO[pages];
+  document.getElementById('featTime').textContent = PAGES_TIME[pages];
+}
 
 function setLevel(btn){document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');level=btn.dataset.val;}
 
@@ -689,7 +751,8 @@ function showErr(msg){document.getElementById('errText').textContent=msg;documen
 
 async function generate(){
   document.getElementById('errMsg').classList.remove('visible');
-  let body={klasa:level};
+  let body={klasa:level, pages:pages, num_sections:numSections};
+  console.log('[Eduvia] Generuję: pages='+pages+' num_sections='+numSections);
   let topicName='';
   const t=document.getElementById('temat').value.trim();
   if(!t && photos.length===0){showErr('Wpisz temat notatki lub dodaj zdjecie.');return;}

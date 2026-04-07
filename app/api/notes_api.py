@@ -15,12 +15,14 @@ _executor = ThreadPoolExecutor(max_workers=4)
 class NotesRequest(BaseModel):
     temat: str
     klasa: str = "liceum"
+    num_sections: int = 3
+    pages: Optional[int] = None
     image: Optional[str] = None
     images: Optional[List[str]] = None
 
-def _generate_blocking(temat: str, klasa: str, api_key: str) -> str:
+def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3) -> str:
     gen = PremiumNotesGenerator(api_key)
-    return gen.generate_pdf(temat, klasa)
+    return gen.generate_pdf(temat, klasa, num_sections)
 
 @router.post("/generate")
 async def generate_notes_pdf(req: NotesRequest):
@@ -68,7 +70,7 @@ async def generate_notes_pdf(req: NotesRequest):
         # Bez limitu czasowego - czekamy ile trzeba
         loop = asyncio.get_event_loop()
         filename = await loop.run_in_executor(
-            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY
+            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections
         )
 
         if filename and os.path.exists(filename):
