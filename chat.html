@@ -168,7 +168,9 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted2);margin:8px 0;font-style:italic;}
 .bubble .katex{font-size:1em;}.bubble .katex-display{margin:10px 0;overflow-x:auto;}
 .bubble hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
-.bubble-img{max-width:260px;border-radius:12px;margin-top:8px;border:1px solid var(--border-hi);}
+.bubble-img{width:72px;height:72px;object-fit:cover;border-radius:10px;margin-top:6px;margin-right:4px;border:1px solid var(--border-hi);display:inline-block;vertical-align:top;cursor:pointer;transition:transform .15s;}
+.bubble-img:hover{transform:scale(1.05);}
+.bubble-imgs-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .file-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:11px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);font-size:.77em;color:var(--accent2);margin-top:6px;}
 .file-chip svg{width:14px;height:14px;flex-shrink:0;}
 .sources-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
@@ -229,8 +231,8 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 @keyframes th{0%,80%,100%{transform:scale(1);opacity:.4;}40%{transform:scale(1.4);opacity:1;}}
 .input-area{flex-shrink:0;padding:14px 30px 20px;border-top:1px solid var(--border);background:linear-gradient(to top,rgba(7,7,13,0.95),transparent);}
 .attachments-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
-.att-preview{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:10px;background:var(--s2);border:1px solid var(--border-hi);font-size:.75em;color:var(--muted2);position:relative;}
-.att-preview img{width:36px;height:36px;object-fit:cover;border-radius:6px;}
+.att-preview{display:flex;align-items:center;gap:6px;padding:5px 8px 5px 5px;border-radius:10px;background:var(--s2);border:1px solid var(--border-hi);font-size:.72em;color:var(--muted2);position:relative;max-width:160px;}
+.att-preview img{width:30px;height:30px;object-fit:cover;border-radius:6px;flex-shrink:0;}
 .att-del{width:16px;height:16px;border-radius:50%;background:rgba(248,113,113,0.2);border:none;cursor:pointer;color:var(--red);font-size:.65em;display:flex;align-items:center;justify-content:center;position:absolute;top:-5px;right:-5px;transition:background .2s;}
 .att-del:hover{background:rgba(248,113,113,0.4);}
 .input-box{display:flex;align-items:flex-end;gap:10px;background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;padding:10px 12px;transition:border-color .2s,box-shadow .2s;}
@@ -398,11 +400,105 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .calc-ibtn.active{background:rgba(124,106,255,.15);color:var(--accent2);}
 .calc-ibtn:hover{background:var(--s2);color:var(--text);}
 .calc-ibtn svg{width:17px;height:17px;}
+
+/* ═══ HISTORIA CZATÓW ═══ */
+.hist-list{display:flex;flex-direction:column;gap:2px;margin-top:2px;}
+.hist-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:9px;font-size:.78em;color:var(--muted2);cursor:pointer;transition:all .2s;border:1px solid transparent;position:relative;}
+.hist-item:hover{background:var(--s2);color:var(--text);}
+.hist-item.active-hist{background:rgba(124,106,255,0.1);border-color:rgba(124,106,255,0.2);color:var(--text);}
+.hist-icon{flex-shrink:0;opacity:.6;}
+.hist-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
+.hist-del{width:16px;height:16px;border-radius:4px;background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .15s,color .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;}
+.hist-item:hover .hist-del{opacity:1;}
+.hist-del:hover{color:var(--red);}
+.hist-empty{font-size:.72em;color:var(--muted);padding:8px 10px;font-style:italic;}
+
+
+/* mobile historia w drawer */
+.d-hist-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:.8em;color:var(--muted2);cursor:pointer;transition:background .15s;}
+.d-hist-item:hover{background:rgba(255,255,255,0.04);color:var(--text);}
+.d-hist-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ═══ PANEL HISTORII (wysuwany z prawej) ═══ */
+.hist-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8000;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);}
+.hist-overlay.open{opacity:1;pointer-events:all;}
+.hist-panel{position:fixed;top:0;right:0;bottom:0;width:300px;max-width:90vw;background:linear-gradient(180deg,var(--s1),var(--bg));border-left:1px solid var(--border-hi);z-index:8001;transform:translateX(100%);transition:transform .3s cubic-bezier(0.23,1,0.32,1);display:flex;flex-direction:column;overflow:hidden;}
+.hist-panel.open{transform:translateX(0);}
+.hist-panel-head{padding:20px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.hist-panel-title{font-family:var(--h);font-size:.95em;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;}
+.hist-panel-title svg{color:var(--accent2);}
+.hist-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border-hi);background:none;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.hist-close:hover{color:var(--text);background:var(--s2);}
+.hist-new-btn{margin:12px 14px 4px;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.25);color:var(--accent2);font-size:.8em;font-family:var(--h);font-weight:700;cursor:pointer;transition:all .2s;}
+.hist-new-btn:hover{background:rgba(124,106,255,0.2);border-color:rgba(124,106,255,0.45);}
+.hist-scroll{flex:1;overflow-y:auto;padding:6px 10px 16px;}
+.hist-scroll::-webkit-scrollbar{width:3px;}
+.hist-scroll::-webkit-scrollbar-thumb{background:rgba(124,106,255,0.2);border-radius:100px;}
+.hist-section{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 6px 4px;}
+.hist-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;font-size:.8em;color:var(--muted2);cursor:pointer;transition:all .18s;border:1px solid transparent;margin-bottom:2px;}
+.hist-item:hover{background:var(--s2);color:var(--text);}
+.hist-item.active-hist{background:rgba(124,106,255,0.1);border-color:rgba(124,106,255,0.22);color:var(--text);}
+.hist-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
+.hist-time{font-size:.68em;color:var(--muted);flex-shrink:0;}
+.hist-del{width:18px;height:18px;border-radius:4px;background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .15s,color .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;}
+.hist-item:hover .hist-del{opacity:1;}
+.hist-del:hover{color:var(--red);}
+.hist-empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:.8em;line-height:1.7;}
+.hist-empty svg{opacity:.3;margin-bottom:10px;}
+/* przycisk zegarek w topbar */
+.hist-trigger{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:transparent;border:1px solid var(--border-hi);color:var(--muted2);font-family:var(--b);font-size:.75em;cursor:pointer;transition:all .2s;}
+.hist-trigger:hover{color:var(--text);border-color:rgba(255,255,255,0.2);background:var(--s2);}
+.hist-trigger svg{width:14px;height:14px;}
 </style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
+    authDomain: "eduvia-c69bc.firebaseapp.com",
+    projectId: "eduvia-c69bc",
+    storageBucket: "eduvia-c69bc.firebasestorage.app",
+    messagingSenderId: "613529563678",
+    appId: "1:613529563678:web:5028a3edfbd68969d4340f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Klucz urządzenia — unikalny ID dla tego użytkownika
+  let deviceId = localStorage.getItem('eduvia_device_id');
+  if (!deviceId) {
+    deviceId = 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+    localStorage.setItem('eduvia_device_id', deviceId);
+  }
+
+  // Eksportuj do window żeby reszta JS miała dostęp
+  window._fb = { db, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy, serverTimestamp, deviceId };
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fbReady'));
+</script>
 </head>
 <body>
-<header class="m-hdr" id="mHdr"><div class="m-logo"><span>E</span></div><div class="m-hdr-info"><div class="m-hdr-title">Chat AI</div><div class="m-hdr-sub">Pytaj z każdego przedmiotu</div></div><button onclick="clearChat()" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:6px 10px;color:#f87171;font-size:.72em;font-family:var(--b);cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Wyczyść</button><button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button></header>
-<div class="m-overlay" id="mOverlay" onclick="mClose()"></div><nav class="m-drawer" id="mDrawer"><div class="d-brand"><div class="d-logo"><span>E</span></div><div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div></div><div class="d-sec">Narzędzia</div><a class="d-link" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a><a class="d-link active" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a><a class="d-link" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a><a class="d-link" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a><a class="d-link" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a><a class="d-link" href="vision.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a><a class="d-link" href="voice_conversation.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a><a class="d-link" href="lesson_planner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</a></nav>
+<header class="m-hdr" id="mHdr"><div class="m-logo"><span>E</span></div><div class="m-hdr-info"><div class="m-hdr-title">Chat AI</div><div class="m-hdr-sub">Pytaj z każdego przedmiotu</div></div><button onclick="clearChat()" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:6px 10px;color:#f87171;font-size:.72em;font-family:var(--b);cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Wyczyść</button><button onclick="openHistPanel()" style="background:none;border:none;color:var(--muted2);cursor:pointer;padding:4px;display:flex;align-items:center;" title="Historia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button><button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button></header>
+<div class="m-overlay" id="mOverlay" onclick="mClose()"></div>
+<nav class="m-drawer" id="mDrawer">
+  <div class="d-brand"><div class="d-logo"><span>E</span></div><div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div></div>
+  <div class="d-sec">Glowne</div>
+  <div class="d-link" onclick="go('dashboard_FINAL.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</div>
+  <div class="d-link" onclick="go('lesson_planner.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</div>
+  <div class="d-sec">Narzedzia</div>
+  <div class="d-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</div>
+  <div class="d-link" onclick="go('voice_conversation.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</div>
+  <div class="d-link" onclick="go('notes_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</div>
+  <div class="d-link" onclick="go('exam_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</div>
+  <div class="d-link" onclick="go('vision-3.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
+  <div class="d-link" onclick="go('quiz_app.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>Quiz AI</div>
+
+  <div class="d-sec">Historia czatów</div>
+  <div class="d-sec">Konto</div>
+  <div class="d-link" onclick="go('pricing.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</div>
+</nav>
 <nav class="m-nav"><a class="m-nb" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></a><a class="m-nb active" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span><span class="m-nb-dot"></span></a><a class="m-nb" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Quiz</span></a><a class="m-nb" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></a><a class="m-nb" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg><span>Więcej</span></a></nav>
 
 
@@ -449,6 +545,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
   <a class="nl" href="pricing.html" onclick="event.preventDefault();navTo('pricing.html')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium
   </a>
+
   <div class="sb-footer">
     <div class="xp-wrap">
       <div class="xp-top"><span class="xp-lv">⚡ Poziom 8</span><span class="xp-pts">1240 / 1500 XP</span></div>
@@ -466,6 +563,10 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
       <div class="page-sub">Twój asystent do nauki — pytaj o wszystko</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
+      <button class="hist-trigger" onclick="openHistPanel()" title="Historia czatów">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historia
+      </button>
       <button class="clear-btn" onclick="clearChat()" title="Wyczyść czat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         Wyczyść
@@ -737,77 +838,30 @@ function renderLatex(el) {
   }
 }
 
-// ═══ FORMAT TEXT — 9-krokowy, identyczny z vision.html ═══
+// ═══ FORMAT TEXT — naprawia LaTeX z AI ═══
 function formatText(t) {
   if (!t) return '';
   t = String(t);
-
-  // KROK 1: Normalizuj podwójne backslashe
   t = t.replace(/\\\\/g, '\\');
-
-  // KROK 1b: Usuń artefakty Unicode (□ i podobne kwadraty z OCR/AI)
   t = t.replace(/[\u25a0-\u25ff\u2400-\u244f\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
-
-  // KROK 2: Naprawa obciętych komend
   t = t.replace(/(^|[^a-zA-Z\\])rac\{/g, '$1\\frac{');
   t = t.replace(/(^|[^a-zA-Z\\])ext\{/g, '$1\\text{');
   t = t.replace(/(^|[^a-zA-Z\\])qrt(\[|\{)/g, '$1\\sqrt$2');
   t = t.replace(/(^|[^a-zA-Z\\])imes(\s|$|\{)/g, '$1\\times$2');
-
-  // KROK 3: Spacja przed \komenda gdy poprzedza cyfra/litera
-  t = t.replace(/([0-9a-zA-Z])(\\[a-zA-Z])/g, '$1 $2');
-
-  // KROK 4: Chroń istniejące $...$
-  var ph = [];
-  t = t.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$/g, function(m) {
-    ph.push(m); return 'PHSTART' + (ph.length - 1) + 'PHEND';
-  });
-
-  // KROK 5: Owij komendy LaTeX w $...$
-  t = t.replace(/\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\})*(?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]))*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})?/g,
-    function(m) { if (m.indexOf('PHSTART') !== -1) return m; return '$' + m + '$'; }
-  );
-  t = t.replace(/\\[a-zA-Z]+(?![a-zA-Z{$\[])/g,
-    function(m) { if (m.indexOf('PHSTART') !== -1) return m; return '$' + m + '$'; }
-  );
-
-  // KROK 6: Potęgi/indeksy np. x^2 → $x^2$
-  t = t.replace(/([a-zA-Z0-9])([_^])(\{[^{}]+\}|[0-9]+(?:\.[0-9]+)?)/g, '$$$1$2$3$$');
-
-  // KROK 7: Przywróć chronione $...$
-  t = t.replace(/PHSTART(\d+)PHEND/g, function(_, i) { return ph[parseInt(i)]; });
-
-  // KROK 8: KLUCZOWE — wyrzuć dolary wewnątrz {} bo psują LaTeX
-  // np. $\frac{3 $\times$ 9}{9}$ → $\frac{3 \times 9}{9}$
-  var prev = '';
-  while (prev !== t) {
-    prev = t;
-    t = t.replace(/\{([^{}]*)\$([^${}]+)\$([^{}]*)\}/g, function(m, a, inner, b) {
-      return '{' + a + inner + b + '}';
-    });
-  }
-
-  // KROK 9: Napraw podwójne $$ nie-display (artefakt z kroków 5+6)
-  t = t.replace(/\$\$([^$\n]{1,100})\$\$/g, function(m, inner) {
-    if (/^\s*\\/.test(inner)) return m;
-    return '$' + inner.trim() + '$';
-  });
-
   return t;
 }
 
 // Renderuj markdown chroniąc bloki LaTeX przed marked
 function renderMarkdownWithLatex(text) {
-  // Najpierw formatText — naprawia LaTeX z AI
   const fixed = formatText(text);
   const placeholders = [];
-  // Chroń bloki LaTeX przed marked (który niszczy backslashe)
   let safe = fixed
-    .replace(/\$\$[\s\S]+?\$\$/g, m => { placeholders.push(m); return 'LATEXBLOCK' + (placeholders.length - 1) + 'END'; })
-    .replace(/\$[^\$\n]+?\$/g,    m => { placeholders.push(m); return 'LATEXBLOCK' + (placeholders.length - 1) + 'END'; });
+    .replace(/\$\$[\s\S]+?\$\$/g,    function(m){ placeholders.push(m); return 'LTXS'+(placeholders.length-1)+'LTXE'; })
+    .replace(/\$[^\$\n]+?\$/g,         function(m){ placeholders.push(m); return 'LTXS'+(placeholders.length-1)+'LTXE'; })
+    .replace(/\\\[[\s\S]+?\\\]/g,  function(m){ placeholders.push(m); return 'LTXS'+(placeholders.length-1)+'LTXE'; })
+    .replace(/\\\([\s\S]+?\\\)/g,  function(m){ placeholders.push(m); return 'LTXS'+(placeholders.length-1)+'LTXE'; });
   let html = marked.parse(safe);
-  // Przywróć LaTeX
-  html = html.replace(/LATEXBLOCK(\d+)END/g, (_, i) => placeholders[+i]);
+  html = html.replace(/LTXS(\d+)LTXE/g, function(_, i){ return placeholders[+i]; });
   return html;
 }
 
@@ -866,7 +920,7 @@ CHART — dla danych liczbowych: {"title":"...","labels":[...],"values":[...]}
 
 ZAWSZE dodaj diagram lub chart dla: biologia, chemia, fizyka, historia (chronologia/etapy), matematyka (algorytm/wzory).
 ZAWSZE podaj 2-3 prawdziwe linki Wikipedia PL lub źródeł edukacyjnych pasujących do tematu.
-has_latex: true gdy używasz wzory. ZAWSZE używaj $...$ (inline) lub $$...$$ (blok) dla wzorów.
+has_latex: true gdy używasz wzory. ZAWSZE owijaj KAŻDY wzór matematyczny w $...$ (inline) lub $$...$$ (blok). NIGDY nie pisz komend LaTeX jak \\log, \\frac, \\left bez otoczenia ich dolarami. Przykład: zamiast '\\log_3 6' pisz '$\\log_3 6$'.
 Gdy widzisz zdjecie z zadaniami lub liste zadan - ROZWIAZ KAZDE zadanie osobno krok po kroku. Numeruj: ## Zadanie 1, ## Zadanie 2 itd. Kazde zadanie kompletnie z pelnym rozwiazaniem i odpowiedzia.`
   }];
 
@@ -938,7 +992,7 @@ function renderAttachments() {
     const div = document.createElement('div'); div.className = 'att-preview';
     const isImg = a.type.startsWith('image/');
     div.innerHTML = `${isImg ? `<img src="${a.dataUrl}" alt="att">` : `<svg viewBox="0 0 20 20" fill="currentColor" style="width:28px;height:28px;color:var(--accent2)"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>`}
-      <span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.file.name}</span>
+      <span style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.file.name}</span>
       <button class="att-del" onclick="removeAtt(${i})">✕</button>`;
     row.appendChild(div);
   });
@@ -959,9 +1013,13 @@ async function sendMessage() {
   const userGroup = document.createElement('div');
   userGroup.className = 'msg-group user';
   let bubbleHTML = marked.parse(text);
-  attachments.forEach(a => {
-    if (a.type.startsWith('image/')) bubbleHTML += `<img class="bubble-img" src="${a.dataUrl}" alt="zdjęcie">`;
-    else bubbleHTML += `<div class="file-chip"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>${a.file.name}</div>`;
+  const imgs = attachments.filter(a => a.type.startsWith('image/'));
+  const nonImgs = attachments.filter(a => !a.type.startsWith('image/'));
+  if (imgs.length > 0) {
+    bubbleHTML += `<div class="bubble-imgs-row">${imgs.map(a => `<img class="bubble-img" src="${a.dataUrl}" alt="zdjęcie">`).join('')}</div>`;
+  }
+  nonImgs.forEach(a => {
+    bubbleHTML += `<div class="file-chip"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>${a.file.name}</div>`;
   });
   userGroup.innerHTML = `<div class="msg-meta user"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>Ty</div><div class="bubble">${bubbleHTML}</div>`;
   const msgs = document.getElementById('msgsArea');
@@ -1062,7 +1120,6 @@ async function sendMessage() {
     copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Kopiuj`;
     copyBtn.onclick = () => { navigator.clipboard.writeText(response.text || '').then(() => { copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Skopiowano`; copyBtn.style.color = 'var(--green)'; setTimeout(() => { copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Kopiuj`; copyBtn.style.color = ''; }, 2000); }); };
     aiGroup.appendChild(copyBtn);
-
     if (response.quiz_topic) {
       const qBtn = document.createElement('button'); qBtn.className = 'quiz-shortcut-btn';
       qBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Zrób quiz z tego';
@@ -1084,6 +1141,8 @@ async function sendMessage() {
   isThinking = false;
   document.getElementById('sendBtn').disabled = false;
   input.focus();
+  // Zapis do Firebase
+  saveCurrentChat();
 }
 
 function enrichBubble(bubble) {
@@ -1138,12 +1197,12 @@ async function streamMarkdown(el, text) {
         el.classList.remove('typing');
         // Wstaw HTML — renderMarkdownWithLatex dostaje raw text (sam woła formatText)
         el.innerHTML = renderMarkdownWithLatex(text);
-        // renderLatex po wyrenderowaniu przez przeglądarkę
-        requestAnimationFrame(() => {
+        // renderLatex po wyrenderowaniu przez przeglądarkę — setTimeout daje KaTeX czas
+        setTimeout(() => {
           renderLatex(el);
           const m = document.getElementById('msgsArea');
           if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
-        });
+        }, 80);
         resolve();
         return;
       }
@@ -1548,6 +1607,188 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
 }
+
+// ═══════════════════════════════════════════════
+// HISTORIA CZATÓW — Firebase Firestore
+// ═══════════════════════════════════════════════
+let currentChatId = null;
+let _fbDb = null;
+
+function genId() { return 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+function getDb() { return window._fb ? window._fb.db : null; }
+function getDeviceId() { return window._fb ? window._fb.deviceId : 'local'; }
+
+function openHistPanel() {
+  renderHistList();
+  document.getElementById('histPanel').classList.add('open');
+  document.getElementById('histOverlay').classList.add('open');
+}
+function closeHistPanel() {
+  document.getElementById('histPanel').classList.remove('open');
+  document.getElementById('histOverlay').classList.remove('open');
+}
+
+function relativeTime(ts) {
+  if (!ts) return '';
+  const date = ts.toDate ? ts.toDate() : new Date(ts);
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'przed chwilą';
+  if (m < 60) return m + ' min temu';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' godz. temu';
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'wczoraj';
+  if (d < 7) return d + ' dni temu';
+  return date.toLocaleDateString('pl-PL', {day:'numeric',month:'short'});
+}
+
+async function saveCurrentChat() {
+  const db = getDb(); if (!db) return;
+  const msgs = document.getElementById('msgsArea');
+  if (!msgs || msgs.querySelectorAll('.msg-group').length === 0) return;
+  const firstBubble = msgs.querySelector('.msg-group.user .bubble');
+  const label = firstBubble ? (firstBubble.textContent.trim().slice(0,42) || 'Czat') : 'Czat';
+  const { collection, addDoc, doc, updateDoc, serverTimestamp } = window._fb;
+  const colRef = collection(db, 'chats');
+  try {
+    if (!currentChatId) {
+      const docRef = await addDoc(colRef, {
+        deviceId: getDeviceId(),
+        label,
+        html: msgs.innerHTML,
+        hist: JSON.stringify(history),
+        ts: serverTimestamp()
+      });
+      currentChatId = docRef.id;
+    } else {
+      await updateDoc(doc(db, 'chats', currentChatId), {
+        label,
+        html: msgs.innerHTML,
+        hist: JSON.stringify(history),
+        ts: serverTimestamp()
+      });
+    }
+  } catch(e) { console.warn('Firebase save error:', e); }
+}
+
+async function renderHistList() {
+  const el = document.getElementById('histList');
+  if (!el) return;
+  el.innerHTML = '<div class="hist-empty" style="opacity:.5">Ładowanie...</div>';
+  const db = getDb();
+  if (!db) { el.innerHTML = '<div class="hist-empty">Brak połączenia z bazą</div>'; return; }
+  const { collection, getDocs, query, orderBy } = window._fb;
+  let chats = [];
+  try {
+    const q = query(collection(db, 'chats'), orderBy('ts', 'desc'));
+    const snap = await getDocs(q);
+    snap.forEach(d => chats.push({ id: d.id, ...d.data() }));
+    // Filtruj po deviceId
+    chats = chats.filter(ch => ch.deviceId === getDeviceId());
+  } catch(e) { el.innerHTML = '<div class="hist-empty">Błąd ładowania</div>'; return; }
+
+  el.innerHTML = '';
+  if (chats.length === 0) {
+    el.innerHTML = `<div class="hist-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="display:block;margin:0 auto 10px;opacity:.3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Brak zapisanych czatów.<br>Zacznij rozmowę — pojawi się tutaj.
+    </div>`;
+    return;
+  }
+
+  const now = Date.now();
+  const today = chats.filter(ch => { const d = ch.ts?.toDate ? ch.ts.toDate() : new Date(ch.ts||0); return now - d.getTime() < 86400000; });
+  const older = chats.filter(ch => { const d = ch.ts?.toDate ? ch.ts.toDate() : new Date(ch.ts||0); return now - d.getTime() >= 86400000; });
+
+  function renderGroup(label, items) {
+    if (!items.length) return;
+    const sec = document.createElement('div'); sec.className = 'hist-section'; sec.textContent = label; el.appendChild(sec);
+    items.forEach(ch => {
+      const div = document.createElement('div');
+      div.className = 'hist-item' + (ch.id === currentChatId ? ' active-hist' : '');
+      div.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="flex-shrink:0;opacity:.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="hist-label">${ch.label||'Czat'}</span>
+        <span class="hist-time">${relativeTime(ch.ts)}</span>
+        <button class="hist-del" onclick="deleteChat('${ch.id}',event)" title="Usuń">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`;
+      div.addEventListener('click', function(e) { if(e.target.closest('.hist-del'))return; loadChat(ch); closeHistPanel(); });
+      el.appendChild(div);
+    });
+  }
+
+  renderGroup('Dzisiaj', today);
+  renderGroup('Wcześniej', older);
+}
+
+function loadChat(ch) {
+  saveCurrentChat();
+  currentChatId = ch.id;
+  history = [];
+  try { history = JSON.parse(ch.hist || '[]'); } catch(e) {}
+  const msgs = document.getElementById('msgsArea');
+  const es = document.getElementById('emptyState');
+  if (es) es.style.display = 'none';
+  msgs.innerHTML = ch.html || '';
+  setTimeout(() => renderLatex(msgs), 120);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function deleteChat(id, e) {
+  e.stopPropagation();
+  const db = getDb(); if (!db) return;
+  const { doc, deleteDoc } = window._fb;
+  try { await deleteDoc(doc(db, 'chats', id)); } catch(err) { console.warn(err); }
+  if (currentChatId === id) newChat();
+  renderHistList();
+}
+
+function newChat() {
+  saveCurrentChat();
+  currentChatId = null;
+  history = [];
+  const msgs = document.getElementById('msgsArea');
+  msgs.innerHTML = '';
+  const es = document.getElementById('emptyState');
+  if (es) es.style.display = '';
+  else showEmptyState();
+}
+
+function showEmptyState() {
+  const msgs = document.getElementById('msgsArea');
+  const es = document.createElement('div');
+  es.id = 'emptyState'; es.className = 'empty-state';
+  es.innerHTML = '<div class="empty-title">Eduvia AI</div><div class="empty-sub">Pomogę Ci z każdym przedmiotem. Wrzuć zdjęcie zadania lub napisz pytanie.</div>';
+  msgs.appendChild(es);
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  renderHistList();
+});
+
 </script>
+
+<!-- PANEL HISTORII -->
+<div class="hist-overlay" id="histOverlay" onclick="closeHistPanel()"></div>
+<div class="hist-panel" id="histPanel">
+  <div class="hist-panel-head">
+    <div class="hist-panel-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historia czatów
+    </div>
+    <button class="hist-close" onclick="closeHistPanel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <button class="hist-new-btn" onclick="newChat();closeHistPanel()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nowy czat
+  </button>
+  <div class="hist-scroll" id="histList"></div>
+</div>
 </body>
 </html>
