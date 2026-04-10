@@ -880,15 +880,17 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         return None
 
 
-PROMPT = """Jestes doswiadczonym nauczycielem matematyki z 15-letnim stazem i autorem materialow edukacyjnych.
+PROMPT = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
 Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
 TEMAT: {temat}
+
+{wlasne_blok}
 
 Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
 
 === WZORY MATEMATYCZNE ===
 Format matplotlib mathtext. ZAWSZE otaczaj wzory $ ... $
-Przyklady: "$\\frac{{a}}{{b}} + \\frac{{c}}{{d}} = \\frac{{ad+bc}}{{bd}}$"
+Przyklady: "$\\frac{{a}}{{b}} + \\frac{{c}}{{d}} = \\frac{{{{ad+bc}}}}{{{{bd}}}}$"
            "$\\int_a^b f(x)\\,dx = F(b)-F(a)$"
            "$\\Delta x \\rightarrow 0$"
 Wzory fizyczne MUSZA miec jednostki np. [J], [m/s], [N]
@@ -951,6 +953,19 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 - do_zapamietania: DOKLADNIE {n_zapamietaj}
 - Caly tekst PO POLSKU
 - KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
+
+
+def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
+    """Buduje sekcje wlasnych instrukcji do prompta."""
+    if not wlasne_instrukcje or not wlasne_instrukcje.strip():
+        return ""
+    safe = wlasne_instrukcje.strip()
+    return (
+        "=== WLASNE INSTRUKCJE (NAJWYZSZY PRIORYTET) ===\n"
+        "Uczen podal nastepujace instrukcje. MUSISZ je bezwzglednie uwzglednic:\n"
+        f"{safe}\n"
+        "Dostosuj CALA notatke do powyzszych wskazowek."
+    )
 
 
 # Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
@@ -1177,19 +1192,26 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3) -> dict:
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
-        prompt = PROMPT.format(temat=temat, klasa=klasa, **cfg)
+        wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok, **cfg)
         max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
+        system_msg = (
+            "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
+            "Wzory TYLKO w formacie $...$. "
+            "KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape). "
+            "Zero backticks, zero markdown, zero komentarzy."
+        )
+        if wlasne_instrukcje and wlasne_instrukcje.strip():
+            system_msg += (
+                " WAZNE: Uzytkownik podal wlasne instrukcje - sa one nadrzedne wobec domyslnego stylu."
+                " Musisz je bezwzglednie uwzglednic w tresci notatki."
+            )
         r = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": (
-                    "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
-                    "Wzory TYLKO w formacie $...$. "
-                    "KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape). "
-                    "Zero backticks, zero markdown, zero komentarzy."
-                )},
+                {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7, max_tokens=max_tok,
@@ -1686,642 +1708,9 @@ class PremiumNotesGenerator:
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3) -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "") -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections)
-        print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
-
-        cover_buf = io.BytesIO()
-        c = canvas_module.Canvas(cover_buf, pagesize=A4)
-        draw_cover(c, data.get('tytul', temat), data.get('podtytul','Notatka edukacyjna'), klasa)
-        c.save(); cover_buf.seek(0)
-
-        content_bytes = self._build_content_pages(data)
-
-        writer = PdfWriter()
-        for reader in [PdfReader(cover_buf), PdfReader(io.BytesIO(content_bytes))]:
-            for page in reader.pages:
-                writer.add_page(page)
-
-        safe = re.sub(r'[^\w\s-]', '', temat)[:40].strip().replace(' ', '_')
-        filename = f"Notatka_{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        with open(filename, 'wb') as f:
-            writer.write(f)
-        print(f"[Eduvia] Gotowe: {filename}")
-        return filename
-
-
-class PremiumNotesGenerator:
-
-    def __init__(self, api_key: str):
-        from openai import OpenAI
-        self.client = OpenAI(api_key=api_key)
-        self.styles = get_styles()
-
-    def _fix_json_escapes(self, raw):
-        import re
-        raw = re.sub(r'^```json\s*', '', raw); raw = re.sub(r'^```\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw); raw = raw.strip()
-        B = chr(92); CTRL = {chr(12): B+B+'f', chr(13): B+B+'r', chr(11): B+B+'v', chr(8): B+B+'b'}
-        result = []; i = 0; in_string = False
-        while i < len(raw):
-            c = raw[i]
-            if not in_string:
-                if c == '"': in_string = True
-                result.append(c); i += 1; continue
-            if c == '"': in_string = False; result.append(c); i += 1; continue
-            if c == B:
-                if i+1 < len(raw):
-                    nc = raw[i+1]
-                    if nc == B: result.append(B); result.append(B); i += 2
-                    elif nc == '"': result.append(B); result.append('"'); i += 2
-                    else: result.append(B); result.append(B); i += 1
-                else: result.append(B); result.append(B); i += 1
-            elif c in CTRL: result.append(CTRL[c]); i += 1
-            else: result.append(c); i += 1
-        return ''.join(result)
-
-    def _robust_json_parse(self, raw: str) -> dict:
-        import re as _re
-        raw = _re.sub(r'^```json\s*', '', raw, flags=_re.MULTILINE)
-        raw = _re.sub(r'^```\s*', '', raw, flags=_re.MULTILINE)
-        raw = _re.sub(r'\s*```$', '', raw, flags=_re.MULTILINE)
-        raw = raw.strip()
-        m = _re.search(r'\{', raw)
-        if m: raw = raw[m.start():]
-        depth = 0; end_idx = len(raw)
-        for i, ch in enumerate(raw):
-            if ch == '{': depth += 1
-            elif ch == '}':
-                depth -= 1
-                if depth == 0: end_idx = i + 1; break
-        raw = raw[:end_idx]
-
-        def _fix_strings(s):
-            result = []; in_str = False; i = 0; B = chr(92)
-            VALID_AFTER_BS = set('"\\u/') | set('0123456789')
-            while i < len(s):
-                c = s[i]
-                if not in_str:
-                    if c == '"': in_str = True
-                    result.append(c); i += 1; continue
-                if c == '"':
-                    n_bs = 0; j = len(result) - 1
-                    while j >= 0 and result[j] == B: n_bs += 1; j -= 1
-                    if n_bs % 2 == 0: in_str = False
-                    result.append(c); i += 1
-                elif c == '\n': result.append(B); result.append('n'); i += 1
-                elif c == '\r': i += 1
-                elif c == '\t': result.append(B); result.append('t'); i += 1
-                elif c == B:
-                    if i+1 < len(s):
-                        nc = s[i+1]
-                        if nc == B or nc in VALID_AFTER_BS:
-                            result.append(B); result.append(nc); i += 2
-                        else: result.append(B); result.append(B); i += 1
-                    else: result.append(B); result.append(B); i += 1
-                else: result.append(c); i += 1
-            return ''.join(result)
-
-        def _fix_tc(s):
-            return _re.sub(r',\s*([}\]])', r'\1', s)
-
-        for attempt in [
-            lambda r: json.loads(r),
-            lambda r: json.loads(_fix_strings(r)),
-            lambda r: json.loads(_fix_tc(_fix_strings(r))),
-            lambda r: json.loads(_re.sub(r'(?<!\\)\\(?!["\\bfnrtu/])', r'\\\\', r)),
-        ]:
-            try: return attempt(raw)
-            except: pass
-
-        try:
-            result = {}
-            for field in ['tytul','podtytul','dlaczego_wazne','podsumowanie']:
-                m2 = _re.search(rf'"{field}"\s*:\s*"((?:[^"\\]|\\.)*)"', raw, _re.DOTALL)
-                if m2:
-                    try: result[field] = json.loads('"' + m2.group(1) + '"')
-                    except: result[field] = m2.group(1).replace('\\n', '\n')
-            if result.get('tytul'):
-                for k in ['kluczowe_pojecia','sekcje','bledy_uczniow','timeline','schemat_myslowy','quiz','do_zapamietania']:
-                    result.setdefault(k, [])
-                result.setdefault('tabela_porownawcza', {})
-                return result
-        except: pass
-        raise ValueError(f"JSON parse failed:\n{raw[:300]}")
-
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3) -> dict:
-        cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
-        prompt = PROMPT.format(temat=temat, klasa=klasa, **cfg)
-        max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
-        r = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": (
-                    "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
-                    "Wzory TYLKO w formacie $...$. "
-                    "KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape). "
-                    "Zero backticks, zero markdown, zero komentarzy."
-                )},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7, max_tokens=max_tok,
-        )
-        return self._robust_json_parse(r.choices[0].message.content.strip())
-
-    def _build_content_pages(self, data: dict) -> bytes:
-        S = self.styles; W = PW - 80; story = []
-
-        # ── POJĘCIA ──────────────────────────────────────────
-        pojecia = data.get('kluczowe_pojecia', [])
-        if pojecia:
-            story.append(SectionLabel("KLUCZOWE POJĘCIA", ACC_PURPLE, W))
-            story.append(Spacer(1, 10))
-            card_w = (W - 14) / 2
-            CONCEPT_COLORS = [ACC_PURPLE, ACC_CYAN, ACC_GOLD, ACC_ORANGE]
-            for i in range(0, len(pojecia), 2):
-                pair = pojecia[i:i+2]
-                row = []
-                for j, p in enumerate(pair):
-                    png = _render_concept_png(p.get('pojecie',''), p.get('definicja',''),
-                                              CONCEPT_COLORS[(i+j) % 4], int(card_w), 110)
-                    if png:
-                        from PIL import Image as PILImg
-                        pil = PILImg.open(io.BytesIO(png))
-                        scale = card_w / (pil.size[0] / 120 * 72)
-                        h_pt = (pil.size[1] / 120 * 72) * scale
-                        row.append(RLImage(io.BytesIO(png), width=card_w, height=h_pt))
-                    else:
-                        row.append(ConceptCard(p.get('pojecie',''), p.get('definicja',''), i+j, card_w))
-                if len(row) == 1: row.append('')
-                t = Table([row], colWidths=[card_w, card_w])
-                t.setStyle(TableStyle([
-                    ('LEFTPADDING',(0,0),(-1,-1),5),('RIGHTPADDING',(0,0),(-1,-1),5),
-                    ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),12),
-                    ('VALIGN',(0,0),(-1,-1),'TOP')
-                ]))
-                story.append(t)
-
-        # ── SEKCJE ───────────────────────────────────────────
-        for i, s in enumerate(data.get('sekcje', [])):
-            acc = SECTION_ACCENTS[i % len(SECTION_ACCENTS)]
-            story.append(Spacer(1, 22))
-            story.append(SectionHeader(i + 1, s.get('tytul',''), accent=acc, width=W))
-            story.append(Spacer(1, 16))
-
-            # Treść
-            if s.get('tresc'):
-                for linia in s['tresc'].replace('\\n', '\n').split('\n'):
-                    if not linia.strip(): continue
-                    # Zawsze przez _render_text_png dla spójności fontu
-                    from PIL import Image as _PILtr; import io as _iotr
-                    _png_tr = _render_text_png(linia.strip(), W, 28,
-                                               fontsize=10.5, color=TXT_SUB, bg=BG_PAGE)
-                    if _png_tr:
-                        _pil_tr = _PILtr.open(_iotr.BytesIO(_png_tr))
-                        story.append(RLImage(_iotr.BytesIO(_png_tr), width=W,
-                                             height=_pil_tr.size[1]/150*72))
-                    else:
-                        story.append(Paragraph(st(linia.strip()), S['body']))
-                story.append(Spacer(1, 10))
-
-            # Wzory — każdy w osobnym "boksie"
-            for wzor in s.get('wzory', []):
-                if wzor and wzor.strip() and len(wzor.strip()) > 3:
-                    story.append(Spacer(1, 8))
-                    img = formula_to_rl_image(wzor.strip(), width_pt=W * 0.78)
-                    if img:
-                        # Owiń w tabelę z tłem
-                        t_f = Table([[img]], colWidths=[W])
-                        t_f.setStyle(TableStyle([
-                            ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_ACCENT)),
-                            ('TOPPADDING',(0,0),(-1,-1), 10),
-                            ('BOTTOMPADDING',(0,0),(-1,-1), 10),
-                            ('LEFTPADDING',(0,0),(-1,-1), 20),
-                            ('ALIGN',(0,0),(-1,-1),'CENTER'),
-                            ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(acc)),
-                        ]))
-                        story.append(t_f)
-                    else:
-                        story.append(Paragraph(f"  {st(wzor)}", ParagraphStyle("wzf",
-                            fontName=FM, fontSize=10, textColor=colors.HexColor(ACC_CYAN), spaceAfter=4)))
-                    story.append(Spacer(1, 6))
-
-            # Przykład — nowy premium styl
-            przyklad = s.get('przyklad', '')
-            if przyklad and przyklad.strip():
-                story.append(Spacer(1, 8))
-                linie = przyklad.strip().replace('\\n', '\n').split('\n')
-                rows = []
-                # Header przykładu
-                rows.append([Paragraph(
-                    "  > PRZYKLAD",
-                    ParagraphStyle("przH", fontName=FB, fontSize=8, leading=12,
-                                   textColor=colors.HexColor(ACC_CYAN), leftIndent=8)
-                )])
-                for linia in linie:
-                    if not linia.strip(): continue
-                    tekst = "   " + linia.strip()
-                    # ZAWSZE przez _render_text_png - jednakowy font
-                    from PIL import Image as _PILl; import io as _iol
-                    png_l = _render_text_png(tekst, W-4, 26, fontsize=10,
-                                             color='#1A4A32', bg=BG_GREEN)
-                    if png_l:
-                        _pl = _PILl.open(_iol.BytesIO(png_l)).size[1]
-                        rows.append([RLImage(_iol.BytesIO(png_l), width=W-4, height=_pl/150*72)])
-                    else:
-                        rows.append([Paragraph(
-                            f"   {st(linia.strip())}",
-                            ParagraphStyle("prz", fontName=FM, fontSize=10, leading=16,
-                                           textColor=colors.HexColor('#c8f0d8'), leftIndent=14)
-                        )])
-                t_prz = Table(rows, colWidths=[W])
-                t_prz.setStyle(TableStyle([
-                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_GREEN)),
-                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(ACC_CYAN)),
-                    ('TOPPADDING',(0,0),(-1,-1), 6),('BOTTOMPADDING',(0,0),(-1,-1), 8),
-                    ('LEFTPADDING',(0,0),(-1,-1), 0),('RIGHTPADDING',(0,0),(-1,-1), 10),
-                ]))
-                story.append(t_prz)
-                story.append(Spacer(1, 6))
-
-            # Ciekawostka
-            ciek = s.get('ciekawostka', '')
-            if ciek and ciek.strip():
-                story.append(Spacer(1, 4))
-                from PIL import Image as _PILck; import io as _iock
-                _png_ck = _render_text_png("  * " + ciek, W, 28, fontsize=10,
-                                           color=ACC_GOLD, bg=BG_GOLD)
-                if _png_ck:
-                    _pil_ck = _PILck.open(_iock.BytesIO(_png_ck))
-                    ciek_para = RLImage(_iock.BytesIO(_png_ck), width=W,
-                                        height=_pil_ck.size[1]/150*72)
-                else:
-                    ciek_para = Paragraph(st("  * " + ciek), S['ciekawostka'])
-                t_c = Table([[ciek_para]], colWidths=[W])
-                t_c.setStyle(TableStyle([
-                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_GOLD)),
-                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(ACC_GOLD)),
-                    ('TOPPADDING',(0,0),(-1,-1), 6),('BOTTOMPADDING',(0,0),(-1,-1), 6),
-                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 10),
-                ]))
-                story.append(t_c)
-
-        # ── DLACZEGO WAŻNE ───────────────────────────────────
-        dlaczego = data.get('dlaczego_wazne', '')
-        if dlaczego and dlaczego.strip():
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("DLACZEGO MUSISZ TO UMIEĆ?", ACC_BLUE, W))
-            story.append(Spacer(1, 8))
-            from PIL import Image as _PILdl; import io as _iodl
-            _png_dl = _render_text_png("  " + dlaczego, W-4, 28, fontsize=10.5,
-                                       color='#0A3060', bg=BG_BLUE)
-            if _png_dl:
-                _pil_dl = _PILdl.open(_iodl.BytesIO(_png_dl))
-                p_dl = RLImage(_iodl.BytesIO(_png_dl), width=W-4,
-                               height=_pil_dl.size[1]/150*72)
-            else:
-                p_dl = Paragraph(st("  " + dlaczego), S['body'])
-            t_dl = Table([[p_dl]], colWidths=[W])
-            t_dl.setStyle(TableStyle([
-                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_BLUE)),
-                ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_BLUE)),
-                ('TOPPADDING',(0,0),(-1,-1), 10),('BOTTOMPADDING',(0,0),(-1,-1), 10),
-                ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 12),
-            ]))
-            story.append(t_dl)
-
-        # ── BŁĘDY UCZNIÓW ────────────────────────────────────
-        bledy = data.get('bledy_uczniow', [])
-        if bledy:
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("BŁĘDY KTÓRE ROBI 7/10 UCZNIÓW", ACC_RED, W))
-            story.append(Spacer(1, 8))
-            for idx_b, bl in enumerate(bledy):
-                rows_b = []
-                from PIL import Image as _PILbl; import io as _iobl
-
-                def _bl_png(tekst, col):
-                    png = _render_text_png(tekst, W-4, 28, fontsize=10,
-                                          color=col, bg=BG_RED)
-                    if png:
-                        pil = _PILbl.open(_iobl.BytesIO(png))
-                        return RLImage(_iobl.BytesIO(png), width=W-4,
-                                       height=pil.size[1]/150*72)
-                    return Paragraph(st(tekst), ParagraphStyle("fb", fontName=FN,
-                        fontSize=10, textColor=colors.HexColor(col)))
-
-                blad_txt = f"  X  BLAD #{idx_b+1}: {bl.get('blad','')}"
-                rows_b.append([_bl_png(blad_txt, '#ff6b6b')])
-                if bl.get('dlaczego'):
-                    rows_b.append([_bl_png("  Dlaczego: " + bl['dlaczego'], '#ffaa88')])
-                if bl.get('jak_zapamietac'):
-                    rows_b.append([_bl_png("  Trick: " + bl['jak_zapamietac'], ACC_CYAN)])
-                t_b = Table(rows_b, colWidths=[W])
-                t_b.setStyle(TableStyle([
-                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_RED)),
-                    ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_RED)),
-                    ('TOPPADDING',(0,0),(-1,-1), 4),('BOTTOMPADDING',(0,0),(-1,-1), 4),
-                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 12),
-                ]))
-                story.append(t_b)
-                story.append(Spacer(1, 8))
-
-        # ── TABELA PORÓWNAWCZA ───────────────────────────────
-        tab = data.get('tabela_porownawcza', {})
-        if tab and tab.get('wiersze'):
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("TABELA PORÓWNAWCZA", ACC_PURPLE, W))
-            story.append(Spacer(1, 8))
-            nagl = tab.get('naglowki', []); wiersze = tab.get('wiersze', [])
-            if nagl and wiersze:
-                col_w = W / len(nagl)
-                def _l2u(s):
-                    import re as _r2; s = str(s).strip()
-                    s = _r2.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'\1/\2', s)
-                    for src, dst in [('\\int','∫'),('\\infty','∞'),('\\pi','π'),
-                                     ('\\alpha','α'),('\\beta','β'),('\\gamma','γ'),
-                                     ('\\Delta','Δ'),('\\delta','δ'),('\\sigma','σ'),
-                                     ('\\leq','≤'),('\\geq','≥'),('\\neq','≠'),
-                                     ('\\rightarrow','→'),('\\to','→'),('\\cdot','·')]:
-                        s = s.replace(src, dst)
-                    s = _r2.sub(r'[\\{}_^]','',s).replace('$','').strip()
-                    return s
-                def _cell(val):
-                    s = str(val).strip()
-                    # Zawsze renderuj tak samo - tekst przez PNG z identycznym fontem
-                    if '$' in s or '\\' in s:
-                        # Wzór - renderuj przez matplotlib z IDENTYCZNYM rozmiarem
-                        png = _render_text_png(s, col_w - 8, 28, fontsize=11,
-                                               color=TXT_MAIN, bg=BG_CARD2)
-                        if png:
-                            from PIL import Image as _PILc; import io as _ioc
-                            _pc = _PILc.open(_ioc.BytesIO(png))
-                            return RLImage(_ioc.BytesIO(png), width=col_w-8,
-                                          height=_pc.size[1]/150*72)
-                    # Zwykły tekst - Paragraph z identycznym fontem
-                    return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
-                        fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
-                safe_w = [[_cell(c) for c in row] for row in wiersze]
-                def _nagl_cell(n, cw):
-                    txt = _l2u(n)
-                    png = _render_text_png(txt, cw-8, 24, fontsize=10, color='#FFFFFF', bg=ACC_PURPLE, bold=True)
-                    if png:
-                        from PIL import Image as _PILnh; import io as _ionh
-                        _pnh = _PILnh.open(_ionh.BytesIO(png))
-                        return RLImage(_ionh.BytesIO(png), width=cw-8, height=_pnh.size[1]/150*72)
-                    return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
-                nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
-                t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
-                t.setStyle(TableStyle([
-                    ('BACKGROUND',(0,0),(-1,0), colors.HexColor(ACC_PURPLE)),
-                    ('TEXTCOLOR',(0,0),(-1,0), C_W),
-                    ('ROWBACKGROUNDS',(0,1),(-1,-1),
-                     [colors.HexColor('#F8F7FF'), colors.HexColor('#F0EEFF')]),
-                    ('TEXTCOLOR',(0,1),(-1,-1), colors.HexColor(TXT_MAIN)),
-                    ('FONTNAME',(0,1),(-1,-1), FN),('FONTSIZE',(0,1),(-1,-1), 10),
-                    ('ALIGN',(0,0),(-1,-1),'CENTER'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-                    ('GRID',(0,0),(-1,-1), 0.5, colors.HexColor('#DFE6E9')),
-                    ('LINEBELOW',(0,0),(-1,0), 2, colors.HexColor(ACC_PURPLE)),
-                    ('TOPPADDING',(0,0),(-1,-1), 12),('BOTTOMPADDING',(0,0),(-1,-1), 12),
-                    ('LEFTPADDING',(0,0),(-1,-1), 8),('RIGHTPADDING',(0,0),(-1,-1), 8),
-                    ('ROWHEIGHT',(0,1),(-1,-1), 44),
-                ]))
-                story.append(t)
-
-        # ── OŚ CZASU ─────────────────────────────────────────
-        tl = data.get('timeline', [])
-        if tl:
-            import re as _re
-            def _rok_sort(item):
-                m = _re.search(r'(\d{3,4})', str(item.get('rok','')))
-                val = int(m.group(1)) if m else 9999
-                return -val if 'p.n.e' in str(item.get('rok','')) else val
-            tl = sorted(tl, key=_rok_sort)
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("OŚ CZASU", ACC_CYAN, W))
-            story.append(Spacer(1, 10))
-            for i, item in enumerate(tl):
-                story.append(TimelineItem(item.get('rok',''), item.get('opis',''),
-                                          (i == len(tl)-1), W))
-                story.append(Spacer(1, 4))
-
-        # ── SCHEMAT MYŚLOWY ──────────────────────────────────
-        sch = data.get('schemat_myslowy', [])
-        if sch:
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("MAPA MYŚLOWA", ACC_PURPLE, W))
-            story.append(Spacer(1, 10))
-            for item in sch:
-                tekst_sch = item.get('tekst', '')
-                poziom_sch = item.get('poziom', 0)
-                if '$' in tekst_sch:
-                    png_sch = _render_text_png(tekst_sch, W - poziom_sch*28 - 20, 24,
-                                               fontsize=9.5,
-                                               color=[ACC_PURPLE, ACC_CYAN, TXT_MUTED][min(poziom_sch,2)],
-                                               bg=[BG_ACCENT, BG_GREEN, BG_PAGE][min(poziom_sch,2)])
-                    if png_sch:
-                        from PIL import Image as _PILsch; import io as _iosch
-                        _psch = _PILsch.open(_iosch.BytesIO(png_sch))
-                        story.append(RLImage(_iosch.BytesIO(png_sch),
-                                             width=W-poziom_sch*28-20,
-                                             height=_psch.size[1]/130*72))
-                    else:
-                        story.append(MindMapItem(poziom_sch, tekst_sch, W))
-                else:
-                    story.append(MindMapItem(poziom_sch, tekst_sch, W))
-                story.append(Spacer(1, 4))
-
-        # ── QUIZ ─────────────────────────────────────────────
-        quiz = data.get('quiz', [])
-        if quiz:
-            story.append(Spacer(1, 30))
-            story.append(SectionLabel("QUIZ SPRAWDZAJĄCY", ACC_RED, W))
-            story.append(Spacer(1, 12))
-
-            def _qpng(tekst, w, h, fs, col, bg, bold=False):
-                png = smart_png(tekst, w, h, fontsize=fs, color=col, bg=bg, bold=bold)
-                if not png: return None
-                import io as _ioQZ; from PIL import Image as _PILQZ
-                im = _PILQZ.open(_ioQZ.BytesIO(png))
-                return RLImage(_ioQZ.BytesIO(png), width=w, height=im.size[1]/110*72)
-
-            for i, q in enumerate(quiz):
-                pytanie = q.get('pytanie', '')
-                opcje = q.get('opcje', [])
-                odp = q.get('odpowiedz', 'A')
-                wyjasn = q.get('wyjasnienie', '')
-                bg_quiz = '#F8F7FF' if i % 2 == 0 else '#FFFFFF'
-
-                # Pytanie
-                from PIL import Image as _PILpyt; import io as _iopyt
-                _png_pyt = _render_text_png(f"Pytanie {i+1}: {pytanie}", W-4, 30,
-                                            fontsize=12, color=TXT_WHITE, bg=bg_quiz, bold=True)
-                if _png_pyt:
-                    _pil_pyt = _PILpyt.open(_iopyt.BytesIO(_png_pyt))
-                    story.append(RLImage(_iopyt.BytesIO(_png_pyt), width=W-4,
-                                        height=_pil_pyt.size[1]/150*72))
-                else:
-                    story.append(Paragraph(st(f'Pytanie {i+1}: {pytanie}'),
-                        ParagraphStyle("pytp", fontName=FB, fontSize=12,
-                                       textColor=colors.HexColor(TXT_WHITE))))
-
-                # Opcje - przez matplotlib (polskie znaki)
-                for op in opcje:
-                    ltr = op[0] if op else '?'
-                    is_correct = (ltr == odp)
-                    bg_op = '#F0FFF8' if is_correct else bg_quiz
-                    col_op = ACC_CYAN if is_correct else '#2D3436'
-                    op_clean = _l2u(str(op))
-                    from PIL import Image as _PILop; import io as _ioop
-                    _png_op = _render_text_png('  ' + op_clean, W-4, 26,
-                                               fontsize=11, color=col_op, bg=bg_op,
-                                               bold=is_correct)
-                    if _png_op:
-                        _pil_op = _PILop.open(_ioop.BytesIO(_png_op))
-                        t_op_img = RLImage(_ioop.BytesIO(_png_op), width=W-4,
-                                           height=_pil_op.size[1]/150*72)
-                        t_op = Table([[t_op_img]], colWidths=[W])
-                        t_op.setStyle(TableStyle([
-                            ('BACKGROUND', (0,0),(-1,-1), colors.HexColor(bg_op)),
-                            ('TOPPADDING', (0,0),(-1,-1), 4),
-                            ('BOTTOMPADDING',(0,0),(-1,-1), 4),
-                            ('LEFTPADDING', (0,0),(-1,-1), 0),
-                            ('RIGHTPADDING',(0,0),(-1,-1), 4),
-                            ('LINEBEFORE',  (0,0),(0,-1), 3,
-                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
-                        ]))
-                    else:
-                        fw_op = FB if is_correct else FN
-                        s_op = ParagraphStyle('op_'+ltr, fontName=fw_op, fontSize=11,
-                                              textColor=colors.HexColor(col_op), leading=16)
-                        t_op = Table([[Paragraph('  '+st(op_clean), s_op)]], colWidths=[W])
-                        t_op.setStyle(TableStyle([
-                            ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(bg_op)),
-                            ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
-                            ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 8),
-                            ('LINEBEFORE',(0,0),(0,-1), 3,
-                             colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
-                        ]))
-                    story.append(t_op)
-                    story.append(Spacer(1, 3))
-
-                # Wyjaśnienie
-                wyjasn_clean = wyjasn.replace('\\n', ' | ').replace('\n', ' | ')
-                from PIL import Image as _PILwj; import io as _iowj
-                _png_wj = _render_text_png("  Wyjaśnienie: " + wyjasn_clean, W-4, 26,
-                                           fontsize=9.5, color=ACC_GOLD, bg=BG_GOLD)
-                if _png_wj:
-                    _pil_wj = _PILwj.open(_iowj.BytesIO(_png_wj))
-                    story.append(RLImage(_iowj.BytesIO(_png_wj), width=W-4,
-                                        height=_pil_wj.size[1]/150*72))
-                else:
-                    story.append(Paragraph(st(f'  Wyjaśnienie: {wyjasn_clean}'),
-                        ParagraphStyle("wjp", fontName=FI, fontSize=9.5,
-                                       textColor=colors.HexColor(ACC_GOLD))))
-                story.append(Spacer(1, 24))
-
-        # ── PODSUMOWANIE ─────────────────────────────────────
-        story.append(Spacer(1, 20))
-        story.append(SectionLabel("PODSUMOWANIE", ACC_CYAN, W))
-        story.append(Spacer(1, 10))
-        if data.get('podsumowanie'):
-            podsum = data['podsumowanie'].replace('\\n', '\n')
-            rows_ps = []
-            for linia in podsum.split('. '):
-                linia = linia.strip()
-                if not linia: continue
-                if not linia.endswith('.'): linia += '.'
-                from PIL import Image as _PILps2; import io as _iops2
-                _png_ps = _render_text_png(linia, W-32, 28, fontsize=10.5,
-                                           color=TXT_MAIN, bg='#F0EEFF')
-                if _png_ps:
-                    _pil_ps = _PILps2.open(_iops2.BytesIO(_png_ps))
-                    rows_ps.append([RLImage(_iops2.BytesIO(_png_ps), width=W-32,
-                                            height=_pil_ps.size[1]/150*72)])
-                else:
-                    rows_ps.append([Paragraph(st(linia), S['summary'])])
-            t = Table(rows_ps, colWidths=[W])
-            t.setStyle(TableStyle([
-                ('BACKGROUND',(0,0),(-1,-1), colors.HexColor('#F0EEFF')),
-                ('LEFTPADDING',(0,0),(-1,-1), 20),('RIGHTPADDING',(0,0),(-1,-1), 20),
-                ('TOPPADDING',(0,0),(-1,-1), 8),('BOTTOMPADDING',(0,0),(-1,-1), 8),
-                ('LINEBELOW',(0,-1),(-1,-1), 3, colors.HexColor(ACC_CYAN)),
-                ('LINEBEFORE',(0,0),(0,-1), 4, colors.HexColor(ACC_CYAN)),
-            ]))
-            story.append(t)
-
-        # ── DO ZAPAMIĘTANIA ──────────────────────────────────
-        dz = data.get('do_zapamietania', [])
-        if dz:
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("DO ZAPAMIĘTANIA", ACC_GOLD, W))
-            story.append(Spacer(1, 10))
-            BULLETS = ["(1)","(2)","(3)","(4)","(5)"]
-            COLORS_DZ = [ACC_PURPLE, ACC_CYAN, ACC_RED, ACC_GOLD, ACC_BLUE]
-            for j, f in enumerate(dz):
-                col_dz = COLORS_DZ[j % 5]
-                tekst = f"{BULLETS[j%5]}  {f}"
-                from PIL import Image as _PILdz2; import io as _iodz2
-                _png_dz = _render_text_png(tekst, W-4, 28, fontsize=10.5,
-                                           color=col_dz, bg=BG_CARD)
-                if _png_dz:
-                    _pil_dz = _PILdz2.open(_iodz2.BytesIO(_png_dz))
-                    para_dz = RLImage(_iodz2.BytesIO(_png_dz), width=W-4,
-                                      height=_pil_dz.size[1]/150*72)
-                else:
-                    para_dz = Paragraph(st(tekst), S['bullet_item'])
-                t_dz = Table([[para_dz]], colWidths=[W])
-                t_dz.setStyle(TableStyle([
-                    ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_CARD)),
-                    ('LINEBEFORE',(0,0),(0,-1), 3, colors.HexColor(col_dz)),
-                    ('TOPPADDING',(0,0),(-1,-1), 5),('BOTTOMPADDING',(0,0),(-1,-1), 5),
-                    ('LEFTPADDING',(0,0),(-1,-1), 4),('RIGHTPADDING',(0,0),(-1,-1), 10),
-                ]))
-                story.append(t_dz)
-                story.append(Spacer(1, 8))
-
-        # ── ZAMKNIĘCIE PREMIUM ─────────────────────────────
-        story.append(Spacer(1, 30))
-        # Gradient banner zamykający
-        from reportlab.platypus.flowables import Flowable as _Flowable
-        class _ClosingBanner(_Flowable):
-            def __init__(self, w):
-                super().__init__(); self.width = w; self.height = 90
-            def draw(self):
-                c = self.canv; W = self.width; H = self.height
-                # Gradient tlo
-                for i in range(20):
-                    alpha = max(0, 0.18 - i*0.009)
-                    try: c.setFillColorRGB(*hex2rgb(ACC_PURPLE), alpha=alpha)
-                    except: c.setFillColor(colors.HexColor(ACC_PURPLE))
-                    c.roundRect(0, H - i*5, W, 5+i*5, 8, fill=1, stroke=0)
-                # Pasek akcentowy
-                c.setFillColor(colors.HexColor(ACC_PURPLE)); c.rect(0, H-4, W, 4, fill=1, stroke=0)
-                c.setFillColor(colors.HexColor(ACC_CYAN)); c.rect(W*0.4, H-4, W*0.3, 4, fill=1, stroke=0)
-                c.setFillColor(colors.HexColor(ACC_GOLD)); c.rect(W*0.8, H-4, W*0.2, 4, fill=1, stroke=0)
-                # Tekst
-                _canvas_draw_text(c, "EDUVIA AI PREMIUM NOTES", W*0.05, H - 18, W*0.9,
-                                  fontsize=11, color=ACC_PURPLE, bold=True, align='center')
-                _canvas_draw_text(c, "Notatka wygenerowana przez AI • eduvia.pl", W*0.05, H - 42, W*0.9,
-                                  fontsize=9, color=TXT_MUTED, align='center')
-                # Gwiazdki dekoracyjne
-                for xi, col in [(0.15, ACC_CYAN), (0.5, ACC_GOLD), (0.85, ACC_PURPLE)]:
-                    c.setFillColor(colors.HexColor(col))
-                    c.circle(W*xi, H*0.22, 5, fill=1, stroke=0)
-        story.append(_ClosingBanner(W))
-
-        # Build PDF
-        buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4,
-                                leftMargin=44, rightMargin=44,
-                                topMargin=55, bottomMargin=35)
-        doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
-        return buf.getvalue()
-
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3) -> str:
-        print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections)
+        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()

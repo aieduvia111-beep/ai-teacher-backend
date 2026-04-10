@@ -204,6 +204,7 @@ class QuizTopicRequest(BaseModel):
     level: str = "liceum"
     num_questions: int = 5
     difficulty: str = "medium"
+    wlasne_instrukcje: str = ""
 
 class QuizResponse(BaseModel):
     success: bool
@@ -311,7 +312,8 @@ async def generate_quiz_topic(request: QuizTopicRequest):
     try:
         result = await generate_quiz_from_topic(
             request.topic, request.subject, request.level,
-            request.num_questions, request.difficulty
+            request.num_questions, request.difficulty,
+            request.wlasne_instrukcje
         )
         if result["success"]:
             return QuizResponse(success=True, quiz=result["quiz"])

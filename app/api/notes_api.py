@@ -19,10 +19,11 @@ class NotesRequest(BaseModel):
     pages: Optional[int] = None
     image: Optional[str] = None
     images: Optional[List[str]] = None
+    wlasne_instrukcje: Optional[str] = None
 
-def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3) -> str:
+def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> str:
     gen = PremiumNotesGenerator(api_key)
-    return gen.generate_pdf(temat, klasa, num_sections)
+    return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje)
 
 @router.post("/generate")
 async def generate_notes_pdf(req: NotesRequest):
@@ -69,8 +70,9 @@ async def generate_notes_pdf(req: NotesRequest):
 
         # Bez limitu czasowego - czekamy ile trzeba
         loop = asyncio.get_event_loop()
+        wlasne = req.wlasne_instrukcje or ""
         filename = await loop.run_in_executor(
-            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections
+            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne
         )
 
         if filename and os.path.exists(filename):

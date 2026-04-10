@@ -119,37 +119,31 @@ PARAMETRY:
 - TRUDNOSC: {trudnosc}
 - LICZBA PYTAN: {liczba_pytan}
 
-POZIOM UCZNIA - ZAKRES MATERIALU:
-- podstawowka: klasy 4-8, ulamki, procenty, prosta geometria, rowrania liniowe
-- liceum: funkcje, rownania kwadratowe, trygonometria, pochodne, logarytmy
-- matura: pelny zakres matury, zadania jak w CKE
-- studia: matematyka akademicka
+POZIOM = {klasa}. KONKRETNIE:
 
-TRUDNOSC ZADAN (w ramach poziomu {klasa}):
-- latwa: 1 krok, proste obliczenia z danego poziomu
-- srednia: 2-3 kroki, typowe zadania z danego poziomu
-- trudna: wielokrokowe, najtrudniejsze z danego poziomu
+[podstawowka]: ulamki liczbowe, procenty, prosta geometria, rownania liniowe
+[liceum]: ulamki algebraiczne p(x)/q(x), funkcje wymierne, nierownosci wymierne,
+          dziedziny funkcji wymiernych, uklady rownan z ulamkami
+          ZAKAZ: prostego dodawania ulamkow liczbowych — to material podstawowki
+[matura]: poziom CKE rozszerzony, funkcje wymierne z parametrem, dowody
+[studia]: rozklad na ulamki proste, calki wymierne, szeregi
 
-PRZYKLAD POPRAWNY: liceum + trudna = trudne zadania licealne
-PRZYKLAD BLEDNY: liceum + trudna = zadania z podstawowki
+TRUDNOSC = {trudnosc} w ramach {klasa}:
+[latwa]:   podstawowka=dodawanie ulamkow | liceum=prosta funkcja wymierna
+[srednia]: podstawowka=dzialania mieszane | liceum=nierownosc wymierna 2-krokowa
+[trudna]:  podstawowka=zadania wieloetapowe | liceum=nierownosci z parametrem, badanie funkcji
 
-NAKAZ: Material dostosowany do poziomu {klasa}
-NAKAZ: Trudnosc dostosowana do {trudnosc} w ramach {klasa}
-ZAKAZ: Zadania z innego poziomu niz {klasa}
-
-TRUDNOSC SZCZEGOLY:
-Latwa: proste obliczenia, 1 krok
-Srednia: 2-3 kroki, liczby przyjazne
-Trudna: wielokrokowe, kombinacja operacji, zadania tekstowe z pulapkami
-
-NAKAZ: KAZDE pytanie odpowiada trudnosci {trudnosc}
-ZAKAZ: na trudna dawac pytania z latwa i odwrotnie
+NAKAZ: KAZDE zadanie musi byc na poziomie {klasa} i trudnosci {trudnosc}
+ZAKAZ: dla liceum/matura/studia — prostego dodawania ulamkow liczbowych
 
 WZORY MATEMATYCZNE:
 KRYTYCZNE: backslash podwojny w JSON: \\frac, \\sqrt, \\cdot, \\times
 KRYTYCZNE: KAZDY wzor w dolarach: $wzor$
 ZAKAZ: \\left, \\right, \\displaystyle, \\limits
 POPRAWNE: "$\\frac{{a}}{{b}}$", "$x^2 + y^2$", "$\\sqrt{{4}}$"
+
+WLASNE INSTRUKCJE NAUCZYCIELA (jesli podane — OBOWIAZKOWE):
+{wlasne_instrukcje_blok}
 
 ZASADY:
 - Pytania konkretne i obliczeniowe
@@ -191,7 +185,7 @@ ZASADY:
       "pytania": [
         {{
           "nr": 6,
-          "tresc": "Tresc zadania z KONKRETNYMI liczbami. Np: 'Oblicz $\\frac{{3}}{{4}} + \\frac{{2}}{{5}}$. Wynik zapisz w postaci nieskracalnej.'",
+          "tresc": "Tresc zadania na poziomie {klasa}, trudnosc {trudnosc} — NIE kopiuj tego przykladu!",
           "punkty": 4,
           "miejsce_na_odpowiedz": 6,
           "schemat_oceniania": [
@@ -210,7 +204,7 @@ ZASADY:
 === WYMAGANIA ILOSCI ===
 - sekcja zamknieta: 5-8 pytan po 1-2 pkt
 - sekcja otwarta: 3-5 zadan po 3-6 pkt
-- lacznie: okolo {liczba_pytan} pytan
+- DOKLADNIE {liczba_pytan} pytan lacznie (NIE wiecej, NIE mniej)
 - punkty lacznie: 25-35 pkt
 - trudnosc rosnaca w obrebie kazdej sekcji
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
@@ -837,10 +831,15 @@ class ExamGenerator:
             else: result.append(c); i += 1
         return ''.join(result)
 
-    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan) -> dict:
+    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None) -> dict:
+        if wlasne_instrukcje and wlasne_instrukcje.strip():
+            blok = f"NAUCZYCIEL CHCE: {wlasne_instrukcje.strip()}\nMUSISZ to uwzglednic w sprawdzianie."
+        else:
+            blok = "(brak dodatkowych instrukcji)"
         prompt = EXAM_PROMPT.format(
             temat=temat, klasa=klasa,
-            trudnosc=trudnosc, liczba_pytan=liczba_pytan
+            trudnosc=trudnosc, liczba_pytan=liczba_pytan,
+            wlasne_instrukcje_blok=blok
         )
         r = self.client.chat.completions.create(
             model="gpt-4o",
@@ -867,9 +866,9 @@ class ExamGenerator:
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,
-                      wariant: str = "A") -> str:
+                      wariant: str = "A", wlasne_instrukcje: str = None) -> str:
         print(f"[ExamGen] Generuję: '{temat}' | {klasa} | {trudnosc} | Wariant {wariant}")
-        data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan)
+        data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje)
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
         data['wariant'] = wariant

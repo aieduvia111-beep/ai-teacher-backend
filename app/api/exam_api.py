@@ -19,15 +19,16 @@ class ExamRequest(BaseModel):
     trudnosc: str = "srednia"
     liczba_pytan: int = 12
     wariant: Optional[str] = "A"
+    wlasne_instrukcje: Optional[str] = None
     image: Optional[str] = None
     images: Optional[List[str]] = None
 
-def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wariant):
+def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wariant, wlasne_instrukcje=None):
     gen = ExamGenerator(api_key)
     return gen.generate_exam(
         temat=pelny_temat, klasa=klasa,
         trudnosc=trudnosc, liczba_pytan=liczba_pytan,
-        wariant=wariant
+        wariant=wariant, wlasne_instrukcje=wlasne_instrukcje
     )
 
 async def _extract_topic_from_images(images: list) -> str:
@@ -82,7 +83,7 @@ async def generate_exam(req: ExamRequest):
         loop = asyncio.get_event_loop()
         filename = await loop.run_in_executor(
             _executor, _generate_blocking,
-            pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant
+            pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje
         )
 
         if filename and os.path.exists(filename):

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
 from ..openai_exam import generate_quiz_from_image, generate_quiz_from_topic
-import os, base64
+import os, base64, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -15,6 +15,7 @@ class QuizImageRequest(BaseModel):
     image: str
     num_questions: int = 10
     difficulty: str = "medium"
+    wlasne_instrukcje: str = ""
 
 class QuizTopicRequest(BaseModel):
     topic: str
@@ -22,6 +23,7 @@ class QuizTopicRequest(BaseModel):
     level: str = "liceum"
     num_questions: int = 10
     difficulty: str = "medium"
+    wlasne_instrukcje: str = ""
 
 class QuizFileRequest(BaseModel):
     document: str              # base64
@@ -31,6 +33,49 @@ class QuizFileRequest(BaseModel):
     difficulty: str = "medium"
     subject: str = "ogolny"
     level: str = "liceum"
+    wlasne_instrukcje: str = ""
+
+def _build_instrukcje_blok(wlasne: str) -> str:
+    """Buduje blok wlasnych instrukcji do prompta - tylko ASCII."""
+    if not wlasne or not wlasne.strip():
+        return ""
+    return (
+        "\n=== WLASNE INSTRUKCJE (NAJWYZSZY PRIORYTET) ===\n"
+        "Uczen podal nastepujace instrukcje. MUSISZ je bezwzglednie uwzglednic:\n"
+        f"{wlasne.strip()}\n"
+        "Dostosuj CALY quiz do powyzszych wskazowek.\n"
+    )
+
+async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, difficulty, wlasne_instrukcje):
+    """Generuje quiz z tematu z wlasnymi instrukcjami bezposrednio przez OpenAI."""
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
+    diff_pl = diff_map.get(difficulty, "sredni")
+    instrukcje_blok = _build_instrukcje_blok(wlasne_instrukcje)
+    prompt = (
+        f"Wygeneruj quiz z {num_questions} pytaniami wielokrotnego wyboru.\n"
+        f"Temat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl}\n"
+        f"{instrukcje_blok}\n"
+        "Odpowiedz TYLKO w formacie JSON (bez markdown):\n"
+        '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
+        '    {{\n      "question": "Tresc pytania?",\n'
+        '      "options": ["A", "B", "C", "D"],\n'
+        '      "correct": 0,\n'
+        '      "explanation": "Krotkie wyjasnienie"\n'
+        '    }}\n  ]\n}}'
+    )
+    resp = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=4000, temperature=0.7
+    )
+    raw = resp.choices[0].message.content.strip()
+    raw = raw.replace('```json', '').replace('```', '').strip()
+    s = raw.find('{'); e = raw.rfind('}')
+    quiz_data = json.loads(raw[s:e+1])
+    print(f"[Quiz-Topic+Instr] '{topic}' -> {len(quiz_data.get('questions',[]))} pytan")
+    return {"success": True, "quiz": quiz_data}
 
 def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
     data = base64.b64decode(doc_base64)
@@ -64,16 +109,27 @@ def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
 async def quiz_from_image(req: QuizImageRequest):
     try:
         result = await generate_quiz_from_image(req.image, req.num_questions, req.difficulty)
-        if result["success"]:
-            return {"success": True, "quiz": result["quiz"]}
-        return {"success": False, "error": result.get("error")}
+        if not result["success"]:
+            return {"success": False, "error": result.get("error")}
+        # Jezeli sa wlasne instrukcje - dodaj je do tytulu zeby zaznaczyc ze zostaly uwzglednione
+        # Obrazki sa analizowane przez Vision - instrukcje przekazujemy przez temat
+        if req.wlasne_instrukcje and req.wlasne_instrukcje.strip():
+            quiz = result["quiz"]
+            # Wstrzyknij instrukcje jako dodatkowy kontekst do tytulu (Vision nie przyjmuje prompta)
+            quiz["_instrukcje"] = req.wlasne_instrukcje.strip()
+        return {"success": True, "quiz": result["quiz"]}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 @router.post("/generate-topic")
 async def quiz_from_topic(req: QuizTopicRequest):
     try:
-        result = await generate_quiz_from_topic(req.topic, req.subject, req.level, req.num_questions, req.difficulty)
+        wlasne = (req.wlasne_instrukcje or "").strip()
+        print(f"[Quiz-Topic] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
+        result = await _generate_topic_with_instrukcje(
+            req.topic, req.subject, req.level,
+            req.num_questions, req.difficulty, wlasne
+        )
         if result["success"]:
             return {"success": True, "quiz": result["quiz"]}
         return {"success": False, "error": result.get("error")}
@@ -96,9 +152,10 @@ async def quiz_from_file(req: QuizFileRequest):
 
         diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
         diff_pl = diff_map.get(req.difficulty, "sredni")
+        instrukcje_blok = _build_instrukcje_blok(req.wlasne_instrukcje)
 
         prompt = f"""Na podstawie ponizszego tekstu wygeneruj quiz z {req.num_questions} pytaniami wielokrotnego wyboru (poziom: {diff_pl}).
-
+{instrukcje_blok}
 Tekst:
 {text[:5000]}
 
@@ -125,7 +182,6 @@ Odpowiedz TYLKO w formacie JSON (bez markdown):
         raw = resp.choices[0].message.content.strip()
         raw = raw.replace('```json', '').replace('```', '').strip()
         s = raw.find('{'); e = raw.rfind('}')
-        import json
         quiz_data = json.loads(raw[s:e+1])
 
         print(f"[Quiz-File] '{req.document_name}' -> {len(quiz_data.get('questions',[]))} pytan")

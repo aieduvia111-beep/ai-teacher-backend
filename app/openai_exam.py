@@ -416,7 +416,8 @@ async def generate_quiz_from_topic(
     subject: str = "matematyka",
     level: str = "liceum",
     num_questions: int = 5,
-    difficulty: str = "medium"
+    difficulty: str = "medium",
+    wlasne_instrukcje: str = ""
 ) -> Dict:
     """ðŸŽ“ Generuje quiz z podanego tematu"""
     try:
@@ -442,7 +443,17 @@ async def generate_quiz_from_topic(
             ("studia", "medium"):      "Studia rok 2. Całki wielokrotne, szeregi Taylora, przestrzenie wektorowe, macierze.",
             ("studia", "hard"):        "Studia zaawansowane / magisterskie. Równania różniczkowe cząstkowe, analiza funkcjonalna, topologia.",
         }
-        poziom_opis = combo_map.get((level, difficulty), f"poziom {level}, trudność {difficulty}")
+        poziom_opis = combo_map.get((level, difficulty), f"poziom {level}, trudnosc {difficulty}")
+
+        # Wlasne instrukcje
+        instrukcje_blok = ""
+        if wlasne_instrukcje and wlasne_instrukcje.strip():
+            instrukcje_blok = (
+                "\n=== WLASNE INSTRUKCJE (NAJWYZSZY PRIORYTET) ===\n"
+                "Uczen podal nastepujace instrukcje. MUSISZ je bezwzglednie uwzglednic:\n"
+                + wlasne_instrukcje.strip() + "\n"
+                + "Dostosuj CALY quiz do powyzszych wskazowek.\n"
+            )
 
         prompt = f"""Stwórz quiz na temat: "{topic}"
 
@@ -450,7 +461,7 @@ PARAMETRY:
 - Przedmiot: {subject}
 - Liczba pytań: {num_questions}
 - DOKŁADNY POZIOM: {poziom_opis}
-
+{instrukcje_blok}
 KRYTYCZNE: Pytania MUSZĄ pasować do opisu poziomu powyżej.
 Jeśli poziom to studia — pytaj o całki, macierze, szeregi — NIE o równania kwadratowe.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.

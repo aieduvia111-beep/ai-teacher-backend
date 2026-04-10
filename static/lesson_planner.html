@@ -272,6 +272,9 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .row2{grid-template-columns:1fr!important;}
   .stats-row{grid-template-columns:1fr 1fr!important;}
   .result-btns{flex-direction:column;}
+  .rings-cal-grid{grid-template-columns:1fr!important;}
+  .rings-grid{grid-template-columns:repeat(2,1fr)!important;}
+  .cal-day{font-size:.72em!important;}
 }
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr);}}
 @media print{.sidebar,.m-hdr,.m-nav,.aurora,.cursor,.cursor-ring,.create-btn,.result-btns,.topbar,.page-badge{display:none!important;}.main{padding:0!important;}.day-card{background:white!important;border:1px solid #ddd!important;color:black!important;page-break-inside:avoid;}}
@@ -387,7 +390,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
     </div>
 
     <!-- RINGS + CALENDAR -->
-    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:14px;">
+    <div class="rings-cal-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:14px;">
       <div class="card">
         <div class="card-label"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Postęp tygodniowy</div>
         <div class="rings-grid" id="ringsContainer">
@@ -410,6 +413,15 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
     <div class="card" style="margin-bottom:14px;">
       <div class="card-label"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Sugestie AI na dziś</div>
       <div id="aiTips"></div>
+    </div>
+
+    <!-- ZAPISANE PLANY -->
+    <div class="card" id="savedPlansCard" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="card-label" style="margin-bottom:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;stroke:var(--accent2)"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Twoje plany nauki</div>
+        <button onclick="deletePlansAll()" style="background:none;border:none;color:var(--muted);font-size:.72em;cursor:pointer;font-family:var(--b);text-decoration:underline;">Usuń wszystkie</button>
+      </div>
+      <div id="savedPlansList"></div>
     </div>
 
     <!-- HEATMAP -->
@@ -444,8 +456,12 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
             Szczegóły planu
           </span>
           <div class="field">
-            <div class="field-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Temat do nauki</div>
-            <input class="fi" id="fTopic" type="text" placeholder="np. Całki oznaczone, Fotosynteza, II wojna światowa...">
+            <div class="field-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Tematy do nauki</div>
+            <div id="topicTagsWrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;min-height:48px;cursor:text;transition:border .25s;" onclick="document.getElementById('topicInput').focus()">
+              <div id="topicTags" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>
+              <input id="topicInput" type="text" placeholder="Wpisz temat i naciśnij Enter..." style="border:none;background:transparent;outline:none;color:var(--text);font-family:var(--b);font-size:.92em;flex:1;min-width:140px;padding:2px 4px;">
+            </div>
+            <div style="font-size:.7em;color:var(--muted);margin-top:6px;">Naciśnij <strong style="color:var(--accent2)">Enter</strong> po każdym temacie &mdash; każdy dostanie <strong style="color:var(--accent2)">osobne dni</strong></div>
           </div>
           <div class="row2" style="margin-bottom:18px;">
             <div class="field" style="margin-bottom:0;">
@@ -619,6 +635,34 @@ function renderDash(){
   var rc=document.getElementById('ringsContainer');
   if(!subArr.length){rc.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:.82em;padding:18px">Stwórz plan aby zobaczyć postęp</div>';}
   else{rc.innerHTML=subArr.slice(0,4).map(function(s){var pct=s.total?Math.round(s.done/s.total*100):0;var c=cols[s.name]||cols.inne;var r=30,circ=2*Math.PI*r,off=circ-(pct/100)*circ;var lastPlan=S.plans.filter(function(p){return(p.subject||'inne')===s.name;}).pop();var pid=lastPlan?lastPlan.id:null;return'<div class="ring-card" onclick="'+(pid?'openPlan('+pid+')':'')+'" title="Kliknij aby zobaczyć plan"><div class="ring-wrap"><svg width="76" height="76" viewBox="0 0 76 76"><circle class="ring-bg" cx="38" cy="38" r="'+r+'"/><circle class="ring-fill" cx="38" cy="38" r="'+r+'" stroke="'+c+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+off+'"/></svg><div class="ring-center"><div class="ring-pct" style="color:'+c+'">'+pct+'%</div></div></div><div class="ring-name">'+s.name+'</div><div class="ring-sub">'+s.done+'/'+s.total+' dni <span style="color:var(--accent2);font-size:.9em">→</span></div></div>';}).join('');}
+  var spc=document.getElementById('savedPlansCard');
+  var spl=document.getElementById('savedPlansList');
+  if(spc&&spl){
+    if(S.plans.length){
+      spc.style.display='block';
+      var labels={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Jezyk polski',angielski:'Angielski',geografia:'Geografia',informatyka:'Informatyka',inne:'Inne'};
+      var colMap={matematyka:'#7c6aff',fizyka:'#38bdf8',biologia:'#22d3a0',historia:'#f59e0b',chemia:'#f472b6',inne:'#a78bfa'};
+      spl.innerHTML=S.plans.slice().reverse().map(function(p){
+        var done=(p.days||[]).filter(function(d){return d.done;}).length;
+        var total=(p.days||[]).length;
+        var pct=total?Math.round(done/total*100):0;
+        var c2=colMap[p.subject]||colMap.inne;
+        var daysLeft=p.examDate?Math.ceil((new Date(p.examDate)-new Date())/86400000):null;
+        return '<div onclick="openPlan('+p.id+')" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid var(--border-hi);background:var(--s2);margin-bottom:8px;cursor:pointer;transition:all .2s;">'
+          +'<div style="width:38px;height:38px;border-radius:10px;background:var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-weight:800;font-size:.75em;color:'+c2+';">'+pct+'%</div>'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-family:var(--h);font-weight:700;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.topic+'</div>'
+          +'<div style="font-size:.7em;color:var(--muted);margin-top:2px;">'+(labels[p.subject]||p.subject)+' &bull; '+done+'/'+total+' dni'+(daysLeft!==null?' &bull; '+(daysLeft>0?daysLeft+' dni do egzaminu':'Egzamin minal'):'')+'</div>'
+          +'<div style="height:3px;background:var(--s3);border-radius:100px;overflow:hidden;margin-top:6px;"><div style="height:100%;width:'+pct+'%;background:'+c2+';border-radius:100px;"></div></div>'
+          +'</div>'
+          +'<button onclick="event.stopPropagation();deletePlan('+p.id+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2em;padding:4px;flex-shrink:0;">&times;</button>'
+          +'</div>';
+      }).join('');
+    } else {
+      spc.style.display='none';
+    }
+  }
+
   var TIPS=[{t:'Technika Pomodoro',d:'Ucz się 25 minut, potem 5 minut przerwy. Po 4 seriach — 20 minut odpoczynku.'},{t:'Spaced Repetition',d:'Powtarzaj materiał w rosnących odstępach: 1 dzień, 3 dni, 7 dni, 21 dni.'},{t:'Active Recall',d:'Zamiast czytać notatki — zakryj je i próbuj sobie przypomnieć. 2x skuteczniejsze.'},{t:'Sen to nauka',d:'W trakcie snu mózg konsoliduje wspomnienia. 8h snu = lepsza pamięć niż nocne kucie.'},{t:'Zacznij teraz',d:'Najlepszy moment na naukę to teraz. Zacznij od 15 minut.'},{t:'Ucz innych',d:'Wytłumacz temat sobie lub komuś. Jeśli potrafisz wytłumaczyć — rozumiesz.'}];
   var idx=[...Array(TIPS.length).keys()].sort(function(){return Math.random()-.5;}).slice(0,2);
   document.getElementById('aiTips').innerHTML=idx.map(function(i){return'<div class="ai-tip"><div class="ai-tip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="ai-tip-text"><strong>'+TIPS[i].t+'</strong><br>'+TIPS[i].d+'</div></div>';}).join('');
@@ -665,10 +709,12 @@ function renderHeatmap(){
 
 // ── GENERATE PLAN ─────────────────────────────────
 async function generatePlan(){
-  var topic=document.getElementById('fTopic').value.trim();
+  var topics=window._topics||[];
+  var rawInput=document.getElementById('topicInput').value.trim();
+  if(rawInput)topics=topics.concat(rawInput.split(',').map(function(t){return t.trim();}).filter(Boolean));
   var err=document.getElementById('errMsg');
   err.classList.remove('show');
-  if(!topic){document.getElementById('errTxt').textContent='Wpisz temat planu nauki.';err.classList.add('show');return;}
+  if(!topics.length){document.getElementById('errTxt').textContent='Wpisz przynajmniej jeden temat.';err.classList.add('show');return;}
   var subject=document.getElementById('fSubject').value;
   var level=document.getElementById('fLevel').value;
   var examDate=document.getElementById('fDate').value;
@@ -680,14 +726,16 @@ async function generatePlan(){
   document.getElementById('planResult').style.display='none';
   document.getElementById('genBtn').disabled=true;
   startProgress();
+  var topicStr=topics.join(', ');
   try{
     var base=(window.location.protocol==='file:'||!window.location.hostname)?'http://127.0.0.1:8000':window.location.origin;
-    var res=await fetch(base+'/api/v1/lessons/create-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:1,additional_info:extra||''})});
-    if(!res.ok)throw new Error('Błąd serwera '+res.status);
+    var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
+    var res=await fetch(base+'/api/v1/lessons/create-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:1,additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
+    if(!res.ok)throw new Error('Blad serwera '+res.status);
     var data=await res.json();
-    if(!data.success)throw new Error(data.error||'Błąd generowania planu');
+    if(!data.success)throw new Error(data.error||'Blad generowania planu');
     finishProgress();
-    var plan={id:Date.now(),topic:topic,subject:subject,level:level,examDate:examDate,minutes:parseInt(minutes),days:buildDays(data.plan,td)};
+    var plan={id:Date.now(),topic:topicStr,subject:subject,level:level,examDate:examDate,minutes:parseInt(minutes),days:buildDays(data.plan,td)};
     S.plans.push(plan);S.xp+=50;save();
     setTimeout(function(){
       document.getElementById('loadingView').style.display='none';
@@ -774,6 +822,57 @@ function markDone(planId,dayIdx){
 function go(url){window.location.href=url;}
 function mOpen(){document.getElementById('mOverlay').classList.add('open');document.getElementById('mDrawer').classList.add('open');}
 function mClose(){document.getElementById('mOverlay').classList.remove('open');document.getElementById('mDrawer').classList.remove('open');}
+
+// ── DELETE PLANS ─────────────────────────────────
+window.deletePlan=function(planId){
+  S.plans=S.plans.filter(function(p){return p.id!==planId;});
+  save();renderDash();renderCal();
+};
+window.deletePlansAll=function(){
+  if(confirm('Usunac wszystkie plany?')){S.plans=[];save();renderDash();renderCal();}
+};
+
+// ── TOPIC TAGS ───────────────────────────────────
+window._topics=[];
+(function(){
+  var inp=document.getElementById('topicInput');
+  var tagsEl=document.getElementById('topicTags');
+  var wrap=document.getElementById('topicTagsWrap');
+  if(!inp)return;
+  function addTag(val){
+    val=val.trim();
+    if(!val||window._topics.indexOf(val)>-1)return;
+    window._topics.push(val);
+    renderTags();
+    inp.value='';
+    inp.placeholder='Dodaj kolejny temat...';
+  }
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'||e.key===','){e.preventDefault();addTag(inp.value);}
+    if(e.key==='Backspace'&&!inp.value&&window._topics.length){
+      window._topics.pop();renderTags();
+    }
+  });
+  inp.addEventListener('blur',function(){if(inp.value.trim())addTag(inp.value);});
+})();
+function renderTags(){
+  var tagsEl=document.getElementById('topicTags');
+  var inp=document.getElementById('topicInput');
+  if(!tagsEl)return;
+  tagsEl.innerHTML='';
+  window._topics.forEach(function(t){
+    var tag=document.createElement('div');
+    tag.style.cssText='display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.78em;font-family:var(--h);font-weight:700;color:#a78bfa;white-space:nowrap;';
+    var x=document.createElement('span');
+    x.textContent='×';
+    x.style.cssText='cursor:pointer;opacity:.7;font-size:1.1em;line-height:1;';
+    x.onclick=(function(tv){return function(){window._topics=window._topics.filter(function(i){return i!==tv;});renderTags();};})(t);
+    tag.appendChild(document.createTextNode(t));
+    tag.appendChild(x);
+    tagsEl.appendChild(tag);
+  });
+  if(inp)inp.placeholder=window._topics.length?'Dodaj kolejny temat...':'Wpisz temat i nacisnij Enter...';
+}
 
 // ── CURSOR ────────────────────────────────────────
 (function(){
