@@ -303,6 +303,190 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 @media print{html,body{height:auto!important;overflow:visible!important;background:white!important;color:black!important;}.sidebar,.info-panel,.m-hdr,.m-nav,.aurora,.cursor,.cursor-ring,.gen-btn,.result-btns{display:none!important;}.main{overflow:visible!important;padding:0!important;}.problem-card{background:white!important;border:1px solid #ddd!important;color:black!important;page-break-inside:avoid;}}
 </style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentUser = user;
+  localStorage.setItem('eduvia_uid', user.uid);
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+});
+window._fbSave = async function(collection, data, xp) {
+  if (!currentUser) return;
+  try {
+    const upd = {[collection]: arrayUnion({...data, timestamp: new Date().toISOString()})};
+    if (xp) upd.xp = increment(xp);
+    await updateDoc(doc(db, 'users', currentUser.uid), upd);
+  } catch(e) { console.log('FB err:', e); }
+};
+</script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import{getFirestore,doc,getDoc,updateDoc,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth=getAuth(app),db=getFirestore(app);
+let currentUser=null;
+onAuthStateChanged(auth,async(user)=>{
+  if(!user){window.location.href='login.html';return;}
+  currentUser=user;
+  localStorage.setItem('eduvia_uid',user.uid);
+  const snap=await getDoc(doc(db,'users',user.uid));
+  if(snap.exists()){
+    const d=snap.data();
+    localStorage.setItem('eduvia_xp',d.xp||0);
+    localStorage.setItem('eduvia_plan',d.plan||'free');
+    // Dodaj badge planu do hamburgera
+    const plan=d.plan||'free';
+    setTimeout(()=>{
+      const badges=document.querySelectorAll('.plan-badge-slot');
+      badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
+    },100);
+  }
+});
+window._fbSave=async function(collection,data,xp){
+  if(!currentUser)return;
+  try{
+    const upd={[collection]:arrayUnion({...data,timestamp:new Date().toISOString()})};
+    if(xp)upd.xp=increment(xp);
+    await updateDoc(doc(db,'users',currentUser.uid),upd);
+  }catch(e){console.log('FB err:',e);}
+};
+</script>
+<script>
+// ============================================================
+// EDUVIA LIMITS MODULE - wklej do kazdego pliku
+// ============================================================
+const LIMITS_FREE = {
+  chat: 5,
+  vision: 2,
+  quiz: 3,
+  notes: 2,
+  exam: 1,
+  voice: 3,
+  lesson: 2
+};
+
+async function checkLimit(feature) {
+  // Jesli premium - brak limitow
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if (plan !== 'free') return { allowed: true, remaining: 999 };
+
+  const uid = localStorage.getItem('eduvia_uid');
+  if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
+
+  const today = new Date().toISOString().split('T')[0];
+  const key = `eduvia_limit_${feature}_${today}`;
+  const used = parseInt(localStorage.getItem(key) || '0');
+  const limit = LIMITS_FREE[feature] || 5;
+  const remaining = limit - used;
+
+  if (remaining <= 0) {
+    showLimitPopup(feature, limit);
+    return { allowed: false, remaining: 0 };
+  }
+  return { allowed: true, remaining };
+}
+
+function useLimit(feature) {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `eduvia_limit_${feature}_${today}`;
+  const used = parseInt(localStorage.getItem(key) || '0');
+  localStorage.setItem(key, used + 1);
+}
+
+function showLimitPopup(feature, limit) {
+  // Usun stary popup jesli istnieje
+  const old = document.getElementById('limitPopup');
+  if (old) old.remove();
+
+  const names = {
+    chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
+    notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki'
+  };
+  const name = names[feature] || feature;
+
+  const popup = document.createElement('div');
+  popup.id = 'limitPopup';
+  popup.style.cssText = `
+    position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;
+  `;
+  popup.innerHTML = `
+    <div style="
+      background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;
+      padding:32px 28px;max-width:380px;width:100%;text-align:center;
+      box-shadow:0 0 60px rgba(124,106,255,0.15);position:relative;
+      animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
+    ">
+      <style>@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}</style>
+      <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">
+        Limit ${name} wyczerpany
+      </div>
+      <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
+        Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
+      </p>
+      <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
+        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Nieograniczony Chat, Vision, Quiz
+        </div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Nieograniczone Notatki i Sprawdziany
+        </div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Voice AI i Plan nauki bez limitów
+        </div>
+      </div>
+      <button onclick="window.location.href='pricing.html'" style="
+        width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);
+        border:none;border-radius:12px;color:white;font-family:'Syne',sans-serif;
+        font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;
+        box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;
+      " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+        Kup Pro — bez limitów →
+      </button>
+      <button onclick="document.getElementById('limitPopup').remove()" style="
+        width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);
+        border-radius:12px;color:#55556a;font-family:'DM Sans',sans-serif;
+        font-size:.82em;cursor:pointer;transition:all .2s;
+      " onmouseover="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#8888a0'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.color='#55556a'">
+        Może później
+      </button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  // Zamknij na klik poza popupem
+  popup.addEventListener('click', function(e) {
+    if (e.target === popup) popup.remove();
+  });
+}
+
+function getPlanBadgeHTML(plan) {
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+}
+// Załaduj badge od razu z localStorage (przed Firebase)
+(function(){
+  var plan = localStorage.getItem("eduvia_plan") || "free";
+  function initBadges(){ document.querySelectorAll(".plan-badge-slot").forEach(function(el){ el.innerHTML = getPlanBadgeHTML(plan); }); }
+  if(document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", initBadges); } else { initBadges(); }
+})();
+
+</script>
 </head>
 <body>
 
@@ -338,7 +522,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   <div class="d-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
   <div class="d-link" onclick="go('quiz_app.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</div>
   <div class="d-sec">Konto</div>
-  <div class="d-link" onclick="go('pricing.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</div>
+  <div class="d-link" onclick="go('pricing.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Twój plan<span class="plan-badge-slot" style="margin-left:auto"></span></div>
 </nav>
 
 <!-- DOLNA NAWIGACJA MOBILE -->
@@ -695,7 +879,10 @@ function finishProgress(){
 }
 
 /* SOLVE */
-async function solve(){
+async function scanImage(){
+  const _lim = await checkLimit('vision');
+  if(!_lim.allowed) return;
+  useLimit('vision');
   if(!imgBase64)return;
   hideErr();
   document.getElementById('formView').style.display='none';
