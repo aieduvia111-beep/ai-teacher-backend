@@ -287,6 +287,27 @@ onAuthStateChanged(auth,async(user)=>{
       badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
     },100);
   }
+
+  // Sprawdź czy użytkownik wrócił po płatności
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get('payment') === 'success') {
+    // Poczekaj chwilę na webhook Stripe, potem zaktualizuj Firebase
+    setTimeout(async() => {
+      try {
+        await updateDoc(doc(db,'users',user.uid), { plan: 'pro' });
+        localStorage.setItem('eduvia_plan','pro');
+        document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML('pro'));
+        // Usuń parametr z URL
+        window.history.replaceState({}, '', 'dashboard_FINAL.html');
+        // Pokaż komunikat
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7c6aff,#22d3a0);color:white;padding:14px 28px;border-radius:100px;font-weight:700;font-size:.9em;z-index:9999;box-shadow:0 8px 32px rgba(124,106,255,.4);';
+        toast.textContent = '🎉 Witaj w Eduvia PRO!';
+        document.body.appendChild(toast);
+        setTimeout(()=>toast.remove(), 4000);
+      } catch(e) { console.warn('Plan update error:', e); }
+    }, 3000);
+  }
 });
 window._fbSave=async function(collection,data,xp){
   if(!currentUser)return;
