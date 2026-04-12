@@ -1046,101 +1046,42 @@ function getApiKey() {
 
 async function callAI(text, hist, imgs=[]) { return callAIhttp(text, hist, imgs); }
 
-// Stałe połączenie WebSocket - historia działa przez całą sesję
-let _ws = null;
-let _wsReady = false;
-let _wsQueue = [];
-
-function getWS() {
-  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) {
-    return _ws;
-  }
-  const wsUrl = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/api/v1/chat/ws';
-  _ws = new WebSocket(wsUrl);
-  _wsReady = false;
-
-  _ws.onopen = () => {
-    _wsReady = true;
-    // Wyślij kolejkę jeśli były oczekujące wiadomości
-    while (_wsQueue.length > 0) {
-      const { payload, resolve, reject, timer } = _wsQueue.shift();
-      clearTimeout(timer);
-      sendWS(payload, resolve, reject);
-    }
-  };
-
-  _ws.onerror = () => {
-    _wsReady = false;
-    _ws = null;
-    _wsQueue.forEach(({ reject }) => reject(new Error('Błąd połączenia z serwerem')));
-    _wsQueue = [];
-  };
-
-  _ws.onclose = () => {
-    _wsReady = false;
-    _ws = null;
-  };
-
-  return _ws;
-}
-
-function sendWS(payload, resolve, reject) {
-  let _currentResolve = resolve;
-  let _currentReject = reject;
-
-  const timer = setTimeout(() => {
-    _currentResolve = null;
-    _currentReject = null;
-    reject(new Error('Serwer się budzi... Spróbuj jeszcze raz ⏳'));
-  }, 90000);
-
-  const origOnMessage = _ws.onmessage;
-  _ws.onmessage = (event) => {
-    clearTimeout(timer);
-    _ws.onmessage = origOnMessage;
-    try {
-      const data = JSON.parse(event.data);
-      if (_currentResolve) _currentResolve({
-        title:      data.title      || null,
-        text:       data.text       || '',
-        diagram:    data.diagram    || null,
-        chart:      data.chart      || null,
-        sources:    data.sources    || [],
-        videos:     data.videos     || [],
-        has_latex:  data.has_latex  || false,
-        quiz_topic: data.title      || null
-      });
-    } catch(e) {
-      if (_currentReject) _currentReject(new Error('Błąd parsowania odpowiedzi'));
-    }
-  };
-
-  _ws.send(JSON.stringify(payload));
-}
-
 async function callAIhttp(text, hist, imgs=[]) {
-  return new Promise((resolve, reject) => {
-    const payload = { text: text || '' };
-    if (imgs && imgs.length > 0) payload.image = imgs[0];
+  // HTTP POST z pełną historią - AI zawsze pamięta kontekst rozmowy
+  const payload = {
+    text: text || '',
+    history: (hist || []).slice(-10).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: typeof m.content === 'string' ? m.content : (m.text || '')
+    })),
+  };
+  if (imgs && imgs.length > 0) payload.image = imgs[0];
 
-    const ws = getWS();
-
-    if (_wsReady && ws.readyState === WebSocket.OPEN) {
-      sendWS(payload, resolve, reject);
-    } else {
-      // Poczekaj na otwarcie połączenia
-      const timer = setTimeout(() => {
-        reject(new Error('Serwer się budzi... Spróbuj jeszcze raz ⏳'));
-      }, 90000);
-      _wsQueue.push({ payload, resolve, reject, timer });
-    }
+  const res = await fetch(BACKEND_URL + '/api/v1/chat/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
+
+  if (!res.ok) throw new Error('Błąd serwera ' + res.status);
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.text || 'Błąd AI');
+
+  return {
+    title:      data.title      || null,
+    text:       data.text       || '',
+    diagram:    data.diagram    || null,
+    chart:      data.chart      || null,
+    sources:    data.sources    || [],
+    videos:     data.videos     || [],
+    has_latex:  data.has_latex  || false,
+    quiz_topic: data.title      || null
+  };
 }
 
 // Auto-ping co 10 minut żeby Render się nie usypiał
-setInterval(() => {
-  fetch(BACKEND_URL + '/health').catch(() => {});
-}, 10 * 60 * 1000);
+setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 * 1000);
 
 // TEXTAREA
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }

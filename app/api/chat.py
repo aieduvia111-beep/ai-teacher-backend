@@ -1,9 +1,11 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
+from pydantic import BaseModel
+from typing import List, Dict, Optional
 import json
 from datetime import datetime
 from app.config import settings
-from typing import List, Dict
 import urllib.parse
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
@@ -64,6 +66,97 @@ ZASADY dla title:
 - Ciekawy jak tytuł w Knowunity
 - Przykłady: Fotosynteza krok po kroku, Równania kwadratowe podstawy, Układ słoneczny planety
 """
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    text: str
+    history: Optional[List[ChatMessage]] = []
+    image: Optional[str] = None
+
+def _build_response(ai_data: dict, user_message: str) -> dict:
+    topic_en = ai_data.get("topic_en", user_message)
+    topic_pl = user_message
+    enc_en = urllib.parse.quote(topic_en)
+    enc_pl = urllib.parse.quote(topic_pl)
+
+    sources = []
+    if ai_data.get("show_sources", False):
+        sources = [
+            {"title": "Wikipedia (PL)", "url": f"https://pl.wikipedia.org/wiki/Special:Search?search={enc_pl}", "icon": "📖"},
+            {"title": "Khan Academy", "url": f"https://www.khanacademy.org/search?page_search_query={enc_en}", "icon": "🎓"},
+            {"title": "Wolfram Alpha", "url": f"https://www.wolframalpha.com/input?i={enc_en}", "icon": "🔢"}
+        ]
+
+    videos = []
+    if ai_data.get("show_videos", False):
+        videos = [
+            {"title": f"🇵🇱 {topic_pl} — YouTube po polsku", "video_id": "none", "url": f"https://www.youtube.com/results?search_query={enc_pl}", "channel": "YouTube Polska"},
+            {"title": f"🌍 {topic_en} — YouTube po angielsku", "video_id": "none", "url": f"https://www.youtube.com/results?search_query={enc_en}+explained", "channel": "YouTube English"}
+        ]
+
+    return {
+        "title": ai_data.get("title", ""),
+        "text": ai_data.get("text", ""),
+        "has_latex": ai_data.get("has_latex", False),
+        "sources": sources,
+        "videos": videos,
+        "chart": ai_data.get("chart") if ai_data.get("show_chart", False) else None,
+        "diagram": ai_data.get("diagram", None),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@router.post("/message")
+async def chat_message(req: ChatRequest):
+    """HTTP endpoint - przyjmuje historię rozmowy i zwraca odpowiedź AI"""
+    try:
+        # Buduj historię
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+        # Dodaj historię z frontendu
+        for msg in (req.history or [])[-10:]:
+            messages.append({"role": msg.role, "content": msg.content})
+
+        # Dodaj aktualną wiadomość
+        if req.image:
+            img_b64 = req.image.split("base64,")[1] if "base64," in req.image else req.image
+            user_content = [
+                {"type": "text", "text": req.text or "Przeanalizuj to zdjecie i rozwiaz zadania."},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}", "detail": "high"}}
+            ]
+        else:
+            user_content = req.text
+
+        messages.append({"role": "user", "content": user_content})
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            max_tokens=4000,
+            temperature=0.7,
+            response_format={"type": "json_object"}
+        )
+
+        raw_response = response.choices[0].message.content
+
+        try:
+            ai_data = json.loads(raw_response)
+        except json.JSONDecodeError:
+            ai_data = {"title": "Odpowiedź", "text": raw_response, "has_latex": False, "show_sources": False, "show_videos": False, "show_chart": False, "chart": None, "topic_en": req.text}
+
+        return _build_response(ai_data, req.text)
+
+    except Exception as e:
+        print(f"❌ Błąd chat HTTP: {e}")
+        return {
+            "title": "Błąd",
+            "text": f"⚠️ Wystąpił błąd: `{str(e)}`",
+            "has_latex": False, "sources": [], "videos": [], "chart": None, "error": True
+        }
 
 
 @router.websocket("/ws")
