@@ -4,10 +4,14 @@ from sqlalchemy.orm import sessionmaker
 from .config import settings
 
 # 🗄️ Utwórz silnik bazy danych
+is_sqlite = "sqlite" in settings.DATABASE_URL
+
 engine = create_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+    connect_args={"check_same_thread": False} if is_sqlite else {},
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 # 📦 Session
@@ -23,5 +27,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
 # Import models to create tables
 from . import models  # noqa
