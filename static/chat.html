@@ -151,7 +151,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .msg-group.ai{align-items:flex-start;}
 .ai-topic-title{font-family:var(--h);font-size:.95em;font-weight:800;letter-spacing:-.02em;color:var(--accent2);padding:0 4px;margin-bottom:2px;display:flex;align-items:center;gap:7px;}
 .ai-topic-title::before{content:'';width:3px;height:1em;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent2));flex-shrink:0;}
-.bubble{max-width:72%;padding:13px 17px;font-size:.86em;line-height:1.68;word-wrap:break-word;border-radius:18px;position:relative;}
+.bubble{max-width:72%;min-width:280px;padding:13px 17px;font-size:.86em;line-height:1.68;word-wrap:break-word;border-radius:18px;position:relative;}
 .msg-group.user .bubble{background:linear-gradient(135deg,rgba(124,106,255,0.3),rgba(100,80,220,0.18));border:1px solid rgba(124,106,255,0.35);border-bottom-right-radius:5px;box-shadow:0 4px 20px rgba(124,106,255,0.14);}
 .msg-group.ai .bubble{background:linear-gradient(135deg,rgba(22,22,40,0.95),rgba(15,15,28,0.95));border:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:5px;box-shadow:0 4px 20px rgba(0,0,0,0.35);max-width:92%;}
 .bubble.typing::after{content:'';display:inline-block;width:2px;height:1em;background:var(--accent2);margin-left:3px;vertical-align:text-bottom;animation:cur .6s step-end infinite;opacity:.8;}
@@ -1765,9 +1765,11 @@ async function saveCurrentChat() {
   const label = firstBubble ? (firstBubble.textContent.trim().slice(0,42) || 'Czat') : 'Czat';
   const { collection, addDoc, doc, updateDoc, serverTimestamp } = window._fb;
   const colRef = collection(db, 'chats');
+  const uid = localStorage.getItem('eduvia_uid') || getDeviceId();
   try {
     if (!currentChatId) {
       const docRef = await addDoc(colRef, {
+        uid,
         deviceId: getDeviceId(),
         label,
         html: msgs.innerHTML,
@@ -1799,7 +1801,8 @@ async function renderHistList() {
     const snap = await getDocs(q);
     snap.forEach(d => chats.push({ id: d.id, ...d.data() }));
     // Filtruj po deviceId
-    chats = chats.filter(ch => ch.deviceId === getDeviceId());
+    const uid = localStorage.getItem('eduvia_uid') || getDeviceId();
+    chats = chats.filter(ch => ch.uid === uid || ch.deviceId === getDeviceId());
   } catch(e) { el.innerHTML = '<div class="hist-empty">Błąd ładowania</div>'; return; }
 
   el.innerHTML = '';
