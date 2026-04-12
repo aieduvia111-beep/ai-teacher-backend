@@ -25,7 +25,8 @@ from .openai_exam import (
     generate_quiz_from_topic
 )
 
-Base.metadata.create_all(bind=engine)
+# Tables will be created on startup
+
 
 app = FastAPI(title="AI Teacher API", version="1.0.0")
 
@@ -325,6 +326,13 @@ async def generate_quiz_topic(request: QuizTopicRequest):
 # ══ STARTUP ══
 @app.on_event("startup")
 async def startup():
+    # Stwórz tabele przy starcie
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tabele bazy danych OK")
+    except Exception as e:
+        print(f"⚠️ Baza danych: {e}")
+
     print("=" * 60)
     print("🚀 AI TEACHER BACKEND STARTED!")
     print(f"🔑 OpenAI: {'✅ ' + settings.OPENAI_API_KEY[:20] + '...' if settings.OPENAI_API_KEY else '❌ MISSING'}")
