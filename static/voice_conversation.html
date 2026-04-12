@@ -745,12 +745,16 @@ function stopRec(){
 // PROCESS
 async function process(){
   if(isProc) return; isProc=true;
+
+  // Sprawdź limit
+  const _lim = await checkLimit('voice');
+  if(!_lim.allowed){ isProc=false; setOrb('idle'); setHint('Przytrzymaj mikrofon i mów'); return; }
+
   const mt=(audioChunks[0]?.type)||'audio/webm';
   const blob=new Blob(audioChunks,{type:mt}); audioChunks=[];
   if(blob.size<2500){isProc=false;setOrb('idle');setHint('Zbyt krótkie — spróbuj');return;}
   try{
     setHint('Rozpoznaję...');
-    // Konwertuj blob na base64
     const audioB64 = await new Promise((res,rej)=>{
       const r=new FileReader();
       r.onload=()=>res(r.result.split(',')[1]);
@@ -764,17 +768,33 @@ async function process(){
     if(!userTxt||userTxt.length<2){isProc=false;setOrb('idle');setHint('Nie rozpoznano');return;}
     addUserMsg(userTxt); hist.push({role:'user',content:userTxt}); setHint('Myślę...');
     const aiId='ai-'+Date.now(); addAiPlaceholder(aiId);
-    // /respond zwraca tekst + audio base64 razem
     const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8)})});
     if(!cr.ok){const e=await cr.json().catch(()=>({}));throw new Error(e.detail||cr.status);}
     const crData=await cr.json();
     const aiTxt=crData.text||'';
     hist.push({role:'assistant',content:aiTxt}); updateAi(aiId,aiTxt);
+    // Pokaż korekcje błędów jeśli są
+    if(crData.corrections && crData.corrections.length>0){
+      showCorrections(crData.corrections);
+    }
+    // Zlicz użycie limitu
+    useLimit('voice');
     // Audio base64 z backendu
     if(crData.audio){await playAudioBase64(crData.audio);}
   }catch(err){showErr(err.message||'Błąd serwera');}
   isSpeak=false; isProc=false; curAudio=null;
   setOrb('idle'); setHint('Przytrzymaj mikrofon i mów');
+}
+
+// KOREKCJE BŁĘDÓW
+function showCorrections(corrections){
+  const box=g('exchangeBox'); if(!box) return;
+  corrections.forEach(c=>{
+    const div=document.createElement('div');
+    div.style.cssText='margin-top:8px;padding:8px 12px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:10px;font-size:.8em;color:rgba(255,255,255,.85);';
+    div.innerHTML='✏️ <strong style="color:#f87171;">Korekta:</strong> <span style="text-decoration:line-through;color:rgba(255,255,255,.5);">'+esc(c.wrong)+'</span> → <strong style="color:#4ade80;">'+esc(c.correct)+'</strong>';
+    box.appendChild(div);
+  });
 }
 
 // Odtwarzanie audio z base64
