@@ -237,7 +237,7 @@ onAuthStateChanged(auth, async (user) => {
   if (streakEl) streakEl.textContent = (data.streak || 0) + ' dni';
 
   // Aktualizuj imie i avatar
-  const nameEl = document.querySelector('.hero-name, .user-name');
+  const nameEl = document.querySelector('.hero-nm');
   if (nameEl) nameEl.textContent = user.displayName?.split(' ')[0] || 'Uczniu';
 
   const avatarEls = document.querySelectorAll('.user-avatar, .hero-avatar');
