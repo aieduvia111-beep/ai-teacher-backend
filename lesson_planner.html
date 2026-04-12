@@ -891,7 +891,7 @@ async function generatePlan(){
   startProgress();
   var topicStr=topics.join(', ');
   try{
-    var base=(window.location.protocol==='file:'||!window.location.hostname)?'http://127.0.0.1:8000':window.location.origin;
+    var base='https://ai-teacher-backend-1.onrender.com';
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
     var res=await fetch(base+'/api/v1/lessons/create-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:1,additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
     if(!res.ok)throw new Error('Blad serwera '+res.status);

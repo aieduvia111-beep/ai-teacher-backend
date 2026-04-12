@@ -1049,9 +1049,12 @@ function renderMarkdownWithLatex(text) {
   return html;
 }
 
-// ═══ OPENAI API ═══
+// ═══ BACKEND API ═══
+const BACKEND_URL = 'https://ai-teacher-backend-1.onrender.com';
+
 function getApiKey() {
-  let key = localStorage.getItem('eduvia_openai_key');
+  // Klucz nie jest już potrzebny — backend obsługuje OpenAI
+  return 'backend';
   if (!key) {
     key = prompt('Wpisz klucz OpenAI API (sk-proj-... lub sk-...):');
     if (key && key.trim().startsWith('sk-')) {
@@ -1068,93 +1071,55 @@ function getApiKey() {
 async function callAI(text, hist, imgs=[]) { return callAIhttp(text, hist, imgs); }
 
 async function callAIhttp(text, hist, imgs=[]) {
-  const key = getApiKey();
-  if (!key) throw new Error('Brak klucza API');
+  return new Promise((resolve, reject) => {
+    const wsUrl = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/api/v1/chat/ws';
+    const ws = new WebSocket(wsUrl);
 
-  const messages = [{
-    role: 'system',
-    content: `Jesteś Eduvia AI — najlepszym polskim asystentem edukacyjnym. Odpowiadasz ZAWSZE TYLKO czystym JSON (zero backticks, zero tekstu poza JSON).
+    ws.onopen = () => {
+      const payload = { text: text || '' };
+      if (imgs && imgs.length > 0) {
+        payload.image = imgs[0];
+      }
+      ws.send(JSON.stringify(payload));
+    };
 
-AUTOMATYCZNE DOPASOWANIE POZIOMU:
-Zawsze analizuj sposób pisania użytkownika i kontekst pytania:
-- Proste pytania, błędy ortograficzne, podstawowe tematy → odpowiadaj jak dla ucznia podstawówki (prosto, krótko, analogie z życia, bez wzorów)
-- Pytania o maturę, licea, bardziej złożone → poziom liceum/matura (pełne wyjaśnienia, wzory, terminologia)
-- Zaawansowane pytania, olimpiady, studia → pełna złożoność z dowodami
-- Jeśli nie wiesz — zacznij od średniego poziomu i dostosuj się do odpowiedzi użytkownika
-NIE pytaj o poziom. Sam wykryj i dostosuj język oraz głębokość.
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        ws.close();
+        resolve({
+          title:      data.title      || null,
+          text:       data.text       || '',
+          diagram:    data.diagram    || null,
+          chart:      data.chart      || null,
+          sources:    data.sources    || [],
+          videos:     data.videos     || [],
+          has_latex:  data.has_latex  || false,
+          quiz_topic: data.title      || null
+        });
+      } catch(e) {
+        ws.close();
+        reject(new Error('Błąd parsowania odpowiedzi'));
+      }
+    };
 
-STRUKTURA ODPOWIEDZI (JSON):
-{
-  "title": "Krótki tytuł (max 6 słów)",
-  "text": "Odpowiedź w MARKDOWN dostosowana do wykrytego poziomu. Używaj ## nagłówków, **pogrubień**, list. Sekcje 'Etap N:/Krok N:/Faza N:' → ładne animowane karty. Paragrafy zaczynające się od 'Pamiętaj:/Ważne:/Uwaga:' → bloki wyróżnień.",
-  "diagram": null,
-  "chart": null,
-  "sources": [{"title":"Wikipedia PL — temat","url":"https://pl.wikipedia.org/wiki/TEMAT","icon":"🌐"},{"title":"Nazwa źródła","url":"https://PRAWDZIWY_LINK","icon":"📚"}],
-  "has_latex": false,
-  "quiz_topic": "temat do quizu"
-}
+    ws.onerror = () => {
+      reject(new Error('Błąd połączenia z serwerem'));
+    };
 
-DIAGRAM — dodaj gdy temat ma proces/etapy/elementy/porównanie:
-• Kroki/etapy: {"type":"steps","title":"...","steps":[{"label":"...","icon":"emoji","desc":"..."}]}
-• Przepływ:    {"type":"flow","title":"...","nodes":[{"label":"...","icon":"emoji"}]}
-• Siatka:      {"type":"grid","title":"...","items":[{"label":"...","icon":"emoji","desc":"..."}]}
-• Porównanie:  {"type":"comparison","title":"...","columns":["Cecha","A","B"],"items":[["cecha","val","val"]]}
+    ws.onclose = (e) => {
+      if (e.code !== 1000 && e.code !== 1005) {
+        reject(new Error('Połączenie przerwane'));
+      }
+    };
 
-CHART — dla danych liczbowych: {"title":"...","labels":[...],"values":[...]}
-
-ZAWSZE dodaj diagram lub chart dla: biologia, chemia, fizyka, historia (chronologia/etapy), matematyka (algorytm/wzory).
-ZAWSZE podaj 2-3 prawdziwe linki Wikipedia PL lub źródeł edukacyjnych pasujących do tematu.
-has_latex: true gdy używasz wzory. ZAWSZE owijaj KAŻDY wzór matematyczny w $...$ (inline) lub $$...$$ (blok). NIGDY nie pisz komend LaTeX jak \\log, \\frac, \\left bez otoczenia ich dolarami. Przykład: zamiast '\\log_3 6' pisz '$\\log_3 6$'.
-Gdy widzisz zdjecie z zadaniami lub liste zadan - ROZWIAZ KAZDE zadanie osobno krok po kroku. Numeruj: ## Zadanie 1, ## Zadanie 2 itd. Kazde zadanie kompletnie z pelnym rozwiazaniem i odpowiedzia.`
-  }];
-
-  for (const m of hist) {
-    messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content || m.text || '' });
-  }
-  if (imgs && imgs.length > 0) {
-    const parts = [];
-    if (text) parts.push({ type: 'text', text: text });
-    imgs.forEach(url => parts.push({ type: 'image_url', image_url: { url: url, detail: 'high' } }));
-    messages.push({ role: 'user', content: parts });
-  } else {
-    messages.push({ role: 'user', content: text });
-  }
-
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      response_format: { type: 'json_object' },
-      messages
-    })
+    setTimeout(() => {
+      if (ws.readyState !== WebSocket.CLOSED) {
+        ws.close();
+        reject(new Error('Timeout — serwer nie odpowiedział'));
+      }
+    }, 30000);
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 401) { localStorage.removeItem('eduvia_openai_key'); alert('Zły klucz API!'); }
-    throw new Error(err.error?.message || 'Błąd API ' + res.status);
-  }
-
-  const data = await res.json();
-  let parsed;
-  try { parsed = JSON.parse(data.choices[0].message.content); }
-  catch (e) { parsed = { text: data.choices[0].message.content, title: null, sources: [], has_latex: false }; }
-
-  return {
-    title:      parsed.title      || null,
-    text:       parsed.text       || '',
-    diagram:    parsed.diagram    || null,
-    chart:      parsed.chart      || null,
-    sources:    parsed.sources    || [],
-    videos:     parsed.videos     || [],
-    has_latex:  parsed.has_latex  || false,
-    quiz_topic: parsed.quiz_topic || parsed.title || null
-  };
 }
 
 // TEXTAREA
