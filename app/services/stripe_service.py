@@ -81,8 +81,8 @@ class StripeService:
                     }
                 ],
                 mode="subscription",
-                success_url="http://localhost:8000/static/success.html?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url="http://localhost:8000/static/cancel.html",
+                success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success",
+                cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                 metadata={
                     "user_id": user_id
                 }
