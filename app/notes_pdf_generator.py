@@ -1438,9 +1438,8 @@ class PremiumNotesGenerator:
                     return s
                 def _cell(val):
                     s = str(val).strip()
-                    # Zawsze renderuj tak samo - tekst przez PNG z identycznym fontem
+                    # Wzory LaTeX - renderuj przez matplotlib
                     if '$' in s or '\\' in s:
-                        # Wzór - renderuj przez matplotlib z IDENTYCZNYM rozmiarem
                         png = _render_text_png(s, col_w - 8, 28, fontsize=11,
                                                color=TXT_MAIN, bg=BG_CARD2)
                         if png:
@@ -1448,17 +1447,12 @@ class PremiumNotesGenerator:
                             _pc = _PILc.open(_ioc.BytesIO(png))
                             return RLImage(_ioc.BytesIO(png), width=col_w-8,
                                           height=_pc.size[1]/150*72)
-                    # Zwykły tekst - Paragraph z identycznym fontem
+                    # Zwykły tekst - zawsze Paragraph z DejaVu (polskie znaki!)
                     return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
                         fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
                 def _nagl_cell(n, cw):
                     txt = _l2u(n)
-                    png = _render_text_png(txt, cw-8, 24, fontsize=10, color='#FFFFFF', bg=ACC_PURPLE, bold=True)
-                    if png:
-                        from PIL import Image as _PILnh; import io as _ionh
-                        _pnh = _PILnh.open(_ionh.BytesIO(png))
-                        return RLImage(_ionh.BytesIO(png), width=cw-8, height=_pnh.size[1]/150*72)
                     return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
                 nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
                 t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
