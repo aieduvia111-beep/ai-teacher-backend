@@ -921,47 +921,34 @@ function renderResult(data,subject){
   });}
   html+=`<div class="result-btns"><button class="btn-secondary" onclick="newScan()">Nowe zdjecie</button><button class="btn-secondary" onclick="copyResult(this)">Kopiuj</button><button class="btn-accent" onclick="window.print()">Drukuj</button></div>`;
   const el=document.getElementById('resultView');el.innerHTML=html;el.style.display='block';
-  setTimeout(()=>renderLatex(el),100);
+  setTimeout(()=>renderLatex(el),500);
 }
 
 /* FORMAT */
-function renderLatex(el){
+function renderLatex(el, attempt){
+  attempt = attempt || 1;
   if(typeof renderMathInElement==='undefined'){
-    setTimeout(()=>renderLatex(el),300);
+    if(attempt < 20) setTimeout(()=>renderLatex(el, attempt+1), 300);
     return;
   }
-  // Renderuj kazde zadanie osobno - blad w jednym nie zatrzyma reszty
+  var opts = {
+    delimiters:[
+      {left:'$$',right:'$$',display:true},
+      {left:'$',right:'$',display:false},
+      {left:'\\[',right:'\\]',display:true},
+      {left:'\\(',right:'\\)',display:false}
+    ],
+    throwOnError:false,
+    strict:false,
+    trust:true
+  };
   var cards=el.querySelectorAll('.problem-card');
   if(cards.length>0){
     cards.forEach(function(card){
-      try{
-        renderMathInElement(card,{
-          delimiters:[
-            {left:'$$',right:'$$',display:true},
-            {left:'$',right:'$',display:false},
-            {left:'\\[',right:'\\]',display:true},
-            {left:'\\(',right:'\\)',display:false}
-          ],
-          throwOnError:false,
-          strict:false,
-          trust:true
-        });
-      }catch(e){}
+      try{ renderMathInElement(card, opts); }catch(e){}
     });
   } else {
-    try{
-      renderMathInElement(el,{
-        delimiters:[
-          {left:'$$',right:'$$',display:true},
-          {left:'$',right:'$',display:false},
-          {left:'\\[',right:'\\]',display:true},
-          {left:'\\(',right:'\\)',display:false}
-        ],
-        throwOnError:false,
-        strict:false,
-        trust:true
-      });
-    }catch(e){}
+    try{ renderMathInElement(el, opts); }catch(e){}
   }
 }
 
