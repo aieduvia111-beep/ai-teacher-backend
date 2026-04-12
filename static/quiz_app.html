@@ -916,7 +916,7 @@ function confetti(){
 }
 
 
-let BASE=(window.location.protocol==='file:'||!window.location.hostname)?'http://127.0.0.1:8000':window.location.origin;
+const BASE='https://ai-teacher-backend-1.onrender.com';
 
 async function startQuiz(){
   const _lim=await checkLimit('quiz');if(!_lim.allowed)return;

@@ -665,22 +665,14 @@ let errTmr=null;
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// API KEY
-function getKey(){
-  if(apiKey) return apiKey;
-  let k=localStorage.getItem('eduvia_openai_key');
-  if(!k||!k.startsWith('sk-')){
-    k=prompt('Wpisz klucz OpenAI API (sk-...):');
-    if(!k) return null; k=k.trim();
-    if(!k.startsWith('sk-')){showErr('Nieprawidłowy klucz.');return null;}
-    localStorage.setItem('eduvia_openai_key',k);
-  }
-  apiKey=k; return k;
-}
+// BACKEND URL
+const BACKEND_URL = 'https://ai-teacher-backend-1.onrender.com';
+
+// API KEY - nie potrzebny, backend obsługuje OpenAI
+function getKey(){ return 'backend'; }
 
 // INIT
 async function initSes(){
-  const key=getKey(); if(!key) return;
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
@@ -753,39 +745,49 @@ function stopRec(){
 // PROCESS
 async function process(){
   if(isProc) return; isProc=true;
-  const key=getKey(); if(!key){isProc=false;setOrb('idle');setHint('Brak klucza API');return;}
   const mt=(audioChunks[0]?.type)||'audio/webm';
   const blob=new Blob(audioChunks,{type:mt}); audioChunks=[];
   if(blob.size<2500){isProc=false;setOrb('idle');setHint('Zbyt krótkie — spróbuj');return;}
   try{
     setHint('Rozpoznaję...');
-    const ext=mt.includes('ogg')?'ogg':mt.includes('mp4')?'mp4':'webm';
-    const fd=new FormData(); fd.append('file',new File([blob],`r.${ext}`,{type:mt})); fd.append('model','whisper-1'); fd.append('response_format','json');
-    const sr=await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd});
-    if(!sr.ok){const e=await sr.json().catch(()=>({}));if(sr.status===401){localStorage.removeItem('eduvia_openai_key');apiKey=null;}throw new Error(e.error?.message||sr.status);}
-    const userTxt=((await sr.json()).text||'').trim();
+    // Konwertuj blob na base64
+    const audioB64 = await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=rej;
+      r.readAsDataURL(blob);
+    });
+    const sr=await fetch(BACKEND_URL+'/api/v1/voice/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:audioB64})});
+    if(!sr.ok){const e=await sr.json().catch(()=>({}));throw new Error(e.detail||sr.status);}
+    const srData=await sr.json();
+    const userTxt=(srData.text||'').trim();
     if(!userTxt||userTxt.length<2){isProc=false;setOrb('idle');setHint('Nie rozpoznano');return;}
     addUserMsg(userTxt); hist.push({role:'user',content:userTxt}); setHint('Myślę...');
     const aiId='ai-'+Date.now(); addAiPlaceholder(aiId);
-    const cr=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'gpt-4o-mini',max_tokens:120,temperature:0.7,messages:[{role:'system',content:'Jestes Eduvia AI korepetytor glosowy. Max 3 zdania, zero markdown. Odpowiadaj w jezyku ucznia.'},...hist.slice(-10).map(m=>({role:m.role,content:typeof m.content==='string'?m.content:'[zdjecie]'}))]})});
-    if(!cr.ok){const e=await cr.json().catch(()=>({}));throw new Error(e.error?.message||cr.status);}
-    const aiTxt=(await cr.json()).choices[0].message.content;
-    hist.push({role:'assistant',content:aiTxt}); updateAi(aiId,aiTxt); await tts(aiTxt,key);
-  }catch(err){showErr(err.message||'Błąd API');}
+    // /respond zwraca tekst + audio base64 razem
+    const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8)})});
+    if(!cr.ok){const e=await cr.json().catch(()=>({}));throw new Error(e.detail||cr.status);}
+    const crData=await cr.json();
+    const aiTxt=crData.text||'';
+    hist.push({role:'assistant',content:aiTxt}); updateAi(aiId,aiTxt);
+    // Audio base64 z backendu
+    if(crData.audio){await playAudioBase64(crData.audio);}
+  }catch(err){showErr(err.message||'Błąd serwera');}
   isSpeak=false; isProc=false; curAudio=null;
   setOrb('idle'); setHint('Przytrzymaj mikrofon i mów');
 }
 
-// TTS
-async function tts(text,key){
+// Odtwarzanie audio z base64
+async function playAudioBase64(b64){
   if(!sessionActive) return;
   setHint('Odpowiadam...'); isSpeak=true; setOrb('speaking');
   ttsAbort=new AbortController();
   try{
-    const r=await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'tts-1',input:text,voice:'nova',speed:1.1,response_format:'mp3'}),signal:ttsAbort.signal});
-    if(!r.ok) throw new Error('TTS '+r.status);
-    if(!sessionActive) return;
-    const url=URL.createObjectURL(await r.blob());
+    const bytes=atob(b64);
+    const arr=new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+    const audioBlob=new Blob([arr],{type:'audio/mpeg'});
+    const url=URL.createObjectURL(audioBlob);
     if(!sessionActive){URL.revokeObjectURL(url);return;}
     curAudio=new Audio(url); curAudio.muted=muted;
     try{const s=_actx.createMediaElementSource(curAudio);s.connect(_an);_an.connect(_actx.destination);animLive();}catch(e){}
@@ -793,6 +795,9 @@ async function tts(text,key){
   }catch(e){if(e.name==='AbortError')return;}
   finally{isSpeak=false;curAudio=null;ttsAbort=null;}
 }
+
+// TTS (nieużywane — backend zwraca audio w /respond)
+async function tts(text){}
 
 // MESSAGES
 function addUserMsg(txt){
@@ -879,8 +884,6 @@ function handleSnapTouch(e){e.preventDefault();const n=Date.now();if(n-_lsn<2000
 function handleSnapClick(){const n=Date.now();if(n-_lsn<2000)return;_lsn=n;snapSend();}
 async function snapSend(){
   if(isProc||isRec) return; isProc=true;
-  const key=apiKey||localStorage.getItem('eduvia_openai_key');
-  if(!key){showErr('Brak klucza API');isProc=false;return;}
   const vid=g('camVideo');
   if(!vid||!camOn||!vid.srcObject){showErr('Kamera niedostępna');isProc=false;return;}
   const fl=g('snapFlash'); if(fl){fl.classList.add('go');setTimeout(()=>fl.classList.remove('go'),200);}
@@ -895,12 +898,15 @@ async function snapSend(){
   const aiId='ai-'+Date.now();
   addUserMsg('Zdjęcie z kamery');
   addAiPlaceholder(aiId);
-  hist.push({role:'user',content:[{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}},{type:'text',text:'Jesli widzisz zadanie edukacyjne — rozwiaz po polsku, max 3 zdania. Jesli brak zadania — powiedz krotko.'}]});
+  const snapText='Jesli widzisz zadanie edukacyjne — rozwiaz po polsku, max 3 zdania. Jesli brak zadania — powiedz krotko.';
+  hist.push({role:'user',content:snapText});
   try{
-    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'gpt-4o',max_tokens:200,temperature:0.3,messages:[{role:'system',content:'Jestes Eduvia Tutor. Max 3 zdania. Jezyk polski.'},...hist.slice(-4)]})});
+    const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:snapText,image:b64,history:hist.slice(-4)})});
     if(!r.ok) throw new Error('GPT '+r.status);
-    const aiTxt=(await r.json()).choices[0].message.content.trim();
-    hist.push({role:'assistant',content:aiTxt}); updateAi(aiId,aiTxt); await tts(aiTxt,key);
+    const rData=await r.json();
+    const aiTxt=rData.text||'';
+    hist.push({role:'assistant',content:aiTxt}); updateAi(aiId,aiTxt);
+    if(rData.audio){await playAudioBase64(rData.audio);}
   }catch(e){updateAi(aiId,'Błąd: '+e.message);}
   finally{isProc=false;setOrb('idle');setHint('Przytrzymaj mikrofon i mów');}
 }

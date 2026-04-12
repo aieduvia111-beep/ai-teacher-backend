@@ -894,7 +894,7 @@ async function scanImage(){
   const subject=document.getElementById('subject').value;
   const mode=document.getElementById('mode').value;
   try{
-    const res=await fetch((window.location.protocol==='file:'||!window.location.hostname?'http://127.0.0.1:8000':window.location.origin)+'/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     const data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad analizy');
