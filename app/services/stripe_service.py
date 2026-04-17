@@ -81,6 +81,9 @@ class StripeService:
                     }
                 ],
                 mode="subscription",
+                subscription_data={
+                    "trial_period_days": 7  # 🎁 7-day free trial
+                },
                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                 metadata={
@@ -219,7 +222,7 @@ class StripeService:
             # Zaktualizuj usera
             user = db.query(User).filter(User.id == db_sub.user_id).first()
             if user:
-                if subscription['status'] == 'active':
+                if subscription['status'] in ('active', 'trialing'):
                     user.is_premium = True
                     user.premium_until = db_sub.current_period_end
                 else:
@@ -273,7 +276,7 @@ class StripeService:
             # Znajdź aktywną subskrypcję
             subscription = db.query(Subscription).filter(
                 Subscription.user_id == user_id,
-                Subscription.status == 'active'
+                Subscription.status.in_(['active', 'trialing'])
             ).first()
             
             if not subscription:
