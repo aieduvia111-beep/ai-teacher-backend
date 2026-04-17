@@ -220,7 +220,7 @@ window._currentUser=()=>currentUser;
   <div class="plan pro" style="animation-delay:.3s">
     <div class="popular-tag">7 dni za darmo</div>
     <div class="plan-name pro-name" style="margin-top:30px">Pro</div>
-    <div style="display:flex;align-items:baseline;gap:6px;justify-content:center;margin-bottom:4px;"><span class="plan-amt pro-amt">29</span><span class="plan-cur">zł</span></div>
+    <div class="plan-price"><span class="plan-amt pro-amt">29</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">po 7 dniach · anuluj kiedy chcesz</div>
     <div style="font-size:.78em;color:var(--green);font-weight:700;margin-bottom:10px;text-align:center;">Pierwsze 7 dni bezpłatnie</div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
@@ -289,17 +289,37 @@ window._currentUser=()=>currentUser;
 
 <script>
 // ═══ STRIPE PAYMENT LINK ═══
-const PAYMENT_LINK = 'https://buy.stripe.com/dRm5kCbHobRp46D3xncV200';
+const BACKEND_URL = 'https://ai-teacher-backend-1.onrender.com';
 
-function startCheckout() {
+async function startCheckout() {
   const btn = document.getElementById('proBuyBtn');
   const btnText = document.getElementById('btnText');
   const loader = document.getElementById('btnLoader');
   btn.disabled = true;
   btnText.textContent = 'Przekierowuję...';
-  loader.style.display = 'block';
-  // Przekieruj na Stripe Payment Link
-  window.location.href = PAYMENT_LINK;
+  if(loader) loader.style.display = 'block';
+
+  const uid = localStorage.getItem('eduvia_uid');
+  const email = localStorage.getItem('eduvia_email') || '';
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/v1/payments/create-checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: uid || 1, email: email})
+    });
+    const data = await res.json();
+    if(data.success && data.checkout_url) {
+      window.location.href = data.checkout_url;
+    } else {
+      throw new Error(data.error || 'Błąd');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btnText.textContent = 'Zacznij 7 dni za darmo →';
+    if(loader) loader.style.display = 'none';
+    alert('Błąd: ' + e.message);
+  }
 }
 
 // Obsługa powrotu po płatności
