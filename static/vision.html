@@ -114,7 +114,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 /* GRID */
 .content-grid{display:grid;grid-template-columns:1fr 320px;gap:16px;flex:1;min-height:0;}
-.form-panel{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:28px;overflow-y:auto;box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);animation:fadeUp .4s ease .1s both;}
+.form-panel{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:28px;overflow-y:auto;overflow-x:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);animation:fadeUp .4s ease .1s both;}
 .form-panel::-webkit-scrollbar{width:3px;}
 .form-panel::-webkit-scrollbar-thumb{background:var(--s3);border-radius:100px;}
 .info-panel{display:flex;flex-direction:column;gap:12px;}
@@ -214,7 +214,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .badge svg{width:11px;height:11px;}
 .badge-green{background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.25);color:var(--green);}
 .badge-accent{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.25);color:var(--accent2);}
-.problem-card{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:20px;margin-bottom:10px;}
+.problem-card{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:20px;margin-bottom:10px;overflow:hidden;word-break:break-word;overflow-wrap:anywhere;}
 .problem-nr{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:7px;}
 .problem-nr::before{content:'';width:3px;height:11px;background:var(--accent);border-radius:2px;}
 .problem-q{font-size:.93em;line-height:1.7;margin-bottom:18px;padding:13px 15px;background:var(--s1);border-radius:10px;border-left:2px solid var(--accent);}
@@ -222,16 +222,19 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .steps-title svg{width:12px;height:12px;}
 .step-r{display:flex;gap:11px;margin-bottom:11px;align-items:flex-start;}
 .step-num{width:24px;height:24px;border-radius:7px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.25);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.72em;color:var(--accent2);flex-shrink:0;margin-top:2px;}
-.step-content{flex:1;font-size:.88em;line-height:1.7;}
-.answer-box{background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.2);border-radius:11px;padding:14px 16px;margin-top:14px;}
-.explain-box{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:11px;padding:14px 16px;margin-top:9px;}
+.step-content{flex:1;font-size:.88em;line-height:1.7;word-break:break-word;overflow-wrap:anywhere;min-width:0;}
+.answer-box{background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.2);border-radius:11px;padding:14px 16px;margin-top:14px;overflow:hidden;}
+.explain-box{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:11px;padding:14px 16px;margin-top:9px;overflow:hidden;word-break:break-word;overflow-wrap:anywhere;}
+/* KaTeX overflow fix — dlugie wzory nie wychodza poza ramke */
+.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;padding-bottom:4px;}
+.katex{max-width:100%;}
 .similar-box{background:rgba(124,106,255,.05);border:1px solid rgba(124,106,255,.15);border-radius:11px;padding:14px 16px;margin-top:9px;}
 .box-label{font-family:var(--h);font-size:.66em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px;}
 .box-label svg{width:11px;height:11px;}
 .answer-box .box-label{color:var(--green);}
 .explain-box .box-label{color:var(--gold);}
 .similar-box .box-label{color:var(--accent2);}
-.answer-val{font-size:.95em;font-weight:500;line-height:1.6;}
+.answer-val{font-size:.95em;font-weight:500;line-height:1.6;word-break:break-word;overflow-wrap:anywhere;}
 .similar-item{display:flex;gap:9px;font-size:.84em;margin-bottom:7px;line-height:1.6;}
 .similar-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:9px;flex-shrink:0;}
 .result-btns{display:flex;gap:9px;margin-top:18px;}

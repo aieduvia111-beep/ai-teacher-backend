@@ -61,7 +61,9 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
         '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
         '    {{\n      "question": "Tresc pytania?",\n'
         '      "options": ["A", "B", "C", "D"],\n'
-        '      "correct": 0,\n'
+        '      "correct": 2,\n'
+        "WAZNE: correct to INDEX (0-3) poprawnej odpowiedzi. Urozmaicaj - kazde pytanie ma inny correct. NIE dawaj zawsze correct=0!"
+
         '      "explanation": "Krotkie wyjasnienie"\n'
         '    }}\n  ]\n}}'
     )
@@ -166,11 +168,12 @@ Odpowiedz TYLKO w formacie JSON (bez markdown):
     {{
       "question": "Tresc pytania?",
       "options": ["A", "B", "C", "D"],
-      "correct": 0,
-      "explanation": "Krotkie wyjasnienie"
+      "correct": 2,
+      "explanation": "Krotkie wyjasnienie dlaczego ta odpowiedz jest poprawna"
     }}
   ]
-}}"""
+}}
+WAZNE: correct to INDEX (0-3) poprawnej odpowiedzi w tablicy options. Urozmaicaj indeksy - NIE dawaj zawsze correct=0!"""
 
         resp = client.chat.completions.create(
             model="gpt-4o",
