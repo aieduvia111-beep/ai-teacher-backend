@@ -928,8 +928,23 @@ async function startQuiz(){
   .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
 }
 
+function shuffleQuestions(qs){
+  // Tasuje kolejnosc pytan i opcje odpowiedzi (zeby nie zawsze byla ta sama odpowiedz)
+  return qs.map(function(q){
+    // Stworz tablice par [opcja, czyPoprawna]
+    var pairs=q.options.map(function(opt,i){return{text:opt,isCorrect:i===q.correct};});
+    // Tasuj opcje (Fisher-Yates)
+    for(var i=pairs.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pairs[i];pairs[i]=pairs[j];pairs[j]=tmp;}
+    // Nowy correct index
+    var newCorrect=pairs.findIndex(function(p){return p.isCorrect;});
+    return Object.assign({},q,{options:pairs.map(function(p){return p.text;}),correct:newCorrect});
+  });
+}
+
 function beginQuiz(qs,retry){
-  questions=qs;currentQ=0;answers=new Array(qs.length).fill(null);
+  // Tasuj opcje odpowiedzi aby nie zawsze byla ta sama litera
+  var shuffled=shuffleQuestions(qs);
+  questions=shuffled;currentQ=0;answers=new Array(shuffled.length).fill(null);
   xp=retry?xp:0;streak=0;answered=false;isRetry=retry;wrongIndexes=[];
   document.getElementById('quizTitle').textContent=quiz.title||'Quiz';
   document.getElementById('quizBadge')&&(document.getElementById('quizBadge').textContent=retry?'Powtórka':'✦ Quiz');
