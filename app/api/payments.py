@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
 class CreateCheckoutRequest(BaseModel):
     """Request do stworzenia checkout session"""
-    user_id: int
+    user_id: str
     email: str
 
 class CheckoutResponse(BaseModel):
@@ -32,7 +32,7 @@ class CheckoutResponse(BaseModel):
 
 class CancelSubscriptionRequest(BaseModel):
     """Request do anulowania subskrypcji"""
-    user_id: int
+    user_id: str
 
 
 # =============================================================================
@@ -50,7 +50,7 @@ def create_checkout(
     Example:
     POST /api/v1/payments/create-checkout
     {
-        "user_id": 1,
+        "user_id": "test_uid",
         "email": "user@example.com"
     }
     
@@ -148,7 +148,7 @@ def cancel_subscription(
 
 @router.get("/subscription/{user_id}")
 def get_subscription(
-    user_id: int,
+    user_id: str,
     db: Session = Depends(get_db)
 ):
     """
