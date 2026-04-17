@@ -84,8 +84,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     username = Column(String(100), unique=True, index=True, nullable=True)
-    hashed_password = Column(String(255), nullable=True)  # Użyjemy w Dniu 7
-    
+    hashed_password = Column(String(255), nullable=True)
+    firebase_uid = Column(String(255), unique=True, index=True, nullable=True)
+
     # Stripe
     stripe_customer_id = Column(String(255), unique=True, nullable=True)
     
@@ -150,5 +151,3 @@ class UsageStats(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    def __repr__(self):
-        return f"<UsageStats User {self.user_id}: Plans={self.lesson_plans_created}, Messages={self.ai_messages_sent}, PDFs={self.pdfs_generated}>"

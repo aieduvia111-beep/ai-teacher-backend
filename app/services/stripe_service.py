@@ -20,7 +20,7 @@ class StripeService:
     
     @staticmethod
     def create_checkout_session(
-        user_id: int,
+        user_id: str,
         email: str,
         db: Session
     ) -> Dict:
@@ -39,12 +39,12 @@ class StripeService:
             print(f"💳 Tworzę checkout session dla user {user_id} ({email})")
             
             # Sprawdź czy user ma już Stripe Customer ID
-            user = db.query(User).filter(User.id == user_id).first()
+            user = db.query(User).filter(User.firebase_uid == user_id).first()
             
             if not user:
                 # Stwórz nowego usera jeśli nie istnieje
                 user = User(
-                    id=user_id,
+                    firebase_uid=user_id,
                     email=email,
                     is_premium=False
                 )
@@ -164,7 +164,7 @@ class StripeService:
         """Obsługuje zakończenie checkout - nowa subskrypcja"""
         
         session = event['data']['object']
-        user_id = int(session['metadata']['user_id'])
+        user_id = session['metadata']['user_id']  # Firebase UID string
         
         print(f"✅ Checkout completed dla user {user_id}")
         
@@ -173,7 +173,7 @@ class StripeService:
         subscription = stripe.Subscription.retrieve(subscription_id)
         
         # Zaktualizuj usera
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.firebase_uid == user_id).first()
         if user:
             user.is_premium = True
             user.premium_until = datetime.fromtimestamp(subscription.current_period_end)
