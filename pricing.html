@@ -288,37 +288,16 @@ window._currentUser=()=>currentUser;
 
 <script>
 // ═══ STRIPE PAYMENT LINK ═══
-const BACKEND_URL = 'https://ai-teacher-backend-1.onrender.com';
+const PAYMENT_LINK = 'https://buy.stripe.com/dRm5kCbHobRp46D3xncV200';
 
-async function startCheckout() {
+function startCheckout() {
   const btn = document.getElementById('proBuyBtn');
   const btnText = document.getElementById('btnText');
   const loader = document.getElementById('btnLoader');
   btn.disabled = true;
   btnText.textContent = 'Przekierowuję...';
   if(loader) loader.style.display = 'block';
-
-  const uid = localStorage.getItem('eduvia_uid');
-  const email = localStorage.getItem('eduvia_email') || '';
-
-  try {
-    const res = await fetch(BACKEND_URL + '/api/v1/payments/create-checkout', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({user_id: uid || 1, email: email})
-    });
-    const data = await res.json();
-    if(data.success && data.checkout_url) {
-      window.location.href = data.checkout_url;
-    } else {
-      throw new Error(data.error || 'Błąd');
-    }
-  } catch(e) {
-    btn.disabled = false;
-    btnText.textContent = 'Zacznij 7 dni za darmo →';
-    if(loader) loader.style.display = 'none';
-    alert('Błąd: ' + e.message);
-  }
+  window.location.href = PAYMENT_LINK;
 }
 
 // Obsługa powrotu po płatności
