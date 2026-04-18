@@ -268,6 +268,38 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .dots span:nth-child(3){animation-delay:.4s;}
 @keyframes dp{0%,100%{opacity:.1;transform:scale(.5);}50%{opacity:1;transform:scale(1.4);}}
 
+/* PORTFOLIO */
+.port-add{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:14px;align-items:end;}
+.port-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.port-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;}
+.port-name{font-size:0.75em;font-weight:500;color:var(--text);}
+.port-val{font-family:'Playfair Display',serif;font-size:1em;font-style:italic;}
+.port-val.up{color:var(--green);}
+.port-val.dn{color:var(--red);}
+.port-pct{font-size:0.65em;font-weight:500;}
+.port-pct.up{color:var(--green);}
+.port-pct.dn{color:var(--red);}
+.port-del{background:none;border:1px solid rgba(255,64,96,0.2);border-radius:2px;color:var(--red);font-size:0.65em;padding:4px 8px;cursor:pointer;transition:all .2s;}
+.port-del:hover{background:rgba(255,64,96,0.08);}
+.port-total{background:linear-gradient(135deg,rgba(200,169,110,0.06),transparent);border:1px solid var(--b2);border-radius:4px;padding:20px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.pt-item{text-align:center;}
+.pt-num{font-family:'Playfair Display',serif;font-size:1.6em;font-style:italic;color:var(--gold2);line-height:1;}
+.pt-lbl{font-size:0.52em;letter-spacing:0.12em;color:var(--muted2);margin-top:4px;}
+.alert-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.alert-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:0.72em;color:var(--muted3);}
+.alert-item.triggered{border-color:rgba(0,232,160,0.3);background:rgba(0,232,160,0.04);}
+
+/* GUIDE */
+.guide-step{background:var(--s1);border:1px solid var(--b2);border-radius:4px;padding:22px;margin-bottom:12px;position:relative;overflow:hidden;}
+.guide-step::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--gold),transparent);}
+.guide-num{font-family:'Playfair Display',serif;font-size:2em;font-style:italic;color:var(--gold);opacity:0.4;position:absolute;top:12px;right:16px;line-height:1;}
+.guide-title{font-family:'Playfair Display',serif;font-size:1em;font-weight:700;color:var(--gold2);margin-bottom:8px;}
+.guide-text{font-size:0.74em;color:var(--muted3);line-height:1.8;font-weight:300;}
+.guide-text strong{color:var(--text);}
+.guide-link{display:inline-block;margin-top:10px;padding:6px 14px;background:transparent;border:1px solid var(--b2);border-radius:2px;color:var(--gold);font-size:0.65em;letter-spacing:0.08em;text-decoration:none;transition:all .2s;}
+.guide-link:hover{background:var(--gg);border-color:var(--b3);}
+.guide-warning{background:rgba(255,64,96,0.05);border:1px solid rgba(255,64,96,0.15);border-radius:3px;padding:12px 14px;margin-top:10px;font-size:0.7em;color:rgba(255,64,96,0.8);line-height:1.6;}
+
 /* REVEAL */
 .hero{animation:rev .7s ease backwards;}
 .main{animation:rev .7s ease .12s backwards;}
@@ -354,6 +386,8 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
   <div class="tabs">
     <div class="tab on" onclick="sT('dash')">DASHBOARD</div>
     <div class="tab" onclick="sT('market')">RYNEK LIVE</div>
+    <div class="tab" onclick="sT('portfolio')">PORTFOLIO</div>
+    <div class="tab" onclick="sT('guide')">JAK INWESTOWAĆ</div>
     <div class="tab" onclick="sT('mods')">MODULY AI</div>
     <div class="tab" onclick="sT('chat')">CHAT</div>
     <div class="tab" onclick="sT('history')">HISTORIA</div>
@@ -427,7 +461,156 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
     <div class="rb" id="r-invest-ai"><div class="rh">Investment AI — dane live</div><div class="rbd" id="t-invest-ai"></div><button class="bpdf" onclick="mkPDF('t-invest-ai','Rekomendacja inwestycyjna')">Eksportuj PDF</button></div>
   </div>
 
+  <!-- PORTFOLIO -->
+  <div class="tp" id="tp-portfolio">
+    <div class="sh">Moje portfolio</div>
+    <div class="port-total">
+      <div class="pt-item"><div class="pt-num" id="pt-total">0 PLN</div><div class="pt-lbl">WARTOŚĆ TERAZ</div></div>
+      <div class="pt-item"><div class="pt-num" id="pt-invested">0 PLN</div><div class="pt-lbl">ZAINWESTOWANO</div></div>
+      <div class="pt-item"><div class="pt-num" id="pt-profit">0 PLN</div><div class="pt-lbl">ZYSK / STRATA</div></div>
+    </div>
+
+    <div class="sh">Dodaj pozycję</div>
+    <div class="card">
+      <div class="port-add">
+        <div class="fg"><div class="fl">AKTYWO</div>
+          <select class="fi" id="port-asset" style="cursor:pointer;">
+            <option value="bitcoin">Bitcoin (BTC)</option>
+            <option value="ethereum">Ethereum (ETH)</option>
+            <option value="solana">Solana (SOL)</option>
+            <option value="binancecoin">BNB</option>
+            <option value="cardano">Cardano (ADA)</option>
+            <option value="custom">Inne (PLN)</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">KWOTA (PLN)</div><input class="fi" id="port-amount" type="number" placeholder="1000"></div>
+        <div class="fg"><div class="fl">CENA ZAKUPU (PLN)</div><input class="fi" id="port-price" type="number" placeholder="np. 380000"></div>
+        <button class="btn-s" onclick="addPortfolio()" style="height:38px;margin-top:auto;">+ Dodaj</button>
+      </div>
+    </div>
+
+    <div class="sh">Pozycje</div>
+    <div class="port-list" id="port-list"><div style="font-size:0.65em;color:var(--muted2);padding:16px;text-align:center;">Brak pozycji. Dodaj pierwszą inwestycję powyżej.</div></div>
+
+    <div class="sh">Alerty cenowe</div>
+    <div class="card">
+      <div class="port-add">
+        <div class="fg"><div class="fl">AKTYWO</div>
+          <select class="fi" id="alert-asset" style="cursor:pointer;">
+            <option value="bitcoin">Bitcoin (BTC)</option>
+            <option value="ethereum">Ethereum (ETH)</option>
+            <option value="solana">Solana (SOL)</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">CENA DOCELOWA (PLN)</div><input class="fi" id="alert-price" type="number" placeholder="np. 350000"></div>
+        <div class="fg"><div class="fl">TYP</div>
+          <select class="fi" id="alert-type" style="cursor:pointer;">
+            <option value="below">Spada poniżej</option>
+            <option value="above">Rośnie powyżej</option>
+          </select>
+        </div>
+        <button class="btn-s" onclick="addAlert()" style="height:38px;margin-top:auto;">+ Alert</button>
+      </div>
+    </div>
+    <div class="alert-list" id="alert-list"><div style="font-size:0.65em;color:var(--muted2);padding:16px;text-align:center;">Brak alertów.</div></div>
+
+    <div class="sh">Analiza AI mojego portfolio</div>
+    <button class="btn" onclick="analyzePortfolio()">PRZEANALIZUJ MOE PORTFOLIO</button>
+    <div class="rb" id="r-portfolio"><div class="rh">Portfolio AI</div><div class="rbd" id="t-portfolio"></div></div>
+  </div>
+
+  <!-- GUIDE -->
+  <div class="tp" id="tp-guide">
+    <div class="sh">Jak inwestować — przewodnik dla początkujących</div>
+
+    <div class="guide-step">
+      <div class="guide-num">01</div>
+      <div class="guide-title">Zanim zaczniesz — zasady których MUSISZ przestrzegać</div>
+      <div class="guide-text">
+        <strong>Inwestuj tylko tyle ile możesz stracić.</strong> Jeśli strata tej kwoty zniszczyłaby Twoje życie — nie inwestuj tego. Krypto i akcje mogą spaść o 80% w kilka miesięcy.<br><br>
+        <strong>Nigdy nie pożyczaj na inwestycje.</strong> Dźwignia i kredyty to najszybszy sposób na bankructwo.<br><br>
+        <strong>Nie FOMO.</strong> Gdy wszyscy krzyczą "kupuj teraz!" — to często szczyt. Kupuj gdy jest strach, sprzedawaj gdy jest euforia.
+      </div>
+      <div class="guide-warning">⚠ Inwestowanie zawsze wiąże się z ryzykiem utraty kapitału. To nie jest porada finansowa — to edukacja.</div>
+    </div>
+
+    <div class="guide-step">
+      <div class="guide-num">02</div>
+      <div class="guide-title">Gdzie założyć konto — najlepsze giełdy</div>
+      <div class="guide-text">
+        <strong>Krypto (najlepsze dla Polski):</strong><br>
+        • <strong>Binance.com</strong> — największa giełda na świecie, niskie opłaty (0.1%), dużo par handlowych<br>
+        • <strong>Coinbase.com</strong> — bardziej przyjazna, lepsza dla początkujących, droższa<br>
+        • <strong>Kraken.com</strong> — bezpieczna, dobra reputacja, poleca się dla BTC/ETH<br><br>
+        <strong>Akcje (polskie i zagraniczne):</strong><br>
+        • <strong>XTB.com</strong> — polska firma, brak prowizji do 100k EUR/mies, bardzo dobra aplikacja<br>
+        • <strong>DEGIRO.pl</strong> — tanie prowizje, dobry dostęp do giełd europejskich<br>
+        • <strong>Revolut</strong> — wygodne ale drogie, dobre na start
+      </div>
+      <a class="guide-link" href="https://www.binance.com" target="_blank">Binance →</a>
+      <a class="guide-link" href="https://www.xtb.com/pl" target="_blank">XTB →</a>
+    </div>
+
+    <div class="guide-step">
+      <div class="guide-num">03</div>
+      <div class="guide-title">Strategia dla 1000 PLN — jak zacząć</div>
+      <div class="guide-text">
+        Masz 1000 PLN? Oto bezpieczny podział:<br><br>
+        • <strong>500 PLN → Bitcoin (BTC)</strong> — najbezpieczniejsze krypto, największa kapitalizacja<br>
+        • <strong>300 PLN → Ethereum (ETH)</strong> — drugi największy, dużo use-case<br>
+        • <strong>200 PLN → zostaw w gotówce</strong> — na okazje gdy rynek spada<br><br>
+        <strong>Strategia DCA (Dollar Cost Averaging):</strong> Kupuj regularnie co miesiąc tę samą kwotę niezależnie od ceny. Np. 200 PLN w BTC co miesiąc. To eliminuje ryzyko złego timingu.
+      </div>
+    </div>
+
+    <div class="guide-step">
+      <div class="guide-num">04</div>
+      <div class="guide-title">Jak czytać rynek — podstawy analizy</div>
+      <div class="guide-text">
+        <strong>Fear & Greed Index</strong> — gdy jest poniżej 20 (extreme fear) = dobry moment do kupna. Gdy powyżej 80 (extreme greed) = rozważ sprzedaż.<br><br>
+        <strong>Gdzie śledzić:</strong><br>
+        • <strong>CoinMarketCap.com</strong> — ceny wszystkich krypto<br>
+        • <strong>TradingView.com</strong> — wykresy i analiza techniczna<br>
+        • <strong>alternative.me/crypto/fear-and-greed-index</strong> — Fear & Greed Index<br>
+        • <strong>Coinglass.com</strong> — dane o rynku futures, liquidations<br><br>
+        <strong>Złota zasada:</strong> Trend jest Twoim przyjacielem. Nie walcz z trendem.
+      </div>
+      <a class="guide-link" href="https://coinmarketcap.com" target="_blank">CoinMarketCap →</a>
+      <a class="guide-link" href="https://tradingview.com" target="_blank">TradingView →</a>
+    </div>
+
+    <div class="guide-step">
+      <div class="guide-num">05</div>
+      <div class="guide-title">Podatki w Polsce — co musisz wiedzieć</div>
+      <div class="guide-text">
+        <strong>Krypto w Polsce = 19% podatek od zysku (PIT-38).</strong><br><br>
+        • Podatek płacisz tylko od ZYSKU, nie od całej kwoty<br>
+        • Straty możesz odliczać przez 5 lat<br>
+        • Wymiana krypto na krypto (BTC→ETH) = zdarzenie podatkowe<br>
+        • Wymiana na PLN = zdarzenie podatkowe<br>
+        • Trzymanie bez sprzedaży = brak podatku<br><br>
+        <strong>Akcje:</strong> Broker zagraniczny wystawia PIT-8C, musisz złożyć PIT-38.
+      </div>
+      <div class="guide-warning">Skonsultuj się z doradcą podatkowym przed dużymi transakcjami.</div>
+    </div>
+
+    <div class="guide-step">
+      <div class="guide-num">06</div>
+      <div class="guide-title">Błędy których absolutnie unikaj</div>
+      <div class="guide-text">
+        ✗ <strong>Kupowanie na ATH</strong> (all-time high) bo "wszyscy kupują"<br>
+        ✗ <strong>Sprzedawanie w panice</strong> gdy rynek spada 20%<br>
+        ✗ <strong>Trzymanie wszystkiego na giełdzie</strong> — giełdy bankrutują (FTX!)<br>
+        ✗ <strong>Inwestowanie w shitcoiny</strong> bez research — 99% idzie do zera<br>
+        ✗ <strong>Day trading bez doświadczenia</strong> — 90% traci pieniądze<br>
+        ✗ <strong>Słuchanie "guru" z YouTube/TikTok</strong> — oni zarabiają na Tobie<br><br>
+        <strong>Co działa:</strong> DCA w BTC/ETH + cierpliwość + zimna krew.
+      </div>
+    </div>
+  </div>
+
   <!-- MODULES -->
+  <div class="tp" id="tp-mods">  <!-- MODULES -->
   <div class="tp" id="tp-mods">
     <div class="mg">
       <div class="mod"><div class="mn">02 — KONKURENCJA</div><div class="mt2">Competition Intelligence</div><div class="md">AI analizuje konkurenta — slabe punkty, luki w produkcie, jak ich pokonac w 90 dni.</div><input class="mi2" id="comp" placeholder="np. Brainly, Photomath, Duolingo..."><button class="brn" onclick="rM('competition')">Analizuj konkurenta</button><div class="rb" id="r-competition"><div class="rh">Competition AI</div><div class="rbd" id="t-competition"></div><button class="bpdf" onclick="mkPDF('t-competition','Analiza konkurencji')">Eksportuj PDF</button></div></div>
@@ -478,10 +661,11 @@ document.querySelectorAll('button,input').forEach(el=>{el.addEventListener('mous
 
 // TABS
 function sT(t){
-  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
+  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','portfolio','guide','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
   document.querySelectorAll('.tp').forEach(el=>el.classList.remove('on'));
   document.getElementById('tp-'+t).classList.add('on');
-  if(t==='market' && !window.marketLoaded) loadMarket();
+  if(t==='market'&&!window.marketLoaded) loadMarket();
+  if(t==='portfolio') renderPortfolio();
 }
 
 // API
@@ -896,6 +1080,126 @@ Na podstawie TYCH DOKŁADNYCH danych powiedz mi:
   const res = await ai([{role:'user',content:prompt}], sys());
   renderMD(txt, res);
   sH('Rekomendacja inwestycyjna', res);
+}
+
+
+// PORTFOLIO
+function getPortfolio(){return JSON.parse(localStorage.getItem('ax_port')||'[]');}
+function savePortfolio(p){localStorage.setItem('ax_port',JSON.stringify(p));}
+function getAlerts(){return JSON.parse(localStorage.getItem('ax_alerts')||'[]');}
+function saveAlerts(a){localStorage.setItem('ax_alerts',JSON.stringify(a));}
+
+function addPortfolio(){
+  const asset=document.getElementById('port-asset').value;
+  const amount=parseFloat(document.getElementById('port-amount').value)||0;
+  const price=parseFloat(document.getElementById('port-price').value)||0;
+  if(!amount||!price) return;
+  const p=getPortfolio();
+  const names={bitcoin:'Bitcoin (BTC)',ethereum:'Ethereum (ETH)',solana:'Solana (SOL)',binancecoin:'BNB',cardano:'Cardano (ADA)',custom:'Inne'};
+  p.push({id:Date.now(),asset,name:names[asset]||asset,amount,buyPrice:price,date:new Date().toLocaleDateString('pl')});
+  savePortfolio(p);
+  document.getElementById('port-amount').value='';
+  document.getElementById('port-price').value='';
+  renderPortfolio();
+}
+
+function delPortfolio(id){
+  const p=getPortfolio().filter(x=>x.id!==id);
+  savePortfolio(p);renderPortfolio();
+}
+
+function addAlert(){
+  const asset=document.getElementById('alert-asset').value;
+  const price=parseFloat(document.getElementById('alert-price').value)||0;
+  const type=document.getElementById('alert-type').value;
+  if(!price) return;
+  const a=getAlerts();
+  const names={bitcoin:'Bitcoin (BTC)',ethereum:'Ethereum (ETH)',solana:'Solana (SOL)'};
+  a.push({id:Date.now(),asset,name:names[asset]||asset,price,type,triggered:false});
+  saveAlerts(a);
+  document.getElementById('alert-price').value='';
+  renderPortfolio();
+}
+
+function delAlert(id){
+  const a=getAlerts().filter(x=>x.id!==id);
+  saveAlerts(a);renderPortfolio();
+}
+
+function renderPortfolio(){
+  const p=getPortfolio();
+  const a=getAlerts();
+  const el=document.getElementById('port-list');
+  const al=document.getElementById('alert-list');
+  if(!el||!al) return;
+
+  let totalInvested=0, totalNow=0;
+
+  if(!p.length){
+    el.innerHTML='<div style="font-size:0.65em;color:var(--muted2);padding:16px;text-align:center;">Brak pozycji.</div>';
+  } else {
+    el.innerHTML=p.map(item=>{
+      const currentPrice=marketData.crypto&&marketData.crypto[item.asset]?marketData.crypto[item.asset].pln:item.buyPrice;
+      const units=item.amount/item.buyPrice;
+      const nowVal=units*currentPrice;
+      const profit=nowVal-item.amount;
+      const pct=((profit/item.amount)*100).toFixed(1);
+      totalInvested+=item.amount;
+      totalNow+=nowVal;
+      const up=profit>=0;
+      return`<div class="port-item">
+        <div><div class="port-name">${item.name}</div><div style="font-size:0.58em;color:var(--muted2);">Kupiono: ${item.amount.toLocaleString('pl')} PLN @ ${item.buyPrice.toLocaleString('pl')}</div></div>
+        <div class="port-val ${up?'up':'dn'}">${Math.round(nowVal).toLocaleString('pl')} PLN</div>
+        <div class="port-pct ${up?'up':'dn'}">${up?'+':''}${pct}%<br><span style="font-size:0.85em;">${up?'+':''}${Math.round(profit).toLocaleString('pl')} PLN</span></div>
+        <button class="port-del" onclick="delPortfolio(${item.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Totals
+  const totalProfit=totalNow-totalInvested;
+  const totalPct=totalInvested>0?((totalProfit/totalInvested)*100).toFixed(1):0;
+  const up=totalProfit>=0;
+  document.getElementById('pt-total').textContent=Math.round(totalNow).toLocaleString('pl')+' PLN';
+  document.getElementById('pt-total').style.color=totalNow>0?'var(--gold2)':'var(--muted3)';
+  document.getElementById('pt-invested').textContent=Math.round(totalInvested).toLocaleString('pl')+' PLN';
+  document.getElementById('pt-profit').textContent=(up?'+':'')+Math.round(totalProfit).toLocaleString('pl')+' PLN';
+  document.getElementById('pt-profit').style.color=up?'var(--green)':'var(--red)';
+
+  // Alerts
+  if(!a.length){
+    al.innerHTML='<div style="font-size:0.65em;color:var(--muted2);padding:16px;text-align:center;">Brak alertów.</div>';
+  } else {
+    al.innerHTML=a.map(item=>{
+      const curr=marketData.crypto&&marketData.crypto[item.asset]?Math.round(marketData.crypto[item.asset].pln):0;
+      const triggered=(item.type==='below'&&curr>0&&curr<=item.price)||(item.type==='above'&&curr>0&&curr>=item.price);
+      return`<div class="alert-item ${triggered?'triggered':''}">
+        <span>${item.name} ${item.type==='below'?'spada poniżej':'rośnie powyżej'} <strong style="color:var(--gold2);">${item.price.toLocaleString('pl')} PLN</strong>${triggered?' — ✅ ALERT AKTYWNY!':''}</span>
+        <button class="port-del" onclick="delAlert(${item.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+async function analyzePortfolio(){
+  const p=getPortfolio();
+  if(!p.length){alert('Dodaj najpierw pozycje do portfolio!');return;}
+  const box=document.getElementById('r-portfolio');
+  const txt=document.getElementById('t-portfolio');
+  box.classList.add('on');ld(txt);
+
+  let portStr=p.map(item=>{
+    const curr=marketData.crypto&&marketData.crypto[item.asset]?marketData.crypto[item.asset].pln:item.buyPrice;
+    const units=item.amount/item.buyPrice;
+    const nowVal=units*curr;
+    const profit=nowVal-item.amount;
+    const pct=((profit/item.amount)*100).toFixed(1);
+    return`${item.name}: zainwestowano ${item.amount} PLN, teraz warte ${Math.round(nowVal)} PLN (${pct>0?'+':''}${pct}%)`;
+  }).join('\n');
+
+  const res=await ai([{role:'user',content:'Przeanalizuj moje portfolio inwestycyjne:\n\n'+portStr+'\n\nPowiedz:\n1. Czy dywersyfikacja jest dobra czy za bardzo skoncentrowana\n2. Co trzymac, co sprzedac, co dokupic\n3. Jakie jest ryzyko tego portfolio\n4. Co zrobic zeby zoptymalizowac zyski'}],sys());
+  renderMD(txt,res);
+  sH('Analiza portfolio',res);
 }
 
 rc();
