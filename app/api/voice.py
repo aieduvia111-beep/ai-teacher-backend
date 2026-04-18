@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 # Jeden tryb — ogólny nauczyciel który sam wykrywa język
-SYSTEM_PROMPT = """You are Learnio AI — a smart friendly tutor for students.
+SYSTEM_PROMPT = """You are Eduvia AI — a smart friendly tutor for students.
 
 LANGUAGE RULE — CRITICAL, ALWAYS FOLLOW:
 - Read the student's message and detect what language it is written in
