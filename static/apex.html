@@ -6,6 +6,7 @@
 <title>APEX</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root{
@@ -323,12 +324,46 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .invest-rec{background:var(--s2);border:1px solid var(--b2);border-left:2px solid var(--gold);padding:14px 16px;margin-bottom:12px;border-radius:3px;font-size:0.72em;line-height:1.7;color:var(--muted3);display:none;}
 .invest-rec.on{display:block;}
 
+/* TRACKER TAB */
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:3px;transition:all .2s;cursor:pointer;}
+.task-item:hover{border-color:var(--b2);}
+.task-item.done{opacity:0.45;}
+.task-item.done .task-text{text-decoration:line-through;color:var(--muted2);}
+.task-cb{width:14px;height:14px;border:1px solid var(--b3);border-radius:2px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent;}
+.task-item.done .task-cb{background:var(--gold);border-color:var(--gold);}
+.task-cb::after{content:'✓';font-size:8px;color:var(--bg);opacity:0;transition:opacity .15s;}
+.task-item.done .task-cb::after{opacity:1;}
+.task-text{font-size:0.74em;color:var(--muted3);line-height:1.6;font-weight:300;flex:1;}
+.task-progress{height:3px;background:var(--s2);border-radius:2px;overflow:hidden;margin:10px 0 14px;}
+.task-bar{height:3px;background:linear-gradient(90deg,var(--gold),var(--gold3));border-radius:2px;transition:width .5s ease;}
+.task-meta{font-size:0.55em;letter-spacing:0.1em;color:var(--muted2);margin-bottom:10px;}
+
+.mrr-row{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:3px;margin-bottom:6px;}
+.mrr-date{font-size:0.58em;color:var(--muted2);width:80px;flex-shrink:0;}
+.mrr-val{font-family:'Playfair Display',serif;font-size:1em;font-style:italic;color:var(--gold2);flex:1;}
+.mrr-diff{font-size:0.6em;font-weight:500;}
+.mrr-diff.up{color:var(--green);}
+.mrr-diff.dn{color:var(--red);}
+.mrr-del{background:none;border:none;color:var(--muted2);font-size:0.7em;cursor:pointer;padding:2px 6px;opacity:0.4;transition:opacity .2s;}
+.mrr-del:hover{opacity:1;color:var(--red);}
+
+.cac-result{background:var(--s2);border:1px solid var(--b2);border-left:2px solid var(--gold);padding:16px;border-radius:3px;margin-top:12px;display:none;}
+.cac-result.on{display:block;}
+.cac-num{font-family:'Playfair Display',serif;font-size:2em;font-style:italic;color:var(--gold2);line-height:1;margin-bottom:4px;}
+.cac-label{font-size:0.55em;letter-spacing:0.12em;color:var(--muted2);margin-bottom:12px;}
+.cac-verdict{font-size:0.72em;color:var(--muted3);line-height:1.7;}
+.cac-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.cac-box{background:var(--s1);border:1px solid var(--b1);padding:10px;border-radius:3px;text-align:center;}
+.cac-box-n{font-family:'Playfair Display',serif;font-size:1.1em;font-style:italic;color:var(--text);}
+.cac-box-l{font-size:0.5em;letter-spacing:0.1em;color:var(--muted2);margin-top:3px;}
+
 @media(max-width:768px){
   body{cursor:auto;}
   #cur,#cur2{display:none;}
   .hero h1{font-size:3.5em;}
   .sg{grid-template-columns:repeat(2,1fr);}
   .mkt{grid-template-columns:1fr;}
+  .cac-grid{grid-template-columns:1fr 1fr;}
 }
 </style>
 </head>
@@ -386,6 +421,7 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
   <div class="tabs">
     <div class="tab on" onclick="sT('dash')">DASHBOARD</div>
     <div class="tab" onclick="sT('market')">RYNEK LIVE</div>
+    <div class="tab" onclick="sT('tracker')">TRACKER</div>
     <div class="tab" onclick="sT('portfolio')">PORTFOLIO</div>
     <div class="tab" onclick="sT('guide')">JAK INWESTOWAĆ</div>
     <div class="tab" onclick="sT('mods')">MODULY AI</div>
@@ -442,6 +478,59 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
       <button class="btn" onclick="rM('investment')">GENERUJ PLAN INWESTYCYJNY</button>
       <div class="rb" id="r-investment"><div class="rh">Investment AI</div><div class="rbd" id="t-investment"></div><button class="bpdf" onclick="mkPDF('t-investment','Plan inwestycyjny')">Eksportuj PDF</button></div>
     </div>
+  </div>
+
+  <!-- TRACKER -->
+  <div class="tp" id="tp-tracker">
+
+    <!-- DAILY MISSION -->
+    <div class="sh">Misja dzienna</div>
+    <div class="card">
+      <div class="ct">Zadania na dziś — odhaczaj w trakcie dnia</div>
+      <div class="task-meta" id="task-meta">0 / 0 ukończonych</div>
+      <div class="task-progress"><div class="task-bar" id="task-bar" style="width:0%"></div></div>
+      <div id="task-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+        <div style="font-size:0.65em;color:var(--muted2);padding:12px;text-align:center;">Brak zadań. Wygeneruj misję w zakładce Moduły AI → Daily Mission.</div>
+      </div>
+      <button class="btn" onclick="genMission()">GENERUJ NOWĄ MISJĘ AI</button>
+      <div class="rb" id="r-mission2"><div class="rh">Daily Mission</div><div class="rbd" id="t-mission2"></div></div>
+    </div>
+
+    <!-- MRR HISTORY -->
+    <div class="sh">Historia MRR</div>
+    <div class="card">
+      <div class="ct">Wpisuj MRR co tydzień — obserwuj wzrost</div>
+      <div class="fg2" style="margin-bottom:12px;">
+        <div class="fg"><div class="fl">MRR (PLN/MIES)</div><input class="fi" id="mrr-val" type="number" placeholder="np. 1450"></div>
+        <div class="fg"><div class="fl">NOTATKA (opcjonalnie)</div><input class="fi" id="mrr-note" type="text" placeholder="np. nowa kampania TikTok"></div>
+      </div>
+      <button class="btn-s" onclick="addMRR()" style="margin-bottom:16px;">+ Dodaj wpis MRR</button>
+      <div class="cw" style="margin-bottom:12px;"><div class="ctl">WZROST MRR W CZASIE</div><canvas id="ch-mrr" height="140"></canvas></div>
+      <div id="mrr-list"></div>
+    </div>
+
+    <!-- CAC KALKULATOR -->
+    <div class="sh">Kalkulator CAC</div>
+    <div class="card">
+      <div class="ct">Ile kosztuje Cię pozyskanie jednego płacącego użytkownika?</div>
+      <div class="fg2" style="margin-bottom:12px;">
+        <div class="fg"><div class="fl">WYDATKI NA MARKETING (PLN)</div><input class="fi" id="cac-spend" type="number" placeholder="np. 500" oninput="calcCAC()"></div>
+        <div class="fg"><div class="fl">NOWI UŻYTKOWNICY (PŁACĄCY)</div><input class="fi" id="cac-users" type="number" placeholder="np. 8" oninput="calcCAC()"></div>
+        <div class="fg"><div class="fl">CENA SUBSKRYPCJI (PLN)</div><input class="fi" id="cac-price" type="number" placeholder="np. 29" oninput="calcCAC()"></div>
+        <div class="fg"><div class="fl">ŚR. CZAS SUBSKRYPCJI (MIES)</div><input class="fi" id="cac-ltv-months" type="number" placeholder="np. 6" oninput="calcCAC()"></div>
+      </div>
+      <div class="cac-result" id="cac-result">
+        <div class="cac-num" id="cac-num">—</div>
+        <div class="cac-label">KOSZT POZYSKANIA UŻYTKOWNIKA (CAC)</div>
+        <div class="cac-grid">
+          <div class="cac-box"><div class="cac-box-n" id="cac-ltv">—</div><div class="cac-box-l">LTV (PLN)</div></div>
+          <div class="cac-box"><div class="cac-box-n" id="cac-ratio">—</div><div class="cac-box-l">LTV / CAC</div></div>
+          <div class="cac-box"><div class="cac-box-n" id="cac-payback">—</div><div class="cac-box-l">PAYBACK (MIES)</div></div>
+        </div>
+        <div class="cac-verdict" id="cac-verdict"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- MARKET -->
@@ -610,7 +699,6 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
   </div>
 
   <!-- MODULES -->
-  <div class="tp" id="tp-mods">  <!-- MODULES -->
   <div class="tp" id="tp-mods">
     <div class="mg">
       <div class="mod"><div class="mn">02 — KONKURENCJA</div><div class="mt2">Competition Intelligence</div><div class="md">AI analizuje konkurenta — slabe punkty, luki w produkcie, jak ich pokonac w 90 dni.</div><input class="mi2" id="comp" placeholder="np. Brainly, Photomath, Duolingo..."><button class="brn" onclick="rM('competition')">Analizuj konkurenta</button><div class="rb" id="r-competition"><div class="rh">Competition AI</div><div class="rbd" id="t-competition"></div><button class="bpdf" onclick="mkPDF('t-competition','Analiza konkurencji')">Eksportuj PDF</button></div></div>
@@ -661,11 +749,12 @@ document.querySelectorAll('button,input').forEach(el=>{el.addEventListener('mous
 
 // TABS
 function sT(t){
-  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','portfolio','guide','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
+  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','tracker','portfolio','guide','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
   document.querySelectorAll('.tp').forEach(el=>el.classList.remove('on'));
   document.getElementById('tp-'+t).classList.add('on');
   if(t==='market'&&!window.marketLoaded) loadMarket();
   if(t==='portfolio') renderPortfolio();
+  if(t==='tracker') initTracker();
 }
 
 // API
@@ -892,32 +981,110 @@ function shD(i){
 function clH(){localStorage.removeItem('ax_h');rH();$('hd').style.display='none';}
 
 // PDF
-async function mkPDF(srcId,title){
-  const{jsPDF}=window.jspdf;
-  const el2=$(srcId);const content=el2?el2.textContent:'';
-  if(!content||content.trim().length<10)return;
-  const d=D();
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  doc.setFillColor(0,0,5);doc.rect(0,0,210,297,'F');
-  doc.setDrawColor(200,169,110);doc.setLineWidth(0.3);doc.line(15,22,195,22);
-  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(200,169,110);doc.text('APEX',15,18);
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(64,64,90);doc.text('AI Business Intelligence Platform',42,17);
-  doc.setFontSize(9.5);doc.setTextColor(140,135,155);doc.text(title,15,30);
-  doc.text(new Date().toLocaleDateString('pl-PL',{day:'2-digit',month:'long',year:'numeric'}),195,30,{align:'right'});
-  doc.setFillColor(5,5,26);doc.rect(15,34,180,13,'F');
-  doc.setFontSize(7);doc.setTextColor(64,64,90);
-  doc.text(`Budzet: ${d.budget.toLocaleString('pl')} PLN  |  Przychod: ${d.revenue.toLocaleString('pl')} PLN/mies  |  Placy: ${d.paying}  |  Cel: ${d.goal.toLocaleString('pl')} PLN/mies`,105,41,{align:'center',maxWidth:170});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(185,180,205);
-  const lines=doc.splitTextToSize(content,176);
-  let y=56;
-  for(let i=0;i<lines.length;i++){
-    if(y>278){doc.addPage();doc.setFillColor(0,0,5);doc.rect(0,0,210,297,'F');y=20;}
-    doc.text(lines[i],17,y);y+=5.2;
+async function mkPDF(srcId, title) {
+  const { jsPDF } = window.jspdf;
+  const srcEl = $(srcId);
+  if (!srcEl || srcEl.textContent.trim().length < 10) return;
+
+  const d = D();
+  const dateStr = new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Build a self-contained render container
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `
+    position:fixed; left:-9999px; top:0;
+    width:794px; background:#000005;
+    font-family:'Outfit',sans-serif; color:#f5f0e8;
+    padding:0; margin:0; box-sizing:border-box;
+  `;
+
+  wrap.innerHTML = `
+    <div style="padding:32px 40px 0 40px;">
+      <!-- HEADER -->
+      <div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid rgba(200,169,110,0.3);margin-bottom:6px;">
+        <div style="display:flex;align-items:baseline;gap:12px;">
+          <span style="font-family:'Playfair Display',serif;font-size:28px;font-weight:900;letter-spacing:0.12em;color:#c8a96e;">APEX</span>
+          <span style="font-size:9px;letter-spacing:0.15em;color:#40405a;">AI BUSINESS INTELLIGENCE</span>
+        </div>
+        <span style="font-size:9px;color:#40405a;">${dateStr}</span>
+      </div>
+
+      <!-- TITLE ROW -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;">
+        <div>
+          <div style="font-size:8px;letter-spacing:0.22em;color:#7878a0;margin-bottom:4px;">RAPORT</div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#e8c98e;">${title}</div>
+        </div>
+      </div>
+
+      <!-- META BAR -->
+      <div style="background:#05051a;border:1px solid rgba(200,169,110,0.08);border-radius:3px;padding:10px 16px;margin-bottom:24px;display:flex;gap:24px;flex-wrap:wrap;">
+        <span style="font-size:8px;color:#40405a;letter-spacing:0.1em;">BUDŻET <strong style="color:#c8a96e;margin-left:6px;">${d.budget.toLocaleString('pl')} PLN</strong></span>
+        <span style="font-size:8px;color:#40405a;letter-spacing:0.1em;">PRZYCHÓD <strong style="color:#c8a96e;margin-left:6px;">${d.revenue.toLocaleString('pl')} PLN/mies</strong></span>
+        <span style="font-size:8px;color:#40405a;letter-spacing:0.1em;">PŁACĄCY <strong style="color:#c8a96e;margin-left:6px;">${d.paying} × ${d.price} PLN</strong></span>
+        <span style="font-size:8px;color:#40405a;letter-spacing:0.1em;">CEL <strong style="color:#c8a96e;margin-left:6px;">${d.goal.toLocaleString('pl')} PLN/mies</strong></span>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="pdf-body" style="font-size:11px;line-height:1.85;color:#9090b8;padding-bottom:40px;">
+        ${srcEl.innerHTML}
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="margin:0 40px;padding:10px 0;border-top:1px solid rgba(200,169,110,0.15);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:7.5px;letter-spacing:0.12em;color:#25233a;">APEX — AI Business Intelligence Platform</span>
+      <span style="font-size:7.5px;letter-spacing:0.1em;color:#25233a;">Poufne. Wygenerowane przez AI.</span>
+    </div>
+    <div style="height:32px;"></div>
+  `;
+
+  // Override rendered markdown styles to work on white-ish dark background
+  const style = document.createElement('style');
+  style.textContent = `
+    .pdf-body .rbd-rendered h2,
+    .pdf-body .rbd-rendered h3 { font-family:'Playfair Display',serif; color:#e8c98e; margin:18px 0 7px; font-size:13px; font-weight:700; }
+    .pdf-body .rbd-rendered p { margin-bottom:9px; color:#9090b8; }
+    .pdf-body .rbd-rendered strong, .pdf-body .rbd-rendered b { color:#f5f0e8; font-weight:600; }
+    .pdf-body .rbd-rendered ul, .pdf-body .rbd-rendered ol { padding-left:18px; margin-bottom:9px; }
+    .pdf-body .rbd-rendered li { margin-bottom:4px; color:#9090b8; }
+    .pdf-body .rbd-rendered .next-step { background:rgba(200,169,110,0.07); border-left:2px solid #c8a96e; padding:12px 16px; margin-top:14px; border-radius:2px; }
+    .pdf-body .rbd-rendered .next-step strong { color:#e8c98e; }
+    .pdf-body [style*="color:var(--gold2)"] { color:#e8c98e !important; }
+    .pdf-body [style*="color:var(--text)"] { color:#f5f0e8 !important; }
+    .pdf-body [style*="color:var(--gold)"] { color:#c8a96e !important; }
+    .pdf-body br { display:block; margin:2px 0; }
+  `;
+  wrap.appendChild(style);
+  document.body.appendChild(wrap);
+
+  try {
+    await document.fonts.ready;
+    const canvas = await html2canvas(wrap, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#000005',
+      logging: false,
+      windowWidth: 794,
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageW = 210, pageH = 297;
+    const imgW = pageW;
+    const imgH = canvas.height * (pageW / canvas.width);
+    const totalPages = Math.ceil(imgH / pageH);
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) doc.addPage();
+      doc.addImage(imgData, 'JPEG', 0, -(page * pageH), imgW, imgH);
+    }
+
+    doc.save((title.replace(/\s+/g, '_') || 'apex_raport') + '.pdf');
+  } finally {
+    document.body.removeChild(wrap);
   }
-  doc.setDrawColor(200,169,110);doc.setLineWidth(0.2);doc.line(15,286,195,286);
-  doc.setFontSize(6.5);doc.setTextColor(37,35,56);
-  doc.text('APEX — AI Business Intelligence',15,291);doc.text('Poufne. Wygenerowane przez AI.',195,291,{align:'right'});
-  doc.save(title.replace(/ /g,'_')+'.pdf');
 }
 
 function mdToHtml(text){
@@ -940,6 +1107,10 @@ function mdToHtml(text){
 
 function renderMD(el,text){
   el.innerHTML='<div class="rbd-rendered">'+mdToHtml(text)+'</div>';
+}
+
+function ld(el){
+  el.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';
 }
 
 // MARKET DATA
@@ -1054,8 +1225,8 @@ async function getInvestRec(){
   const sol = marketData.crypto ? marketData.crypto.solana : null;
   const bnb = marketData.crypto ? marketData.crypto.binancecoin : null;
   const ada = marketData.crypto ? marketData.crypto.cardano : null;
-  const usd = marketData.fx ? marketData.fx.find : function(){return null;}(r=>r.code==='USD');
-  const eur = marketData.fx ? marketData.fx.find : function(){return null;}(r=>r.code==='EUR');
+  const usd = marketData.fx ? marketData.fx.find(r=>r.code==='USD') : null;
+  const eur = marketData.fx ? marketData.fx.find(r=>r.code==='EUR') : null;
   
   const prompt = `Mam ${d.budget} PLN do zainwestowania. Oto aktualne dane rynkowe z ${new Date().toLocaleString('pl')}:
 
@@ -1201,6 +1372,186 @@ async function analyzePortfolio(){
   renderMD(txt,res);
   sH('Analiza portfolio',res);
 }
+
+// ── DAILY MISSION TRACKER ──────────────────────────────────────────
+function getTasks(){return JSON.parse(localStorage.getItem('ax_tasks')||'[]');}
+function saveTasks(t){localStorage.setItem('ax_tasks',JSON.stringify(t));}
+
+function renderTasks(){
+  const tasks=getTasks();
+  const list=document.getElementById('task-list');
+  const meta=document.getElementById('task-meta');
+  const bar=document.getElementById('task-bar');
+  if(!list) return;
+  if(!tasks.length){
+    list.innerHTML='<div style="font-size:0.65em;color:var(--muted2);padding:12px;text-align:center;">Brak zadań. Wygeneruj misję poniżej.</div>';
+    if(meta) meta.textContent='0 / 0 ukończonych';
+    if(bar) bar.style.width='0%';
+    return;
+  }
+  const done=tasks.filter(t=>t.done).length;
+  const pct=Math.round(done/tasks.length*100);
+  if(meta) meta.textContent=`${done} / ${tasks.length} ukończonych — ${pct}%`;
+  if(bar) bar.style.width=pct+'%';
+  list.innerHTML=tasks.map((t,i)=>`
+    <div class="task-item${t.done?' done':''}" onclick="toggleTask(${i})">
+      <div class="task-cb"></div>
+      <div class="task-text">${t.text}</div>
+    </div>`).join('');
+}
+
+function toggleTask(i){
+  const tasks=getTasks();
+  tasks[i].done=!tasks[i].done;
+  saveTasks(tasks);
+  renderTasks();
+}
+
+function parseMissionToTasks(text){
+  const lines=text.split('\n');
+  const tasks=[];
+  for(const line of lines){
+    const clean=line.replace(/^[\s\-\*\d\.]+/,'').trim();
+    if(clean.length>10 && clean.length<300 && !clean.startsWith('##') && !clean.startsWith('NASTĘPNY')){
+      tasks.push({text:clean, done:false});
+    }
+  }
+  return tasks.slice(0,7);
+}
+
+async function genMission(){
+  const box=document.getElementById('r-mission2');
+  const txt=document.getElementById('t-mission2');
+  box.classList.add('on'); ld(txt);
+  const d=D();
+  const res=await ai([{role:'user',content:pr.mission(d)}],sys());
+  renderMD(txt,res);
+  sH('Misja dzienna',res);
+  // Parse tasks from response and save
+  const tasks=parseMissionToTasks(res);
+  if(tasks.length){
+    saveTasks(tasks);
+    renderTasks();
+  }
+}
+
+// ── MRR HISTORY TRACKER ───────────────────────────────────────────
+let mrrChart=null;
+function getMRR(){return JSON.parse(localStorage.getItem('ax_mrr')||'[]');}
+function saveMRR(m){localStorage.setItem('ax_mrr',JSON.stringify(m));}
+
+function addMRR(){
+  const val=parseFloat(document.getElementById('mrr-val').value)||0;
+  const note=document.getElementById('mrr-note').value.trim();
+  if(!val) return;
+  const m=getMRR();
+  m.push({date:new Date().toLocaleDateString('pl',{day:'2-digit',month:'short',year:'2-digit'}), val, note, ts:Date.now()});
+  saveMRR(m);
+  document.getElementById('mrr-val').value='';
+  document.getElementById('mrr-note').value='';
+  renderMRR();
+}
+
+function delMRR(ts){
+  saveMRR(getMRR().filter(x=>x.ts!==ts));
+  renderMRR();
+}
+
+function renderMRR(){
+  const m=getMRR();
+  const list=document.getElementById('mrr-list');
+  const canvas=document.getElementById('ch-mrr');
+  if(!list||!canvas) return;
+
+  // Chart
+  if(mrrChart) mrrChart.destroy();
+  if(m.length>=2){
+    const ctx=canvas.getContext('2d');
+    mrrChart=new Chart(ctx,{
+      type:'line',
+      data:{
+        labels:m.map(x=>x.date),
+        datasets:[{
+          label:'MRR (PLN)',
+          data:m.map(x=>x.val),
+          borderColor:'rgba(200,169,110,0.8)',
+          backgroundColor:'rgba(200,169,110,0.06)',
+          borderWidth:2,
+          pointRadius:4,
+          pointBackgroundColor:'var(--gold)',
+          fill:true,
+          tension:0.3
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{color:'rgba(64,64,90,0.9)',font:{family:'Outfit',size:9}},grid:{color:'rgba(200,169,110,0.04)'}},
+          y:{ticks:{color:'rgba(64,64,90,0.9)',font:{family:'Outfit',size:9},callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v},grid:{color:'rgba(200,169,110,0.04)'}}
+        }
+      }
+    });
+    canvas.parentElement.style.display='block';
+  } else {
+    canvas.parentElement.style.display='none';
+  }
+
+  // List
+  if(!m.length){
+    list.innerHTML='<div style="font-size:0.65em;color:var(--muted2);padding:12px;text-align:center;">Brak wpisów. Dodaj pierwszy MRR powyżej.</div>';
+    return;
+  }
+  list.innerHTML=[...m].reverse().map((item,i,arr)=>{
+    const prev=arr[i+1];
+    const diff=prev?item.val-prev.val:null;
+    const up=diff>=0;
+    return`<div class="mrr-row">
+      <div class="mrr-date">${item.date}</div>
+      <div>
+        <div class="mrr-val">${item.val.toLocaleString('pl')} PLN</div>
+        ${item.note?`<div style="font-size:0.55em;color:var(--muted2);">${item.note}</div>`:''}
+      </div>
+      ${diff!==null?`<div class="mrr-diff ${up?'up':'dn'}">${up?'+':''}${diff.toLocaleString('pl')} PLN</div>`:'<div></div>'}
+      <button class="mrr-del" onclick="delMRR(${item.ts})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ── CAC CALCULATOR ────────────────────────────────────────────────
+function calcCAC(){
+  const spend=parseFloat(document.getElementById('cac-spend').value)||0;
+  const users=parseFloat(document.getElementById('cac-users').value)||0;
+  const price=parseFloat(document.getElementById('cac-price').value)||0;
+  const months=parseFloat(document.getElementById('cac-ltv-months').value)||0;
+  const result=document.getElementById('cac-result');
+  if(!spend||!users||!price||!months){result.classList.remove('on');return;}
+
+  const cac=spend/users;
+  const ltv=price*months;
+  const ratio=ltv/cac;
+  const payback=cac/price;
+
+  document.getElementById('cac-num').textContent=cac.toFixed(2)+' PLN';
+  document.getElementById('cac-ltv').textContent=ltv.toFixed(0)+' PLN';
+  document.getElementById('cac-ratio').textContent=ratio.toFixed(1)+'x';
+  document.getElementById('cac-payback').textContent=payback.toFixed(1)+' mies';
+
+  let verdict='';
+  if(ratio>=3){
+    verdict=`<span style="color:var(--green);font-weight:500;">✓ Świetny wynik!</span> LTV/CAC powyżej 3x oznacza zdrowy biznes. Możesz zwiększyć budżet marketingowy.<br><br>`;
+  } else if(ratio>=1){
+    verdict=`<span style="color:#f0a030;font-weight:500;">⚠ Akceptowalny.</span> LTV/CAC poniżej 3x — biznes działa ale marża jest ciasna. Popraw retencję lub obniż koszt pozyskania.<br><br>`;
+  } else {
+    verdict=`<span style="color:var(--red);font-weight:500;">✗ Nierentowny!</span> Tracisz pieniądze na każdym użytkowniku — CAC > LTV. Zatrzymaj marketing i najpierw popraw retencję.<br><br>`;
+  }
+  verdict+=`Aby zejść do <strong style="color:var(--text);">CAC = ${(ltv/3).toFixed(0)} PLN</strong> (cel: LTV/CAC = 3x) przy tym samym budżecie potrzebujesz <strong style="color:var(--text);">${Math.ceil(spend/(ltv/3))} nowych użytkowników</strong> miesięcznie.`;
+  document.getElementById('cac-verdict').innerHTML=verdict;
+  result.classList.add('on');
+}
+
+// init tracker tab
+function initTracker(){renderTasks();renderMRR();}
 
 rc();
 document.querySelectorAll('.fi').forEach(el=>el.addEventListener('input',rc));
