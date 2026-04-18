@@ -324,6 +324,33 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .invest-rec{background:var(--s2);border:1px solid var(--b2);border-left:2px solid var(--gold);padding:14px 16px;margin-bottom:12px;border-radius:3px;font-size:0.72em;line-height:1.7;color:var(--muted3);display:none;}
 .invest-rec.on{display:block;}
 
+/* INVEST TAB */
+.inv-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.inv-cat{background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:14px 12px;cursor:pointer;transition:all .2s;text-align:center;position:relative;overflow:hidden;}
+.inv-cat::before{content:'';position:absolute;top:0;inset-x:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity .2s;}
+.inv-cat.on,.inv-cat:hover{border-color:var(--b3);background:var(--gg2);}
+.inv-cat.on::before{opacity:1;}
+.inv-cat-icon{font-size:1.4em;margin-bottom:5px;}
+.inv-cat-name{font-size:0.62em;letter-spacing:0.1em;color:var(--muted3);font-weight:400;}
+.inv-cat-ret{font-size:0.55em;color:var(--green);margin-top:2px;}
+
+.inv-calc{background:var(--s1);border:1px solid var(--b2);border-radius:4px;padding:20px;margin-bottom:14px;}
+.inv-calc-title{font-family:'Playfair Display',serif;font-size:1em;font-style:italic;color:var(--gold2);margin-bottom:14px;}
+.inv-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0;}
+.inv-res{background:var(--s2);border:1px solid var(--b1);padding:12px;border-radius:3px;text-align:center;}
+.inv-res-n{font-family:'Playfair Display',serif;font-size:1.3em;font-style:italic;color:var(--gold2);line-height:1;}
+.inv-res-l{font-size:0.5em;letter-spacing:0.1em;color:var(--muted2);margin-top:3px;}
+.inv-res.green .inv-res-n{color:var(--green);}
+.inv-res.red .inv-res-n{color:var(--red);}
+
+.inv-steps{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+.inv-step{display:flex;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:3px;align-items:flex-start;}
+.inv-step-num{width:20px;height:20px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.55em;font-weight:700;color:var(--bg);flex-shrink:0;margin-top:1px;}
+.inv-step-txt{font-size:0.72em;color:var(--muted3);line-height:1.6;flex:1;}
+.inv-step-txt strong{color:var(--text);}
+.inv-warn{background:rgba(255,64,96,0.05);border:1px solid rgba(255,64,96,0.15);border-radius:3px;padding:10px 14px;font-size:0.68em;color:rgba(255,100,120,0.9);line-height:1.6;margin-top:10px;}
+.inv-tip{background:rgba(200,169,110,0.06);border:1px solid rgba(200,169,110,0.12);border-left:2px solid var(--gold);border-radius:3px;padding:10px 14px;font-size:0.68em;color:var(--gold3);line-height:1.6;margin-top:8px;}
+
 /* TRACKER TAB */
 .task-item{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:3px;transition:all .2s;cursor:pointer;}
 .task-item:hover{border-color:var(--b2);}
@@ -421,6 +448,7 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
   <div class="tabs">
     <div class="tab on" onclick="sT('dash')">DASHBOARD</div>
     <div class="tab" onclick="sT('market')">RYNEK LIVE</div>
+    <div class="tab" onclick="sT('inwestuj')">INWESTUJ</div>
     <div class="tab" onclick="sT('tracker')">TRACKER</div>
     <div class="tab" onclick="sT('portfolio')">PORTFOLIO</div>
     <div class="tab" onclick="sT('guide')">JAK INWESTOWAĆ</div>
@@ -478,6 +506,161 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
       <button class="btn" onclick="rM('investment')">GENERUJ PLAN INWESTYCYJNY</button>
       <div class="rb" id="r-investment"><div class="rh">Investment AI</div><div class="rbd" id="t-investment"></div><button class="bpdf" onclick="mkPDF('t-investment','Plan inwestycyjny')">Eksportuj PDF</button></div>
     </div>
+  </div>
+
+  <!-- INWESTUJ -->
+  <div class="tp" id="tp-inwestuj">
+
+    <!-- KALKULATOR ZYSKU -->
+    <div class="sh">Kalkulator: wkładam → zarabiam</div>
+    <div class="inv-calc">
+      <div class="inv-calc-title">Ile zarobię jeśli zainwestuję tę kwotę?</div>
+      <div class="fg2" style="margin-bottom:10px;">
+        <div class="fg"><div class="fl">KWOTA INWESTYCJI (PLN)</div><input class="fi" id="inv-amount" type="number" placeholder="np. 2000" oninput="calcInv()"></div>
+        <div class="fg"><div class="fl">CZAS (MIESIĘCY)</div><input class="fi" id="inv-months" type="number" placeholder="np. 12" oninput="calcInv()"></div>
+      </div>
+      <div style="font-size:0.55em;letter-spacing:0.12em;color:var(--muted2);margin-bottom:8px;">WYBIERZ KATEGORIĘ INWESTYCJI</div>
+      <div class="inv-cats" id="inv-cats-calc">
+        <div class="inv-cat on" onclick="selInvCat(this,'krypto')" data-cat="krypto"><div class="inv-cat-icon">₿</div><div class="inv-cat-name">KRYPTO</div><div class="inv-cat-ret">avg +60%/rok</div></div>
+        <div class="inv-cat" onclick="selInvCat(this,'etf')" data-cat="etf"><div class="inv-cat-icon">📈</div><div class="inv-cat-name">ETF / AKCJE</div><div class="inv-cat-ret">avg +10%/rok</div></div>
+        <div class="inv-cat" onclick="selInvCat(this,'nieruchomosci')" data-cat="nieruchomosci"><div class="inv-cat-icon">🏠</div><div class="inv-cat-name">NIERUCHOMOŚCI</div><div class="inv-cat-ret">avg +8%/rok + najem</div></div>
+        <div class="inv-cat" onclick="selInvCat(this,'obligacje')" data-cat="obligacje"><div class="inv-cat-icon">🏦</div><div class="inv-cat-name">OBLIGACJE / LOKATA</div><div class="inv-cat-ret">avg +5%/rok</div></div>
+        <div class="inv-cat" onclick="selInvCat(this,'flip')" data-cat="flip"><div class="inv-cat-icon">🔄</div><div class="inv-cat-name">FLIP (RESALE)</div><div class="inv-cat-ret">avg +20%/transakcja</div></div>
+        <div class="inv-cat" onclick="selInvCat(this,'biznes')" data-cat="biznes"><div class="inv-cat-icon">🚀</div><div class="inv-cat-name">BIZNES / SAAS</div><div class="inv-cat-ret">avg +200%/rok</div></div>
+      </div>
+      <div class="inv-result-grid" id="inv-result-grid" style="display:none;">
+        <div class="inv-res green"><div class="inv-res-n" id="inv-r-zysk">—</div><div class="inv-res-l">ZYSK (PLN)</div></div>
+        <div class="inv-res"><div class="inv-res-n" id="inv-r-total">—</div><div class="inv-res-l">ŁĄCZNIE (PLN)</div></div>
+        <div class="inv-res"><div class="inv-res-n" id="inv-r-pct">—</div><div class="inv-res-l">ZWROT %</div></div>
+      </div>
+      <div id="inv-calc-info" style="font-size:0.65em;color:var(--muted2);margin-top:8px;line-height:1.6;"></div>
+    </div>
+
+    <!-- AI PLAN -->
+    <div class="sh">AI: Gdzie teraz zainwestować?</div>
+    <div class="card">
+      <div class="ct">Powiedz ile masz i ile chcesz zarobić — AI zrobi konkretny plan krok po kroku</div>
+      <div class="fg2" style="margin-bottom:10px;">
+        <div class="fg"><div class="fl">MOJE OSZCZĘDNOŚCI (PLN)</div><input class="fi" id="inv-kapital" type="number" placeholder="np. 5000"></div>
+        <div class="fg"><div class="fl">CHCĘ ZAROBIĆ (PLN)</div><input class="fi" id="inv-cel-zysk" type="number" placeholder="np. 1000"></div>
+        <div class="fg"><div class="fl">W JAKIM CZASIE</div>
+          <select class="fi" id="inv-czas" style="cursor:pointer;">
+            <option value="1 miesiąc">1 miesiąc</option>
+            <option value="3 miesiące" selected>3 miesiące</option>
+            <option value="6 miesięcy">6 miesięcy</option>
+            <option value="1 rok">1 rok</option>
+            <option value="3 lata">3 lata</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">TOLERANCJA RYZYKA</div>
+          <select class="fi" id="inv-ryzyko" style="cursor:pointer;">
+            <option value="niska — bezpieczeństwo przede wszystkim">Niska — bezpiecznie</option>
+            <option value="średnia — balans zysku i ryzyka" selected>Średnia — balans</option>
+            <option value="wysoka — chcę maksymalnych zysków">Wysoka — max zysk</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="getFullInvestPlan()">GENERUJ PEŁNY PLAN INWESTYCYJNY AI</button>
+      <div class="rb" id="r-inv-plan"><div class="rh">Investment AI — pełny plan</div><div class="rbd" id="t-inv-plan"></div><button class="bpdf" onclick="mkPDF('t-inv-plan','Plan inwestycyjny')">Eksportuj PDF</button></div>
+    </div>
+
+    <!-- KATEGORIE SZCZEGÓŁOWO -->
+    <div class="sh">Jak inwestować w każdą kategorię</div>
+
+    <!-- KRYPTO -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">₿</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">Kryptowaluty</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO WYSOKIE · POTENCJAŁ WYSOKI</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Kup BTC i ETH na Binance lub Zonda.</strong> Zarejestruj konto, przejdź weryfikację KYC (dowód osobisty), przelej PLN. Limit konta basic: 500 EUR/dobę bez weryfikacji zaawansowanej.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Strategia DCA (Dollar Cost Averaging).</strong> Kupuj co tydzień tę samą kwotę — np. 200 PLN w BTC. Nie patrzysz na cenę. Przez 6-12 miesięcy uśredniasz cenę zakupu i eliminujesz ryzyko złego timingu.</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Podział: 60% BTC, 30% ETH, 10% SOL.</strong> Nie kupuj altcoinów na początku. BTC i ETH to jedyne krypto które przeżyły każdą bessę.</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>Cold wallet po przekroczeniu 5000 PLN.</strong> Kup Ledger Nano S (ok. 400 PLN) i przenieś krypto z giełdy. Giełdy bankrutują — Ty nie tracisz (FTX, BitMarket).</div></div>
+        <div class="inv-step"><div class="inv-step-num">5</div><div class="inv-step-txt"><strong>Nie sprzedawaj w bessie.</strong> BTC spada o 70-80% w każdym cyklu — to normalne. Jeśli kupujesz na 4 lata, trzymaj. Historycznie zawsze wracał wyżej.</div></div>
+      </div>
+      <div class="inv-warn">⚠ Nigdy nie inwestuj więcej niż 20-30% oszczędności w krypto. Możesz stracić wszystko.</div>
+    </div>
+
+    <!-- ETF -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">📈</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">ETF i Akcje</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO ŚREDNIE · POTENCJAŁ ŚREDNI-WYSOKI</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Otwórz konto maklerskie w XTB lub mBank.</strong> XTB jest darmowy, ma aplikację i ETFy bez prowizji do 100k EUR/mies. Rejestracja online: 15 minut.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Kup ETF na S&amp;P 500: iShares Core S&amp;P 500 (ticker: CSPX lub SXR8).</strong> To koszyk 500 największych firm USA. Historycznie +10%/rok średnio przez ostatnie 50 lat. Jedno ETF = dywersyfikacja 500 firm.</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Dodaj ETF na świat: Vanguard FTSE All-World (VWCE).</strong> Obejmuje 3700+ firm z całego świata. Podział: 70% S&P500 + 30% VWCE = idealne dla początkującego.</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>IKE lub IKZE — oszczędzasz na podatku.</strong> W IKE nie płacisz 19% podatku Belki przy wypłacie po 60 roku życia. W IKZE odliczasz od podatku każdego roku. Otwórz w XTB — darmowe.</div></div>
+        <div class="inv-step"><div class="inv-step-num">5</div><div class="inv-step-txt"><strong>Horyzont minimum 5-10 lat.</strong> W krótkim terminie giełda może spaść 30-40%. Im dłużej trzymasz, tym mniejsze ryzyko straty. Warren Buffett trzyma dziesiątki lat.</div></div>
+      </div>
+      <div class="inv-tip">💡 Najlepsza strategia dla 90% ludzi: kupuj VWCE co miesiąc przez 20 lat. Nie analizuj, nie day-traduj. Boring works.</div>
+    </div>
+
+    <!-- NIERUCHOMOŚCI -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">🏠</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">Nieruchomości</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO NISKIE-ŚREDNIE · POTENCJAŁ STABILNY</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Bez dużego kapitału: zacznij od REIT-ów.</strong> REIT (Real Estate Investment Trust) to ETF na nieruchomości — kupujesz udział w setkach budynków od 50 PLN. Ticker: IPRP (iShares European Property). Dostępne w XTB.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Crowdfunding nieruchomości od 1000 PLN.</strong> Platformy: Crowdway, PEF Ventures, Estately. Inwestujesz w konkretny lokal, dostajesz % od czynszu (zwykle 6-10%/rok) + udział w zysku ze sprzedaży.</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Własne mieszkanie na wynajem — minimum 200-300k PLN wkładu.</strong> Kupujesz z kredytem hipotecznym. Czynsz pokrywa ratę + zostaje zysk. Kalkulacja: cena zakupu / roczny czynsz = wskaźnik gross yield (cel: minimum 5%).</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>Flipy nieruchomości: kupujesz tanio, remontujesz, sprzedajesz drożej.</strong> Wymaga doświadczenia. Marża na flipie w Polsce: 20-40k PLN per transakcja. Czas: 3-6 miesięcy. Ryzyko: nietrafiasz z ceną lub remontem.</div></div>
+        <div class="inv-step"><div class="inv-step-num">5</div><div class="inv-step-txt"><strong>Najem krótkoterminowy (Airbnb).</strong> W turystycznych miastach (Kraków, Gdańsk, Zakopane) zarabiasz 2-3x więcej niż na najmie długoterminowym. Wymaga zarządzania lub managera (ok. 20% przychodów).</div></div>
+      </div>
+      <div class="inv-tip">💡 Przy małym kapitale: REIT lub crowdfunding. Przy 50k+ PLN: rozważ zakup garażu lub miejsca parkingowego na wynajem (ROI 8-12%/rok, zero problemu z najemcą).</div>
+    </div>
+
+    <!-- OBLIGACJE -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">🏦</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">Obligacje i Lokaty</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO NISKIE · POTENCJAŁ NISKI-ŚREDNI</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Obligacje skarbowe detaliczne — bezpieczniejsze niż lokata.</strong> Kup na obligacjeskarbowe.pl. Rodzaje: 3-miesięczne (stała stopa), 2-letnie EDO (zmienna, powiązana z WIBOR), 4-letnie COI (inflacja + marża). Bez podatku Belki przy IKE.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Obligacje antyinflacyjne 4-letnie COI — najlepsze teraz.</strong> Stopa = inflacja GUS + 1,5%. Jeśli inflacja 5%, zarabiasz 6,5%/rok. Idealne na 30-40% poduszki finansowej.</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Lokata — tylko krótkoterminowo, do 3 miesięcy.</strong> Najlepsze oferty: Nest Bank, Alior, mBank. Sprawdzaj aktualne stawki na bankier.pl. Uwaga: podatek Belki 19% od zysku.</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>Konto oszczędnościowe zamiast lokaty.</strong> Santander, ING, PKO — konta oszczędnościowe często 5-6%/rok bez blokowania środków. Płynność + zysk.</div></div>
+      </div>
+      <div class="inv-tip">💡 Obligacje i lokaty to nie inwestycja, to ochrona kapitału. Trzymaj tu poduszkę finansową (3-6 pensji) + pieniądze na które masz plan w ciągu roku.</div>
+    </div>
+
+    <!-- FLIP RESALE -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">🔄</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">Flip i Resale</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO ŚREDNIE · POTENCJAŁ WYSOKI · AKTYWNE</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Co to jest flip?</strong> Kupujesz przedmiot tanio (wyprzedaże, OLX, Vinted, licytacje komornicze), sprzedajesz drożej. Marża 20-100%. Wymaga czasu i wiedzy o rynku.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Najlepsze kategorie dla młodych:</strong> sneakersy (Nike, Jordan, Adidas limited), karty kolekcjonerskie (Pokémon, NBA TopShot), konsole i gry retro, elektronika refurbished, ubrania vintage (Vinted → eBay).</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Gdzie kupować:</strong> OLX, Vinted, Allegro okazje, IKEA AS-IS, licytacje komornicze (licytacje.komornik.pl), wyprzedaże end-of-season w sieciówkach (-70%), thrift shopy.</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>Gdzie sprzedawać:</strong> Allegro, Vinted, OLX, eBay (dla międzynarodowych buyers), StockX (sneakersy), własny Instagram/TikTok shop.</div></div>
+        <div class="inv-step"><div class="inv-step-num">5</div><div class="inv-step-txt"><strong>Start: 500-2000 PLN kapitału, 1 kategoria, 1 platforma.</strong> Najpierw opanuj jeden rynek zanim się rozszerzysz. Prowadź arkusz: co kupiłeś, za ile, sprzedałeś za ile, zysk.</div></div>
+      </div>
+      <div class="inv-tip">💡 Najszybszy sposób na zarabianie bez dużego kapitału. Z 500 PLN możesz robić 200-500 PLN/mies flippując ubrania na Vinted. Skaluje się nieograniczenie.</div>
+    </div>
+
+    <!-- BIZNES -->
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.4em;">🚀</span>
+        <div><div style="font-family:'Playfair Display',serif;font-size:1em;color:var(--gold2);">Inwestycja w siebie i biznes</div><div style="font-size:0.55em;color:var(--muted2);">RYZYKO WYSOKIE · POTENCJAŁ NIEOGRANICZONY</div></div>
+      </div>
+      <div class="inv-steps">
+        <div class="inv-step"><div class="inv-step-num">1</div><div class="inv-step-txt"><strong>Najwyższy ROI: inwestycja w swoje umiejętności.</strong> Kurs programowania (200 PLN) → praca jako freelancer (5000 PLN/mies). Kurs marketingu (300 PLN) → prowadzenie social mediów dla firm (3000 PLN/mies). ROI: 1000-5000%.</div></div>
+        <div class="inv-step"><div class="inv-step-num">2</div><div class="inv-step-txt"><strong>Reinwestuj zyski z Eduvii w marketing.</strong> Każde 100 PLN w reklamy które przynoszą 3+ użytkowników PRO = 87 PLN/mies pasywnie. To najlepszy ROI jaki masz teraz.</div></div>
+        <div class="inv-step"><div class="inv-step-num">3</div><div class="inv-step-txt"><strong>Micro-SaaS obok Eduvii.</strong> Zidentyfikuj problem który rozwiązujesz codziennie → zbuduj prostą aplikację → sprzedawaj za 9-29 PLN/mies. Drugi strumień przychodu z tych samych umiejętności.</div></div>
+        <div class="inv-step"><div class="inv-step-num">4</div><div class="inv-step-txt"><strong>Agencja AI.</strong> Firmy w Polsce płacą 3-10k PLN za automatyzacje AI które możesz zbudować w tydzień używając GPT-4 i n8n. Jeden klient = miesięczny retainer.</div></div>
+      </div>
+      <div class="inv-tip">💡 Jesteś 16 lat i budujesz SaaS. To już jest najlepsza inwestycja — Twoje umiejętności i doświadczenie są warte więcej niż jakakolwiek lokata.</div>
+    </div>
+
   </div>
 
   <!-- TRACKER -->
@@ -749,7 +932,7 @@ document.querySelectorAll('button,input').forEach(el=>{el.addEventListener('mous
 
 // TABS
 function sT(t){
-  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','tracker','portfolio','guide','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
+  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','inwestuj','tracker','portfolio','guide','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
   document.querySelectorAll('.tp').forEach(el=>el.classList.remove('on'));
   document.getElementById('tp-'+t).classList.add('on');
   if(t==='market'&&!window.marketLoaded) loadMarket();
@@ -1371,6 +1554,99 @@ async function analyzePortfolio(){
   const res=await ai([{role:'user',content:'Przeanalizuj moje portfolio inwestycyjne:\n\n'+portStr+'\n\nPowiedz:\n1. Czy dywersyfikacja jest dobra czy za bardzo skoncentrowana\n2. Co trzymac, co sprzedac, co dokupic\n3. Jakie jest ryzyko tego portfolio\n4. Co zrobic zeby zoptymalizowac zyski'}],sys());
   renderMD(txt,res);
   sH('Analiza portfolio',res);
+}
+
+// ── INVEST TAB ────────────────────────────────────────────────────
+const INV_DATA = {
+  krypto:         { label:'Kryptowaluty (BTC/ETH DCA)',    annualMin:0.20, annualMax:1.50, annualAvg:0.60,  note:'Bardzo zmienny. W bessie możesz być -70%, w hossie +300%.' },
+  etf:            { label:'ETF S&P500 / VWCE',             annualMin:0.05, annualMax:0.30, annualAvg:0.10,  note:'Bezpieczny długoterminowo. Minimum 5 lat horyzontu.' },
+  nieruchomosci:  { label:'Nieruchomości (REIT/crowdfunding)', annualMin:0.05, annualMax:0.15, annualAvg:0.08, note:'Stabilny. Przy REIT możesz zacząć od 50 PLN.' },
+  obligacje:      { label:'Obligacje / Lokata',             annualMin:0.04, annualMax:0.08, annualAvg:0.055, note:'Bezpieczny. Ochrona kapitału, nie pomnażanie.' },
+  flip:           { label:'Flip / Resale',                  annualMin:0.15, annualMax:1.00, annualAvg:0.20,  note:'Zależy od kategorii i czasu. Aktywna praca wymagana.' },
+  biznes:         { label:'Inwestycja w biznes / SaaS',     annualMin:0.00, annualMax:10.0, annualAvg:2.00,  note:'Najwyższy potencjał. Też największe ryzyko utraty.' },
+};
+
+let selectedInvCat = 'krypto';
+
+function selInvCat(el, cat) {
+  document.querySelectorAll('#inv-cats-calc .inv-cat').forEach(e => e.classList.remove('on'));
+  el.classList.add('on');
+  selectedInvCat = cat;
+  calcInv();
+}
+
+function calcInv() {
+  const amount  = parseFloat(document.getElementById('inv-amount').value) || 0;
+  const months  = parseFloat(document.getElementById('inv-months').value) || 0;
+  const grid    = document.getElementById('inv-result-grid');
+  const info    = document.getElementById('inv-calc-info');
+  if (!amount || !months) { grid.style.display='none'; info.textContent=''; return; }
+
+  const cat = INV_DATA[selectedInvCat];
+  const years = months / 12;
+  const avg   = Math.pow(1 + cat.annualAvg, years) * amount - amount;
+  const best  = Math.pow(1 + cat.annualMax, years) * amount - amount;
+  const worst = Math.pow(1 + cat.annualMin, years) * amount - amount;
+  const total  = amount + avg;
+  const pct    = (avg / amount * 100).toFixed(1);
+
+  document.getElementById('inv-r-zysk').textContent  = Math.round(avg).toLocaleString('pl') + ' PLN';
+  document.getElementById('inv-r-total').textContent = Math.round(total).toLocaleString('pl') + ' PLN';
+  document.getElementById('inv-r-pct').textContent   = '+' + pct + '%';
+  grid.style.display = 'grid';
+
+  info.innerHTML = `<span style="color:var(--muted3);">Scenariusz średni: <strong style="color:var(--gold2);">+${Math.round(avg).toLocaleString('pl')} PLN</strong></span>
+&nbsp;·&nbsp;<span style="color:var(--green);">Optimistyczny: +${Math.round(best).toLocaleString('pl')} PLN</span>
+&nbsp;·&nbsp;<span style="color:var(--red);">Pesymistyczny: ${worst>=0?'+':''}${Math.round(worst).toLocaleString('pl')} PLN</span><br>
+<span style="color:var(--muted2);font-size:0.92em;">${cat.note}</span>`;
+}
+
+async function getFullInvestPlan() {
+  const kapital = parseFloat(document.getElementById('inv-kapital').value) || 0;
+  const celZysk = parseFloat(document.getElementById('inv-cel-zysk').value) || 0;
+  const czas    = document.getElementById('inv-czas').value;
+  const ryzyko  = document.getElementById('inv-ryzyko').value;
+  const box = $('r-inv-plan'), txt = $('t-inv-plan');
+  box.classList.add('on'); ld(txt);
+
+  const btc = marketData.crypto && marketData.crypto.bitcoin;
+  const marketStr = btc
+    ? `Aktualne dane rynkowe: BTC ${Math.round(btc.pln).toLocaleString('pl')} PLN, ETH ${Math.round((marketData.crypto.ethereum||{}).pln||0).toLocaleString('pl')} PLN`
+    : 'Dane rynkowe: nie załadowane';
+
+  const prompt = `Mam ${kapital} PLN i chcę zarobić ${celZysk} PLN w czasie: ${czas}.
+Tolerancja ryzyka: ${ryzyko}.
+${marketStr}
+
+Stwórz KONKRETNY plan inwestycyjny krok po kroku. Uwzględnij WSZYSTKIE klasy aktywów które pasują do mojego profilu:
+- Kryptowaluty (BTC, ETH, DCA)
+- ETF i akcje (S&P500, VWCE, XTB)
+- Nieruchomości (REIT, crowdfunding, flip mieszkań)
+- Obligacje skarbowe i lokaty
+- Flip i resale (sneakersy, elektronika, ubrania)
+- Inwestycja w biznes/umiejętności
+
+Format odpowiedzi:
+## Ocena celu
+Czy ${celZysk} PLN z ${kapital} PLN w ${czas} jest realistyczne? Jeśli nie — co jest realistyczne?
+
+## Mój portfel inwestycyjny
+Konkretny podział ${kapital} PLN na kategorie z kwotami w PLN.
+
+## Plan krok po kroku
+Numerowana lista — co robię w pierwszym tygodniu, pierwszym miesiącu, dalej.
+
+## Ryzyko i jak je minimalizować
+Co może pójść nie tak i jak się zabezpieczyć.
+
+## Realistyczne zyski
+Ile zarobię pesymistycznie / realistycznie / optymistycznie w ${czas}.
+
+NASTĘPNY KROK: jedna konkretna rzecz do zrobienia DZIŚ.`;
+
+  const res = await ai([{role:'user', content:prompt}], sys());
+  renderMD(txt, res);
+  sH('Plan inwestycyjny', res);
 }
 
 // ── DAILY MISSION TRACKER ──────────────────────────────────────────
