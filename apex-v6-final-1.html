@@ -70,9 +70,9 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 @keyframes bl{0%,100%{opacity:1;}50%{opacity:0.1;}}
 
 /* TICKER */
-.ticker{position:relative;z-index:5;overflow:hidden;height:28px;display:flex;align-items:center;border-bottom:1px solid var(--b1);background:rgba(0,0,5,0.6);}
-.ticker-t{display:inline-flex;gap:0;white-space:nowrap;animation:tick 40s linear infinite;font-size:0.55em;letter-spacing:0.15em;color:var(--muted2);}
-.ticker-t span{padding:0 20px;border-right:1px solid var(--b2);}
+.ticker{position:fixed;top:52px;left:0;right:0;z-index:190;overflow:hidden;height:24px;display:flex;align-items:center;border-bottom:1px solid var(--b1);background:rgba(0,0,5,0.95);}
+.ticker-t{display:inline-flex;gap:0;white-space:nowrap;animation:tick 40s linear infinite;font-size:0.52em;letter-spacing:0.12em;color:var(--muted2);}
+.ticker-t span{padding:0 16px;border-right:1px solid var(--b2);}
 @keyframes tick{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
 
 /* MODAL */
@@ -92,7 +92,7 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .mn{font-size:0.6em;color:var(--muted2);margin-top:10px;line-height:1.5;}
 
 /* HERO */
-.hero{padding:90px 24px 48px;position:relative;z-index:5;}
+.hero{padding:110px 24px 48px;position:relative;z-index:5;}
 .hero-tag{font-size:0.62em;letter-spacing:0.25em;color:var(--muted3);margin-bottom:20px;display:flex;align-items:center;gap:10px;font-weight:300;}
 .hero-tag::before{content:'';width:24px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);}
 .hero h1{font-family:'Playfair Display',serif;font-size:5em;font-weight:900;line-height:0.85;letter-spacing:-0.02em;margin-bottom:24px;}
@@ -109,10 +109,11 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .main{padding:0 24px 120px;position:relative;z-index:5;}
 
 /* TABS */
-.tabs{display:flex;border-bottom:1px solid var(--b2);margin-bottom:20px;overflow-x:auto;}
+.tabs{display:flex;border-bottom:1px solid var(--b2);margin-bottom:20px;overflow-x:auto;gap:0;background:var(--s1);border-radius:4px 4px 0 0;}
 .tabs::-webkit-scrollbar{display:none;}
-.tab{padding:10px 16px;font-size:0.62em;letter-spacing:0.1em;color:var(--muted3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;font-weight:400;}
-.tab.on{color:var(--gold2);border-bottom-color:var(--gold);}
+.tab{padding:12px 18px;font-size:0.6em;letter-spacing:0.1em;color:var(--muted3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-weight:400;flex:1;text-align:center;}
+.tab.on{color:var(--gold2);border-bottom-color:var(--gold);background:var(--s2);}
+.tab:hover{color:var(--muted3);background:rgba(200,169,110,0.03);}
 .tp{display:none;}
 .tp.on{display:block;}
 
@@ -204,7 +205,15 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 @keyframes fup{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 .rh{font-size:0.52em;letter-spacing:0.2em;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:9px;}
 .rh::after{content:'';flex:1;height:1px;background:var(--b2);}
-.rbd{font-size:0.76em;line-height:1.9;color:var(--muted3);white-space:pre-wrap;font-weight:300;}
+.rbd{font-size:0.78em;line-height:1.85;color:var(--muted3);white-space:pre-wrap;font-weight:300;font-family:'Outfit',sans-serif;}
+.rbd-rendered{font-size:0.78em;line-height:1.85;color:var(--muted3);font-weight:300;}
+.rbd-rendered h2,.rbd-rendered h3{font-family:'Playfair Display',serif;color:var(--gold2);margin:16px 0 8px;font-size:1em;font-weight:700;}
+.rbd-rendered p{margin-bottom:10px;color:var(--muted3);}
+.rbd-rendered strong,.rbd-rendered b{color:var(--text);font-weight:600;}
+.rbd-rendered ul,.rbd-rendered ol{padding-left:20px;margin-bottom:10px;}
+.rbd-rendered li{margin-bottom:5px;color:var(--muted3);}
+.rbd-rendered .next-step{background:var(--gg);border:1px solid var(--b2);border-left:2px solid var(--gold);padding:12px 16px;margin-top:16px;border-radius:3px;}
+.rbd-rendered .next-step strong{color:var(--gold2);}
 
 /* MODULES */
 .mg{display:grid;grid-template-columns:1fr;gap:10px;}
@@ -264,11 +273,30 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 .main{animation:rev .7s ease .12s backwards;}
 @keyframes rev{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:none;}}
 
+/* MARKET DATA */
+.mkt{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+.mkt-card{background:var(--s1);border:1px solid var(--b2);border-radius:4px;padding:16px;position:relative;overflow:hidden;transition:border-color .3s;}
+.mkt-card:hover{border-color:var(--b3);}
+.mkt-card::before{content:'';position:absolute;top:0;inset-x:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0.3;}
+.mkt-name{font-size:0.55em;letter-spacing:0.14em;color:var(--muted2);margin-bottom:6px;}
+.mkt-price{font-family:'Playfair Display',serif;font-size:1.4em;font-style:italic;color:var(--text);line-height:1;margin-bottom:4px;}
+.mkt-change{font-size:0.62em;font-weight:500;}
+.mkt-change.up{color:var(--green);}
+.mkt-change.dn{color:var(--red);}
+.mkt-sub{font-size:0.58em;color:var(--muted2);margin-top:4px;}
+.mkt-loading{font-size:0.65em;color:var(--muted2);text-align:center;padding:20px;grid-column:span 2;}
+.mkt-refresh{padding:7px 14px;background:transparent;border:1px solid var(--b2);border-radius:3px;color:var(--muted3);font-family:'Outfit',sans-serif;font-size:0.6em;cursor:pointer;transition:all .2s;margin-bottom:14px;}
+.mkt-refresh:hover{border-color:var(--b3);color:var(--gold);}
+.mkt-time{font-size:0.55em;color:var(--muted2);margin-bottom:10px;}
+.invest-rec{background:var(--s2);border:1px solid var(--b2);border-left:2px solid var(--gold);padding:14px 16px;margin-bottom:12px;border-radius:3px;font-size:0.72em;line-height:1.7;color:var(--muted3);display:none;}
+.invest-rec.on{display:block;}
+
 @media(max-width:768px){
   body{cursor:auto;}
   #cur,#cur2{display:none;}
   .hero h1{font-size:3.5em;}
   .sg{grid-template-columns:repeat(2,1fr);}
+  .mkt{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -325,6 +353,7 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
 <div class="main">
   <div class="tabs">
     <div class="tab on" onclick="sT('dash')">DASHBOARD</div>
+    <div class="tab" onclick="sT('market')">RYNEK LIVE</div>
     <div class="tab" onclick="sT('mods')">MODULY AI</div>
     <div class="tab" onclick="sT('chat')">CHAT</div>
     <div class="tab" onclick="sT('history')">HISTORIA</div>
@@ -381,6 +410,23 @@ nav::after{content:'';position:absolute;bottom:0;inset-x:0;height:1px;background
     </div>
   </div>
 
+  <!-- MARKET -->
+  <div class="tp" id="tp-market">
+    <div class="sh">Rynek w czasie rzeczywistym</div>
+    <div class="mkt-time" id="mkt-time">Ładowanie danych...</div>
+    <button class="mkt-refresh" onclick="loadMarket()">Odśwież dane</button>
+    <div class="sh">Kryptowaluty</div>
+    <div class="mkt" id="mkt-crypto"><div class="mkt-loading">Pobieranie cen...</div></div>
+    <div class="sh">Kursy walut (NBP)</div>
+    <div class="mkt" id="mkt-fx"><div class="mkt-loading">Pobieranie kursów...</div></div>
+    <div class="sh">Surowce</div>
+    <div class="mkt" id="mkt-comm"><div class="mkt-loading">Pobieranie danych...</div></div>
+    <div class="sh">Rekomendacja AI dla Twojego budżetu</div>
+    <div class="invest-rec on" id="invest-rec">Najpierw załaduj dane rynkowe — kliknij "Odśwież dane" powyżej.</div>
+    <button class="btn" onclick="getInvestRec()" style="margin-top:4px;">PORADŹ MI GDZIE TERAZ ZAINWESTOWAĆ</button>
+    <div class="rb" id="r-invest-ai"><div class="rh">Investment AI — dane live</div><div class="rbd" id="t-invest-ai"></div><button class="bpdf" onclick="mkPDF('t-invest-ai','Rekomendacja inwestycyjna')">Eksportuj PDF</button></div>
+  </div>
+
   <!-- MODULES -->
   <div class="tp" id="tp-mods">
     <div class="mg">
@@ -431,7 +477,12 @@ document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;c1.style.lef
 document.querySelectorAll('button,input').forEach(el=>{el.addEventListener('mouseenter',()=>{c1.style.transform='translate(-50%,-50%) scale(2)';c2.style.width='40px';c2.style.height='40px';c2.style.borderColor='rgba(200,169,110,0.5)';});el.addEventListener('mouseleave',()=>{c1.style.transform='translate(-50%,-50%) scale(1)';c2.style.width='24px';c2.style.height='24px';c2.style.borderColor='rgba(200,169,110,0.3)';});});
 
 // TABS
-function sT(t){document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});document.querySelectorAll('.tp').forEach(el=>el.classList.remove('on'));document.getElementById('tp-'+t).classList.add('on');}
+function sT(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>{const ts=['dash','market','mods','chat','history'];el.classList.toggle('on',ts[i]===t);});
+  document.querySelectorAll('.tp').forEach(el=>el.classList.remove('on'));
+  document.getElementById('tp-'+t).classList.add('on');
+  if(t==='market' && !window.marketLoaded) loadMarket();
+}
 
 // API
 function oM(){document.getElementById('modal').classList.add('on');const k=localStorage.getItem('ax_k');if(k)document.getElementById('ak').value=k;}
@@ -442,8 +493,8 @@ window.addEventListener('load',()=>{if(!gK())setTimeout(oM,600);bC();bB();bS();r
 
 // DATA
 const $=id=>document.getElementById(id);
-const vn=id=>parseFloat($(id)?.value)||0;
-const vs=id=>$(id)?.value||'';
+const vn=id=>{const e=document.getElementById(id);return parseFloat(e&&e.value)||0;};
+const vs=id=>{const e=document.getElementById(id);return e?e.value:'';};
 
 function D(){return{budget:vn('budget'),revenue:vn('revenue'),paying:vn('paying'),price:vn('price'),costs:vn('costs'),goal:vn('goal')||1000000,it:vn('it')||10000,id:vn('id')||30,comp:vs('comp')||'Brainly'};}
 
@@ -526,32 +577,45 @@ async function ai(msgs,sys){
     });
     const j=await r.json();
     if(j.error)return'Blad API: '+j.error.message;
-    return j.choices?.[0]?.message?.content||'Blad AI.';
+    return j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : null||'Blad AI.';
   }catch(e){return'Blad: '+e.message;}
 }
 
 function sys(){
   const d=D();
-  return`Jestes APEX — elitarnym doradca biznesowym AI. Zawsze mow po polsku z polskimi znakami diakrytycznymi (a,e,i,o,u,z,c,s,n,l z ogonkami i kreskami).
+  return`Jesteś APEX — osobistym doradcą biznesowym AI. Rozmawiasz z 16-letnim twórcą aplikacji Eduvia AI.
 
-DANE FINANSOWE UZYTKOWNIKA:
-Budzet dostepny: ${d.budget} PLN
-Przychod: ${d.revenue} PLN/mies
-Placy uzytkownicy: ${d.paying} x ${d.price} PLN = ${d.paying*d.price} PLN/mies
-Koszty: ${d.costs} PLN/mies
+WAŻNE INFO O JEGO BIZNESIE — EDUVIA AI:
+Eduvia AI to polska aplikacja edukacyjna dla uczniów oparta na AI.
+Funkcje aplikacji:
+- Chat AI — rozmowa z AI o każdym przedmiocie szkolnym
+- Quiz AI — generowanie quizów do nauki przed klasówką
+- Vision AI — rozwiązywanie zadań ze zdjęcia (np. matematyka)
+- Voice AI — rozmowa głosem z AI po polsku
+- Notatki AI — generowanie notatek PDF z danego tematu
+- Sprawdziany AI — tworzenie sprawdzianów PDF z kluczem odpowiedzi
+- Plan nauki — spersonalizowany plan nauki
+Modele: GPT-4o (backend FastAPI na Render), baza Firebase + PostgreSQL
+Cena: 29 PLN/miesiąc (Free ma limity dzienne, Pro unlimited)
+Platforma: PWA (strona jako apka) + Google Play (TWA)
+Rynek docelowy: uczniowie szkół w Polsce, cel: ekspansja CZ/SK/DE/UK
+
+DANE FINANSOWE TERAZ:
+Budżet: ${d.budget} PLN
+Miesięczny przychód: ${d.revenue} PLN
+Płacący użytkownicy: ${d.paying} × ${d.price} PLN = ${d.paying*d.price} PLN/mies
+Koszty miesięczne: ${d.costs} PLN
 Zysk netto: ${d.paying*d.price-d.costs} PLN/mies
 Cel finansowy: ${d.goal} PLN/mies
-Potrzebny wzrost: x${(d.goal/Math.max(d.revenue,1)).toFixed(1)}
+Potrzebny wzrost: ×${(d.goal/Math.max(d.revenue,1)).toFixed(1)}
 
-STYL ODPOWIEDZI:
-- Konkretne liczby i daty — zadnych ogolnikow
-- Krotkie akapity z naglowkami
-- Bezposredni ton mentora ktory chce zebys zarobil miliony
-- Bez emotikon
-- Polskie znaki diakrytyczne w KAZDYM slowie`;
-}
-
-function ld(el){el.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';}
+ZASADY ODPOWIEDZI:
+- Mów normalnie, jakbyś pisał do kumpla który ogarnia biznes — nie za formalnie
+- ZAWSZE konkretne liczby w PLN i konkretne daty — zero ogólników
+- Używaj nagłówków ## i list - żeby było czytelnie
+- Jeśli coś jest nierealne — powiedz wprost i zaproponuj co realnie można zrobić
+- Zawsze na końcu napisz: "NASTĘPNY KROK:" i jedną konkretną rzecz do zrobienia DZIŚ
+- Polskie znaki w każdym słowie`;}
 
 async function aAll(){
   const btn=$('mBtn'),box=$('r-main'),txt=$('t-main');
@@ -559,12 +623,34 @@ async function aAll(){
   box.classList.add('on');ld(txt);rc();
   const d=D();
   const res=await ai([{role:'user',content:`Kompleksowa analiza mojego biznesu:\n1. Glowny problem i co natychmiast zmienic\n2. Ile czasu do ${d.goal} PLN/mies\n3. 3 najwazniejsze zadania na ten tydzien\n4. Gdzie zainwestowac ${d.budget} PLN (konkretne kwoty)\n5. Szanse i zagrozenia`}],sys());
-  txt.textContent=res;sH('Analiza kompleksowa',res);
+  renderMD(txt,res);sH('Analiza kompleksowa',res);
   btn.disabled=false;btn.textContent='ANALIZUJ PONOWNIE';
 }
 
 const pr={
-  investment:d=>`Chce zarobic ${d.it} PLN w ciagu ${d.id} dni. Mam ${d.budget} PLN. Podaj plan: gdzie zainwestowac kazda zlotowke, co robic kazdego tygodnia, czy cel jest realistyczny i jaki zwrot z inwestycji moge oczekiwac.`,
+  investment:d=>{
+    const btc = marketData.crypto && marketData.crypto.bitcoin;
+    const eth = marketData.crypto && marketData.crypto.ethereum;
+    const sol = marketData.crypto && marketData.crypto.solana;
+    const usd = marketData.fx && marketData.fx.find ? marketData.fx.find(r=>r.code==='USD') : null;
+    const hasMarket = window.marketLoaded && btc;
+    const marketStr = hasMarket ? `
+AKTUALNE DANE RYNKOWE (live):
+- BTC: ${Math.round(btc.pln||0).toLocaleString('pl')} PLN (${btc.pln_24h_change ? btc.pln_24h_change.toFixed(1) : 0}% dziś)
+- ETH: ${Math.round(eth ? eth.pln : 0).toLocaleString('pl')} PLN (${eth && eth.pln_24h_change ? eth.pln_24h_change.toFixed(1) : 0}% dziś)
+- SOL: ${Math.round(sol ? sol.pln : 0).toLocaleString('pl')} PLN (${sol && sol.pln_24h_change ? sol.pln_24h_change.toFixed(1) : 0}% dziś)
+- USD: ${usd ? usd.mid : 'brak'} PLN` : 'Dane rynkowe: nie załadowane (otwórz zakładkę Rynek Live)';
+    return `Chcę zarobić ${d.it} PLN w ciągu ${d.id} dni. Mam ${d.budget} PLN budżetu.
+
+${marketStr}
+
+Na podstawie TYCH danych podaj konkretny plan:
+1. Gdzie zainwestować każdą złotówkę (konkretne kwoty)
+2. Co robić każdego tygodnia
+3. Czy cel ${d.it} PLN w ${d.id} dni jest realistyczny
+4. Jakie ryzyko i co może pójść nie tak
+5. Alternatywa jeśli cel jest nierealistyczny`;
+  },
   competition:d=>`Moj konkurent: ${d.comp}. Moj przychod: ${d.revenue} PLN/mies. Przeanalizuj: slabe strony konkurenta, czego im brakuje, jak ich pokonac w 90 dni, jakie konkretne przewagi moge zbudowac.`,
   revenue:d=>`Zarabiam ${d.revenue} PLN/mies (${d.paying} x ${d.price} PLN). Oblicz za 30/90/365 dni przy 10%, 20%, 50% wzroscie/mies. Ile uzytkownikow potrzebuje do ${d.goal} PLN/mies?`,
   features:d=>`Mam aplikacje subskrypcyjna: ${d.paying} uzytkownikow po ${d.price} PLN. Podaj 5 funkcji ktore: zwiekszą retencje o 30%+, uzasadnia wyzszą cene, sa unikatowe na rynku polskim. Priorytet, czas wdrozenia, efekt w PLN.`,
@@ -583,7 +669,7 @@ async function rM(type){
   box.classList.add('on');ld(txt);
   const d=D();
   const res=await ai([{role:'user',content:pr[type](d)}],sys());
-  txt.textContent=res;sH(titles[type]||type,res);
+  renderMD(txt,res);sH(titles[type]||type,res);
 }
 
 async function sC(){
@@ -596,7 +682,7 @@ async function sC(){
   hist.push({role:'user',content:msg});
   const res=await ai(hist,sys());
   hist.push({role:'assistant',content:res});
-  $(lid).outerHTML=`<div class="cm a"><div class="cw2">APEX</div><div class="cb">${res.replace(/\n/g,'<br>')}</div></div>`;
+  $(lid).outerHTML=`<div class="cm a"><div class="cw2">APEX</div><div class="cb">${mdToHtml(res)}</div></div>`;
   msgs.scrollTop=msgs.scrollHeight;
 }
 
@@ -617,15 +703,15 @@ function rH(){
 function shD(i){
   const h=JSON.parse(localStorage.getItem('ax_h')||'[]');
   if(!h[i])return;
-  $('ht').textContent=h[i].content;$('hd').style.display='block';$('hd').classList.add('on');
+  renderMD($('ht'),h[i].content);$('hd').style.display='block';$('hd').classList.add('on');
 }
 function clH(){localStorage.removeItem('ax_h');rH();$('hd').style.display='none';}
 
 // PDF
 async function mkPDF(srcId,title){
   const{jsPDF}=window.jspdf;
-  const content=$(srcId)?.textContent||'';
-  if(!content||content.length<10)return;
+  const el2=$(srcId);const content=el2?el2.textContent:'';
+  if(!content||content.trim().length<10)return;
   const d=D();
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   doc.setFillColor(0,0,5);doc.rect(0,0,210,297,'F');
@@ -648,6 +734,168 @@ async function mkPDF(srcId,title){
   doc.setFontSize(6.5);doc.setTextColor(37,35,56);
   doc.text('APEX — AI Business Intelligence',15,291);doc.text('Poufne. Wygenerowane przez AI.',195,291,{align:'right'});
   doc.save(title.replace(/ /g,'_')+'.pdf');
+}
+
+function mdToHtml(text){
+  if(!text) return '';
+  return text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--text);">$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/### (.+)/g,'<h3 style="color:var(--gold2);font-family:Playfair Display,serif;margin:14px 0 6px;font-size:0.9em;">$1</h3>')
+    .replace(/## (.+)/g,'<h2 style="color:var(--gold2);font-family:Playfair Display,serif;margin:16px 0 7px;font-size:1em;">$1</h2>')
+    .replace(/# (.+)/g,'<h2 style="color:var(--gold3);font-family:Playfair Display,serif;margin:16px 0 7px;font-size:1.05em;">$1</h2>')
+    .replace(/\n- (.+)/g,'<br><span style="color:var(--gold);margin-right:6px;">&#8250;</span>$1')
+    .replace(/\n(\d+)\. (.+)/g,'<br><span style="color:var(--gold2);font-weight:600;margin-right:6px;">$1.</span> $2')
+    .replace(/NAST\u0118PNY KROK:([\s\S]+?)(?=\n\n|$)/g,'<div style="background:rgba(200,169,110,0.08);border-left:2px solid var(--gold);padding:12px 16px;margin-top:16px;border-radius:2px;"><span style="color:var(--gold2);font-weight:600;display:block;margin-bottom:6px;">NAST\u0118PNY KROK</span>$1</div>')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>');
+}
+
+function renderMD(el,text){
+  el.innerHTML='<div class="rbd-rendered">'+mdToHtml(text)+'</div>';
+}
+
+// MARKET DATA
+let marketData = {};
+window.marketLoaded = false;
+
+async function loadMarket(){
+  $('mkt-time').textContent = 'Pobieranie danych...';
+  
+  try {
+    // CRYPTO - CoinGecko (free, no key)
+    const cr = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin,cardano&vs_currencies=pln,usd&include_24hr_change=true');
+    const crypto = await cr.json();
+    
+    const cryptoNames = {bitcoin:'Bitcoin (BTC)',ethereum:'Ethereum (ETH)',solana:'Solana (SOL)',binancecoin:'BNB',cardano:'Cardano (ADA)'};
+    $('mkt-crypto').innerHTML = Object.entries(crypto).map(([id,data])=>{
+      const chg = (data.pln_24h_change ? data.pln_24h_change.toFixed(2) : 0)||0;
+      const up = chg >= 0;
+      return `<div class="mkt-card">
+        <div class="mkt-name">${cryptoNames[id]||id}</div>
+        <div class="mkt-price">${Math.round(data.pln).toLocaleString('pl')} PLN</div>
+        <div class="mkt-change ${up?'up':'dn'}">${up?'+':''}${chg}% dziś</div>
+        <div class="mkt-sub">${(data.usd ? data.usd.toLocaleString('en',{style:'currency',currency:'USD'}) : "")}</div>
+      </div>`;
+    }).join('');
+    
+    marketData.crypto = crypto;
+    
+  } catch(e) {
+    $('mkt-crypto').innerHTML = '<div class="mkt-loading">Błąd ładowania krypto</div>';
+  }
+  
+  try {
+    // FX - NBP (free, Polish National Bank)
+    const fx = await fetch('https://api.nbp.pl/api/exchangerates/tables/A/?format=json');
+    const fxData = await fx.json();
+    const rates = fxData[0].rates;
+    const wanted = ['USD','EUR','GBP','CHF','JPY','CZK'];
+    const filtered = rates.filter(r=>wanted.includes(r.code));
+    
+    $('mkt-fx').innerHTML = filtered.map(r=>`<div class="mkt-card">
+      <div class="mkt-name">${r.currency} (${r.code})</div>
+      <div class="mkt-price">${r.mid.toFixed(4)} PLN</div>
+      <div class="mkt-sub">Kurs średni NBP</div>
+    </div>`).join('');
+    
+    marketData.fx = filtered;
+    
+  } catch(e) {
+    $('mkt-fx').innerHTML = '<div class="mkt-loading">Błąd ładowania kursów NBP</div>';
+  }
+  
+  try {
+    // COMMODITIES via CoinGecko metals tokens approx
+    const comm = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether-gold,pax-gold&vs_currencies=pln,usd&include_24hr_change=true');
+    const commData = await comm.json();
+    
+    const commNames = {'tether-gold':'Złoto (XAUT)','pax-gold':'Złoto (PAXG)'};
+    $('mkt-comm').innerHTML = Object.entries(commData).map(([id,data])=>{
+      const chg = (data.pln_24h_change ? data.pln_24h_change.toFixed(2) : 0)||0;
+      const up = chg>=0;
+      return `<div class="mkt-card">
+        <div class="mkt-name">${commNames[id]||id}</div>
+        <div class="mkt-price">${Math.round(data.pln).toLocaleString('pl')} PLN</div>
+        <div class="mkt-change ${up?'up':'dn'}">${up?'+':''}${chg}% dziś</div>
+        <div class="mkt-sub">${(data.usd ? data.usd.toLocaleString('en',{style:'currency',currency:'USD'}) : "")}</div>
+      </div>`;
+    }).join('');
+    
+    marketData.commodities = commData;
+    
+  } catch(e){
+    $('mkt-comm').innerHTML = '<div class="mkt-loading">Błąd ładowania surowców</div>';
+  }
+  
+  window.marketLoaded = true;
+  const now = new Date().toLocaleTimeString('pl');
+  $('mkt-time').textContent = `Ostatnia aktualizacja: ${now}`;
+  
+  // Update invest recommendation summary
+  updateInvestSummary();
+}
+
+function updateInvestSummary(){
+  if(!marketData.crypto) return;
+  const btc = marketData.crypto.bitcoin;
+  const eth = marketData.crypto.ethereum;
+  const sol = marketData.crypto.solana;
+  
+  const btcChg = (btc && btc.pln_24h_change ? btc.pln_24h_change.toFixed(1) : 0)||0;
+  const ethChg = (eth && eth.pln_24h_change ? eth.pln_24h_change.toFixed(1) : 0)||0;
+  const solChg = (sol && sol.pln_24h_change ? sol.pln_24h_change.toFixed(1) : 0)||0;
+  
+  $('invest-rec').innerHTML = `
+    <strong style="color:var(--gold2);display:block;margin-bottom:8px;">Snapshot rynku — ${new Date().toLocaleTimeString('pl')}</strong>
+    BTC: ${Math.round((btc ? btc.pln : 0)||0).toLocaleString('pl')} PLN (${btcChg>0?'+':''}${btcChg}% dziś)<br>
+    ETH: ${Math.round((eth ? eth.pln : 0)||0).toLocaleString('pl')} PLN (${ethChg>0?'+':''}${ethChg}% dziś)<br>
+    SOL: ${Math.round((sol ? sol.pln : 0)||0).toLocaleString('pl')} PLN (${solChg>0?'+':''}${solChg}% dziś)<br><br>
+    Kliknij poniżej aby AI przeanalizował te dane i powiedział gdzie teraz warto zainwestować Twój budżet.
+  `;
+}
+
+async function getInvestRec(){
+  if(!window.marketLoaded){ await loadMarket(); }
+  
+  const box=$('r-invest-ai'), txt=$('t-invest-ai');
+  box.classList.add('on'); ld(txt);
+  
+  const d=D();
+  const btc = marketData.crypto && marketData.crypto.bitcoin ? marketData.crypto.bitcoin : null;
+  const eth = marketData.crypto ? marketData.crypto.ethereum : null;
+  const sol = marketData.crypto ? marketData.crypto.solana : null;
+  const bnb = marketData.crypto ? marketData.crypto.binancecoin : null;
+  const ada = marketData.crypto ? marketData.crypto.cardano : null;
+  const usd = marketData.fx ? marketData.fx.find : function(){return null;}(r=>r.code==='USD');
+  const eur = marketData.fx ? marketData.fx.find : function(){return null;}(r=>r.code==='EUR');
+  
+  const prompt = `Mam ${d.budget} PLN do zainwestowania. Oto aktualne dane rynkowe z ${new Date().toLocaleString('pl')}:
+
+KRYPTOWALUTY (ceny live):
+- Bitcoin (BTC): ${Math.round((btc ? btc.pln : 0)||0).toLocaleString('pl')} PLN | zmiana 24h: ${(btc && btc.pln_24h_change ? btc.pln_24h_change.toFixed(2) : 0)||0}%
+- Ethereum (ETH): ${Math.round((eth ? eth.pln : 0)||0).toLocaleString('pl')} PLN | zmiana 24h: ${(eth && eth.pln_24h_change ? eth.pln_24h_change.toFixed(2) : 0)||0}%
+- Solana (SOL): ${Math.round((sol ? sol.pln : 0)||0).toLocaleString('pl')} PLN | zmiana 24h: ${(sol && sol.pln_24h_change ? sol.pln_24h_change.toFixed(2) : 0)||0}%
+- BNB: ${Math.round((bnb ? bnb.pln : 0)||0).toLocaleString('pl')} PLN | zmiana 24h: ${(bnb && bnb.pln_24h_change ? bnb.pln_24h_change.toFixed(2) : 0)||0}%
+- Cardano (ADA): ${Math.round((ada ? ada.pln : 0)||0).toLocaleString('pl')} PLN | zmiana 24h: ${(ada && ada.pln_24h_change ? ada.pln_24h_change.toFixed(2) : 0)||0}%
+
+KURSY WALUT (NBP):
+- USD: ${(usd ? usd.mid : 0)||0} PLN
+- EUR: ${(eur ? eur.mid : 0)||0} PLN
+
+Na podstawie TYCH DOKŁADNYCH danych powiedz mi:
+1. Gdzie teraz warto zainwestować moje ${d.budget} PLN i dlaczego (konkretne kwoty)
+2. Jakie jest ryzyko każdej opcji
+3. Na jaki czas horyzont inwestycyjny
+4. Ile mogę realnie zarobić w 30/90 dniach
+5. Czego ABSOLUTNIE unikać teraz i dlaczego`;
+
+  const res = await ai([{role:'user',content:prompt}], sys());
+  renderMD(txt, res);
+  sH('Rekomendacja inwestycyjna', res);
 }
 
 rc();
