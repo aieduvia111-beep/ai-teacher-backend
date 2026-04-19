@@ -178,6 +178,9 @@ ZASADY:
 - KLUCZOWE: jesli pytanie jest w "Naprawione" — znaczy ze uczen juz je opanowal — ZMNIEJSZ severity lub usun z holes
 - Jesli wszystkie bledy z danego tematu sa w "Naprawione" — USUN ten temat z holes calkowicie
 - Jesli polowa bledow naprawiona — zmien severity z high na medium lub medium na low
+- BARDZO WAZNE: bierz pod uwage TYLKO "Bledy (z opcjami)" — to sa prawdziwe bledy z nowych quizow
+- Jesli "Bledy (z opcjami)" = 0 dla danego przedmiotu — NIE dodawaj tego przedmiotu do holes, nawet jesli avg jest niski
+- Jesli avg >= 80% i brak bledow z opcjami — przedmiot jest opanowany, NIE dodawaj do holes
 - Uwzglednij WSZYSTKIE zrodla: quizy, notatki, ankiety, sprawdziany, plan nauki
 - Podaj TYLKO przedmioty ktore uczen faktycznie robil"""
 
@@ -339,15 +342,26 @@ def _build_data_summary(req: BrainRequest) -> str:
 
     # QUIZY
     if req.quizHistory:
-        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': [], 'repaired': []})
+        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': [], 'repaired': [], 'wrong_valid': 0})
         for q in req.quizHistory:
             s = q.get('subject', 'inne')
             correct = q.get('correct', 0)
             total = q.get('total', 1) or 1
             pct = q.get('pct') or round(correct / total * 100)
             subj_quiz[s]['scores'].append(pct)
-            for w in (q.get('wrongQuestions') or [])[:3]:
+
+            wrong_qs = q.get('wrongQuestions') or []
+
+            # KLUCZOWE: licz bledy tylko z pytan ktore maja opcje A-D
+            # Stare quizy bez opcji nie psuja analizy dziur
+            valid_wrong = [w for w in wrong_qs if w.get('options') and len(w.get('options', [])) >= 2]
+
+            for w in valid_wrong[:3]:
                 subj_quiz[s]['wrong'].append(w.get('question', '')[:50])
+
+            if valid_wrong:
+                subj_quiz[s]['wrong_valid'] += len(valid_wrong)
+
             # Naprawione pytania — zmniejszają severity dziury
             for r in (q.get('repairedQuestions') or []):
                 subj_quiz[s]['repaired'].append(r.get('question', '')[:50])
@@ -365,7 +379,8 @@ def _build_data_summary(req: BrainRequest) -> str:
                 old_avg = sum(scores[-6:-3]) / 3
                 new_avg = sum(scores[-3:]) / 3
                 trend = ' [rosnie]' if new_avg > old_avg + 5 else (' [spada]' if new_avg < old_avg - 5 else ' [stabilny]')
-            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Bledy: {wrong_str} | Naprawione: {repaired_str}")
+            valid_wrong_count = data.get('wrong_valid', 0)
+            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Bledy (z opcjami): {valid_wrong_count} | Przykladowe bledy: {wrong_str} | Naprawione: {repaired_str}")
 
     # NOTATKI
     if req.notesHistory:
