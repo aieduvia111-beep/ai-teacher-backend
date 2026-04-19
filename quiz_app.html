@@ -352,11 +352,20 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-window._fbSaveQuiz = async function(title, correct, total, xpEarned) {
+window._fbSaveQuiz = async function(title, correct, total, xpEarned, subject, wrongQuestions) {
   if (!currentUser) return;
   try {
     await updateDoc(doc(db, 'users', currentUser.uid), {
-      quizHistory: arrayUnion({title, correct, total, xp: xpEarned, timestamp: new Date().toISOString()}),
+      quizHistory: arrayUnion({
+        title,
+        correct,
+        total,
+        xp: xpEarned,
+        subject: subject || 'inne',
+        wrongQuestions: wrongQuestions || [],
+        pct: Math.round(correct/total*100),
+        timestamp: new Date().toISOString()
+      }),
       xp: increment(xpEarned)
     });
   } catch(e) { console.log('Firebase save error:', e); }
@@ -817,10 +826,16 @@ function go(u){window.location.href=u;}
 const QUIZ_KEY='eduvia_quiz_history';
 function getQuizHistory(){try{return JSON.parse(localStorage.getItem(QUIZ_KEY)||'[]');}catch{return[];}}
 function saveQuiz(title,correct,total,xpEarned){
-  // Zapisz do Firebase jesli dostepne
-  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned);
+  const subjectEl = document.getElementById('subject');
+  const subject = subjectEl ? subjectEl.value : 'inne';
+  // Zbierz błędne pytania
+  const wrongQs = wrongIndexes.map(function(i){
+    return questions[i] ? {question: questions[i].question, subject: subject} : null;
+  }).filter(Boolean);
+  // Zapisz do Firebase z pełnymi danymi
+  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned,subject,wrongQs);
   const h=getQuizHistory();
-  h.unshift({title,correct,total,xpEarned,time:Date.now()});
+  h.unshift({title,correct,total,xpEarned,subject,time:Date.now()});
   if(h.length>20)h.pop();
   localStorage.setItem(QUIZ_KEY,JSON.stringify(h));
 }

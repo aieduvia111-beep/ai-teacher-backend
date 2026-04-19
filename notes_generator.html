@@ -827,6 +827,46 @@ function mOpen(){document.getElementById('mDrawer').classList.add('open');docume
 function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
 function go(u){window.location.href=u;}
 
+function showUnderstandingPopup(topic, subject) {
+  // Usuń stary popup jeśli istnieje
+  const old = document.getElementById('understandingPopup');
+  if(old) old.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'understandingPopup';
+  popup.style.cssText = `
+    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+    background:linear-gradient(135deg,#0f0f1c,#131320);
+    border:1px solid rgba(124,106,255,0.3);border-radius:18px;
+    padding:18px 20px;z-index:9999;width:calc(100% - 40px);max-width:380px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:slideUp .3s ease;
+  `;
+  popup.innerHTML = `
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9em;margin-bottom:4px;">Jak oceniasz swoją wiedzę?</div>
+    <div style="font-size:.75em;color:#8890a4;margin-bottom:14px;">${topic}</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      ${[['😰','Nie rozumiem',1],['😐','Trochę',2],['😊','Rozumiem',3],['🔥','Świetnie!',4]].map(([emoji,label,val])=>`
+        <button onclick="saveUnderstanding('${topic}','${subject}',${val},this.parentElement.parentElement)" style="
+          flex:1;padding:10px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+          border-radius:12px;color:white;cursor:pointer;transition:all .15s;font-size:.85em;
+        ">
+          <div style="font-size:1.4em;margin-bottom:4px;">${emoji}</div>
+          <div style="font-size:.65em;color:#8890a4;">${label}</div>
+        </button>
+      `).join('')}
+    </div>
+  `;
+  document.body.appendChild(popup);
+  setTimeout(()=>{ if(popup.parentElement) popup.remove(); }, 15000);
+}
+
+function saveUnderstanding(topic, subject, level, popup) {
+  if(typeof window._fbSave==='function') {
+    window._fbSave('understandingHistory', {topic, subject, level, understood: level >= 3}, 0);
+  }
+  if(popup) popup.remove();
+}
+
 // ═══ STORAGE — PRAWDZIWE STATYSTYKI ═══
 const NOTES_KEY='eduvia_notes_history';
 function getNotes(){try{return JSON.parse(localStorage.getItem(NOTES_KEY)||'[]');}catch{return[];}}
@@ -948,9 +988,16 @@ async function generate(){
       // Zapisz do historii i XP
       saveNote(topicName);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
-      if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
+      const subjectVal = document.getElementById('przedmiot') ? document.getElementById('przedmiot').value : 'inne';
+      if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka', subject: subjectVal},30);
       localStorage.setItem('eduvia_xp',xp+50);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();},600);
+      setTimeout(()=>{
+        document.getElementById('loadingView').style.display='none';
+        document.getElementById('successView').style.display='block';
+        useLimit('notes');link.click();renderStats();
+        // Ankieta po notatce
+        setTimeout(()=>showUnderstandingPopup(topicName, subjectVal), 2000);
+      },600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
     clearInterval(stepTimer);

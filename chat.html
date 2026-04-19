@@ -1230,6 +1230,10 @@ async function sendMessage() {
     }
 
     history.push({ role: 'assistant', content: response.text || '' });
+    // Zapisz tytuł rozmowy do Firebase dla Brain
+    if(response.title && typeof window._fbSave === 'function') {
+      window._fbSave('chatHistory', {title: response.title, topic_en: response.topic_en || ''}, 0);
+    }
     // Finalny pass — po dodaniu WSZYSTKICH elementów
     setTimeout(() => renderLatex(aiGroup), 200);
     scrollDown();

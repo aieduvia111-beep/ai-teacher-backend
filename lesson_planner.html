@@ -973,6 +973,17 @@ function markDone(planId,dayIdx){
   var today=new Date().toISOString().split('T')[0];
   S.activity[today]=(S.activity[today]||0)+plan.minutes;
   save();
+  // Zapisz do Firebase dla Brain
+  var completedDay = plan.days[dayIdx];
+  if(typeof window._fbSave==='function') {
+    window._fbSave('lessonProgress',{
+      planTitle: plan.title||'Plan nauki',
+      subject: plan.subject||'inne',
+      dayNum: dayIdx+1,
+      tasks: completedDay.tasks||[],
+      date: today
+    }, 0);
+  }
   // Odśwież widok planu
   renderPlanResult(plan,plan.subject,plan.minutes,true);
 }
