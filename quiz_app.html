@@ -1094,19 +1094,64 @@ window.addEventListener('DOMContentLoaded',function(){
     let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
     for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
   }
-  // Brain Quiz — załaduj instrukcje z błędów
-  if(params.get('from') === 'brain') {
-    const instructions = localStorage.getItem('brain_quiz_instructions');
-    if(instructions) {
+  // Brain Quiz — automatyczne generowanie z błędów
+  if(params.get('from') === 'brain' && params.get('auto') === '1') {
+    const brainDataRaw = localStorage.getItem('brain_quiz_data');
+    if(brainDataRaw) {
+      const brainData = JSON.parse(brainDataRaw);
+      localStorage.removeItem('brain_quiz_data');
+
+      const wrongQs = brainData.wrongQuestions || [];
+      const topic = brainData.topic || 'Powtórka';
+      const subject = brainData.subject || 'inne';
+
+      // Ustaw formularz
+      const topicEl = document.getElementById('topic');
+      if(topicEl) topicEl.value = topic + ' ' + subject;
+      const subjectEl = document.getElementById('subject');
+      if(subjectEl) subjectEl.value = subject.toLowerCase();
+
+      // Buduj instrukcje z błędnych pytań
+      let instrukcje = '';
+      if(wrongQs.length > 0) {
+        const pytania = wrongQs.map(q => q.question || q).filter(Boolean).join('; ');
+        instrukcje = 'Wygeneruj quiz TYLKO z tych konkretnych tematów gdzie uczeń popełnił błędy: ' + pytania;
+      } else {
+        instrukcje = 'Wygeneruj trudny quiz sprawdzający dogłębną wiedzę z tematu ' + topic;
+      }
       const instrEl = document.getElementById('wlasneInstrukcje');
-      if(instrEl) instrEl.value = instructions;
-      localStorage.removeItem('brain_quiz_instructions');
-      // Pokaż info że to quiz z Brain
-      const info = document.createElement('div');
-      info.style.cssText = 'background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.25);border-radius:10px;padding:10px 14px;font-size:.78em;color:#a78bfa;margin-bottom:12px;';
-      info.textContent = '🧠 Brain przygotował quiz z Twoich błędów';
-      const form = document.querySelector('.setup-card') || document.querySelector('.form-card');
-      if(form) form.insertBefore(info, form.firstChild);
+      if(instrEl) instrEl.value = instrukcje;
+
+      // Pokaż loading i auto-generuj po 300ms
+      showPage('pageLoading');
+      setTimeout(function() {
+        const BASE = 'https://ai-teacher-backend-1.onrender.com';
+        fetch(BASE+'/api/v1/quiz/generate-topic', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            topic: topic,
+            subject: subject,
+            level: localStorage.getItem('eduvia_plan') === 'pro' ? 'liceum' : 'podstawowe',
+            num_questions: 10,
+            difficulty: 'trudny',
+            wlasne_instrukcje: instrukcje
+          })
+        })
+        .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
+        .then(function(d){
+          if(!d.success)throw new Error(d.error||'Błąd');
+          quiz=d.quiz;
+          useLimit('quiz');
+          beginQuiz(quiz.questions, false);
+          // Zmień tytuł quizu
+          document.getElementById('quizTitle').textContent = 'Brain Quiz — ' + topic;
+        })
+        .catch(function(e){
+          showPage('pageSetup');
+          alert('Błąd generowania: ' + e.message);
+        });
+      }, 300);
     }
   }
 });
