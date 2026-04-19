@@ -190,11 +190,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
 .fix-btn svg{width:11px;height:11px;}
 
 /* ── SIMULATE BTN ── */
-.sim-btn{width:100%;margin-top:20px;padding:16px;background:linear-gradient(135deg,rgba(124,106,255,.18),rgba(34,211,160,.08));border:1px solid rgba(124,106,255,.3);border-radius:16px;color:white;font-family:var(--h);font-weight:800;font-size:.9em;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;overflow:hidden;}
-.sim-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,255,.1),rgba(34,211,160,.05));opacity:0;transition:.25s;}
-.sim-btn:hover::before{opacity:1;}
-.sim-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(124,106,255,.3);}
-.sim-btn svg{width:17px;height:17px;}
+.brain-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px;}
+.sim-btn{width:100%;padding:15px 10px;border-radius:16px;color:white;font-family:var(--h);font-weight:800;font-size:.82em;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;border:1px solid;letter-spacing:-.01em;}
+.sim-btn.quiz-btn{background:linear-gradient(135deg,rgba(34,211,160,.12),rgba(34,211,160,.04));border-color:rgba(34,211,160,.28);}
+.sim-btn.quiz-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(34,211,160,.2);background:linear-gradient(135deg,rgba(34,211,160,.2),rgba(34,211,160,.08));}
+.sim-btn.exam-btn{background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(124,106,255,.05));border-color:rgba(124,106,255,.28);}
+.sim-btn.exam-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(124,106,255,.25);background:linear-gradient(135deg,rgba(124,106,255,.22),rgba(124,106,255,.08));}
+.sim-btn svg{width:15px;height:15px;flex-shrink:0;}
+.sim-btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important;}
+@media(max-width:480px){.brain-actions{grid-template-columns:1fr;}}
 
 /* ── NO DATA ── */
 .no-data{background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;padding:32px 24px;text-align:center;}
@@ -346,10 +350,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
       </div>
 
       <!-- Simulate -->
-      <button class="sim-btn" id="simBtn" onclick="simulateExam()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        Wyślij Brain na sprawdzian
-      </button>
+      <div class="brain-actions">
+        <button class="sim-btn quiz-btn" id="quizBtn" onclick="brainQuiz()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Quiz z moich błędów
+        </button>
+        <button class="sim-btn exam-btn" id="examBtn" onclick="brainExam()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Sprawdzian z dziur
+        </button>
+      </div>
 
     </div><!-- /brain-content -->
   </div><!-- /main -->
@@ -424,6 +434,10 @@ async function loadBrain() {
     if (!snap.exists()) { showNoData(); return; }
 
     const data = snap.data();
+
+    // Zbierz błędne pytania z historii quizów dla Brain Quiz
+    const wrongQs = (data.quizHistory || []).flatMap(q => q.wrongQuestions || []).filter(Boolean);
+    window._brainWrongQuestions = wrongQs;
 
     const payload = {
       uid: window._uid,

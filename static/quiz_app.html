@@ -1094,6 +1094,21 @@ window.addEventListener('DOMContentLoaded',function(){
     let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
     for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
   }
+  // Brain Quiz — załaduj instrukcje z błędów
+  if(params.get('from') === 'brain') {
+    const instructions = localStorage.getItem('brain_quiz_instructions');
+    if(instructions) {
+      const instrEl = document.getElementById('wlasneInstrukcje');
+      if(instrEl) instrEl.value = instructions;
+      localStorage.removeItem('brain_quiz_instructions');
+      // Pokaż info że to quiz z Brain
+      const info = document.createElement('div');
+      info.style.cssText = 'background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.25);border-radius:10px;padding:10px 14px;font-size:.78em;color:#a78bfa;margin-bottom:12px;';
+      info.textContent = '🧠 Brain przygotował quiz z Twoich błędów';
+      const form = document.querySelector('.setup-card') || document.querySelector('.form-card');
+      if(form) form.insertBefore(info, form.firstChild);
+    }
+  }
 });
 
 /* ── MULTI-ZDJECIA ── */
