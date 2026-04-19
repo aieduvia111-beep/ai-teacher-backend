@@ -586,7 +586,23 @@ function showNoData() {
 }
 
 function fixHole(subject, topic) {
-  window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(topic + ' ' + subject);
+  // Zbierz błędne pytania dla tego konkretnego przedmiotu
+  const allWrong = window._brainWrongQuestions || [];
+  const relevantWrong = allWrong.filter(q => {
+    const qText = (q.question || '').toLowerCase();
+    const topicLow = topic.toLowerCase();
+    return qText.includes(topicLow) || (q.subject || '').toLowerCase().includes(subject.toLowerCase());
+  });
+
+  const brainData = {
+    topic: topic,
+    subject: subject,
+    wrongQuestions: relevantWrong.length > 0 ? relevantWrong : allWrong.slice(0, 5),
+    autoGenerate: true,
+    fromHole: true
+  };
+  localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
+  window.location.href = 'quiz_app.html?from=brain&auto=1';
 }
 
 function _getWeakTopic() {
@@ -605,18 +621,10 @@ function _getWeakTopic() {
 function brainQuiz() {
   const {topic, subject} = _getWeakTopic();
   const wrongQs = window._brainWrongQuestions || [];
-
-  // Zapisz błędne pytania i temat do localStorage
-  const brainData = {
-    topic: topic,
-    subject: subject,
-    wrongQuestions: wrongQs.slice(0, 10),
-    autoGenerate: true
-  };
-  localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
-
-  // Przejdź do quiz z flagą autogenerate
-  window.location.href = 'quiz_app.html?from=brain&auto=1';
+  if (wrongQs.length > 0) {
+    localStorage.setItem('brain_quiz_instructions', 'Wygeneruj quiz TYLKO z tych tematów: ' + wrongQs.slice(0,5).map(q => q.question || q).join('; '));
+  }
+  window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(topic + ' ' + subject) + '&from=brain';
 }
 
 function brainExam() {
