@@ -16,60 +16,15 @@ client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 # ── MODELE ──────────────────────────────────────────────────────────────────
 
-class QuizEntry(BaseModel):
-    title: str
-    subject: str = "inne"
-    correct: int = 0
-    total: int = 1
-    pct: Optional[int] = None
-    wrongQuestions: Optional[List[Dict]] = []
-    timestamp: Optional[str] = None
-
-class NoteEntry(BaseModel):
-    topic: str
-    subject: str = "inne"
-    timestamp: Optional[str] = None
-
-class UnderstandingEntry(BaseModel):
-    topic: str
-    subject: str = "inne"
-    level: int = 2
-    understood: bool = False
-    timestamp: Optional[str] = None
-
-class ExamEntry(BaseModel):
-    topic: str
-    subject: str = "inne"
-    timestamp: Optional[str] = None
-
-class ExamResult(BaseModel):
-    topic: str
-    subject: str = "inne"
-    level: int = 2
-    passed: bool = False
-    timestamp: Optional[str] = None
-
-class ChatEntry(BaseModel):
-    title: str
-    topic_en: Optional[str] = ""
-    timestamp: Optional[str] = None
-
-class LessonEntry(BaseModel):
-    planTitle: str
-    subject: str = "inne"
-    dayNum: int = 1
-    tasks: Optional[List[str]] = []
-    date: Optional[str] = None
-
 class BrainRequest(BaseModel):
     uid: str
-    quizHistory: Optional[List[QuizEntry]] = []
-    notesHistory: Optional[List[NoteEntry]] = []
-    understandingHistory: Optional[List[UnderstandingEntry]] = []
-    examHistory: Optional[List[ExamEntry]] = []
-    examResults: Optional[List[ExamResult]] = []
-    chatHistory: Optional[List[ChatEntry]] = []
-    lessonProgress: Optional[List[LessonEntry]] = []
+    quizHistory: Optional[List[Dict[str, Any]]] = []
+    notesHistory: Optional[List[Dict[str, Any]]] = []
+    understandingHistory: Optional[List[Dict[str, Any]]] = []
+    examHistory: Optional[List[Dict[str, Any]]] = []
+    examResults: Optional[List[Dict[str, Any]]] = []
+    chatHistory: Optional[List[Dict[str, Any]]] = []
+    lessonProgress: Optional[List[Dict[str, Any]]] = []
 
 
 # ── ENDPOINT ─────────────────────────────────────────────────────────────────
@@ -170,56 +125,62 @@ ZASADY:
 def _build_data_summary(req: BrainRequest) -> str:
     """Buduje czytelne podsumowanie danych dla OpenAI"""
     lines = []
+    rating_map = {1: "Nie rozumiem", 2: "Troche", 3: "Rozumiem", 4: "Swietnie"}
 
     # Quizy
     if req.quizHistory:
-        lines.append(f"\n=== QUIZY ({len(req.quizHistory)} quizów) ===")
-        for q in req.quizHistory[-20:]:  # max 20 ostatnich
-            pct = q.pct or (round(q.correct / q.total * 100) if q.total > 0 else 0)
-            wrong = [w.get('question', '')[:50] for w in (q.wrongQuestions or [])][:3]
-            line = f"- {q.subject}: '{q.title}' — {pct}% ({q.correct}/{q.total})"
+        lines.append(f"\n=== QUIZY ({len(req.quizHistory)} quizow) ===")
+        for q in req.quizHistory[-20:]:
+            correct = q.get('correct', 0)
+            total = q.get('total', 1) or 1
+            pct = q.get('pct') or round(correct / total * 100)
+            subject = q.get('subject', 'inne')
+            title = q.get('title', 'Quiz')
+            wrong = [w.get('question', '')[:50] for w in (q.get('wrongQuestions') or [])][:3]
+            line = f"- {subject}: '{title}' — {pct}% ({correct}/{total})"
             if wrong:
-                line += f" | Błędne: {', '.join(wrong)}"
+                line += f" | Bledne: {', '.join(wrong)}"
             lines.append(line)
 
     # Notatki
     if req.notesHistory:
         lines.append(f"\n=== NOTATKI ({len(req.notesHistory)} notatek) ===")
         for n in req.notesHistory[-15:]:
-            lines.append(f"- {n.subject}: '{n.topic}'")
+            lines.append(f"- {n.get('subject','inne')}: '{n.get('topic','')}'")
 
-    # Ankiety po notatkach
+    # Ankiety
     if req.understandingHistory:
-        lines.append(f"\n=== OCENY WIEDZY PO NOTATKACH ===")
-        rating_map = {1: "😰 Nie rozumiem", 2: "😐 Trochę", 3: "😊 Rozumiem", 4: "🔥 Świetnie!"}
+        lines.append(f"\n=== OCENY WIEDZY ===")
         for u in req.understandingHistory[-15:]:
-            lines.append(f"- {u.subject}: '{u.topic}' → {rating_map.get(u.level, '?')}")
+            level = u.get('level', 2)
+            lines.append(f"- {u.get('subject','inne')}: '{u.get('topic','')}' -> {rating_map.get(level, '?')}")
 
     # Sprawdziany
     if req.examHistory:
-        lines.append(f"\n=== SPRAWDZIANY ({len(req.examHistory)} sprawdzianów) ===")
+        lines.append(f"\n=== SPRAWDZIANY ({len(req.examHistory)}) ===")
         for e in req.examHistory[-10:]:
-            lines.append(f"- {e.subject}: '{e.topic}'")
+            lines.append(f"- {e.get('subject','inne')}: '{e.get('topic','')}'")
 
-    # Wyniki sprawdzianów
+    # Wyniki sprawdzianow
     if req.examResults:
-        lines.append(f"\n=== WYNIKI SPRAWDZIANÓW ===")
-        rating_map = {1: "😰 Słabo", 2: "😐 Ujdzie", 3: "😊 Dobrze", 4: "🔥 Świetnie!"}
+        lines.append(f"\n=== WYNIKI SPRAWDZIANOW ===")
         for r in req.examResults[-10:]:
-            lines.append(f"- {r.subject}: '{r.topic}' → {rating_map.get(r.level, '?')}")
+            level = r.get('level', 2)
+            lines.append(f"- {r.get('subject','inne')}: '{r.get('topic','')}' -> {rating_map.get(level, '?')}")
 
     # Chat
     if req.chatHistory:
-        lines.append(f"\n=== TEMATY ROZMÓW Z AI ({len(req.chatHistory)} rozmów) ===")
+        lines.append(f"\n=== TEMATY CZATU ({len(req.chatHistory)}) ===")
         for c in req.chatHistory[-15:]:
-            lines.append(f"- '{c.title}'")
+            lines.append(f"- '{c.get('title','')}'")
 
     # Plan nauki
     if req.lessonProgress:
-        lines.append(f"\n=== PLAN NAUKI — UKOŃCZONE DNI ({len(req.lessonProgress)} dni) ===")
+        lines.append(f"\n=== PLAN NAUKI — UKONCZONE DNI ({len(req.lessonProgress)}) ===")
         for l in req.lessonProgress[-10:]:
-            tasks = ', '.join(l.tasks[:2]) if l.tasks else ''
-            lines.append(f"- {l.subject}: Dzień {l.dayNum} — {tasks}")
+            tasks = l.get('tasks', [])
+            tasks_str = ', '.join(tasks[:2]) if tasks else ''
+            lines.append(f"- {l.get('subject','inne')}: Dzien {l.get('dayNum',1)} — {tasks_str}")
 
     return '\n'.join(lines) if lines else "Brak danych"
 
