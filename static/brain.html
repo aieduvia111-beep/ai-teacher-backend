@@ -390,20 +390,70 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
         <a class="start-btn" onclick="go('quiz_app.html')">Zacznij od quizu</a>
       </div>
 
+      <!-- BRAIN LEVEL -->
+      <div id="brainLevelCard" style="display:none;background:linear-gradient(135deg,var(--s1),rgba(22,22,34,.7));border:1px solid rgba(124,106,255,.25);border-radius:20px;padding:20px;margin-bottom:12px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.8),rgba(34,211,160,.4),transparent);"></div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div id="brainLevelOrb" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-size:1.8em;flex-shrink:0;box-shadow:0 0 28px rgba(124,106,255,.6);transition:all .6s;">&#x1F9E0;</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <div id="brainLevelName" style="font-family:var(--h);font-weight:900;font-size:1em;color:white;">Nowicjusz</div>
+              <div id="brainLevelBadge" style="font-family:var(--h);font-size:.6em;font-weight:700;padding:2px 8px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;color:var(--accent2);">LVL 1</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div id="brainScoreVal" style="font-family:var(--h);font-weight:900;font-size:1.6em;background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">0</div>
+              <div style="font-size:.7em;color:var(--muted2);">Brain Score</div>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;">
+              <div id="brainLevelBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:100px;transition:width 1.4s cubic-bezier(.4,0,.2,1);"></div>
+            </div>
+            <div id="brainLevelNext" style="font-size:.65em;color:var(--muted);margin-top:4px;">Zrob quizy zeby zdobyc Brain Score!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRZEWIDYWANIE OCENY -->
+      <div id="predictCard" style="display:none;background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(34,211,160,.03));border:1px solid rgba(56,189,248,.2);border-radius:20px;padding:20px;margin-bottom:12px;">
+        <div style="font-family:var(--h);font-weight:800;font-size:.84em;color:var(--blue);display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Przewidz swojaocene
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="predictTopic" type="text" placeholder="Temat sprawdzianu np. Fotosynteza" style="flex:2;min-width:140px;padding:10px 13px;background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;color:var(--text);font-family:var(--b);font-size:.83em;outline:none;transition:border .2s;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border-hi)'" onkeypress="if(event.key==='Enter')predictGrade()">
+          <input id="predictSubject" type="text" placeholder="Przedmiot" style="flex:1;min-width:100px;padding:10px 13px;background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;color:var(--text);font-family:var(--b);font-size:.83em;outline:none;transition:border .2s;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border-hi)'" onkeypress="if(event.key==='Enter')predictGrade()">
+          <button onclick="predictGrade()" id="predictBtn" style="padding:10px 16px;background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(56,189,248,.05));border:1px solid rgba(56,189,248,.3);border-radius:11px;color:var(--blue);font-family:var(--h);font-weight:700;font-size:.78em;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s;">Przewiduj &#x1F52E;</button>
+        </div>
+        <div id="predictResult" style="display:none;margin-top:14px;padding:14px;background:rgba(0,0,0,.25);border-radius:14px;border:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+            <div id="predictGradeOrb" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#22d3a0);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:900;font-size:1.5em;color:white;flex-shrink:0;box-shadow:0 0 20px rgba(56,189,248,.4);">3</div>
+            <div>
+              <div id="predictGradeLabel" style="font-family:var(--h);font-weight:800;font-size:.9em;color:white;margin-bottom:2px;">Przewidujeocene 3+</div>
+              <div id="predictConfidence" style="font-size:.7em;color:var(--muted2);">Pewnosc: srednia</div>
+            </div>
+          </div>
+          <div id="predictAnalysis" style="font-size:.78em;color:var(--muted2);line-height:1.6;margin-bottom:10px;"></div>
+          <div id="predictTopics" style="display:none;">
+            <div style="font-family:var(--h);font-size:.63em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;">Powtorz przed sprawdzianem:</div>
+            <div id="predictTopicsList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+          <div id="predictEncouragement" style="margin-top:10px;font-size:.78em;color:var(--green);font-style:italic;"></div>
+        </div>
+      </div>
+
       <!-- ACTIONS -->
       <div class="actions-grid">
         <button class="act-btn quiz-act" id="quizBtn" onclick="brainQuiz()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <div class="act-btn-content">
-            <div class="act-btn-title">Quiz z moich błędów</div>
-            <div class="act-btn-sub">Brain generuje pytania z miejsc gdzie popełniasz błędy</div>
+            <div class="act-btn-title">Quiz z moich bledow</div>
+            <div class="act-btn-sub">Brain generuje pytania z miejsc gdzie popelniasz bledy</div>
           </div>
         </button>
         <button class="act-btn exam-act" id="examBtn" onclick="brainExam()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <div class="act-btn-content">
             <div class="act-btn-title">Sprawdzian z dziur</div>
-            <div class="act-btn-sub">PDF sprawdzianu z najtrudniejszych tematów</div>
+            <div class="act-btn-sub">PDF sprawdzianu z najtrudniejszych tematow</div>
           </div>
         </button>
       </div>
@@ -476,6 +526,10 @@ async function loadBrain() {
     const data = snap.data();
     const wrongQs = (data.quizHistory || []).flatMap(q => q.wrongQuestions || []).filter(Boolean);
     window._brainWrongQuestions = wrongQs;
+    // Zapisz raw data dla predictGrade
+    window._rawQuizHistory = data.quizHistory || [];
+    window._rawUnderstandingHistory = data.understandingHistory || [];
+    window._rawExamResults = data.examResults || [];
     const payload = {
       uid: window._uid,
       quizHistory: data.quizHistory || [],
@@ -493,6 +547,7 @@ async function loadBrain() {
     const result = await res.json();
     if (!result.success) throw new Error('Błąd analizy');
     renderBrain(result);
+    renderBrainLevel(result);
   } catch(e) {
     console.error('Brain error:', e);
     document.getElementById('brainLoading').style.display = 'none';
@@ -748,6 +803,144 @@ function brainExam() {
     setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.style.borderColor = ''; }, 3000);
   })
   .catch(() => { btn.innerHTML = orig; btn.disabled = false; });
+}
+
+// ── BRAIN LEVEL ──────────────────────────────────────────────────────────────
+
+function renderBrainLevel(data) {
+  if (!data || data.brain_score === undefined) return;
+
+  const score = data.brain_score || 0;
+  const level = data.brain_level || 1;
+  const name = data.brain_level_name || 'Nowicjusz';
+  const color = data.brain_level_color || 'gray';
+  const toNext = data.score_to_next || 0;
+  const nextThreshold = data.next_threshold || 50;
+
+  // Pokaż kartę
+  document.getElementById('brainLevelCard').style.display = 'block';
+  document.getElementById('predictCard').style.display = 'block';
+
+  // Animuj score
+  const scoreEl = document.getElementById('brainScoreVal');
+  let cur = 0;
+  const step = Math.max(1, Math.floor(score / 40));
+  const t = setInterval(() => {
+    cur = Math.min(cur + step, score);
+    scoreEl.textContent = cur;
+    if (cur >= score) clearInterval(t);
+  }, 30);
+
+  document.getElementById('brainLevelName').textContent = name;
+  document.getElementById('brainLevelBadge').textContent = 'LVL ' + level;
+  document.getElementById('brainLevelNext').textContent = toNext > 0 ? toNext + ' pkt do poziomu ' + (level + 1) : 'Maksymalny poziom!';
+
+  // Pasek progresu
+  const prevThreshold = nextThreshold - toNext - (score - (nextThreshold - toNext));
+  const pct = nextThreshold > 0 ? Math.min(100, Math.round((score / nextThreshold) * 100)) : 100;
+  setTimeout(() => {
+    document.getElementById('brainLevelBar').style.width = pct + '%';
+  }, 300);
+
+  // Kolory i animacja orba wg poziomu
+  const orb = document.getElementById('brainLevelOrb');
+  const badge = document.getElementById('brainLevelBadge');
+  if (color === 'rainbow') {
+    orb.style.background = 'linear-gradient(135deg,#f472b6,#a78bfa,#38bdf8,#22d3a0,#f5a623)';
+    orb.style.boxShadow = '0 0 40px rgba(167,139,250,.7), 0 0 80px rgba(56,189,248,.3)';
+    orb.style.animation = 'rot 3s linear infinite';
+    badge.style.background = 'linear-gradient(135deg,rgba(244,114,182,.2),rgba(56,189,248,.2))';
+    badge.style.borderColor = 'rgba(167,139,250,.5)';
+    badge.style.color = '#f472b6';
+    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#f472b6,#a78bfa,#38bdf8,#22d3a0)';
+  } else if (color === 'gold') {
+    orb.style.background = 'linear-gradient(135deg,#f5a623,#f59e0b,#fcd34d)';
+    orb.style.boxShadow = '0 0 32px rgba(245,166,35,.6)';
+    badge.style.background = 'rgba(245,166,35,.15)';
+    badge.style.borderColor = 'rgba(245,166,35,.4)';
+    badge.style.color = '#f5a623';
+    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#f5a623,#fcd34d)';
+  } else if (color === 'purple') {
+    orb.style.background = 'linear-gradient(135deg,#7c6aff,#a78bfa,#c4b5fd)';
+    orb.style.boxShadow = '0 0 28px rgba(124,106,255,.6)';
+  } else if (color === 'blue') {
+    orb.style.background = 'linear-gradient(135deg,#38bdf8,#0ea5e9,#7dd3fc)';
+    orb.style.boxShadow = '0 0 28px rgba(56,189,248,.5)';
+    badge.style.background = 'rgba(56,189,248,.12)';
+    badge.style.borderColor = 'rgba(56,189,248,.35)';
+    badge.style.color = '#38bdf8';
+    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#38bdf8,#22d3a0)';
+  }
+}
+
+// ── PRZEWIDYWANIE OCENY ──────────────────────────────────────────────────────
+
+async function predictGrade() {
+  const topic = document.getElementById('predictTopic').value.trim();
+  const subject = document.getElementById('predictSubject').value.trim();
+  if (!topic || !subject) {
+    document.getElementById('predictTopic').style.borderColor = 'var(--red)';
+    setTimeout(() => document.getElementById('predictTopic').style.borderColor = '', 1500);
+    return;
+  }
+
+  const btn = document.getElementById('predictBtn');
+  btn.textContent = 'Analizuje...';
+  btn.disabled = true;
+
+  try {
+    const payload = {
+      uid: window._uid || 'unknown',
+      exam_topic: topic,
+      exam_subject: subject,
+      quizHistory: window._rawQuizHistory || [],
+      understandingHistory: window._rawUnderstandingHistory || [],
+      examResults: window._rawExamResults || []
+    };
+
+    const res = await fetch(BACKEND + '/api/v1/brain/predict', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!data.success) throw new Error('Blad');
+
+    // Renderuj wynik
+    const gradeColors = {
+      1: 'linear-gradient(135deg,#ef4444,#b91c1c)',
+      2: 'linear-gradient(135deg,#f87171,#ef4444)',
+      3: 'linear-gradient(135deg,#f5a623,#d97706)',
+      4: 'linear-gradient(135deg,#38bdf8,#0ea5e9)',
+      5: 'linear-gradient(135deg,#22d3a0,#059669)',
+      6: 'linear-gradient(135deg,#a78bfa,#7c6aff)'
+    };
+    const grade = data.predicted_grade || 3;
+
+    document.getElementById('predictGradeOrb').textContent = data.predicted_grade_label || grade;
+    document.getElementById('predictGradeOrb').style.background = gradeColors[grade] || gradeColors[3];
+    document.getElementById('predictGradeLabel').textContent = 'Przewiduję ocenę ' + (data.predicted_grade_label || grade);
+    document.getElementById('predictConfidence').textContent = 'Pewność: ' + (data.confidence || 'średnia') + ' — ' + (data.confidence_reason || '');
+    document.getElementById('predictAnalysis').textContent = data.analysis || '';
+    document.getElementById('predictEncouragement').textContent = data.encouragement || '';
+
+    const topics = data.topics_to_review || [];
+    if (topics.length > 0) {
+      document.getElementById('predictTopics').style.display = 'block';
+      document.getElementById('predictTopicsList').innerHTML = topics.map(t =>
+        '<span style="padding:4px 11px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:100px;font-size:.72em;color:var(--blue);">' + t + '</span>'
+      ).join('');
+    }
+
+    document.getElementById('predictResult').style.display = 'block';
+
+  } catch(e) {
+    btn.textContent = 'Błąd — spróbuj ponownie';
+  } finally {
+    btn.textContent = 'Przewiduj 🔮';
+    btn.disabled = false;
+  }
 }
 </script>
 
