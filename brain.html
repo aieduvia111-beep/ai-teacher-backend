@@ -686,30 +686,32 @@ function examHole(subject, topic, btn) {
 }
 
 function fixHole(subject, topic) {
-  // Zbierz TYLKO pytania pasujące do tematu I przedmiotu jednocześnie
   const allWrong = window._brainWrongQuestions || [];
   const tl = topic.toLowerCase();
   const sl = subject.toLowerCase();
+
+  // Szukaj błędów pasujących do tego tematu/przedmiotu
   const relevant = allWrong.filter(function(q) {
     const qs = (q.subject||'').toLowerCase();
     const qtopic = (q.topic||q.title||'').toLowerCase();
-    // Sprawdź po polu topic (temat quizu) — najbardziej precyzyjne
-    const topicMatch = qtopic.includes(tl) || tl.includes(qtopic.split(' ')[0]);
+    const topicMatch = qtopic.includes(tl) || tl.includes(qtopic.split(/[\s\-]/)[0]);
     const subjectMatch = qs.includes(sl) || sl.includes(qs);
     return topicMatch || subjectMatch;
   });
+
+  // Jeśli brak błędów z TEGO tematu — weź WSZYSTKIE błędy użytkownika
+  // Brain już wie że ten temat jest słaby — quiz ma po prostu powtórzyć błędy
+  const questionsToUse = relevant.length > 0 ? relevant : allWrong;
 
   const brainData = {
     topic: topic,
     subject: subject,
     autoGenerate: true,
-    // forceAI tylko gdy BRAK pasujących błędnych pytań
-    forceAI: relevant.length === 0,
-    instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow ani przedmiotow.',
-    wrongQuestions: relevant.length > 0 ? relevant.slice(0, 10) : []
+    forceAI: questionsToUse.length === 0,
+    instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow.',
+    wrongQuestions: questionsToUse.slice(0, 10)
   };
 
-  // Wyczyść stary quiz z localStorage przed nowym
   localStorage.removeItem('brain_quiz_data');
   localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
   window.location.href = 'quiz_app.html?from=brain&auto=1&t=' + Date.now();
