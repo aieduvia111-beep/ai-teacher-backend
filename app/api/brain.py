@@ -123,64 +123,106 @@ ZASADY:
 
 
 def _build_data_summary(req: BrainRequest) -> str:
-    """Buduje czytelne podsumowanie danych dla OpenAI"""
+    """Buduje zagregowane podsumowanie danych dla OpenAI.
+    Zamiast listować każdy wpis osobno, agreguje per przedmiot
+    — dzięki temu prompt jest ~10x krótszy niezależnie od liczby wpisów.
+    """
+    from collections import defaultdict
     lines = []
     rating_map = {1: "Nie rozumiem", 2: "Troche", 3: "Rozumiem", 4: "Swietnie"}
 
-    # Quizy
+    # ── QUIZY — agregacja per przedmiot ──────────────────────────────────────
     if req.quizHistory:
-        lines.append(f"\n=== QUIZY ({len(req.quizHistory)} quizow) ===")
-        for q in req.quizHistory[-20:]:
+        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': [], 'titles': []})
+        for q in req.quizHistory:  # bierzemy WSZYSTKIE, ale agregujemy
+            s = q.get('subject', 'inne')
             correct = q.get('correct', 0)
             total = q.get('total', 1) or 1
             pct = q.get('pct') or round(correct / total * 100)
-            subject = q.get('subject', 'inne')
-            title = q.get('title', 'Quiz')
-            wrong = [w.get('question', '')[:50] for w in (q.get('wrongQuestions') or [])][:3]
-            line = f"- {subject}: '{title}' — {pct}% ({correct}/{total})"
-            if wrong:
-                line += f" | Bledne: {', '.join(wrong)}"
-            lines.append(line)
+            subj_quiz[s]['scores'].append(pct)
+            subj_quiz[s]['titles'].append(q.get('title', '')[:30])
+            for w in (q.get('wrongQuestions') or [])[:3]:
+                subj_quiz[s]['wrong'].append(w.get('question', '')[:50])
 
-    # Notatki
+        lines.append(f"\n=== QUIZY (łącznie {len(req.quizHistory)}, zagregowane per przedmiot) ===")
+        for subj, data in subj_quiz.items():
+            avg = round(sum(data['scores']) / len(data['scores']))
+            # ostatnie 3 unikalne błędy
+            wrong_uniq = list(dict.fromkeys(data['wrong']))[:3]
+            wrong_str = ' | '.join(wrong_uniq) if wrong_uniq else 'brak'
+            # trend: ostatnie 3 vs poprzednie 3
+            scores = data['scores']
+            trend = ''
+            if len(scores) >= 6:
+                old_avg = sum(scores[-6:-3]) / 3
+                new_avg = sum(scores[-3:]) / 3
+                trend = ' [TREND: rośnie]' if new_avg > old_avg + 5 else (' [TREND: spada]' if new_avg < old_avg - 5 else ' [TREND: stabilny]')
+            lines.append(f"- {subj}: {len(scores)} quizów, avg {avg}%{trend} | Najczęstsze błędy: {wrong_str}")
+
+    # ── NOTATKI — agregacja per przedmiot ────────────────────────────────────
     if req.notesHistory:
-        lines.append(f"\n=== NOTATKI ({len(req.notesHistory)} notatek) ===")
-        for n in req.notesHistory[-15:]:
-            lines.append(f"- {n.get('subject','inne')}: '{n.get('topic','')}'")
+        subj_notes = defaultdict(list)
+        for n in req.notesHistory:
+            subj_notes[n.get('subject', 'inne')].append(n.get('topic', ''))
+        lines.append(f"\n=== NOTATKI (łącznie {len(req.notesHistory)}) ===")
+        for subj, topics in subj_notes.items():
+            lines.append(f"- {subj}: {len(topics)} notatek | Tematy: {', '.join(topics[-3:])}")
 
-    # Ankiety
+    # ── ANKIETY PO NOTATKACH — agregacja per przedmiot ───────────────────────
     if req.understandingHistory:
-        lines.append(f"\n=== OCENY WIEDZY ===")
-        for u in req.understandingHistory[-15:]:
-            level = u.get('level', 2)
-            lines.append(f"- {u.get('subject','inne')}: '{u.get('topic','')}' -> {rating_map.get(level, '?')}")
+        subj_und = defaultdict(list)
+        for u in req.understandingHistory:
+            subj_und[u.get('subject', 'inne')].append({
+                'topic': u.get('topic', ''),
+                'level': u.get('level', 2)
+            })
+        lines.append(f"\n=== OCENY ZROZUMIENIA (łącznie {len(req.understandingHistory)}) ===")
+        for subj, items in subj_und.items():
+            avg_level = sum(i['level'] for i in items) / len(items)
+            # tematy z niskim zrozumieniem (level 1-2)
+            weak = [i['topic'] for i in items if i['level'] <= 2][:3]
+            weak_str = ', '.join(weak) if weak else 'brak'
+            lines.append(f"- {subj}: avg zrozumienie {avg_level:.1f}/4 | Słabe tematy: {weak_str}")
 
-    # Sprawdziany
+    # ── SPRAWDZIANY — agregacja per przedmiot ────────────────────────────────
     if req.examHistory:
-        lines.append(f"\n=== SPRAWDZIANY ({len(req.examHistory)}) ===")
-        for e in req.examHistory[-10:]:
-            lines.append(f"- {e.get('subject','inne')}: '{e.get('topic','')}'")
+        subj_exam = defaultdict(list)
+        for e in req.examHistory:
+            subj_exam[e.get('subject', 'inne')].append(e.get('topic', ''))
+        lines.append(f"\n=== SPRAWDZIANY (łącznie {len(req.examHistory)}) ===")
+        for subj, topics in subj_exam.items():
+            lines.append(f"- {subj}: {len(topics)} sprawdzianów | Tematy: {', '.join(topics[-3:])}")
 
-    # Wyniki sprawdzianow
+    # ── WYNIKI SPRAWDZIANÓW — agregacja per przedmiot ────────────────────────
     if req.examResults:
-        lines.append(f"\n=== WYNIKI SPRAWDZIANOW ===")
-        for r in req.examResults[-10:]:
-            level = r.get('level', 2)
-            lines.append(f"- {r.get('subject','inne')}: '{r.get('topic','')}' -> {rating_map.get(level, '?')}")
+        subj_res = defaultdict(list)
+        for r in req.examResults:
+            subj_res[r.get('subject', 'inne')].append({
+                'topic': r.get('topic', ''),
+                'level': r.get('level', 2)
+            })
+        lines.append(f"\n=== WYNIKI SPRAWDZIANÓW (łącznie {len(req.examResults)}) ===")
+        for subj, items in subj_res.items():
+            avg_level = sum(i['level'] for i in items) / len(items)
+            # tematy zakończone słabo (level 1)
+            failed = [i['topic'] for i in items if i['level'] == 1][:3]
+            failed_str = ', '.join(failed) if failed else 'brak'
+            lines.append(f"- {subj}: avg wynik {avg_level:.1f}/4 | Oblane tematy: {failed_str}")
 
-    # Chat
+    # ── CHAT — tylko unikalne tematy ─────────────────────────────────────────
     if req.chatHistory:
-        lines.append(f"\n=== TEMATY CZATU ({len(req.chatHistory)}) ===")
-        for c in req.chatHistory[-15:]:
-            lines.append(f"- '{c.get('title','')}'")
+        titles = list(dict.fromkeys(c.get('title', '') for c in req.chatHistory))[:10]
+        lines.append(f"\n=== TEMATY CZATU (łącznie {len(req.chatHistory)}, unikalne) ===")
+        lines.append(f"- {', '.join(titles)}")
 
-    # Plan nauki
+    # ── PLAN NAUKI — agregacja per przedmiot ─────────────────────────────────
     if req.lessonProgress:
-        lines.append(f"\n=== PLAN NAUKI — UKONCZONE DNI ({len(req.lessonProgress)}) ===")
-        for l in req.lessonProgress[-10:]:
-            tasks = l.get('tasks', [])
-            tasks_str = ', '.join(tasks[:2]) if tasks else ''
-            lines.append(f"- {l.get('subject','inne')}: Dzien {l.get('dayNum',1)} — {tasks_str}")
+        subj_plan = defaultdict(int)
+        for l in req.lessonProgress:
+            subj_plan[l.get('subject', 'inne')] += 1
+        lines.append(f"\n=== PLAN NAUKI — UKOŃCZONE DNI (łącznie {len(req.lessonProgress)}) ===")
+        for subj, days in subj_plan.items():
+            lines.append(f"- {subj}: {days} dni ukończonych")
 
     return '\n'.join(lines) if lines else "Brak danych"
 
