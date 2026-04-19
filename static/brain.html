@@ -314,15 +314,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
       <!-- HERO -->
       <div class="hero-grid">
         <div class="brain-3d-wrap">
-          <div class="orbit o1"></div>
-          <div class="orbit o2"></div>
-          <div class="orbit o3"></div>
+          <div class="orbit o1" id="brainOrbit1"></div>
+          <div class="orbit o2" id="brainOrbit2"></div>
+          <div class="orbit o3" id="brainOrbit3"></div>
           <div class="pt pt1"></div><div class="pt pt2"></div>
           <div class="pt pt3"></div><div class="pt pt4"></div>
+          <div id="brainLvlBadge" style="display:none;position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.3);border-radius:100px;padding:4px 13px;font-family:var(--h);font-size:.7em;font-weight:700;color:var(--accent2);z-index:10;transition:all .4s;"></div>
           <svg class="brain-svg" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <radialGradient id="gl" cx="38%" cy="32%" r="62%"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="55%" stop-color="#7c6aff"/><stop offset="100%" stop-color="#3d2eb5"/></radialGradient>
-              <radialGradient id="gr" cx="62%" cy="32%" r="58%"><stop offset="0%" stop-color="#6ee7b7"/><stop offset="50%" stop-color="#22d3a0"/><stop offset="100%" stop-color="#0a7555"/></radialGradient>
+              <radialGradient id="gl" cx="38%" cy="32%" r="62%"><stop id="gl1" offset="0%" stop-color="#c4b5fd"/><stop id="gl2" offset="55%" stop-color="#7c6aff"/><stop id="gl3" offset="100%" stop-color="#3d2eb5"/></radialGradient>
+              <radialGradient id="gr" cx="62%" cy="32%" r="58%"><stop id="gr1" offset="0%" stop-color="#6ee7b7"/><stop id="gr2" offset="50%" stop-color="#22d3a0"/><stop id="gr3" offset="100%" stop-color="#0a7555"/></radialGradient>
               <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#22d3a0"/></linearGradient>
             </defs>
             <ellipse cx="74" cy="106" rx="57" ry="68" fill="url(#gl)" opacity=".96"/>
@@ -388,28 +389,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
         <div class="no-data-title">Brain potrzebuje danych</div>
         <div class="no-data-sub">Zrób kilka quizów, wygeneruj notatki lub sprawdzian. Im więcej uczysz się w Eduvia, tym dokładniejsza mapa wiedzy Brain.</div>
         <a class="start-btn" onclick="go('quiz_app.html')">Zacznij od quizu</a>
-      </div>
-
-      <!-- BRAIN LEVEL -->
-      <div id="brainLevelCard" style="display:none;background:linear-gradient(135deg,var(--s1),rgba(22,22,34,.7));border:1px solid rgba(124,106,255,.25);border-radius:20px;padding:20px;margin-bottom:12px;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.8),rgba(34,211,160,.4),transparent);"></div>
-        <div style="display:flex;align-items:center;gap:16px;">
-          <div id="brainLevelOrb" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-size:1.8em;flex-shrink:0;box-shadow:0 0 28px rgba(124,106,255,.6);transition:all .6s;">&#x1F9E0;</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <div id="brainLevelName" style="font-family:var(--h);font-weight:900;font-size:1em;color:white;">Nowicjusz</div>
-              <div id="brainLevelBadge" style="font-family:var(--h);font-size:.6em;font-weight:700;padding:2px 8px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;color:var(--accent2);">LVL 1</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-              <div id="brainScoreVal" style="font-family:var(--h);font-weight:900;font-size:1.6em;background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">0</div>
-              <div style="font-size:.7em;color:var(--muted2);">Brain Score</div>
-            </div>
-            <div style="height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;">
-              <div id="brainLevelBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:100px;transition:width 1.4s cubic-bezier(.4,0,.2,1);"></div>
-            </div>
-            <div id="brainLevelNext" style="font-size:.65em;color:var(--muted);margin-top:4px;">Zrob quizy zeby zdobyc Brain Score!</div>
-          </div>
-        </div>
       </div>
 
       <!-- PRZEWIDYWANIE OCENY -->
@@ -805,72 +784,120 @@ function brainExam() {
   .catch(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
+
+// ── BRAIN 3D COLOR BY LEVEL ──────────────────────────────────────────────────
+
+function applyBrainLevelToSVG(color, level) {
+  const THEMES = {
+    gray: {
+      gl: ['#9ca3af','#6b7280','#374151'],
+      gr: ['#d1d5db','#9ca3af','#4b5563'],
+      o1: 'rgba(156,163,175,.4)', o2: 'rgba(156,163,175,.15)', o3: 'rgba(156,163,175,.15)',
+      glow: '0 0 24px rgba(156,163,175,.3)',
+      speed: ['4s','7s','5.5s']
+    },
+    blue: {
+      gl: ['#7dd3fc','#38bdf8','#0369a1'],
+      gr: ['#6ee7b7','#22d3a0','#0a7555'],
+      o1: 'rgba(56,189,248,.5)', o2: 'rgba(34,211,160,.25)', o3: 'rgba(56,189,248,.2)',
+      glow: '0 0 32px rgba(56,189,248,.4)',
+      speed: ['3.5s','6s','5s']
+    },
+    purple: {
+      gl: ['#c4b5fd','#7c6aff','#3d2eb5'],
+      gr: ['#6ee7b7','#22d3a0','#0a7555'],
+      o1: 'rgba(124,106,255,.45)', o2: 'rgba(34,211,160,.2)', o3: 'rgba(167,139,250,.2)',
+      glow: '0 0 36px rgba(124,106,255,.5)',
+      speed: ['4s','7s','5.5s']
+    },
+    gold: {
+      gl: ['#fde68a','#f5a623','#b45309'],
+      gr: ['#fcd34d','#f59e0b','#92400e'],
+      o1: 'rgba(245,166,35,.55)', o2: 'rgba(252,211,77,.25)', o3: 'rgba(245,166,35,.22)',
+      glow: '0 0 40px rgba(245,166,35,.6)',
+      speed: ['3s','5.5s','4.5s']
+    },
+    rainbow: {
+      gl: ['#f9a8d4','#a78bfa','#818cf8'],
+      gr: ['#6ee7b7','#38bdf8','#818cf8'],
+      o1: 'rgba(167,139,250,.6)', o2: 'rgba(56,189,248,.3)', o3: 'rgba(244,114,182,.25)',
+      glow: '0 0 50px rgba(167,139,250,.7), 0 0 90px rgba(56,189,248,.3)',
+      speed: ['2.5s','4.5s','3.5s']
+    }
+  };
+
+  const t = THEMES[color] || THEMES.purple;
+
+  // Zmień gradienty SVG
+  const gl1 = document.getElementById('gl1');
+  const gl2 = document.getElementById('gl2');
+  const gl3 = document.getElementById('gl3');
+  const gr1 = document.getElementById('gr1');
+  const gr2 = document.getElementById('gr2');
+  const gr3 = document.getElementById('gr3');
+
+  if (gl1) { gl1.setAttribute('stop-color', t.gl[0]); gl2.setAttribute('stop-color', t.gl[1]); gl3.setAttribute('stop-color', t.gl[2]); }
+  if (gr1) { gr1.setAttribute('stop-color', t.gr[0]); gr2.setAttribute('stop-color', t.gr[1]); gr3.setAttribute('stop-color', t.gr[2]); }
+
+  // Zmień orbity
+  const o1 = document.getElementById('brainOrbit1');
+  const o2 = document.getElementById('brainOrbit2');
+  const o3 = document.getElementById('brainOrbit3');
+  if (o1) { o1.style.borderColor = t.o1; o1.style.animationDuration = t.speed[0]; o1.style.boxShadow = '0 0 10px ' + t.o1; }
+  if (o2) { o2.style.borderColor = t.o2; o2.style.animationDuration = t.speed[1]; }
+  if (o3) { o3.style.borderColor = t.o3; o3.style.animationDuration = t.speed[2]; }
+
+  // Zmień glow mózgu
+  const brainSvg = document.querySelector('.brain-svg');
+  if (brainSvg) brainSvg.style.filter = t.glow.replace('0 0', 'drop-shadow(0 0').replace('rgba', 'rgba').split(',').map((p,i) => i === 0 ? p + ')' : ' drop-shadow(' + p + ')').join('');
+
+  // Rainbow — dodaj animację obrotu gradientu
+  if (color === 'rainbow') {
+    if (!document.getElementById('rainbowStyle')) {
+      const s = document.createElement('style');
+      s.id = 'rainbowStyle';
+      s.textContent = '@keyframes rainbowShift{0%{stop-color:#f9a8d4}25%{stop-color:#a78bfa}50%{stop-color:#38bdf8}75%{stop-color:#22d3a0}100%{stop-color:#f9a8d4}} #gl1,#gr1{animation:rainbowShift 3s linear infinite;}';
+      document.head.appendChild(s);
+    }
+  }
+}
+
 // ── BRAIN LEVEL ──────────────────────────────────────────────────────────────
 
 function renderBrainLevel(data) {
   if (!data || data.brain_score === undefined) return;
-
-  const score = data.brain_score || 0;
+  const color = data.brain_level_color || 'purple';
   const level = data.brain_level || 1;
   const name = data.brain_level_name || 'Nowicjusz';
-  const color = data.brain_level_color || 'gray';
-  const toNext = data.score_to_next || 0;
-  const nextThreshold = data.next_threshold || 50;
+  const score = data.brain_score || 0;
 
-  // Pokaż kartę
-  document.getElementById('brainLevelCard').style.display = 'block';
-  document.getElementById('predictCard').style.display = 'block';
+  // Zastosuj kolory do mózgu 3D
+  applyBrainLevelToSVG(color, level);
 
-  // Animuj score
-  const scoreEl = document.getElementById('brainScoreVal');
-  let cur = 0;
-  const step = Math.max(1, Math.floor(score / 40));
-  const t = setInterval(() => {
-    cur = Math.min(cur + step, score);
-    scoreEl.textContent = cur;
-    if (cur >= score) clearInterval(t);
-  }, 30);
-
-  document.getElementById('brainLevelName').textContent = name;
-  document.getElementById('brainLevelBadge').textContent = 'LVL ' + level;
-  document.getElementById('brainLevelNext').textContent = toNext > 0 ? toNext + ' pkt do poziomu ' + (level + 1) : 'Maksymalny poziom!';
-
-  // Pasek progresu
-  const prevThreshold = nextThreshold - toNext - (score - (nextThreshold - toNext));
-  const pct = nextThreshold > 0 ? Math.min(100, Math.round((score / nextThreshold) * 100)) : 100;
-  setTimeout(() => {
-    document.getElementById('brainLevelBar').style.width = pct + '%';
-  }, 300);
-
-  // Kolory i animacja orba wg poziomu
-  const orb = document.getElementById('brainLevelOrb');
-  const badge = document.getElementById('brainLevelBadge');
-  if (color === 'rainbow') {
-    orb.style.background = 'linear-gradient(135deg,#f472b6,#a78bfa,#38bdf8,#22d3a0,#f5a623)';
-    orb.style.boxShadow = '0 0 40px rgba(167,139,250,.7), 0 0 80px rgba(56,189,248,.3)';
-    orb.style.animation = 'rot 3s linear infinite';
-    badge.style.background = 'linear-gradient(135deg,rgba(244,114,182,.2),rgba(56,189,248,.2))';
-    badge.style.borderColor = 'rgba(167,139,250,.5)';
-    badge.style.color = '#f472b6';
-    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#f472b6,#a78bfa,#38bdf8,#22d3a0)';
-  } else if (color === 'gold') {
-    orb.style.background = 'linear-gradient(135deg,#f5a623,#f59e0b,#fcd34d)';
-    orb.style.boxShadow = '0 0 32px rgba(245,166,35,.6)';
-    badge.style.background = 'rgba(245,166,35,.15)';
-    badge.style.borderColor = 'rgba(245,166,35,.4)';
-    badge.style.color = '#f5a623';
-    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#f5a623,#fcd34d)';
-  } else if (color === 'purple') {
-    orb.style.background = 'linear-gradient(135deg,#7c6aff,#a78bfa,#c4b5fd)';
-    orb.style.boxShadow = '0 0 28px rgba(124,106,255,.6)';
-  } else if (color === 'blue') {
-    orb.style.background = 'linear-gradient(135deg,#38bdf8,#0ea5e9,#7dd3fc)';
-    orb.style.boxShadow = '0 0 28px rgba(56,189,248,.5)';
-    badge.style.background = 'rgba(56,189,248,.12)';
-    badge.style.borderColor = 'rgba(56,189,248,.35)';
-    badge.style.color = '#38bdf8';
-    document.getElementById('brainLevelBar').style.background = 'linear-gradient(90deg,#38bdf8,#22d3a0)';
+  // Badge przy mózgu
+  const badge = document.getElementById('brainLvlBadge');
+  if (badge) {
+    badge.style.display = 'block';
+    badge.textContent = 'LVL ' + level + ' · ' + name;
+    const badgeColors = {
+      gray:    ['rgba(156,163,175,.12)', 'rgba(156,163,175,.3)', '#9ca3af'],
+      blue:    ['rgba(56,189,248,.12)',  'rgba(56,189,248,.3)',  '#38bdf8'],
+      purple:  ['rgba(124,106,255,.12)', 'rgba(124,106,255,.3)', '#a78bfa'],
+      gold:    ['rgba(245,166,35,.12)',  'rgba(245,166,35,.3)',  '#f5a623'],
+      rainbow: ['rgba(167,139,250,.15)', 'rgba(244,114,182,.4)', '#f472b6']
+    };
+    const bc = badgeColors[color] || badgeColors.purple;
+    badge.style.background = bc[0];
+    badge.style.borderColor = bc[1];
+    badge.style.color = bc[2];
+    if (color === 'rainbow') {
+      badge.style.background = 'linear-gradient(90deg,rgba(244,114,182,.15),rgba(167,139,250,.15),rgba(56,189,248,.15))';
+    }
   }
+
+  // Pokaż Przewidywanie oceny
+  const pc = document.getElementById('predictCard');
+  if (pc) pc.style.display = 'block';
 }
 
 // ── PRZEWIDYWANIE OCENY ──────────────────────────────────────────────────────
