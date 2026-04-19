@@ -742,6 +742,27 @@ function getPlanBadgeHTML(plan) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Pobierz PDF
         </a>
+
+        <!-- ANKIETA BRAIN -->
+        <div id="brainSurvey" style="margin:18px 0 4px;background:linear-gradient(135deg,rgba(124,106,255,0.08),rgba(34,211,160,0.05));border:1px solid rgba(124,106,255,0.2);border-radius:16px;padding:16px 14px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.82em;color:#eeeef5;margin-bottom:3px;">Jak oceniasz swoją wiedzę z tego tematu?</div>
+          <div style="font-size:.7em;color:#7c6aff;margin-bottom:12px;" id="surveyTopic"></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="surveyBtns">
+            <button onclick="submitSurvey(1)" style="padding:11px 4px 9px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+              <div style="font-size:1.4em;margin-bottom:4px;">😰</div><div style="font-size:.6em;color:#9ca3af;">Nie rozumiem</div>
+            </button>
+            <button onclick="submitSurvey(2)" style="padding:11px 4px 9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+              <div style="font-size:1.4em;margin-bottom:4px;">😐</div><div style="font-size:.6em;color:#9ca3af;">Trochę</div>
+            </button>
+            <button onclick="submitSurvey(3)" style="padding:11px 4px 9px;background:rgba(34,211,160,0.08);border:1px solid rgba(34,211,160,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+              <div style="font-size:1.4em;margin-bottom:4px;">😊</div><div style="font-size:.6em;color:#9ca3af;">Rozumiem</div>
+            </button>
+            <button onclick="submitSurvey(4)" style="padding:11px 4px 9px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.35);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+              <div style="font-size:1.4em;margin-bottom:4px;">🔥</div><div style="font-size:.6em;color:#9ca3af;">Świetnie!</div>
+            </button>
+          </div>
+        </div>
+
         <button class="reset-btn" onclick="reset()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           Wygeneruj kolejną notatkę
@@ -863,6 +884,23 @@ function saveUnderstanding(topic, subject, level, popup) {
     window._fbSave('understandingHistory', {topic, subject, level, understood: level >= 3}, 0);
   }
   if(popup) popup.remove();
+}
+
+function submitSurvey(level) {
+  const topic = window._surveyTopic || '';
+  const subject = window._surveySubject || 'inne';
+  if(typeof window._fbSave==='function') {
+    window._fbSave('understandingHistory', {topic, subject, level, understood: level >= 3}, 0);
+  }
+  // Zamień przyciski na potwierdzenie
+  const btns = document.getElementById('surveyBtns');
+  if(btns) {
+    const labels = ['', 'Nie rozumiem', 'Trochę', 'Rozumiem', 'Świetnie!'];
+    const emojis = ['', '😰', '😐', '😊', '🔥'];
+    btns.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:8px 0;color:#22d3a0;font-family:'Syne',sans-serif;font-weight:700;font-size:.85em;">
+      ${emojis[level]} Zapisano! Brain zaktualizuje Twoją mapę wiedzy.
+    </div>`;
+  }
 }
 
 // ═══ STORAGE — PRAWDZIWE STATYSTYKI ═══
@@ -993,8 +1031,11 @@ async function generate(){
         document.getElementById('loadingView').style.display='none';
         document.getElementById('successView').style.display='block';
         useLimit('notes');link.click();renderStats();
-        // Ankieta po notatce
-        setTimeout(()=>showUnderstandingPopup(topicName, subjectVal), 2000);
+        // Ustaw temat w ankiecie Brain
+        const surveyTopicEl = document.getElementById('surveyTopic');
+        if(surveyTopicEl) surveyTopicEl.textContent = topicName;
+        window._surveyTopic = topicName;
+        window._surveySubject = subjectVal;
       },600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
