@@ -860,7 +860,9 @@ function saveQuiz(title,correct,total,xpEarned){
   }).filter(Boolean);
   // Zapisz do Firebase z pełnymi pytaniami
   console.log('[Brain Save] title:', finalTitle, 'subject:', subject, 'wrongQs:', wrongQs.length, wrongQs.map(function(q){return q.topic+': '+q.question.slice(0,30);}));
-  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(finalTitle,correct,total,xpEarned,subject,wrongQs);
+  var repairedQs=_repairedIndexes.map(function(i){var q=questions[i];if(!q)return null;var t=(window._brainQuizTopic||"").replace(/^Brain Quiz — /i,"").trim();return{question:q.question,subject:subject,topic:t};}).filter(Boolean);
+  if(typeof window._fbSaveQuiz==="function")window._fbSaveQuiz(finalTitle,correct,total,xpEarned,subject,wrongQs,repairedQs);
+  _brainOriginalWrong=[];_repairedIndexes=[];
   // Wyczyść brain quiz data po zapisie
   window._brainQuizSubject = null;
   window._brainQuizTopic = null;
@@ -907,6 +909,8 @@ function renderSidebarStats(){
 
 // ═══ QUIZ LOGIC (oryginalna — bez zmian) ═══
 let quiz=null,questions=[],currentQ=0,answers=[],xp=0,streak=0,maxStreak=0,answered=false,isRetry=false,wrongIndexes=[];
+var _brainOriginalWrong=[];
+var _repairedIndexes=[];
 let VALS={level:'liceum',diff:'medium'};
 let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
 let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Nie poddawaj się!"];
