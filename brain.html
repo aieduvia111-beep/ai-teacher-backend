@@ -206,9 +206,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
 .hole-subj{font-size:.63em;color:var(--accent2);font-weight:600;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;}
 .hole-topic{font-size:.83em;font-weight:600;color:var(--text);margin-bottom:3px;}
 .hole-reason{font-size:.72em;color:var(--muted2);line-height:1.45;}
-.fix-btn{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);border-radius:100px;padding:4px 13px;font-size:.67em;color:var(--red);cursor:pointer;transition:all .15s;}
+.hole-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.fix-btn{display:inline-flex;align-items:center;gap:5px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);border-radius:100px;padding:4px 13px;font-size:.67em;color:var(--red);cursor:pointer;transition:all .15s;}
 .fix-btn:hover{background:rgba(248,113,113,.15);transform:translateX(2px);}
 .fix-btn svg{width:11px;height:11px;}
+.exam-hole-btn{display:inline-flex;align-items:center;gap:5px;background:rgba(124,106,255,.07);border:1px solid rgba(124,106,255,.18);border-radius:100px;padding:4px 13px;font-size:.67em;color:var(--accent2);cursor:pointer;transition:all .15s;}
+.exam-hole-btn:hover{background:rgba(124,106,255,.15);transform:translateX(2px);}
+.exam-hole-btn svg{width:11px;height:11px;}
+.exam-hole-btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;}
 
 /* ═══ ACTIONS ═══ */
 .actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px;}
@@ -564,10 +569,16 @@ function renderBrain(data) {
           <div class="hole-subj">${h.subject}</div>
           <div class="hole-topic">${h.topic}</div>
           <div class="hole-reason">${h.reason}</div>
-          <button class="fix-btn" onclick="fixHole('${h.subject}','${h.topic}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Napraw w ${h.fix_time_min || 5} min
-          </button>
+          <div class="hole-btns">
+            <button class="fix-btn" onclick="fixHole('${h.subject}','${h.topic}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Napraw w ${h.fix_time_min || 5} min
+            </button>
+            <button class="exam-hole-btn" onclick="examHole('${h.subject}','${h.topic}',this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Sprawdzian PDF
+            </button>
+          </div>
         </div>
       `;
       list.appendChild(item);
@@ -583,6 +594,29 @@ function showNoData() {
   document.getElementById('brainStats').innerHTML = '';
   document.getElementById('overallPct').textContent = '0%';
   document.getElementById('brainSummary').textContent = 'Zacznij robić quizy i notatki!';
+}
+
+function examHole(subject, topic, btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> Generuje...';
+  btn.disabled = true;
+  fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({temat: topic, przedmiot: subject, klasa: 'liceum', trudnosc: 'srednia', liczba_pytan: 10, wariant: 'A'})
+  })
+  .then(r => r.blob())
+  .then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Sprawdzian_' + topic.replace(/\s+/g,'_') + '.pdf';
+    a.click();
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg> Pobrano!';
+    btn.style.borderColor = 'rgba(34,211,160,.3)';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 3000);
+  })
+  .catch(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
 function fixHole(subject, topic) {
