@@ -605,10 +605,18 @@ function _getWeakTopic() {
 function brainQuiz() {
   const {topic, subject} = _getWeakTopic();
   const wrongQs = window._brainWrongQuestions || [];
-  if (wrongQs.length > 0) {
-    localStorage.setItem('brain_quiz_instructions', 'Wygeneruj quiz TYLKO z tych tematów: ' + wrongQs.slice(0,5).map(q => q.question || q).join('; '));
-  }
-  window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(topic + ' ' + subject) + '&from=brain';
+
+  // Zapisz błędne pytania i temat do localStorage
+  const brainData = {
+    topic: topic,
+    subject: subject,
+    wrongQuestions: wrongQs.slice(0, 10),
+    autoGenerate: true
+  };
+  localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
+
+  // Przejdź do quiz z flagą autogenerate
+  window.location.href = 'quiz_app.html?from=brain&auto=1';
 }
 
 function brainExam() {
