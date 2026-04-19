@@ -620,7 +620,7 @@ function examHole(subject, topic, btn) {
     wlasneInstrukcje += relevant.slice(0, 15).map(function(q, i) { return (i+1) + ') ' + (q.question || ''); }).join(' | ');
     wlasneInstrukcje += '. Nie dodawaj pytan z innych tematow. ';
   }
-  wlasneInstrukcje += 'Liczba pytan musi wynosic dokladnie ' + liczba + '.';
+  wlasneInstrukcje += 'SPRAWDZIAN MA MIEC DOKLADNIE ' + liczba + ' PYTAN ZAMKNIETYCH A-D. NIE dodawaj czesci B, zadań otwartych ani obliczeniowych. TYLKO ' + liczba + ' pytan zamknietych, nic wiecej.';
 
   fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate', {
     method: 'POST',
@@ -723,7 +723,7 @@ function brainExam() {
     wlasneInstrukcje += wrongQs.slice(0, 15).map(function(q, i) { return (i+1) + ') ' + (q.question || ''); }).join(' | ');
     wlasneInstrukcje += '. Nie dodawaj pytan z innych tematow. ';
   }
-  wlasneInstrukcje += 'Liczba pytan musi wynosic dokladnie ' + liczba + '.';
+  wlasneInstrukcje += 'SPRAWDZIAN MA MIEC DOKLADNIE ' + liczba + ' PYTAN ZAMKNIETYCH A-D. NIE dodawaj czesci B, zadań otwartych ani obliczeniowych. TYLKO ' + liczba + ' pytan zamknietych, nic wiecej.';
 
   fetch(BACKEND + '/api/v1/exam/generate', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
