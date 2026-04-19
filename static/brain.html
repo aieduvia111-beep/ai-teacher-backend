@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070d">
+<title>Eduvia Brain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,.1);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --blue:#38bdf8;--gold:#f5a623;--red:#f87171;--pink:#f472b6;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100vh;overflow-x:hidden;}
+
+/* ── AURORA ── */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.a1{position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(124,106,255,.15),transparent 70%);top:-180px;right:-60px;animation:afloat 14s ease-in-out infinite;}
+.a2{position:absolute;width:440px;height:440px;background:radial-gradient(circle,rgba(34,211,160,.08),transparent 70%);bottom:-60px;left:-60px;animation:afloat 18s ease-in-out infinite reverse;}
+.a3{position:absolute;width:320px;height:320px;background:radial-gradient(circle,rgba(56,189,248,.06),transparent 70%);top:40%;left:35%;animation:afloat 10s ease-in-out infinite 3s;}
+@keyframes afloat{0%,100%{transform:translate(0,0)}50%{transform:translate(12px,-20px)}}
+@keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes rot{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes bpulse{0%,100%{filter:drop-shadow(0 0 20px rgba(124,106,255,.6)) drop-shadow(0 0 50px rgba(124,106,255,.2))}50%{filter:drop-shadow(0 0 32px rgba(124,106,255,.9)) drop-shadow(0 0 70px rgba(124,106,255,.3))}}
+
+/* ── LAYOUT ── */
+.app{display:flex;min-height:100vh;position:relative;z-index:1;}
+
+/* ── SIDEBAR (desktop) ── */
+.sidebar{width:220px;flex-shrink:0;background:linear-gradient(180deg,rgba(15,15,24,.98),rgba(7,7,13,.98));border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{display:flex;align-items:center;gap:10px;padding:0 4px 18px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.brand-logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.9em;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.2);}
+.brand-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;}
+.brand-sub{font-size:.62em;color:var(--muted);}
+.ng{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:14px 8px 5px;}
+.nl{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;font-size:.82em;color:var(--muted2);text-decoration:none;border:1px solid transparent;transition:.18s;cursor:pointer;}
+.nl:hover{background:rgba(124,106,255,.08);border-color:rgba(124,106,255,.15);color:var(--accent2);}
+.nl.active{color:#fff;background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(124,106,255,.05));border-color:rgba(124,106,255,.25);}
+.nl svg{width:15px;height:15px;flex-shrink:0;opacity:.7;}
+.nl.active svg{opacity:1;}
+
+/* ── MOBILE HEADER ── */
+.m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.m-hdr-logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;font-size:.8em;box-shadow:0 0 16px rgba(124,106,255,.4);flex-shrink:0;}
+.m-hdr-info{flex:1;min-width:0;}
+.m-hdr-title{font-family:var(--h);font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-sub{font-size:.6em;color:var(--muted);margin-top:1px;}
+
+/* ── MOBILE NAV ── */
+.m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,1fr);background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
+.m-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6em;color:var(--muted);text-decoration:none;position:relative;transition:.18s;}
+.m-nb.active{color:#a78bfa;}
+.m-nb svg{width:20px;height:20px;}
+
+@media(max-width:768px){
+  body{padding-top:56px!important;padding-bottom:68px!important;}
+  .m-hdr{display:flex!important;}
+  .m-nav{display:grid!important;}
+  .sidebar{display:none!important;}
+  .app{display:block!important;}
+  .main{padding:16px!important;}
+}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;padding:28px 32px;overflow-y:auto;}
+
+/* ── PAGE HEADER ── */
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+.page-title{font-family:var(--h);font-weight:900;font-size:1.6em;letter-spacing:-.03em;background:linear-gradient(135deg,#e8e4ff,#a78bfa 40%,#7c6aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.page-sub{font-size:.78em;color:var(--muted2);margin-top:3px;}
+.live-badge{display:flex;align-items:center;gap:6px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.18);border-radius:100px;padding:6px 14px;font-size:.72em;color:var(--green);font-weight:600;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite;}
+
+/* ── PRO GATE ── */
+.pro-gate{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;background:linear-gradient(135deg,rgba(124,106,255,.06),rgba(34,211,160,.03));border:1px solid rgba(124,106,255,.15);border-radius:20px;}
+.pro-gate-icon{font-size:3em;margin-bottom:16px;}
+.pro-gate-title{font-family:var(--h);font-weight:900;font-size:1.2em;margin-bottom:8px;}
+.pro-gate-sub{font-size:.82em;color:var(--muted2);line-height:1.65;max-width:320px;margin-bottom:24px;}
+.pro-gate-btn{padding:14px 28px;background:linear-gradient(135deg,var(--accent),#4f3fcf);border:none;border-radius:12px;color:white;font-family:var(--h);font-weight:800;font-size:.88em;cursor:pointer;box-shadow:0 8px 24px rgba(124,106,255,.35);}
+
+/* ── LOADING ── */
+.brain-loading{display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:16px;}
+.brain-loading-spinner{width:48px;height:48px;border:3px solid rgba(124,106,255,.15);border-top-color:var(--accent);border-radius:50%;animation:rot 1s linear infinite;}
+.brain-loading-text{font-family:var(--h);font-weight:700;font-size:.9em;color:var(--muted2);}
+
+/* ── BRAIN CONTENT ── */
+.brain-content{display:none;}
+
+/* ── HERO BRAIN ── */
+.brain-hero{background:linear-gradient(135deg,var(--s1),var(--s2));border:1px solid var(--border-hi);border-radius:24px;padding:32px 28px;margin-bottom:20px;display:flex;align-items:center;gap:32px;position:relative;overflow:hidden;}
+.brain-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.5),rgba(34,211,160,.3),transparent);}
+
+.brain-3d-wrap{position:relative;flex-shrink:0;}
+.orbit{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid transparent;}
+.o1{width:165px;height:58px;border-color:rgba(124,106,255,.4);box-shadow:0 0 8px rgba(124,106,255,.15);animation:rot 4s linear infinite;}
+.o2{width:180px;height:66px;border-color:rgba(34,211,160,.18);animation:rot 7s linear infinite reverse;}
+.o3{width:68px;height:168px;border-color:rgba(124,106,255,.18);animation:rot 5.5s linear infinite;}
+
+.pt{position:absolute;border-radius:50%;animation:afloat 3s ease-in-out infinite;}
+.pt1{width:7px;height:7px;background:var(--accent);top:6px;left:16px;box-shadow:0 0 10px var(--accent);}
+.pt2{width:5px;height:5px;background:var(--green);top:24px;right:10px;box-shadow:0 0 8px var(--green);animation-delay:.7s;}
+.pt3{width:6px;height:6px;background:var(--gold);bottom:16px;left:24px;box-shadow:0 0 9px var(--gold);animation-delay:1.4s;}
+.pt4{width:4px;height:4px;background:var(--red);bottom:28px;right:20px;box-shadow:0 0 7px var(--red);animation-delay:.3s;}
+
+.brain-svg{width:130px;height:130px;animation:bpulse 3s ease-in-out infinite;position:relative;z-index:1;}
+
+.brain-info{flex:1;min-width:0;}
+.brain-pct-wrap{display:flex;align-items:baseline;gap:6px;margin-bottom:6px;}
+.brain-pct{font-family:var(--h);font-weight:900;font-size:2.8em;background:linear-gradient(135deg,#c4b5fd,#a78bfa 40%,#7c6aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
+.brain-pct-label{font-size:.8em;color:var(--muted2);}
+.brain-title{font-family:var(--h);font-weight:900;font-size:1.2em;letter-spacing:-.02em;margin-bottom:5px;}
+.brain-sub{font-size:.78em;color:var(--muted2);line-height:1.6;margin-bottom:16px;}
+
+.brain-stats{display:flex;gap:12px;}
+.bstat{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;}
+.bstat-val{font-family:var(--h);font-weight:800;font-size:1.1em;}
+.bstat-val.g{color:var(--green);}
+.bstat-val.r{color:var(--red);}
+.bstat-val.o{color:var(--gold);}
+.bstat-label{font-size:.62em;color:var(--muted2);margin-top:2px;}
+
+/* ── SECTION LABEL ── */
+.sec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;margin-top:24px;}
+
+/* ── SUBJECTS GRID ── */
+.subjects-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+@media(max-width:600px){.subjects-grid{grid-template-columns:1fr;}}
+
+.subj-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.subj-card::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 3px 3px 0;}
+.subj-card.c-green::after{background:var(--green);}
+.subj-card.c-gold::after{background:var(--gold);}
+.subj-card.c-red::after{background:var(--red);animation:pulse 2s ease-in-out infinite;}
+.subj-card.c-blue::after{background:var(--blue);}
+.subj-card.c-accent::after{background:var(--accent);}
+.subj-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.15);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+
+.subj-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.subj-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1em;flex-shrink:0;}
+.c-green .subj-ico{background:rgba(34,211,160,.1);}
+.c-gold .subj-ico{background:rgba(245,166,35,.1);}
+.c-red .subj-ico{background:rgba(248,113,113,.1);}
+.c-blue .subj-ico{background:rgba(56,189,248,.1);}
+.c-accent .subj-ico{background:rgba(124,106,255,.1);}
+.subj-name{font-family:var(--h);font-weight:700;font-size:.88em;flex:1;}
+.subj-pct{font-family:var(--h);font-weight:900;font-size:1em;}
+.c-green .subj-pct{color:var(--green);}
+.c-gold .subj-pct{color:var(--gold);}
+.c-red .subj-pct{color:var(--red);}
+.c-blue .subj-pct{color:var(--blue);}
+.c-accent .subj-pct{color:var(--accent2);}
+
+.subj-bar-bg{height:4px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;}
+.subj-bar{height:100%;border-radius:100px;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.c-green .subj-bar{background:var(--green);}
+.c-gold .subj-bar{background:var(--gold);}
+.c-red .subj-bar{background:var(--red);}
+.c-blue .subj-bar{background:var(--blue);}
+.c-accent .subj-bar{background:var(--accent);}
+
+.subj-status{font-size:.68em;color:var(--muted2);margin-top:8px;line-height:1.4;}
+
+/* ── HOLES SECTION ── */
+.holes-card{background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:16px;padding:18px;position:relative;overflow:hidden;}
+.holes-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(248,113,113,.4),transparent);}
+.holes-hdr{display:flex;align-items:center;gap:8px;font-family:var(--h);font-weight:800;font-size:.85em;color:var(--red);margin-bottom:14px;}
+.holes-hdr svg{width:15px;height:15px;}
+
+.hole-item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);}
+.hole-item:last-child{border-bottom:none;padding-bottom:0;}
+.hole-n{width:24px;height:24px;border-radius:8px;flex-shrink:0;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);display:flex;align-items:center;justify-content:center;font-size:.65em;font-weight:700;color:var(--red);margin-top:1px;}
+.hole-body{flex:1;min-width:0;}
+.hole-subj{font-size:.65em;color:var(--accent2);font-weight:600;margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em;}
+.hole-topic{font-size:.82em;font-weight:500;color:var(--text);margin-bottom:3px;}
+.hole-reason{font-size:.72em;color:var(--muted2);line-height:1.4;}
+.fix-btn{display:inline-flex;align-items:center;gap:5px;margin-top:7px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:100px;padding:4px 12px;font-size:.68em;color:var(--red);cursor:pointer;transition:all .15s;font-family:var(--b);}
+.fix-btn:hover{background:rgba(248,113,113,.16);}
+.fix-btn svg{width:11px;height:11px;}
+
+/* ── SIMULATE BTN ── */
+.sim-btn{width:100%;margin-top:20px;padding:16px;background:linear-gradient(135deg,rgba(124,106,255,.18),rgba(34,211,160,.08));border:1px solid rgba(124,106,255,.3);border-radius:16px;color:white;font-family:var(--h);font-weight:800;font-size:.9em;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;overflow:hidden;}
+.sim-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,255,.1),rgba(34,211,160,.05));opacity:0;transition:.25s;}
+.sim-btn:hover::before{opacity:1;}
+.sim-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(124,106,255,.3);}
+.sim-btn svg{width:17px;height:17px;}
+
+/* ── NO DATA ── */
+.no-data{background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;padding:32px 24px;text-align:center;}
+.no-data-icon{font-size:2.5em;margin-bottom:12px;}
+.no-data-title{font-family:var(--h);font-weight:800;font-size:.95em;margin-bottom:6px;}
+.no-data-sub{font-size:.78em;color:var(--muted2);line-height:1.65;margin-bottom:20px;}
+.start-btn{display:inline-flex;align-items:center;gap:6px;padding:12px 20px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.25);border-radius:12px;color:var(--accent2);font-family:var(--h);font-weight:700;font-size:.82em;cursor:pointer;transition:all .2s;text-decoration:none;}
+.start-btn:hover{background:rgba(124,106,255,.2);}
+
+/* ── REFRESH BTN ── */
+.refresh-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border-hi);border-radius:10px;color:var(--muted2);font-size:.75em;cursor:pointer;transition:all .15s;}
+.refresh-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15);}
+.refresh-btn svg{width:13px;height:13px;}
+</style>
+</head>
+<body>
+
+<div class="aurora"><div class="a1"></div><div class="a2"></div><div class="a3"></div></div>
+
+<!-- Mobile Header -->
+<div class="m-hdr">
+  <div class="m-hdr-logo">E</div>
+  <div class="m-hdr-info">
+    <div class="m-hdr-title">Eduvia Brain</div>
+    <div class="m-hdr-sub">Twoja mapa wiedzy AI</div>
+  </div>
+  <div class="live-badge" id="liveBadge" style="display:none;"><div class="live-dot"></div>Na żywo</div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">E</div>
+      <div><div class="brand-name">Eduvia AI</div><div class="brand-sub">AI Learning Platform</div></div>
+    </div>
+    <div class="ng">Narzędzia AI</div>
+    <a class="nl" onclick="go('dashboard_FINAL.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a class="nl" onclick="go('chat.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
+    <a class="nl" onclick="go('quiz_app.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a>
+    <a class="nl" onclick="go('notes_generator.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a>
+    <a class="nl" onclick="go('exam_generator.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a>
+    <a class="nl" onclick="go('vision.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a>
+    <a class="nl" onclick="go('voice_conversation.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a>
+    <a class="nl" onclick="go('lesson_planner.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</a>
+    <div class="ng">Analityka</div>
+    <a class="nl active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Eduvia Brain</a>
+    <div style="flex:1;"></div>
+    <a class="nl" onclick="go('pricing.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Upgrade PRO</a>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="page-hdr">
+      <div>
+        <div class="page-title">Eduvia Brain 🧠</div>
+        <div class="page-sub">Twoja osobista mapa wiedzy — zasilana AI</div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadBrain()" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Odśwież
+      </button>
+    </div>
+
+    <!-- PRO GATE -->
+    <div class="pro-gate" id="proGate">
+      <div class="pro-gate-icon">🧠</div>
+      <div class="pro-gate-title">Eduvia Brain — tylko PRO</div>
+      <div class="pro-gate-sub">Eduvia Brain analizuje Twoje quizy, notatki i sprawdziany, żeby pokazać dokładnie co umiesz — i czego nie. Funkcja dostępna wyłącznie w planie PRO.</div>
+      <button class="pro-gate-btn" onclick="go('pricing.html')">Odblokuj PRO →</button>
+    </div>
+
+    <!-- LOADING -->
+    <div class="brain-loading" id="brainLoading">
+      <div class="brain-loading-spinner"></div>
+      <div class="brain-loading-text">Brain analizuje Twoją wiedzę...</div>
+    </div>
+
+    <!-- BRAIN CONTENT -->
+    <div class="brain-content" id="brainContent">
+
+      <!-- Hero -->
+      <div class="brain-hero">
+        <div class="brain-3d-wrap">
+          <div class="orbit o1"></div>
+          <div class="orbit o2"></div>
+          <div class="orbit o3"></div>
+          <div class="pt pt1"></div><div class="pt pt2"></div>
+          <div class="pt pt3"></div><div class="pt pt4"></div>
+          <svg class="brain-svg" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="gl" cx="38%" cy="32%" r="62%"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="55%" stop-color="#7c6aff"/><stop offset="100%" stop-color="#3d2eb5"/></radialGradient>
+              <radialGradient id="gr" cx="62%" cy="32%" r="58%"><stop offset="0%" stop-color="#6ee7b7"/><stop offset="50%" stop-color="#22d3a0"/><stop offset="100%" stop-color="#0a7555"/></radialGradient>
+            </defs>
+            <ellipse cx="74" cy="106" rx="57" ry="68" fill="url(#gl)" opacity=".96"/>
+            <ellipse cx="126" cy="106" rx="57" ry="68" fill="url(#gr)" opacity=".86"/>
+            <line x1="100" y1="40" x2="100" y2="168" stroke="rgba(255,255,255,.14)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <path d="M44 78 Q60 70 74 79 Q85 86 77 96" stroke="rgba(255,255,255,.32)" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M37 100 Q54 89 68 100 Q79 108 71 120" stroke="rgba(255,255,255,.25)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path d="M42 122 Q58 113 72 123 Q81 131 73 141" stroke="rgba(255,255,255,.2)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <path d="M156 78 Q140 70 126 79 Q115 86 123 96" stroke="rgba(255,255,255,.26)" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M163 100 Q146 89 132 100 Q121 108 129 120" stroke="rgba(255,255,255,.2)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <ellipse cx="74" cy="70" rx="26" ry="11" fill="rgba(255,255,255,.13)"/>
+            <ellipse cx="126" cy="70" rx="21" ry="9" fill="rgba(255,255,255,.1)"/>
+            <circle cx="61" cy="95" r="3.5" fill="rgba(255,255,255,.55)"/>
+            <circle cx="80" cy="112" r="2.5" fill="rgba(255,255,255,.45)"/>
+            <circle cx="139" cy="92" r="3" fill="rgba(255,255,255,.44)"/>
+            <line x1="61" y1="95" x2="80" y2="112" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
+            <line x1="139" y1="92" x2="124" y2="116" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+            <rect x="88" y="166" width="24" height="16" rx="7" fill="rgba(124,106,255,.6)"/>
+          </svg>
+        </div>
+        <div class="brain-info">
+          <div class="brain-pct-wrap">
+            <div class="brain-pct" id="overallPct">0%</div>
+            <div class="brain-pct-label">ogólna gotowość</div>
+          </div>
+          <div class="brain-title" id="brainTitle">Twój Brain Cię zna</div>
+          <div class="brain-sub" id="brainSummary">Analizuję Twoją wiedzę...</div>
+          <div class="brain-stats" id="brainStats"></div>
+        </div>
+      </div>
+
+      <!-- Subjects -->
+      <div class="sec-label">Mapa przedmiotów</div>
+      <div class="subjects-grid" id="subjectsGrid"></div>
+
+      <!-- Holes -->
+      <div id="holesSection" style="display:none;">
+        <div class="sec-label" style="margin-top:24px;">Największe dziury — pilne do naprawy</div>
+        <div class="holes-card">
+          <div class="holes-hdr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Priorytet do naprawy
+          </div>
+          <div id="holesList"></div>
+        </div>
+      </div>
+
+      <!-- No data -->
+      <div class="no-data" id="noDataCard" style="display:none;">
+        <div class="no-data-icon">📚</div>
+        <div class="no-data-title">Zacznij się uczyć!</div>
+        <div class="no-data-sub">Brain potrzebuje danych — zrób kilka quizów, wygeneruj notatki lub sprawdzian. Im więcej robisz, tym dokładniejsza mapa wiedzy!</div>
+        <a class="start-btn" onclick="go('quiz_app.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>
+          Zrób pierwszy quiz
+        </a>
+      </div>
+
+      <!-- Simulate -->
+      <button class="sim-btn" id="simBtn" onclick="simulateExam()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Wyślij Brain na sprawdzian
+      </button>
+
+    </div><!-- /brain-content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Mobile Nav -->
+<div class="m-nav">
+  <a class="m-nb" onclick="go('dashboard_FINAL.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Start</a>
+  <a class="m-nb" onclick="go('chat.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</a>
+  <a class="m-nb" onclick="go('quiz_app.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>Quiz</a>
+  <a class="m-nb" onclick="go('notes_generator.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Notatki</a>
+  <a class="m-nb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Brain</a>
+</div>
+
+<!-- Firebase + Logic -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
+  authDomain:"eduvia-c69bc.firebaseapp.com",
+  projectId:"eduvia-c69bc",
+  storageBucket:"eduvia-c69bc.firebasestorage.app",
+  messagingSenderId:"613529563678",
+  appId:"1:613529563678:web:5028a3edfbd68969d4340f"
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+
+  localStorage.setItem('eduvia_uid', user.uid);
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+
+  // Sprawdź plan
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  const userPlan = snap.exists() ? (snap.data().plan || 'free') : 'free';
+  localStorage.setItem('eduvia_plan', userPlan);
+
+  if (userPlan !== 'pro') {
+    document.getElementById('proGate').style.display = 'flex';
+    return;
+  }
+
+  // Załaduj Brain
+  document.getElementById('liveBadge').style.display = 'flex';
+  document.getElementById('refreshBtn').style.display = 'flex';
+  window._uid = user.uid;
+  window._db = db;
+  window._doc = doc;
+  window._getDoc = getDoc;
+  loadBrain();
+});
+</script>
+
+<script>
+function go(u) { window.location.href = u; }
+
+const BACKEND = 'https://ai-teacher-backend-1.onrender.com';
+
+async function loadBrain() {
+  document.getElementById('brainLoading').style.display = 'flex';
+  document.getElementById('brainContent').style.display = 'none';
+
+  try {
+    // Pobierz dane z Firebase
+    const snap = await window._getDoc(window._doc(window._db, 'users', window._uid));
+    if (!snap.exists()) { showNoData(); return; }
+
+    const data = snap.data();
+
+    const payload = {
+      uid: window._uid,
+      quizHistory: data.quizHistory || [],
+      notesHistory: data.notesHistory || [],
+      understandingHistory: data.understandingHistory || [],
+      examHistory: data.examHistory || [],
+      examResults: data.examResults || [],
+      chatHistory: data.chatHistory || [],
+      lessonProgress: data.lessonProgress || []
+    };
+
+    // Wyślij do Brain API
+    const res = await fetch(BACKEND + '/api/v1/brain/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error('Błąd serwera ' + res.status);
+    const result = await res.json();
+
+    if (!result.success) throw new Error('Błąd analizy');
+
+    renderBrain(result);
+
+  } catch(e) {
+    console.error('Brain error:', e);
+    document.getElementById('brainLoading').style.display = 'none';
+    document.getElementById('brainContent').style.display = 'block';
+    showNoData();
+  }
+}
+
+function renderBrain(data) {
+  document.getElementById('brainLoading').style.display = 'none';
+  document.getElementById('brainContent').style.display = 'block';
+
+  if (data.no_data) { showNoData(); return; }
+
+  // Overall pct
+  document.getElementById('overallPct').textContent = (data.overall_pct || 0) + '%';
+  document.getElementById('brainSummary').textContent = data.summary || 'AI przeanalizował Twoją wiedzę.';
+
+  // Stats
+  const stats = document.getElementById('brainStats');
+  const quizCount = (data.subjects || []).reduce((a,s) => a + (s.quizzes_done || 0), 0);
+  const holesCount = (data.holes || []).length;
+  stats.innerHTML = `
+    <div class="bstat"><div class="bstat-val g">${quizCount}</div><div class="bstat-label">Quizów ukończonych</div></div>
+    <div class="bstat"><div class="bstat-val r">${holesCount}</div><div class="bstat-label">Dziury do naprawy</div></div>
+    <div class="bstat"><div class="bstat-val o">${data.weekly_trend === 'improving' ? '↑' : data.weekly_trend === 'declining' ? '↓' : '→'}</div><div class="bstat-label">Trend tygodnia</div></div>
+  `;
+
+  // Subjects
+  const grid = document.getElementById('subjectsGrid');
+  grid.innerHTML = '';
+  (data.subjects || []).forEach(s => {
+    const colorClass = s.color === 'green' ? 'c-green' : s.color === 'yellow' ? 'c-gold' : s.color === 'red' ? 'c-red' : 'c-accent';
+    const card = document.createElement('div');
+    card.className = `subj-card ${colorClass}`;
+    card.style.animation = 'slideUp .4s ease both';
+    card.innerHTML = `
+      <div class="subj-top">
+        <div class="subj-ico">${s.icon || '📚'}</div>
+        <div class="subj-name">${s.name}</div>
+        <div class="subj-pct">${s.pct}%</div>
+      </div>
+      <div class="subj-bar-bg"><div class="subj-bar" style="width:${s.pct}%"></div></div>
+      <div class="subj-status">${s.status || ''}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Holes
+  const holes = data.holes || [];
+  if (holes.length > 0) {
+    document.getElementById('holesSection').style.display = 'block';
+    const list = document.getElementById('holesList');
+    list.innerHTML = '';
+    holes.forEach((h, i) => {
+      const item = document.createElement('div');
+      item.className = 'hole-item';
+      item.innerHTML = `
+        <div class="hole-n">${i+1}</div>
+        <div class="hole-body">
+          <div class="hole-subj">${h.subject}</div>
+          <div class="hole-topic">${h.topic}</div>
+          <div class="hole-reason">${h.reason}</div>
+          <button class="fix-btn" onclick="fixHole('${h.subject}', '${h.topic}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Napraw w ${h.fix_time_min || 5} minut
+          </button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById('noDataCard').style.display = 'none';
+}
+
+function showNoData() {
+  document.getElementById('noDataCard').style.display = 'block';
+  document.getElementById('holesSection').style.display = 'none';
+  document.getElementById('subjectsGrid').innerHTML = '';
+  document.getElementById('brainStats').innerHTML = '';
+  document.getElementById('overallPct').textContent = '0%';
+  document.getElementById('brainSummary').textContent = 'Zacznij robić quizy i notatki!';
+}
+
+function fixHole(subject, topic) {
+  const query = encodeURIComponent(topic + ' ' + subject);
+  window.location.href = 'quiz_app.html?topic=' + query;
+}
+
+function simulateExam() {
+  const weakest = document.querySelector('.subj-card.c-red .subj-name');
+  if (weakest) {
+    window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(weakest.textContent);
+  } else {
+    window.location.href = 'quiz_app.html';
+  }
+}
+</script>
+
+</body>
+</html>
