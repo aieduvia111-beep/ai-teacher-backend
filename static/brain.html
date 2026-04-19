@@ -600,10 +600,40 @@ function examHole(subject, topic, btn) {
   const orig = btn.innerHTML;
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> Generuje...';
   btn.disabled = true;
+
+  // Zbierz pytania z quizu które pasują do tego tematu/przedmiotu
+  const allWrong = window._brainWrongQuestions || [];
+  const relevant = allWrong.filter(function(q) {
+    const qt = (q.question||'').toLowerCase();
+    const tl = topic.toLowerCase();
+    const sl = subject.toLowerCase();
+    return qt.includes(tl)||(q.subject||'').toLowerCase().includes(sl)||(q.title||'').toLowerCase().includes(tl);
+  });
+
+  // Liczba pytań = liczba błędów z quizu (min 3, max 20)
+  const liczba = Math.max(3, Math.min(20, relevant.length > 0 ? relevant.length : 5));
+
+  // Buduj instrukcję — przekaż dokładne pytania z quizu żeby sprawdzian był z tych samych zagadnień
+  let wlasneInstrukcje = 'WAZNE: Sprawdzian ma byc WYLACZNIE z tematu "' + topic + '" (' + subject + '). ';
+  if (relevant.length > 0) {
+    wlasneInstrukcje += 'Uczen popelnil bledy w nastepujacych pytaniach — sprawdzian ma sprawdzac DOKLADNIE te same zagadnienia: ';
+    wlasneInstrukcje += relevant.slice(0, 15).map(function(q, i) { return (i+1) + ') ' + (q.question || ''); }).join(' | ');
+    wlasneInstrukcje += '. Nie dodawaj pytan z innych tematow. ';
+  }
+  wlasneInstrukcje += 'Liczba pytan musi wynosic dokladnie ' + liczba + '.';
+
   fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({temat: topic, przedmiot: subject, klasa: 'liceum', trudnosc: 'srednia', liczba_pytan: 10, wariant: 'A'})
+    body: JSON.stringify({
+      temat: topic,
+      przedmiot: subject,
+      klasa: 'liceum',
+      trudnosc: 'srednia',
+      liczba_pytan: liczba,
+      wariant: 'A',
+      wlasne_instrukcje: wlasneInstrukcje
+    })
   })
   .then(r => r.blob())
   .then(blob => {
@@ -682,9 +712,30 @@ function brainExam() {
   const orig = btn.innerHTML;
   btn.innerHTML = btn.innerHTML.replace('Sprawdzian z dziur', 'Generuje PDF...').replace('PDF sprawdzianu z najtrudniejszych tematów', 'Proszę czekać...');
   btn.disabled = true;
+
+  const wrongQs = window._brainWrongQuestions || [];
+  // Liczba pytań = liczba błędów (min 3, max 20)
+  const liczba = Math.max(3, Math.min(20, wrongQs.length > 0 ? wrongQs.length : 5));
+
+  let wlasneInstrukcje = 'WAZNE: Sprawdzian ma byc WYLACZNIE z tematu "' + topic + '" (' + subject + '). ';
+  if (wrongQs.length > 0) {
+    wlasneInstrukcje += 'Uczen popelnil bledy w nastepujacych pytaniach — sprawdzian ma sprawdzac DOKLADNIE te same zagadnienia: ';
+    wlasneInstrukcje += wrongQs.slice(0, 15).map(function(q, i) { return (i+1) + ') ' + (q.question || ''); }).join(' | ');
+    wlasneInstrukcje += '. Nie dodawaj pytan z innych tematow. ';
+  }
+  wlasneInstrukcje += 'Liczba pytan musi wynosic dokladnie ' + liczba + '.';
+
   fetch(BACKEND + '/api/v1/exam/generate', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({temat: topic, przedmiot: subject, klasa: 'liceum', trudnosc: 'srednia', liczba_pytan: 10, wariant: 'A'})
+    body: JSON.stringify({
+      temat: topic,
+      przedmiot: subject,
+      klasa: 'liceum',
+      trudnosc: 'srednia',
+      liczba_pytan: liczba,
+      wariant: 'A',
+      wlasne_instrukcje: wlasneInstrukcje
+    })
   })
   .then(r => r.blob())
   .then(blob => {

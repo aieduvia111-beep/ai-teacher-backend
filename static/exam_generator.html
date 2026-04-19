@@ -930,7 +930,52 @@ function showErr(msg){document.getElementById('errText').textContent=msg;documen
 
 async function fetchWariant(temat,numQ,wariant){
   const wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
-  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:wlasneInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
+  
+  // Wykrywaj po TEMACIE czy potrzebne obliczenia — nie po przedmiocie
+  const tematLow = (temat||'').toLowerCase();
+  const przedmiotLow = (vals.przedmiot||'').toLowerCase();
+  
+  // Słowa kluczowe które SUGERUJĄ obliczenia (niezależnie od przedmiotu)
+  const SLOWA_OBLICZENIOWE = [
+    'oblicz','procent','prędkość','stężenie','masa','ciśnienie','temperatura','energia',
+    'wydajność','wzrost','przyrost','odległość','czas','siła','moc','napięcie','prąd',
+    'stężenie','ph','mol','gram','litr','metr','kilogram','watt','dżul','niuton',
+    'równanie','wzór','rachunek','obliczenia','wylicz','ile wynosi','współczynnik',
+    'gęstość','objętość','powierzchnia','pole','obwód','długość','szerokość',
+    'populacja','liczebność','przyrost naturalny','wskaźnik','indeks','bilans'
+  ];
+  
+  // Słowa kluczowe które WYKLUCZAJĄ obliczenia
+  const SLOWA_BEZ_OBLICZEN = [
+    'gramatyka','słownictwo','vocabulary','grammar','czasy','reading','writing',
+    'wypracowanie','esej','lektura','literatura','epoka','autor','bohater',
+    'historia','bitwa','data','wydarzenie','postać','chronologia',
+    'definicja','pojęcie','termin','opis','charakterystyka','cechy'
+  ];
+  
+  const maSlowaObliczeniowe = SLOWA_OBLICZENIOWE.some(s => tematLow.includes(s));
+  const maSlowaBezObliczen = SLOWA_BEZ_OBLICZEN.some(s => tematLow.includes(s));
+  
+  // Przedmioty gdzie obliczenia są domyślne (nawet bez słów kluczowych)
+  const ZAWSZE_OBLICZENIA = ['matematyka','fizyka','chemia'];
+  const czyZawszeObliczenia = ZAWSZE_OBLICZENIA.some(p => przedmiotLow.includes(p));
+  
+  let autoInstrukcje = '';
+  
+  if (maSlowaObliczeniowe || (czyZawszeObliczenia && !maSlowaBezObliczen)) {
+    // Temat wyraźnie wymaga obliczeń LUB to mat/fiz/chem bez sprzeciwu
+    autoInstrukcje = 'Ten temat wymaga zadań obliczeniowych. Dodaj odpowiednie zadania z liczbami, wzorami i obliczeniami dopasowanymi do tematu "' + temat + '". ';
+  } else if (maSlowaBezObliczen) {
+    // Temat wyraźnie humanistyczny/językowy
+    autoInstrukcje = 'WAZNE: Ten temat ("' + temat + '") jest humanistyczny/językowy. NIE dodawaj zadań obliczeniowych ani matematycznych. Twórz pytania zamknięte A-D, pytania otwarte, analizę tekstu, pytania definicyjne i opisowe. ';
+  } else {
+    // Nie wiadomo — AI decyduje na podstawie tematu
+    autoInstrukcje = 'Oceń sam czy temat "' + temat + '" z przedmiotu "' + vals.przedmiot + '" wymaga zadań obliczeniowych. Jeśli tak — dodaj je. Jeśli temat jest humanistyczny/językowy — NIE dodawaj obliczeń. Dobierz typ zadań odpowiednio do tematu. ';
+  }
+  
+  const finalInstrukcje = autoInstrukcje + (wlasneInstr ? wlasneInstr : '');
+  
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstrukcje||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
   const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
