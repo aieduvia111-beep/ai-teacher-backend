@@ -691,31 +691,23 @@ function fixHole(subject, topic) {
   const tl = topic.toLowerCase();
   const sl = subject.toLowerCase();
   const relevant = allWrong.filter(function(q) {
-    const qt = (q.question||'').toLowerCase();
     const qs = (q.subject||'').toLowerCase();
-    const qtitle = (q.title||'').toLowerCase();
-    // Musi pasować przedmiot LUB temat — ale nie losowe pytania z innych przedmiotów
+    const qtopic = (q.topic||q.title||'').toLowerCase();
+    // Sprawdź po polu topic (temat quizu) — najbardziej precyzyjne
+    const topicMatch = qtopic.includes(tl) || tl.includes(qtopic.split(' ')[0]);
     const subjectMatch = qs.includes(sl) || sl.includes(qs);
-    const topicMatch = qt.includes(tl) || qtitle.includes(tl);
-    return subjectMatch && (topicMatch || subjectMatch);
+    return topicMatch || subjectMatch;
   });
 
-  // Zawsze wymuś AI — przekaż temat i przedmiot jako główny cel
-  // wrongQuestions tylko jeśli NAPRAWDĘ pasują do tematu
   const brainData = {
     topic: topic,
     subject: subject,
-    // Wyczyść localStorage żeby nie było starych pytań z poprzedniej sesji
-    wrongQuestions: [],
     autoGenerate: true,
-    forceAI: true,
-    instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow ani przedmiotow.'
+    // forceAI tylko gdy BRAK pasujących błędnych pytań
+    forceAI: relevant.length === 0,
+    instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow ani przedmiotow.',
+    wrongQuestions: relevant.length > 0 ? relevant.slice(0, 10) : []
   };
-
-  // Dodaj pasujące pytania tylko gdy są naprawdę z tego tematu
-  if (relevant.length > 0) {
-    brainData.wrongQuestions = relevant.slice(0, 10);
-  }
 
   // Wyczyść stary quiz z localStorage przed nowym
   localStorage.removeItem('brain_quiz_data');
