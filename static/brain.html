@@ -586,20 +586,21 @@ function showNoData() {
 }
 
 function fixHole(subject, topic) {
-  // Zbierz błędne pytania dla tego konkretnego przedmiotu
+  // Zbierz pasujące błędne pytania
   const allWrong = window._brainWrongQuestions || [];
-  const relevantWrong = allWrong.filter(q => {
-    const qText = (q.question || '').toLowerCase();
-    const topicLow = topic.toLowerCase();
-    return qText.includes(topicLow) || (q.subject || '').toLowerCase().includes(subject.toLowerCase());
+  const relevant = allWrong.filter(function(q) {
+    const qt = (q.question||'').toLowerCase();
+    const tl = topic.toLowerCase();
+    const sl = subject.toLowerCase();
+    return qt.includes(tl)||(q.subject||'').toLowerCase().includes(sl)||(q.title||'').toLowerCase().includes(tl);
   });
 
   const brainData = {
     topic: topic,
     subject: subject,
-    wrongQuestions: relevantWrong.length > 0 ? relevantWrong : allWrong.slice(0, 5),
+    wrongQuestions: relevant.length > 0 ? relevant : [],
     autoGenerate: true,
-    fromHole: true
+    instrukcje: 'Wygeneruj 10 pytan WYLACZNIE z tematu: ' + topic + ' (' + subject + '). Pytania maja sprawdzac szczegolowa wiedze z tego tematu. Nie dodawaj pytan z innych tematow.'
   };
   localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
   window.location.href = 'quiz_app.html?from=brain&auto=1';
@@ -621,10 +622,24 @@ function _getWeakTopic() {
 function brainQuiz() {
   const {topic, subject} = _getWeakTopic();
   const wrongQs = window._brainWrongQuestions || [];
-  if (wrongQs.length > 0) {
-    localStorage.setItem('brain_quiz_instructions', 'Wygeneruj quiz TYLKO z tych tematów: ' + wrongQs.slice(0,5).map(q => q.question || q).join('; '));
+
+  // Przekaż PEŁNE pytania z opcjami jeśli są dostępne
+  const brainData = {
+    topic: topic,
+    subject: subject,
+    wrongQuestions: wrongQs.slice(0, 15), // maks 15 pytań
+    autoGenerate: true
+  };
+
+  // Jeśli brak pełnych pytań - dodaj instrukcję dla AI
+  const fullQs = wrongQs.filter(q => q.options && q.options.length > 0);
+  if(fullQs.length < 3 && wrongQs.length > 0) {
+    brainData.instrukcje = 'Wygeneruj quiz z tematow gdzie uczen popelnil bledy: ' + 
+      wrongQs.slice(0,5).map(q => q.question || q.topic || '').filter(Boolean).join('; ');
   }
-  window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(topic + ' ' + subject) + '&from=brain';
+
+  localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
+  window.location.href = 'quiz_app.html?from=brain&auto=1';
 }
 
 function brainExam() {
