@@ -833,7 +833,15 @@ class ExamGenerator:
 
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None) -> dict:
         if wlasne_instrukcje and wlasne_instrukcje.strip():
-            blok = f"NAUCZYCIEL CHCE: {wlasne_instrukcje.strip()}\nMUSISZ to uwzglednic w sprawdzianie."
+            instr = wlasne_instrukcje.strip()
+            only_closed = any(x in instr.upper() for x in ['TYLKO', 'ZAMKNIETYCH', 'NIE DODAWAJ CZESCI B', 'SPRAWDZIAN MA MIEC'])
+            if only_closed:
+                blok = f"""KRYTYCZNE NAKAZY — BEZWZGLEDNE:
+{instr}
+STRUKTURA: TYLKO sekcja A (zamkniete). ZAKAZ sekcji B. ZAKAZ zadan otwartych.
+LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
+            else:
+                blok = f"NAUCZYCIEL CHCE: {instr}\nMUSISZ to uwzglednic w sprawdzianie."
         else:
             blok = "(brak dodatkowych instrukcji)"
         prompt = EXAM_PROMPT.format(
