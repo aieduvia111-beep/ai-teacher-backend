@@ -686,24 +686,41 @@ function examHole(subject, topic, btn) {
 }
 
 function fixHole(subject, topic) {
-  // Zbierz pasujące błędne pytania
+  // Zbierz TYLKO pytania pasujące do tematu I przedmiotu jednocześnie
   const allWrong = window._brainWrongQuestions || [];
+  const tl = topic.toLowerCase();
+  const sl = subject.toLowerCase();
   const relevant = allWrong.filter(function(q) {
     const qt = (q.question||'').toLowerCase();
-    const tl = topic.toLowerCase();
-    const sl = subject.toLowerCase();
-    return qt.includes(tl)||(q.subject||'').toLowerCase().includes(sl)||(q.title||'').toLowerCase().includes(tl);
+    const qs = (q.subject||'').toLowerCase();
+    const qtitle = (q.title||'').toLowerCase();
+    // Musi pasować przedmiot LUB temat — ale nie losowe pytania z innych przedmiotów
+    const subjectMatch = qs.includes(sl) || sl.includes(qs);
+    const topicMatch = qt.includes(tl) || qtitle.includes(tl);
+    return subjectMatch && (topicMatch || subjectMatch);
   });
 
+  // Zawsze wymuś AI — przekaż temat i przedmiot jako główny cel
+  // wrongQuestions tylko jeśli NAPRAWDĘ pasują do tematu
   const brainData = {
     topic: topic,
     subject: subject,
-    wrongQuestions: relevant.length > 0 ? relevant : [],
+    // Wyczyść localStorage żeby nie było starych pytań z poprzedniej sesji
+    wrongQuestions: [],
     autoGenerate: true,
-    instrukcje: 'Wygeneruj 10 pytan WYLACZNIE z tematu: ' + topic + ' (' + subject + '). Pytania maja sprawdzac szczegolowa wiedze z tego tematu. Nie dodawaj pytan z innych tematow.'
+    forceAI: true,
+    instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow ani przedmiotow.'
   };
+
+  // Dodaj pasujące pytania tylko gdy są naprawdę z tego tematu
+  if (relevant.length > 0) {
+    brainData.wrongQuestions = relevant.slice(0, 10);
+  }
+
+  // Wyczyść stary quiz z localStorage przed nowym
+  localStorage.removeItem('brain_quiz_data');
   localStorage.setItem('brain_quiz_data', JSON.stringify(brainData));
-  window.location.href = 'quiz_app.html?from=brain&auto=1';
+  window.location.href = 'quiz_app.html?from=brain&auto=1&t=' + Date.now();
 }
 
 function _getWeakTopic() {
