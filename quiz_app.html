@@ -352,7 +352,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-window._fbSaveQuiz = async function(title, correct, total, xpEarned, subject, wrongQuestions) {
+window._fbSaveQuiz = async function(title, correct, total, xpEarned, subject, wrongQuestions, repairedQuestions) {
   // Poczekaj na window.currentUser maks 5 sekund
   let waited = 0;
   while (!window.currentUser && waited < 5000) {
@@ -372,6 +372,7 @@ window._fbSaveQuiz = async function(title, correct, total, xpEarned, subject, wr
         xp: xpEarned,
         subject: subject || 'inne',
         wrongQuestions: wrongQuestions || [],
+        repairedQuestions: repairedQuestions || [],
         pct: Math.round(correct/total*100),
         timestamp: new Date().toISOString()
       }),
@@ -859,11 +860,21 @@ function saveQuiz(title,correct,total,xpEarned){
     };
   }).filter(Boolean);
   // Zapisz do Firebase z pełnymi pytaniami
-  console.log('[Brain Save] title:', finalTitle, 'subject:', subject, 'wrongQs:', wrongQs.length, wrongQs.map(function(q){return q.topic+': '+q.question.slice(0,30);}));
-  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(finalTitle,correct,total,xpEarned,subject,wrongQs);
+  // Zbierz naprawione pytania
+  var repairedQs = _repairedIndexes.map(function(i){
+    var q = questions[i];
+    if(!q) return null;
+    var cleanTopic2 = (window._brainQuizTopic || title || '').replace(/^Brain Quiz — /i, '').trim();
+    return { question: q.question, subject: subject, topic: cleanTopic2 };
+  }).filter(Boolean);
+
+  console.log('[Brain Save] title:', finalTitle, 'subject:', subject, 'wrongQs:', wrongQs.length, 'repaired:', repairedQs.length);
+  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(finalTitle,correct,total,xpEarned,subject,wrongQs,repairedQs);
   // Wyczyść brain quiz data po zapisie
   window._brainQuizSubject = null;
   window._brainQuizTopic = null;
+  _brainOriginalWrong = [];
+  _repairedIndexes = [];
   const h=getQuizHistory();
   h.unshift({title:finalTitle,correct,total,xpEarned,subject,time:Date.now()});
   if(h.length>20)h.pop();
@@ -907,6 +918,9 @@ function renderSidebarStats(){
 
 // ═══ QUIZ LOGIC (oryginalna — bez zmian) ═══
 let quiz=null,questions=[],currentQ=0,answers=[],xp=0,streak=0,maxStreak=0,answered=false,isRetry=false,wrongIndexes=[];
+// Śledzenie naprawionych pytań z Brain
+var _brainOriginalWrong = []; // oryginalne błędne pytania z Brain
+var _repairedIndexes = [];    // indeksy pytań które zostały naprawione
 let VALS={level:'liceum',diff:'medium'};
 let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
 let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Nie poddawaj się!"];
@@ -1040,6 +1054,13 @@ function answer(idx){
     if(document.getElementById('qiXP'))document.getElementById('qiXP').textContent=xp;
     if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent=streak>=2?'🔥 x'+streak:'1';
     let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak:'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
+    // Jeśli to było błędne pytanie z Brain — oznacz jako naprawione
+    if(_brainOriginalWrong.length > 0 && questions[currentQ]) {
+      var qtext = questions[currentQ].question || '';
+      if(_brainOriginalWrong.indexOf(qtext) !== -1) {
+        _repairedIndexes.push(currentQ);
+      }
+    }
   }else{streak=0;wrongIndexes.push(currentQ);if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';}
   let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
   if(correct){fb.className='feedback-box correct-fb show';fh.className='feedback-header correct-h';fh.textContent='✓ Poprawnie!';}
@@ -1153,6 +1174,8 @@ window.addEventListener('DOMContentLoaded',function(){
           // Zapisz subject dla Firebase
           window._brainQuizSubject = bSubject;
           window._brainQuizTopic = bTopic;
+          _brainOriginalWrong = fullQs.map(function(q){ return q.question; });
+          _repairedIndexes = [];
           quiz = {title: 'Brain Quiz — ' + bTopic, questions: fullQs};
           useLimit('quiz');
           beginQuiz(fullQs, false);
@@ -1165,6 +1188,8 @@ window.addEventListener('DOMContentLoaded',function(){
           // Zapisz subject dla Firebase
           window._brainQuizSubject = bSubject;
           window._brainQuizTopic = bTopic;
+          _brainOriginalWrong = [];
+          _repairedIndexes = [];
           var bInstr = bd.instrukcje || ('Wygeneruj 10 pytan WYLACZNIE z tematu: ' + bTopic + ' (' + bSubject + '). Pytania musza byc z tego KONKRETNEGO tematu i przedmiotu. Zakaz pytan z innych tematow.');
           showPage('pageLoading');
           var BASE2 = 'https://ai-teacher-backend-1.onrender.com';
