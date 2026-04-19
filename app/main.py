@@ -103,6 +103,13 @@ except Exception as e:
     print(f"❌ users: {e}")
 
 try:
+    from .api.brain import router as brain_router
+    app.include_router(brain_router)
+    print("✅ brain OK")
+except Exception as e:
+    print(f"❌ brain: {e}")
+
+try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
     print("✅ static OK")
 except Exception as e:
