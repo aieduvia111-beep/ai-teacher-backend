@@ -392,10 +392,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
       </div>
 
       <!-- PRZEWIDYWANIE OCENY -->
-      <div id="predictCard" style="display:none;background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(34,211,160,.03));border:1px solid rgba(56,189,248,.2);border-radius:20px;padding:20px;margin-bottom:12px;">
+      <div id="predictCard" style="display:none;margin-top:16px;background:linear-gradient(135deg,rgba(56,189,248,.06),rgba(34,211,160,.03));border:1px solid rgba(56,189,248,.2);border-radius:20px;padding:20px;margin-bottom:12px;">
         <div style="font-family:var(--h);font-weight:800;font-size:.84em;color:var(--blue);display:flex;align-items:center;gap:7px;margin-bottom:12px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-          Przewidz swojaocene
+          Przewidź swoją ocenę
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input id="predictTopic" type="text" placeholder="Temat sprawdzianu np. Fotosynteza" style="flex:2;min-width:140px;padding:10px 13px;background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;color:var(--text);font-family:var(--b);font-size:.83em;outline:none;transition:border .2s;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border-hi)'" onkeypress="if(event.key==='Enter')predictGrade()">
@@ -406,7 +406,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
             <div id="predictGradeOrb" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#22d3a0);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:900;font-size:1.5em;color:white;flex-shrink:0;box-shadow:0 0 20px rgba(56,189,248,.4);">3</div>
             <div>
-              <div id="predictGradeLabel" style="font-family:var(--h);font-weight:800;font-size:.9em;color:white;margin-bottom:2px;">Przewidujeocene 3+</div>
+              <div id="predictGradeLabel" style="font-family:var(--h);font-weight:800;font-size:.9em;color:white;margin-bottom:2px;">Przewiduję ocenę 3+</div>
               <div id="predictConfidence" style="font-size:.7em;color:var(--muted2);">Pewnosc: srednia</div>
             </div>
           </div>
