@@ -541,12 +541,37 @@ function fixHole(subject, topic) {
 }
 
 function simulateExam() {
-  const weakest = document.querySelector('.subj-card.c-red .subj-name');
-  if (weakest) {
-    window.location.href = 'quiz_app.html?topic=' + encodeURIComponent(weakest.textContent);
-  } else {
-    window.location.href = 'quiz_app.html';
-  }
+  const redCard = document.querySelector('.subj-card.c-red .subj-name');
+  const goldCard = document.querySelector('.subj-card.c-gold .subj-name');
+  const anyCard = document.querySelector('.subj-card .subj-name');
+  const weakestSubject = (redCard || goldCard || anyCard);
+  const firstHoleTopic = document.querySelector('.hole-topic');
+  const firstHoleSubj = document.querySelector('.hole-subj');
+  const topic = firstHoleTopic ? firstHoleTopic.textContent.trim() : (weakestSubject ? weakestSubject.textContent.trim() : 'Powtorka');
+  const subject = firstHoleSubj ? firstHoleSubj.textContent.trim() : (weakestSubject ? weakestSubject.textContent.trim() : 'Matematyka');
+
+  const btn = document.getElementById('simBtn');
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> Generuje sprawdzian...';
+  btn.disabled = true;
+
+  fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({temat: topic, przedmiot: subject, klasa: 'liceum', trudnosc: 'srednia', liczba_pytan: 10, wariant: 'A'})
+  })
+  .then(r => r.blob())
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Brain_Sprawdzian_' + topic.replace(/\s+/g,'_') + '.pdf';
+    link.click();
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="17" height="17"><polyline points="20 6 9 17 4 12"/></svg> Sprawdzian pobrany!';
+    btn.style.borderColor = 'rgba(34,211,160,.4)';
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; btn.style.borderColor = ''; }, 3000);
+  })
+  .catch(e => { btn.innerHTML = originalHTML; btn.disabled = false; });
 }
 </script>
 
