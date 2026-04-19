@@ -827,7 +827,10 @@ const QUIZ_KEY='eduvia_quiz_history';
 function getQuizHistory(){try{return JSON.parse(localStorage.getItem(QUIZ_KEY)||'[]');}catch{return[];}}
 function saveQuiz(title,correct,total,xpEarned){
   const subjectEl = document.getElementById('subject');
-  const subject = subjectEl ? subjectEl.value : 'inne';
+  // Jeśli quiz z Brain — użyj subject z Brain, nie z formularza
+  const subject = window._brainQuizSubject || (subjectEl ? subjectEl.value : 'inne');
+  // Ustaw tytuł z Brain jeśli dostępny
+  const finalTitle = window._brainQuizTopic ? ('Brain Quiz — ' + window._brainQuizTopic) : title;
   // Zbierz PEŁNE błędne pytania z opcjami A,B,C,D i poprawną odpowiedzią
   const wrongQs = wrongIndexes.map(function(i){
     const q = questions[i];
@@ -842,9 +845,12 @@ function saveQuiz(title,correct,total,xpEarned){
     };
   }).filter(Boolean);
   // Zapisz do Firebase z pełnymi pytaniami
-  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned,subject,wrongQs);
+  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(finalTitle,correct,total,xpEarned,subject,wrongQs);
+  // Wyczyść brain quiz data po zapisie
+  window._brainQuizSubject = null;
+  window._brainQuizTopic = null;
   const h=getQuizHistory();
-  h.unshift({title,correct,total,xpEarned,subject,time:Date.now()});
+  h.unshift({title:finalTitle,correct,total,xpEarned,subject,time:Date.now()});
   if(h.length>20)h.pop();
   localStorage.setItem(QUIZ_KEY,JSON.stringify(h));
 }
@@ -1113,10 +1119,25 @@ window.addEventListener('DOMContentLoaded',function(){
         var bTopic = bd.topic || 'Powtorka';
         var bSubject = bd.subject || 'inne';
         var bWrong = bd.wrongQuestions || [];
+        var bForceAI = bd.forceAI || false;
+
         // Sprawdź czy mamy pełne pytania z opcjami A,B,C,D
-        var fullQs = bWrong.filter(function(q){ return q.options && q.options.length > 0; });
-        if(fullQs.length >= 3) {
+        // ALE tylko jeśli NIE wymuszamy AI i pytania są z TEGO SAMEGO tematu
+        var fullQs = bWrong.filter(function(q){
+          if (!q.options || q.options.length === 0) return false;
+          // Sprawdź czy pytanie pasuje do tematu
+          var qt = (q.question||'').toLowerCase();
+          var qs = (q.subject||'').toLowerCase();
+          var tl = bTopic.toLowerCase();
+          var sl = bSubject.toLowerCase();
+          return (qt.includes(tl) || qs.includes(sl) || sl.includes(qs));
+        });
+
+        if(fullQs.length >= 3 && !bForceAI) {
           // TRYB PREMIUM: Odtwórz DOKŁADNE błędne pytania natychmiastowo
+          // Zapisz subject dla Firebase
+          window._brainQuizSubject = bSubject;
+          window._brainQuizTopic = bTopic;
           quiz = {title: 'Brain Quiz — ' + bTopic, questions: fullQs};
           useLimit('quiz');
           beginQuiz(fullQs, false);
@@ -1125,14 +1146,17 @@ window.addEventListener('DOMContentLoaded',function(){
             if(t) t.textContent = 'Brain Quiz — ' + bTopic;
           }, 100);
         } else {
-          // TRYB AI: Generuj nowe pytania z precyzyjną instrukcją
-          var bInstr = bd.instrukcje || ('Wygeneruj 10 pytan WYLACZNIE z tematu: ' + bTopic + ' (' + bSubject + '). Pytania musza byc z tego KONKRETNEGO tematu.');
+          // TRYB AI: Generuj NOWE pytania z precyzyjną instrukcją
+          // Zapisz subject dla Firebase
+          window._brainQuizSubject = bSubject;
+          window._brainQuizTopic = bTopic;
+          var bInstr = bd.instrukcje || ('Wygeneruj 10 pytan WYLACZNIE z tematu: ' + bTopic + ' (' + bSubject + '). Pytania musza byc z tego KONKRETNEGO tematu i przedmiotu. Zakaz pytan z innych tematow.');
           showPage('pageLoading');
           var BASE2 = 'https://ai-teacher-backend-1.onrender.com';
           setTimeout(function(){
             fetch(BASE2+'/api/v1/quiz/generate-topic',{
               method:'POST', headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({topic:bTopic, subject:bSubject.toLowerCase(), level:'liceum', num_questions:10, difficulty:'trudny', wlasne_instrukcje:bInstr})
+              body:JSON.stringify({topic:bTopic, subject:bSubject, level:'liceum', num_questions:10, difficulty:'sredni', wlasne_instrukcje:bInstr})
             })
             .then(function(r){if(!r.ok)throw new Error('Blad');return r.json();})
             .then(function(d){
