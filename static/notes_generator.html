@@ -31,6 +31,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;he
 .a2{width:480px;height:480px;background:radial-gradient(circle,rgba(34,211,160,.1),transparent 70%);bottom:-80px;left:-80px;animation-delay:5s;}
 .a3{width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,.08),transparent 70%);top:45%;left:38%;animation-delay:9s;}
 @keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
 body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
 .app{display:flex;width:100%;height:100vh;position:relative;z-index:2;}
 
@@ -828,36 +829,33 @@ function mClose(){document.getElementById('mDrawer').classList.remove('open');do
 function go(u){window.location.href=u;}
 
 function showUnderstandingPopup(topic, subject) {
-  // Usuń stary popup jeśli istnieje
   const old = document.getElementById('understandingPopup');
   if(old) old.remove();
 
   const popup = document.createElement('div');
   popup.id = 'understandingPopup';
-  popup.style.cssText = `
-    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
-    background:linear-gradient(135deg,#0f0f1c,#131320);
-    border:1px solid rgba(124,106,255,0.3);border-radius:18px;
-    padding:18px 20px;z-index:9999;width:calc(100% - 40px);max-width:380px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:slideUp .3s ease;
-  `;
+  popup.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(0);background:linear-gradient(160deg,#0f0f1c 0%,#131320 100%);border:1px solid rgba(124,106,255,0.25);border-radius:20px;padding:20px 18px 16px;z-index:9999;width:calc(100% - 32px);max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);animation:slideUp .3s cubic-bezier(0.23,1,0.32,1);';
+
+  const topicShort = topic.length > 30 ? topic.slice(0,30)+'...' : topic;
   popup.innerHTML = `
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9em;margin-bottom:4px;">Jak oceniasz swoją wiedzę?</div>
-    <div style="font-size:.75em;color:#8890a4;margin-bottom:14px;">${topic}</div>
-    <div style="display:flex;gap:8px;justify-content:center;">
-      ${[['😰','Nie rozumiem',1],['😐','Trochę',2],['😊','Rozumiem',3],['🔥','Świetnie!',4]].map(([emoji,label,val])=>`
-        <button onclick="saveUnderstanding('${topic}','${subject}',${val},this.parentElement.parentElement)" style="
-          flex:1;padding:10px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-          border-radius:12px;color:white;cursor:pointer;transition:all .15s;font-size:.85em;
-        ">
-          <div style="font-size:1.4em;margin-bottom:4px;">${emoji}</div>
-          <div style="font-size:.65em;color:#8890a4;">${label}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.88em;color:#eeeef5;letter-spacing:-.01em;">Jak oceniasz swoją wiedzę?</div>
+        <div style="font-size:.7em;color:#7c6aff;margin-top:2px;font-weight:500;">${topicShort}</div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8em;flex-shrink:0;">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
+      ${[['😰','Nie rozumiem',1,'rgba(255,77,109,0.08)','rgba(255,77,109,0.25)'],['😐','Trochę',2,'rgba(245,166,35,0.08)','rgba(245,166,35,0.25)'],['😊','Rozumiem',3,'rgba(34,211,160,0.08)','rgba(34,211,160,0.25)'],['🔥','Świetnie!',4,'rgba(124,106,255,0.12)','rgba(124,106,255,0.35)']].map(([emoji,label,val,bg,border])=>`
+        <button onclick="saveUnderstanding('${topic}','${subject}',${val},document.getElementById('understandingPopup'))" style="padding:12px 6px 10px;background:${bg};border:1px solid ${border};border-radius:13px;color:white;cursor:pointer;transition:all .18s;font-size:.85em;outline:none;">
+          <div style="font-size:1.5em;margin-bottom:5px;line-height:1;">${emoji}</div>
+          <div style="font-size:.62em;color:#9ca3af;line-height:1.3;">${label}</div>
         </button>
       `).join('')}
     </div>
   `;
   document.body.appendChild(popup);
-  setTimeout(()=>{ if(popup.parentElement) popup.remove(); }, 15000);
+  setTimeout(()=>{ if(popup && popup.parentElement) popup.remove(); }, 12000);
 }
 
 function saveUnderstanding(topic, subject, level, popup) {
