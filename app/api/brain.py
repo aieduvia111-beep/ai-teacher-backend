@@ -175,6 +175,9 @@ ZASADY:
 - holes max 5, tylko konkretne tematy
 - severity high gdy bledy >=1 raz lub ocena slabo (nawet 1 quiz wystarczy!), medium gdy pct<50%, low gdy ocena ujdzie
 - WAZNE: nawet 1 quiz z bledami to wystarczy zeby temat trafil do holes — nie czekaj na wiele quizow
+- KLUCZOWE: jesli pytanie jest w "Naprawione" — znaczy ze uczen juz je opanowal — ZMNIEJSZ severity lub usun z holes
+- Jesli wszystkie bledy z danego tematu sa w "Naprawione" — USUN ten temat z holes calkowicie
+- Jesli polowa bledow naprawiona — zmien severity z high na medium lub medium na low
 - Uwzglednij WSZYSTKIE zrodla: quizy, notatki, ankiety, sprawdziany, plan nauki
 - Podaj TYLKO przedmioty ktore uczen faktycznie robil"""
 
@@ -336,7 +339,7 @@ def _build_data_summary(req: BrainRequest) -> str:
 
     # QUIZY
     if req.quizHistory:
-        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': []})
+        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': [], 'repaired': []})
         for q in req.quizHistory:
             s = q.get('subject', 'inne')
             correct = q.get('correct', 0)
@@ -345,19 +348,24 @@ def _build_data_summary(req: BrainRequest) -> str:
             subj_quiz[s]['scores'].append(pct)
             for w in (q.get('wrongQuestions') or [])[:3]:
                 subj_quiz[s]['wrong'].append(w.get('question', '')[:50])
+            # Naprawione pytania — zmniejszają severity dziury
+            for r in (q.get('repairedQuestions') or []):
+                subj_quiz[s]['repaired'].append(r.get('question', '')[:50])
 
         lines.append(f"\n=== QUIZY (lacznie {len(req.quizHistory)}) ===")
         for subj, data in subj_quiz.items():
             avg = round(sum(data['scores']) / len(data['scores']))
             wrong_uniq = list(dict.fromkeys(data['wrong']))[:3]
+            repaired_uniq = list(dict.fromkeys(data['repaired']))[:3]
             wrong_str = ' | '.join(wrong_uniq) if wrong_uniq else 'brak'
+            repaired_str = ' | '.join(repaired_uniq) if repaired_uniq else 'brak'
             scores = data['scores']
             trend = ''
             if len(scores) >= 6:
                 old_avg = sum(scores[-6:-3]) / 3
                 new_avg = sum(scores[-3:]) / 3
                 trend = ' [rosnie]' if new_avg > old_avg + 5 else (' [spada]' if new_avg < old_avg - 5 else ' [stabilny]')
-            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Bledy: {wrong_str}")
+            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Bledy: {wrong_str} | Naprawione: {repaired_str}")
 
     # NOTATKI
     if req.notesHistory:
