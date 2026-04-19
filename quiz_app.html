@@ -828,11 +828,20 @@ function getQuizHistory(){try{return JSON.parse(localStorage.getItem(QUIZ_KEY)||
 function saveQuiz(title,correct,total,xpEarned){
   const subjectEl = document.getElementById('subject');
   const subject = subjectEl ? subjectEl.value : 'inne';
-  // Zbierz błędne pytania
+  // Zbierz PEŁNE błędne pytania z opcjami A,B,C,D i poprawną odpowiedzią
   const wrongQs = wrongIndexes.map(function(i){
-    return questions[i] ? {question: questions[i].question, subject: subject} : null;
+    const q = questions[i];
+    if(!q) return null;
+    return {
+      question: q.question,
+      options: q.options || [],
+      correct: q.correct,
+      explanation: q.explanation || '',
+      subject: subject,
+      title: title
+    };
   }).filter(Boolean);
-  // Zapisz do Firebase z pełnymi danymi
+  // Zapisz do Firebase z pełnymi pytaniami
   if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned,subject,wrongQs);
   const h=getQuizHistory();
   h.unshift({title,correct,total,xpEarned,subject,time:Date.now()});
@@ -1094,43 +1103,47 @@ window.addEventListener('DOMContentLoaded',function(){
     let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
     for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
   }
-  // Brain Quiz — automatyczne generowanie
+  // Brain Quiz — precyzyjne pytania lub AI fallback
   if(params.get('from') === 'brain' && params.get('auto') === '1') {
-    const raw = localStorage.getItem('brain_quiz_data');
+    var raw = localStorage.getItem('brain_quiz_data');
     if(raw) {
       try {
-        const bd = JSON.parse(raw);
+        var bd = JSON.parse(raw);
         localStorage.removeItem('brain_quiz_data');
-        const topic = bd.topic || 'Powtorka';
-        const subject = bd.subject || 'inne';
-        const wrongQs = bd.wrongQuestions || [];
-        // Użyj precyzyjnej instrukcji z Brain lub zbuduj z błędów
-        let instrukcje = bd.instrukcje || '';
-        if(!instrukcje && wrongQs.length > 0) {
-          instrukcje = 'Wygeneruj quiz WYLACZNIE z tematu: ' + topic + ' (' + subject + '). Pytania musza dotyczyc TYLKO tego tematu.';
-        } else if(!instrukcje) {
-          instrukcje = 'Wygeneruj trudny quiz z tematu: ' + topic + ' (' + subject + ').';
+        var bTopic = bd.topic || 'Powtorka';
+        var bSubject = bd.subject || 'inne';
+        var bWrong = bd.wrongQuestions || [];
+        // Sprawdź czy mamy pełne pytania z opcjami A,B,C,D
+        var fullQs = bWrong.filter(function(q){ return q.options && q.options.length > 0; });
+        if(fullQs.length >= 3) {
+          // TRYB PREMIUM: Odtwórz DOKŁADNE błędne pytania natychmiastowo
+          quiz = {title: 'Brain Quiz — ' + bTopic, questions: fullQs};
+          useLimit('quiz');
+          beginQuiz(fullQs, false);
+          setTimeout(function(){
+            var t = document.getElementById('quizTitle');
+            if(t) t.textContent = 'Brain Quiz — ' + bTopic;
+          }, 100);
+        } else {
+          // TRYB AI: Generuj nowe pytania z precyzyjną instrukcją
+          var bInstr = bd.instrukcje || ('Wygeneruj 10 pytan WYLACZNIE z tematu: ' + bTopic + ' (' + bSubject + '). Pytania musza byc z tego KONKRETNEGO tematu.');
+          showPage('pageLoading');
+          var BASE2 = 'https://ai-teacher-backend-1.onrender.com';
+          setTimeout(function(){
+            fetch(BASE2+'/api/v1/quiz/generate-topic',{
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({topic:bTopic, subject:bSubject.toLowerCase(), level:'liceum', num_questions:10, difficulty:'trudny', wlasne_instrukcje:bInstr})
+            })
+            .then(function(r){if(!r.ok)throw new Error('Blad');return r.json();})
+            .then(function(d){
+              if(!d.success)throw new Error('Blad');
+              quiz=d.quiz; quiz.title='Brain Quiz — '+bTopic;
+              useLimit('quiz'); beginQuiz(quiz.questions,false);
+            })
+            .catch(function(){showPage('pageSetup');});
+          },300);
         }
-        // Auto-generuj quiz
-        showPage('pageLoading');
-        const BASE = 'https://ai-teacher-backend-1.onrender.com';
-        setTimeout(function() {
-          fetch(BASE+'/api/v1/quiz/generate-topic', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({topic:topic, subject:subject.toLowerCase(), level:'liceum', num_questions:10, difficulty:'trudny', wlasne_instrukcje:instrukcje})
-          })
-          .then(function(r){if(!r.ok)throw new Error('Blad '+r.status);return r.json();})
-          .then(function(d){
-            if(!d.success)throw new Error(d.error||'Blad');
-            quiz=d.quiz;
-            quiz.title = 'Brain — ' + topic;
-            useLimit('quiz');
-            beginQuiz(quiz.questions, false);
-          })
-          .catch(function(e){showPage('pageSetup');});
-        }, 300);
-      } catch(e) { localStorage.removeItem('brain_quiz_data'); }
+      } catch(e){ localStorage.removeItem('brain_quiz_data'); }
     }
   }
 });
