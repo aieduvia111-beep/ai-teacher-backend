@@ -341,8 +341,7 @@ def _detect_subject(title: str) -> str:
 
 def _calc_holes(req: BrainRequest) -> list:
     """Liczy dziury matematycznie — deterministycznie, bez AI."""
-    if not req.quizHistory:
-        return []
+    # NIE zwracaj [] gdy brak quizów — mogą być dziury z examResults i understandingHistory
 
     # Grupuj quizy per temat (title) per przedmiot
     from collections import defaultdict
@@ -416,6 +415,65 @@ def _calc_holes(req: BrainRequest) -> list:
             'severity': severity,
             'reason': f'Ostatni quiz: {last_pct}%, {last_wrong} błędów.',
             'fix_time_min': fix_time
+        })
+
+    # ── DZIURY Z WYNIKÓW SPRAWDZIANÓW (examResults) ─────────────────────
+    from collections import defaultdict as _dd2
+    exam_by_topic = _dd2(lambda: {'last_level': 4, 'last_ts': '', 'topic': '', 'subject': 'inne'})
+    for e in (req.examResults or []):
+        topic = (e.get('topic') or '').strip()
+        subject = (e.get('subject') or 'inne').strip()
+        level = e.get('level', 4)
+        ts = e.get('timestamp', '')
+        if not topic:
+            continue
+        key = subject.lower() + '::' + topic.lower()
+        if ts > exam_by_topic[key]['last_ts']:
+            exam_by_topic[key] = {'last_level': level, 'last_ts': ts, 'topic': topic, 'subject': subject}
+
+    for key, data in exam_by_topic.items():
+        level = data['last_level']
+        if level >= 3:
+            continue
+        already = any(h['topic'].lower() == data['topic'].lower() for h in holes)
+        if already:
+            continue
+        severity = 'high' if level == 1 else 'medium'
+        holes.append({
+            'subject': data['subject'],
+            'topic': data['topic'],
+            'severity': severity,
+            'reason': f'Sprawdzian poszedl {"bardzo slabo" if level == 1 else "slabo"}.',
+            'fix_time_min': 15 if level == 1 else 10
+        })
+
+    # ── DZIURY Z ANKIET PO NOTATKACH (understandingHistory) ──────────────
+    und_by_topic = _dd2(lambda: {'last_level': 4, 'last_ts': '', 'topic': '', 'subject': 'inne'})
+    for u in (req.understandingHistory or []):
+        topic = (u.get('topic') or '').strip()
+        subject = (u.get('subject') or 'inne').strip()
+        level = u.get('level', 4)
+        ts = u.get('timestamp', '')
+        if not topic:
+            continue
+        key = subject.lower() + '::' + topic.lower()
+        if ts > und_by_topic[key]['last_ts']:
+            und_by_topic[key] = {'last_level': level, 'last_ts': ts, 'topic': topic, 'subject': subject}
+
+    for key, data in und_by_topic.items():
+        level = data['last_level']
+        if level >= 3:
+            continue
+        already = any(h['topic'].lower() == data['topic'].lower() for h in holes)
+        if already:
+            continue
+        severity = 'high' if level == 1 else 'medium'
+        holes.append({
+            'subject': data['subject'],
+            'topic': data['topic'],
+            'severity': severity,
+            'reason': f'Notatka: {"nie rozumiem" if level == 1 else "troche rozumiem"}.',
+            'fix_time_min': 10 if level == 1 else 5
         })
 
     # Sortuj: high > medium > low, max 5
