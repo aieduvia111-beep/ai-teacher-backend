@@ -516,7 +516,7 @@ async function loadBrain() {
     sortedQuizzes.forEach(function(q) {
       const title = (q.title || '').replace(/Brain Quiz — /i, '').replace(/\s*-\s*Quiz\s*$/i, '').trim();
       const subject = q.subject || 'inne';
-      const key = subject + '::' + title;
+      const key = subject.toLowerCase() + '::' + title.toLowerCase();
       const wrongQs = (q.wrongQuestions || []).filter(function(w) {
         return w && w.options && w.options.length >= 2;
       });
