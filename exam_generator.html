@@ -649,10 +649,29 @@ async function generate(){
   const temat=document.getElementById('temat').value.trim();
   if(!temat){showErr('Wpisz temat sprawdzianu.');return;}
   const numQ=parseInt(document.getElementById('liczbaPytan').value);
-  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ};
+  const wlasneInstr = document.getElementById('wlasneInstrukcje') ? document.getElementById('wlasneInstrukcje').value.trim() : '';
+  
+  // Inteligentna instrukcja — wykryj typ zadań po temacie
+  const tematLow = temat.toLowerCase();
+  const przedmiotLow = (vals.przedmiot||'').toLowerCase();
+  const ZAWSZE_OBLICZENIA = ['matematyka','fizyka','chemia'];
+  const SLOWA_BEZ = ['grzyby','rosliny','zwierzeta','ekologia','ewolucja','komorka','tkanki','fotosynteza','bakterie','gramatyka','slownictwo','lektura','literatura','epoka','autor','bohater','bitwa'];
+  const SLOWA_Z = ['oblicz','procent','predkosc','stezenie','masa','energia','calka','pochodna','rownanie','logarytm','ulamek','funkcja'];
+  
+  const maObliczenia = SLOWA_Z.some(s => tematLow.includes(s));
+  const bezObliczen = SLOWA_BEZ.some(s => tematLow.includes(s));
+  const zawszeObliczenia = ZAWSZE_OBLICZENIA.some(p => przedmiotLow.includes(p));
+  
+  let autoInstr = '';
+  if (!maObliczenia && (bezObliczen || !zawszeObliczenia)) {
+    autoInstr = 'Czesc B: zadania opisowe i otwarte, NIE obliczeniowe. ';
+  }
+  
+  const finalInstr = autoInstr + (wlasneInstr || '');
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wlasne_instrukcje:finalInstr||undefined};
   document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';document.getElementById('genBtn').disabled=true;startProgress();
   try{
-    const res=await fetch('http://localhost:8000/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('application/pdf')){
