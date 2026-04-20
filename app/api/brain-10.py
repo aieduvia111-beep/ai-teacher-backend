@@ -133,73 +133,47 @@ async def analyze_brain(req: BrainRequest):
                 **level_data
             }
 
-        data_summary = _build_data_summary(req)
+        # ── OBLICZ DZIURY MATEMATYCZNIE — bez AI ────────────────────────────
+        holes = _calc_holes(req)
 
-        prompt = f"""Jestes Eduvia Brain — AI analizujacym wiedze ucznia na podstawie jego aktywnosci w aplikacji edukacyjnej.
+        # ── OBLICZ PRZEDMIOTY ────────────────────────────────────────────────
+        subjects = _calc_subjects(req)
 
-Dane ucznia:
-{data_summary}
+        # ── OVERALL PCT ──────────────────────────────────────────────────────
+        all_scores = []
+        for q in (req.quizHistory or []):
+            correct = q.get('correct', 0)
+            total = q.get('total', 1) or 1
+            all_scores.append(q.get('pct') or round(correct / total * 100))
+        overall_pct = round(sum(all_scores) / len(all_scores)) if all_scores else 0
 
-Odpowiedz TYLKO w formacie JSON (bez markdown):
-{{
-  "overall_pct": liczba 0-100,
-  "subjects": [
-    {{
-      "name": "Matematyka",
-      "pct": 75,
-      "color": "green|yellow|red",
-      "icon": "emoji pasujacy do przedmiotu",
-      "quizzes_done": 3,
-      "avg_score": 72,
-      "status": "krotki komentarz 1 zdanie",
-      "trend": "up|down|stable"
-    }}
-  ],
-  "holes": [
-    {{
-      "subject": "Historia",
-      "topic": "Potop Szwedzki",
-      "severity": "high|medium|low",
-      "reason": "krotkie wyjasnienie",
-      "fix_time_min": 5
-    }}
-  ],
-  "summary": "1-2 zdania o stanie wiedzy ucznia",
-  "strongest_subject": "Biologia",
-  "weakest_subject": "Historia",
-  "weekly_trend": "improving|declining|stable"
-}}
+        # ── AI tylko do summary — krótki kontekst ───────────────────────────
+        # Buduj krótkie podsumowanie zamiast pełnego (oszczędność tokenów)
+        subj_names = [s['name'] for s in subjects]
+        hole_names = [h['topic'] for h in holes]
+        short_ctx = f"Uczen: {len(all_scores)} quizow, avg {overall_pct}%. Przedmioty: {', '.join(subj_names[:3])}. Dziury: {', '.join(hole_names[:3]) if hole_names else 'brak'}."
+        summary_prompt = f"""Na podstawie danych ucznia napisz 1-2 zdania po polsku o jego stanie wiedzy. Bądź konkretny i motywujący.
+Dane: {short_ctx}
+Odpowiedz TYLKO w JSON: {{"summary": "...", "weekly_trend": "improving|declining|stable", "strongest_subject": "...", "weakest_subject": "..."}}"""
 
-ZASADY:
-- color green gdy pct>=70, yellow gdy 40-69, red gdy <40
-- holes MUSI zawierac KAZDY temat gdzie "Bledy w ostatnim" > 0 — nie pomijaj zadnego tematu z bledami
-- holes max 5, tylko konkretne tematy
-- severity high gdy bledy >=1 raz lub ocena slabo (nawet 1 quiz wystarczy!), medium gdy pct<50%, low gdy ocena ujdzie
-- WAZNE: nawet 1 quiz z bledami to wystarczy zeby temat trafil do holes — nie czekaj na wiele quizow
-- KLUCZOWE: jesli pytanie jest w "Naprawione" — znaczy ze uczen juz je opanowal — ZMNIEJSZ severity lub usun z holes
-- Jesli wszystkie bledy z danego tematu sa w "Naprawione" — USUN ten temat z holes calkowicie
-- Jesli polowa bledow naprawiona — zmien severity z high na medium lub medium na low
-- BARDZO WAZNE: patrz na "Ostatni quiz" i "Bledy w ostatnim"
-- Jesli "Bledy w ostatnim" = 0 — uczen naprawil ten temat — NIE dodawaj do holes lub USUN z holes
-- Jesli "Ostatni quiz" >= 90% — przedmiot jest opanowany, NIE dodawaj do holes
-- Jesli "Bledy w ostatnim" > 0 — dodaj do holes z odpowiednim severity
-- To jest NAJWAZNIEJSZA zasada — ostatni wynik ma priorytet nad srednia
-- Uwzglednij WSZYSTKIE zrodla: quizy, notatki, ankiety, sprawdziany, plan nauki
-- Podaj TYLKO przedmioty ktore uczen faktycznie robil"""
-
-        response = await client.chat.completions.create(
+        resp = await client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=200,
             temperature=0.3,
             response_format={"type": "json_object"}
         )
-
-        result = json.loads(response.choices[0].message.content)
+        summary_data = json.loads(resp.choices[0].message.content)
 
         return {
             "success": True,
-            **result,
+            "overall_pct": overall_pct,
+            "subjects": subjects,
+            "holes": holes,
+            "summary": summary_data.get("summary", ""),
+            "strongest_subject": summary_data.get("strongest_subject", ""),
+            "weakest_subject": summary_data.get("weakest_subject", ""),
+            "weekly_trend": summary_data.get("weekly_trend", "stable"),
             **level_data
         }
 
@@ -334,6 +308,147 @@ ZASADY:
         print(f"Brain predict error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+# ── MATEMATYCZNE OBLICZANIE DZIUR ────────────────────────────────────────────
+
+SUBJECT_ICONS = {
+    'matematyka': '➗', 'fizyka': '⚡', 'chemia': '🧪', 'biologia': '🌿',
+    'historia': '📜', 'język polski': '📖', 'geografia': '🌍',
+    'język angielski': '🇬🇧', 'język niemiecki': '🇩🇪', 'język francuski': '🇫🇷',
+    'informatyka': '💻', 'inne': '📚'
+}
+
+def _detect_subject(title: str) -> str:
+    """Wykrywa przedmiot z tytułu quizu gdy subject = 'inne'."""
+    t = title.lower()
+    if any(k in t for k in ['matematyk','równan','funkcj','pochodn','całk','logarytm','trygon','geometr']):
+        return 'matematyka'
+    if any(k in t for k in ['biolog','fotosyntez','komórk','dna','ewolucj','grzyb','tkanki','roślin']):
+        return 'biologia'
+    if any(k in t for k in ['fizyk','prędkość','energia','siła','atom','ruch','elektryczn']):
+        return 'fizyka'
+    if any(k in t for k in ['chemi','reakcj','pierwiastek','mol','kwas','zasad']):
+        return 'chemia'
+    if any(k in t for k in ['histori','wojna','rewolucj','polska','europa','starożytn']):
+        return 'historia'
+    if any(k in t for k in ['english','grammar','tense','angielski','słownictw']):
+        return 'język angielski'
+    if any(k in t for k in ['geograf','klimat','kontynent','kraj','rzeka','góry']):
+        return 'geografia'
+    return 'inne'
+
+
+def _calc_holes(req: BrainRequest) -> list:
+    """Liczy dziury matematycznie — deterministycznie, bez AI."""
+    if not req.quizHistory:
+        return []
+
+    # Grupuj quizy per temat (title) per przedmiot
+    from collections import defaultdict
+    topic_data = defaultdict(lambda: {
+        'subject': 'inne', 'wrong_count': 0, 'total_count': 0,
+        'last_pct': 0, 'last_wrong': 0, 'last_ts': '', 'quizzes': 0
+    })
+
+    for q in req.quizHistory:
+        title = (q.get('title') or '').replace('Brain Quiz — ', '').strip()
+        subject = q.get('subject', 'inne')
+        ts = q.get('timestamp', '')
+        pct = q.get('pct', 0) or 0
+        wrong_qs = q.get('wrongQuestions') or []
+        valid_wrong = [w for w in wrong_qs if w.get('options') and len(w.get('options', [])) >= 2]
+
+        if not title:
+            title = q.get('topic') or subject or 'Quiz'
+            if not title or title == 'Quiz':
+                continue
+
+        # Normalizuj subject — "inne" zastąp przez wykrycie z tytułu
+        if subject == 'inne' or not subject:
+            subject = _detect_subject(title)
+        key = f"{subject}::{title}"
+        topic_data[key]['subject'] = subject
+        topic_data[key]['quizzes'] += 1
+        topic_data[key]['total_count'] += len(valid_wrong)
+
+        # Ostatni quiz — najnowszy timestamp
+        if ts > topic_data[key]['last_ts']:
+            topic_data[key]['last_ts'] = ts
+            topic_data[key]['last_pct'] = pct
+            topic_data[key]['last_wrong'] = len(valid_wrong)
+
+    holes = []
+    for key, data in topic_data.items():
+        subject, topic = key.split('::', 1)
+        last_wrong = data['last_wrong']
+        last_pct = data['last_pct']
+
+        # ZASADA: dziura istnieje tylko gdy ostatni quiz miał błędy
+        if last_wrong == 0:
+            continue  # Ostatni quiz bez błędów — dziura znika
+
+        # PRÓG: ignoruj gdy ostatni wynik >= 80% (nawet jeśli 1-2 błędy)
+        if last_pct >= 80:
+            continue
+
+        # Severity na podstawie liczby błędów i wyniku
+        if last_wrong >= 4 or last_pct < 40:
+            severity = 'high'
+            fix_time = 15
+        elif last_wrong >= 2 or last_pct < 60:
+            severity = 'medium'
+            fix_time = 10
+        else:
+            severity = 'low'
+            fix_time = 5
+
+        holes.append({
+            'subject': subject,
+            'topic': topic,
+            'severity': severity,
+            'reason': f'Ostatni quiz: {last_pct}%, {last_wrong} błędów.',
+            'fix_time_min': fix_time
+        })
+
+    # Sortuj: high > medium > low, max 5
+    order = {'high': 0, 'medium': 1, 'low': 2}
+    holes.sort(key=lambda h: order.get(h['severity'], 3))
+    return holes[:5]
+
+
+def _calc_subjects(req: BrainRequest) -> list:
+    """Liczy przedmioty matematycznie."""
+    if not req.quizHistory:
+        return []
+
+    from collections import defaultdict
+    subj_data = defaultdict(lambda: {'scores': [], 'quizzes': 0})
+
+    for q in req.quizHistory:
+        s = q.get('subject', 'inne')
+        pct = q.get('pct', 0) or 0
+        subj_data[s]['scores'].append(pct)
+        subj_data[s]['quizzes'] += 1
+
+    subjects = []
+    for subj, data in subj_data.items():
+        avg = round(sum(data['scores']) / len(data['scores'])) if data['scores'] else 0
+        color = 'green' if avg >= 70 else ('yellow' if avg >= 40 else 'red')
+        icon = SUBJECT_ICONS.get(subj.lower(), '📚')
+        subjects.append({
+            'name': subj,
+            'pct': avg,
+            'color': color,
+            'icon': icon,
+            'quizzes_done': data['quizzes'],
+            'avg_score': avg,
+            'status': '',
+            'trend': 'stable'
+        })
+
+    subjects.sort(key=lambda s: s['pct'], reverse=True)
+    return subjects
 
 # ── BUDOWANIE PODSUMOWANIA ────────────────────────────────────────────────────
 
