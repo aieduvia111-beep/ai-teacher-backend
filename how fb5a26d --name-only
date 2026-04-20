@@ -1,0 +1,43 @@
+[33m32edec8[m fix: currentUser globalny - Firebase zapis dziala
+[33m37ec37b[m fix: Firebase save czeka na currentUser
+[33m612cddc[m fix: quiz_app
+[33m535be6f[m fix: quiz_app poprawiony
+[33m7faae3c[m fix: bledy zapisuja temat, filtr po topic zamiast tresci pytania
+[33mbb36d54[m fix: quiz z Brain - zle pytania + brak zapisu do Firebase
+[33m96122c7[m fix: quiz z Brain ladowal stare pytania z cache
+[33m127ef12[m przywrocono notes_pdf_generator.py
+[33mcadc28e[m fix: zly temat sprawdzianu + zakaz sekcji B z Brain
+[33m8c6df2f[m fix: literowka przewidz ocen + odstep
+[33m4172dc6[m fix: syntax error w renderBrainLevel
+[33mef44eab[m brain: levele mozgu + przewidywanie oceny
+[33m53ec238[m brain: agregacja danych przed AI - 10x mniejszy prompt
+[33m81ec9b7[m fix: sprawdzian z Brain - tylko pytania zamkniete bez czesci B
+[33m792235c[m fix: sprawdzian z pytan quizu + inteligentne obliczenia po temacie
+[33m09929be[m brain - sprawdzian PDF przy kazdej dziurze
+[33m3277c1d[m brain + quiz - tryb premium i AI fallback
+[33m6823cc6[m brain - precyzyjne instrukcje per temat
+[33m8a57f06[m brain quiz - autogenerowanie z bledow
+[33m9312578[m brain - fix 422 elastyczne modele
+[33md487af1[m brain - redesign wow
+[33me8662d5[m brain - 2 przyciski + quiz z bledow
+[33mbc218bb[m brain - simulateExam generuje PDF
+[33me1d2b44[m brain.html
+[33mb1a2e37[m brain - ankiety na ekranie sukcesu nie jako popup
+[33m7346888[m brain - endpoint + main router
+[33m261a45c[m brain - profesjonalne ankiety po notatkach i sprawdzianach
+[33m72267e2[m brain - zbieranie danych ze wszystkich funkcji
+[33mfb5a26d[m usun APEX
+[33m6ecbcb3[m apex
+[33me26cadd[m apex
+[33ma7a4ab2[m apex
+[33m5654fe0[m apex
+[33mccf157e[m APEX v4
+[33mb1b2df8[m APEX
+[33m7f53f9b[m fix voice - Eduvia AI zamiast Learnio
+[33m71713b9[m dodaj politykę prywatności
+[33m7846701[m pricing - powrot do payment link
+[33m8031517[m pricing oryginalny
+[33m71af209[m fix payments - user_id string Firebase
+[33m867a32c[m firebase_uid + 7 dni trial + pricing
+[33m0754756[m trial 7 dni - bez emotek
+[33m9168f6d[m dodaj 7-day free trial

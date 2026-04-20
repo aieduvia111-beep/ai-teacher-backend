@@ -296,7 +296,8 @@ function startCheckout() {
   const loader = document.getElementById('btnLoader');
   btn.disabled = true;
   btnText.textContent = 'Przekierowuję...';
-  if(loader) loader.style.display = 'block';
+  loader.style.display = 'block';
+  // Przekieruj na Stripe Payment Link
   window.location.href = PAYMENT_LINK;
 }
 
