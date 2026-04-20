@@ -47,27 +47,22 @@ def _build_instrukcje_blok(wlasne: str) -> str:
         "Dostosuj CALY quiz do powyzszych wskazowek.\n"
     )
 
-async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, difficulty, wlasne_instrukcje):
+async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, difficulty, wlasne_instrukcje, quiz_type="mixed"):
     """Generuje quiz z tematu z wlasnymi instrukcjami bezposrednio przez OpenAI."""
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
     diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
     diff_pl = diff_map.get(difficulty, "sredni")
     instrukcje_blok = _build_instrukcje_blok(wlasne_instrukcje)
-    prompt = (
-        f"Wygeneruj quiz z {num_questions} pytaniami wielokrotnego wyboru.\n"
-        f"Temat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl}\n"
-        f"{instrukcje_blok}\n"
-        "Odpowiedz TYLKO w formacie JSON (bez markdown):\n"
-        '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
-        '    {{\n      "question": "Tresc pytania?",\n'
-        '      "options": ["A", "B", "C", "D"],\n'
-        '      "correct": 2,\n'
-        "WAZNE: correct to INDEX (0-3) poprawnej odpowiedzi. Urozmaicaj - kazde pytanie ma inny correct. NIE dawaj zawsze correct=0!"
-
-        '      "explanation": "Krotkie wyjasnienie"\n'
-        '    }}\n  ]\n}}'
-    )
+    type_map = {
+        "single_choice": "TYLKO pytania jednokrotnego wyboru. type=single, correct to liczba 0-3.",
+        "multi_choice": "TYLKO pytania wielokrotnego wyboru (2-3 poprawne). type=multi, correct to LISTA np. [0,2].",
+        "true_false": "TYLKO pytania Prawda/Falsz. Opcje=[Prawda,Falsz]. type=tf, correct=0 lub 1.",
+        "open": "TYLKO pytania opisowe. Brak opcji. type=open, correct=-1, correct_answer=pelna odpowiedz.",
+        "mixed": f"Wygeneruj MIESZANE typy: polowa type=single (correct=liczba), cwiartka type=multi (correct=lista), cwiartka type=tf.",
+    }
+    type_instr = type_map.get(quiz_type, type_map["mixed"])
+    prompt = f"""Wygeneruj quiz z {num_questions} pytaniami.\nTemat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl}\nTYP PYTAN: {type_instr}\n{instrukcje_blok}\n\nOdpowiedz TYLKO w JSON (bez markdown):\n{{"title":"Tytul","questions":[\n{{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}},\n{{"type":"multi","question":"Ktore?","options":["A","B","C","D"],"correct":[0,2],"explanation":"..."}},\n{{"type":"tf","question":"Prawda?","options":["Prawda","Falsz"],"correct":0,"explanation":"..."}},\n{{"type":"open","question":"Wyjasni?","options":[],"correct":-1,"correct_answer":"Odpowiedz","explanation":"..."}}\n]}}\nWAZNE: Dla single correct=liczba, dla multi correct=lista, dla tf correct=0/1. Urozmaicaj!"""
     resp = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
@@ -129,10 +124,10 @@ async def quiz_from_topic(req: QuizTopicRequest):
     try:
         wlasne = (req.wlasne_instrukcje or "").strip()
         print(f"[Quiz-Topic] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
+        qt = getattr(req, 'quiz_type', 'mixed') or 'mixed'
         result = await _generate_topic_with_instrukcje(
             req.topic, req.subject, req.level,
-            req.num_questions, req.difficulty, wlasne,
-            getattr(req, 'quiz_type', 'mixed')
+            req.num_questions, req.difficulty, wlasne, qt
         )
         if result["success"]:
             return {"success": True, "quiz": result["quiz"]}
