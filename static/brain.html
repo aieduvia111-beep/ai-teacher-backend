@@ -503,8 +503,32 @@ async function loadBrain() {
     const snap = await window._getDoc(window._doc(window._db, 'users', window._uid));
     if (!snap.exists()) { showNoData(); return; }
     const data = snap.data();
-    const wrongQs = (data.quizHistory || []).flatMap(q => q.wrongQuestions || []).filter(Boolean);
-    window._brainWrongQuestions = wrongQs;
+    // Buduj mapę ostatnich błędów per temat — bierz TYLKO z ostatniego quizu per temat
+    const quizHistory = data.quizHistory || [];
+    
+    // Sortuj po timestamp — najnowsze pierwsze
+    const sortedQuizzes = quizHistory.slice().sort(function(a, b) {
+      return (b.timestamp || '').localeCompare(a.timestamp || '');
+    });
+    
+    // Mapa: temat -> ostatni quiz z błędami
+    const lastWrongByTopic = {};
+    sortedQuizzes.forEach(function(q) {
+      const title = (q.title || '').replace(/Brain Quiz — /i, '').replace(/\s*-\s*Quiz\s*$/i, '').trim();
+      const subject = q.subject || 'inne';
+      const key = subject + '::' + title;
+      const wrongQs = (q.wrongQuestions || []).filter(function(w) {
+        return w && w.options && w.options.length >= 2;
+      });
+      // Zapisz tylko jeśli to pierwszy (najnowszy) quiz z tym tematem
+      if (!lastWrongByTopic[key]) {
+        lastWrongByTopic[key] = { title, subject, wrongQs, pct: q.pct || 0 };
+      }
+    });
+    
+    // Zapisz mapę i płaską listę dla kompatybilności
+    window._brainLastWrongByTopic = lastWrongByTopic;
+    window._brainWrongQuestions = Object.values(lastWrongByTopic).flatMap(function(d) { return d.wrongQs; });
     // Zapisz raw data dla predictGrade
     window._rawQuizHistory = data.quizHistory || [];
     window._rawUnderstandingHistory = data.understandingHistory || [];
@@ -686,22 +710,33 @@ function examHole(subject, topic, btn) {
 }
 
 function fixHole(subject, topic) {
-  const allWrong = window._brainWrongQuestions || [];
-  const tl = topic.toLowerCase();
+  const tl = topic.toLowerCase().replace(/\s*-\s*quiz\s*$/i, '').trim();
   const sl = subject.toLowerCase();
 
-  // Szukaj błędów pasujących do tego tematu/przedmiotu
-  const relevant = allWrong.filter(function(q) {
-    const qs = (q.subject||'').toLowerCase();
-    const qtopic = (q.topic||q.title||'').toLowerCase();
-    const topicMatch = qtopic.includes(tl) || tl.includes(qtopic.split(/[\s\-]/)[0]);
-    const subjectMatch = qs.includes(sl) || sl.includes(qs);
-    return topicMatch || subjectMatch;
+  // Szukaj w mapie ostatnich błędów per temat
+  const lastWrongMap = window._brainLastWrongByTopic || {};
+  let questionsToUse = [];
+
+  // Szukaj dokładnego dopasowania tematu
+  Object.keys(lastWrongMap).forEach(function(key) {
+    const d = lastWrongMap[key];
+    const ktopic = (d.title || '').toLowerCase();
+    const ksubj = (d.subject || '').toLowerCase();
+    const topicMatch = ktopic.includes(tl) || tl.includes(ktopic);
+    const subjectMatch = ksubj.includes(sl) || sl.includes(ksubj);
+    if (topicMatch && subjectMatch && d.wrongQs.length > 0) {
+      questionsToUse = questionsToUse.concat(d.wrongQs);
+    }
   });
 
-  // Jeśli brak błędów z TEGO tematu — weź WSZYSTKIE błędy użytkownika
-  // Brain już wie że ten temat jest słaby — quiz ma po prostu powtórzyć błędy
-  const questionsToUse = relevant.length > 0 ? relevant : allWrong;
+  // Deduplikacja
+  const seen = {};
+  questionsToUse = questionsToUse.filter(function(q) {
+    const k = (q.question || '').trim().toLowerCase();
+    if (seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
 
   const brainData = {
     topic: topic,
@@ -709,7 +744,7 @@ function fixHole(subject, topic) {
     autoGenerate: true,
     forceAI: questionsToUse.length === 0,
     instrukcje: 'Wygeneruj DOKLADNIE 10 pytan zamknietych A-D WYLACZNIE z tematu "' + topic + '" z przedmiotu "' + subject + '". Pytania MUSZA byc o ' + topic + '. Zadnych pytan z innych tematow.',
-    wrongQuestions: questionsToUse.slice(0, 10)
+    wrongQuestions: questionsToUse
   };
 
   localStorage.removeItem('brain_quiz_data');
