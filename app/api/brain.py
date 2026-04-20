@@ -172,6 +172,7 @@ Odpowiedz TYLKO w formacie JSON (bez markdown):
 
 ZASADY:
 - color green gdy pct>=70, yellow gdy 40-69, red gdy <40
+- holes MUSI zawierac KAZDY temat gdzie "Bledy w ostatnim" > 0 — nie pomijaj zadnego tematu z bledami
 - holes max 5, tylko konkretne tematy
 - severity high gdy bledy >=1 raz lub ocena slabo (nawet 1 quiz wystarczy!), medium gdy pct<50%, low gdy ocena ujdzie
 - WAZNE: nawet 1 quiz z bledami to wystarczy zeby temat trafil do holes — nie czekaj na wiele quizow
