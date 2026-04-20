@@ -439,11 +439,16 @@ def _calc_holes(req: BrainRequest) -> list:
         if already:
             continue
         severity = 'high' if level == 1 else 'medium'
+        diff_topics = data.get('difficultTopics', '')
+        reason = f'Sprawdzian poszedl {"bardzo slabo" if level == 1 else "slabo"}.'
+        if diff_topics:
+            reason += f' Trudne zagadnienia: {diff_topics}.'
         holes.append({
             'subject': data['subject'],
             'topic': data['topic'],
             'severity': severity,
-            'reason': f'Sprawdzian poszedl {"bardzo slabo" if level == 1 else "slabo"}.',
+            'reason': reason,
+            'difficultTopics': diff_topics,
             'fix_time_min': 15 if level == 1 else 10
         })
 
@@ -468,11 +473,16 @@ def _calc_holes(req: BrainRequest) -> list:
         if already:
             continue
         severity = 'high' if level == 1 else 'medium'
+        diff_topics2 = data.get('difficultTopics', '')
+        reason2 = f'Notatka: {"nie rozumiem" if level == 1 else "troche rozumiem"}.'
+        if diff_topics2:
+            reason2 += f' Nie rozumiem: {diff_topics2}.'
         holes.append({
             'subject': data['subject'],
             'topic': data['topic'],
             'severity': severity,
-            'reason': f'Notatka: {"nie rozumiem" if level == 1 else "troche rozumiem"}.',
+            'reason': reason2,
+            'difficultTopics': diff_topics2,
             'fix_time_min': 10 if level == 1 else 5
         })
 

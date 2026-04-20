@@ -719,10 +719,10 @@ function getPlanBadgeHTML(plan) {
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.82em;color:#eeeef5;margin-bottom:3px;">Jak poszło na sprawdzianie?</div>
           <div style="font-size:.7em;color:#7c6aff;margin-bottom:12px;" id="examSurveyTopic"></div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="examSurveyBtns">
-            <button onclick="submitExamSurvey(1)" style="padding:11px 4px 9px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+            <button onclick="showExamDiffField(1)" style="padding:11px 4px 9px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">😰</div><div style="font-size:.6em;color:#9ca3af;">Słabo</div>
             </button>
-            <button onclick="submitExamSurvey(2)" style="padding:11px 4px 9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+            <button onclick="showExamDiffField(2)" style="padding:11px 4px 9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">😐</div><div style="font-size:.6em;color:#9ca3af;">Ujdzie</div>
             </button>
             <button onclick="submitExamSurvey(3)" style="padding:11px 4px 9px;background:rgba(34,211,160,0.08);border:1px solid rgba(34,211,160,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
@@ -731,6 +731,15 @@ function getPlanBadgeHTML(plan) {
             <button onclick="submitExamSurvey(4)" style="padding:11px 4px 9px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.35);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">🔥</div><div style="font-size:.6em;color:#9ca3af;">Świetnie!</div>
             </button>
+          </div>
+          <!-- Pole "Co było trudne?" — pokazuje się po 😰/😐 -->
+          <div id="examDiffField" style="display:none;margin-top:12px;">
+            <div style="font-size:.72em;color:#9ca3af;margin-bottom:6px;">Co było trudne? <span style="color:#55556a;">(opcjonalnie)</span></div>
+            <div style="display:flex;gap:8px;">
+              <input id="examDiffInput" type="text" placeholder="np. cykl Calvina, faza ciemna..." style="flex:1;padding:9px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#eeeef5;font-family:'DM Sans',sans-serif;font-size:.82em;outline:none;" onkeypress="if(event.key==='Enter')submitExamSurveyWithDiff()">
+              <button onclick="submitExamSurveyWithDiff()" style="padding:9px 16px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.1));border:1px solid rgba(124,106,255,.3);border-radius:10px;color:#a78bfa;font-family:'Syne',sans-serif;font-weight:700;font-size:.78em;cursor:pointer;white-space:nowrap;">Zapisz →</button>
+            </div>
+            <div style="font-size:.65em;color:#55556a;margin-top:4px;">Brain dostosuje quiz naprawczy do Twoich trudności</div>
           </div>
         </div>
 
@@ -854,12 +863,41 @@ function saveExamResult(topic, subject, level, popup) {
   if(popup) popup.remove();
 }
 
-function submitExamSurvey(level) {
+var _examSurveyLevel = 1;
+
+function showExamDiffField(level) {
+  _examSurveyLevel = level;
+  // Podświetl wybrany przycisk
+  const btns = document.querySelectorAll('#examSurveyBtns button');
+  btns.forEach(function(b, i) {
+    b.style.opacity = (i === level - 1) ? '1' : '0.4';
+  });
+  // Pokaż pole
+  const field = document.getElementById('examDiffField');
+  if (field) field.style.display = 'block';
+  setTimeout(function() {
+    const inp = document.getElementById('examDiffInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function submitExamSurveyWithDiff() {
+  const diff = (document.getElementById('examDiffInput') || {}).value || '';
+  submitExamSurvey(_examSurveyLevel, diff);
+}
+
+function submitExamSurvey(level, difficultTopics) {
   const topic = window._examTopic || '';
   const subject = window._examSubject || 'inne';
-  if(typeof window._fbSave==='function') {
-    window._fbSave('examResults', {topic, subject, level, passed: level >= 3}, 0);
+  const data = {topic, subject, level, passed: level >= 3};
+  if (difficultTopics && difficultTopics.trim()) {
+    data.difficultTopics = difficultTopics.trim();
   }
+  if(typeof window._fbSave==='function') {
+    window._fbSave('examResults', data, 0);
+  }
+  const field = document.getElementById('examDiffField');
+  if (field) field.style.display = 'none';
   const btns = document.getElementById('examSurveyBtns');
   if(btns) {
     const emojis = ['','😰','😐','😊','🔥'];
