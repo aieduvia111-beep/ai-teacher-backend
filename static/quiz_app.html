@@ -1030,15 +1030,10 @@ function _setQuestionTypes(questions, quiz_type) {
       var c = typeof q.correct === 'number' ? q.correct : 0;
       q.correct = [c, (c + 2) % 4];
     }
-    // Dla tf — opcje muszą być Prawda/Fałsz (tylko jeśli pytanie jest twierdzeniem)
+    // Dla tf — zawsze ustaw opcje Prawda/Fałsz
     if (q.type === 'tf') {
-      // Jeśli pytanie wygląda jak single (ma 4 opcje) — zostaw jako single
-      if (q.options && q.options.length === 4) {
-        q.type = 'single';
-      } else {
-        q.options = ['Prawda', 'Fałsz'];
-        if (typeof q.correct !== 'number') q.correct = 0;
-      }
+      q.options = ['Prawda', 'Fałsz'];
+      if (typeof q.correct !== 'number') q.correct = 0;
     }
     // Dla open — correct = -1
     if (q.type === 'open') {
