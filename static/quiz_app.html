@@ -1008,8 +1008,40 @@ async function startQuiz(){
   showPage('pageLoading');
   fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr,quiz_type:VALS.quiz_type||'mixed'})})
   .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-  .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
+  .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;quiz.questions=_setQuestionTypes(quiz.questions,VALS.quiz_type);useLimit('quiz');beginQuiz(quiz.questions,false);})
   .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
+}
+
+function _setQuestionTypes(questions, quiz_type) {
+  var qt = quiz_type || VALS.quiz_type || 'mixed';
+  return questions.map(function(q, i) {
+    if (!q.type || q.type === undefined) {
+      if (qt === 'multi_choice') q.type = 'multi';
+      else if (qt === 'true_false') q.type = 'tf';
+      else if (qt === 'open') q.type = 'open';
+      else if (qt === 'single_choice') q.type = 'single';
+      else {
+        var types = ['single','single','multi','tf','single'];
+        q.type = types[i % types.length];
+      }
+    }
+    // Dla multi — correct musi być listą
+    if (q.type === 'multi' && !Array.isArray(q.correct)) {
+      var c = typeof q.correct === 'number' ? q.correct : 0;
+      q.correct = [c, (c + 2) % 4];
+    }
+    // Dla tf — opcje muszą być Prawda/Fałsz
+    if (q.type === 'tf') {
+      q.options = ['Prawda', 'Fałsz'];
+      if (typeof q.correct !== 'number') q.correct = 0;
+    }
+    // Dla open — correct = -1
+    if (q.type === 'open') {
+      q.correct = -1;
+      if (!q.correct_answer) q.correct_answer = q.explanation || '';
+    }
+    return q;
+  });
 }
 
 function beginQuiz(qs,retry){
