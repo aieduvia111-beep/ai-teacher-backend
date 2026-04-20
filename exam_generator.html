@@ -851,7 +851,28 @@ function showErr(msg){document.getElementById('errText').textContent=msg;documen
 
 async function fetchWariant(temat,numQ,wariant){
   const wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
-  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:wlasneInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
+
+  // Inteligentne wykrywanie typu zadań po temacie i przedmiocie
+  const tl=(temat||'').toLowerCase();
+  const pl=(vals.przedmiot||'').toLowerCase();
+  const ZAWSZE=['matematyka','fizyka','chemia'];
+  const BEZ=['grzyby','rosliny','zwierzeta','ekologia','ewolucja','komorka','tkanki','fotosynteza','bakterie','wirusy','mitoza','mejoza','gramatyka','slownictwo','lektura','literatura','epoka','autor','bohater','bitwa','historia','geografia','klimat'];
+  const Z=['oblicz','procent','predkosc','stezenie','masa','energia','calka','pochodna','rownanie','logarytm','ulamek','funkcja','gestosc','cisnienie','objetosc','pole','obwod'];
+  const maZ=Z.some(s=>tl.includes(s));
+  const maB=BEZ.some(s=>tl.includes(s));
+  const zawsze=ZAWSZE.some(p=>pl.includes(p));
+
+  let auto='';
+  if(maZ||(zawsze&&!maB)){
+    auto='Ten temat wymaga zadan obliczeniowych w Czesci B. ';
+  } else if(maB||(!zawsze&&!maZ)){
+    auto='WAZNE: Czesc B musi zawierac zadania OPISOWE i OTWARTE — NIE obliczeniowe matematycznie. Pytania na opis zjawisk, wyjasnienie pojec, analize. ZAKAZ rownan i obliczen liczbowych w Czesci B. ';
+  } else {
+    auto='Dostosuj typ zadan Czesci B do tematu — opisowe jesli humanistyczny, obliczeniowe jesli scisly. ';
+  }
+
+  const finalInstr=auto+(wlasneInstr||'');
+  const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
   const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
