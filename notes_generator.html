@@ -749,10 +749,10 @@ function getPlanBadgeHTML(plan) {
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.82em;color:#eeeef5;margin-bottom:3px;">Jak oceniasz swoją wiedzę z tego tematu?</div>
           <div style="font-size:.7em;color:#7c6aff;margin-bottom:12px;" id="surveyTopic"></div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;" id="surveyBtns">
-            <button onclick="submitSurvey(1)" style="padding:11px 4px 9px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+            <button onclick="showNotesDiffField(1)" style="padding:11px 4px 9px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">😰</div><div style="font-size:.6em;color:#9ca3af;">Nie rozumiem</div>
             </button>
-            <button onclick="submitSurvey(2)" style="padding:11px 4px 9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
+            <button onclick="showNotesDiffField(2)" style="padding:11px 4px 9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">😐</div><div style="font-size:.6em;color:#9ca3af;">Trochę</div>
             </button>
             <button onclick="submitSurvey(3)" style="padding:11px 4px 9px;background:rgba(34,211,160,0.08);border:1px solid rgba(34,211,160,0.25);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
@@ -761,6 +761,15 @@ function getPlanBadgeHTML(plan) {
             <button onclick="submitSurvey(4)" style="padding:11px 4px 9px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.35);border-radius:12px;color:white;cursor:pointer;transition:all .18s;outline:none;">
               <div style="font-size:1.4em;margin-bottom:4px;">🔥</div><div style="font-size:.6em;color:#9ca3af;">Świetnie!</div>
             </button>
+          </div>
+          <!-- Pole "Co nie rozumiesz?" — pokazuje się po 😰/😐 -->
+          <div id="notesDiffField" style="display:none;margin-top:12px;">
+            <div style="font-size:.72em;color:#9ca3af;margin-bottom:6px;">Co nie rozumiesz? <span style="color:#55556a;">(opcjonalnie)</span></div>
+            <div style="display:flex;gap:8px;">
+              <input id="notesDiffInput" type="text" placeholder="np. cykl Calvina, mitoza..." style="flex:1;padding:9px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#eeeef5;font-family:'DM Sans',sans-serif;font-size:.82em;outline:none;" onkeypress="if(event.key==='Enter')submitSurveyWithDiff()">
+              <button onclick="submitSurveyWithDiff()" style="padding:9px 16px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.1));border:1px solid rgba(124,106,255,.3);border-radius:10px;color:#a78bfa;font-family:'Syne',sans-serif;font-weight:700;font-size:.78em;cursor:pointer;white-space:nowrap;">Zapisz →</button>
+            </div>
+            <div style="font-size:.65em;color:#55556a;margin-top:4px;">Brain dostosuje quiz naprawczy do Twoich trudności</div>
           </div>
         </div>
 
@@ -881,13 +890,40 @@ function showUnderstandingPopup(topic, subject) {
 }
 
 function saveUnderstanding(topic, subject, level, popup) {
-  if(typeof window._fbSave==='function') {
-    window._fbSave('understandingHistory', {topic, subject, level, understood: level >= 3}, 0);
+  const data = {topic, subject, level, understood: level >= 3};
+  if (difficultTopics && difficultTopics.trim()) {
+    data.difficultTopics = difficultTopics.trim();
   }
+  if(typeof window._fbSave==='function') {
+    window._fbSave('understandingHistory', data, 0);
+  }
+  const field = document.getElementById('notesDiffField');
+  if (field) field.style.display = 'none';
   if(popup) popup.remove();
 }
 
-function submitSurvey(level) {
+var _notesSurveyLevel = 1;
+
+function showNotesDiffField(level) {
+  _notesSurveyLevel = level;
+  const btns = document.querySelectorAll('#surveyBtns button');
+  btns.forEach(function(b, i) {
+    b.style.opacity = (i === level - 1) ? '1' : '0.4';
+  });
+  const field = document.getElementById('notesDiffField');
+  if (field) field.style.display = 'block';
+  setTimeout(function() {
+    const inp = document.getElementById('notesDiffInput');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function submitSurveyWithDiff() {
+  const diff = (document.getElementById('notesDiffInput') || {}).value || '';
+  submitSurvey(_notesSurveyLevel, diff);
+}
+
+function submitSurvey(level, difficultTopics) {
   const topic = window._surveyTopic || '';
   const subject = window._surveySubject || 'inne';
   if(typeof window._fbSave==='function') {
