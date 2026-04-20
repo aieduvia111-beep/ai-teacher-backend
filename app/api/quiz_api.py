@@ -54,15 +54,59 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
     diff_pl = diff_map.get(difficulty, "sredni")
     instrukcje_blok = _build_instrukcje_blok(wlasne_instrukcje)
-    type_map = {
-        "single_choice": "TYLKO pytania jednokrotnego wyboru. type=single, correct to liczba 0-3.",
-        "multi_choice": "TYLKO pytania wielokrotnego wyboru (2-3 poprawne). type=multi, correct to LISTA np. [0,2].",
-        "true_false": "TYLKO pytania Prawda/Falsz. Opcje=[Prawda,Falsz]. type=tf, correct=0 lub 1.",
-        "open": "TYLKO pytania opisowe. Brak opcji. type=open, correct=-1, correct_answer=pelna odpowiedz.",
-        "mixed": f"Wygeneruj MIESZANE typy: polowa type=single (correct=liczba), cwiartka type=multi (correct=lista), cwiartka type=tf.",
+    # Buduj prompt zależnie od typu — kategoryczne instrukcje
+    level_map = {
+        "podstawowka": "Poziom podstawowka (klasy 4-8). Proste slowa, latwe pojecia, bez zaawansowanej matematyki.",
+        "liceum": "Poziom liceum/technikum (klasy 1-4 liceum). Srednie trudnosci, pojecia z podstawy programowej liceum.",
+        "technikum": "Poziom technikum. Srednie trudnosci, pojecia zawodowe i ogolnoksztalcace.",
+        "studia": "Poziom akademicki. Zaawansowane pojecia, specjalistyczna terminologia."
     }
-    type_instr = type_map.get(quiz_type, type_map["mixed"])
-    prompt = f"""Wygeneruj quiz z {num_questions} pytaniami.\nTemat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl}\nTYP PYTAN: {type_instr}\n{instrukcje_blok}\n\nOdpowiedz TYLKO w JSON (bez markdown):\n{{"title":"Tytul","questions":[\n{{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}},\n{{"type":"multi","question":"Ktore?","options":["A","B","C","D"],"correct":[0,2],"explanation":"..."}},\n{{"type":"tf","question":"Prawda?","options":["Prawda","Falsz"],"correct":0,"explanation":"..."}},\n{{"type":"open","question":"Wyjasni?","options":[],"correct":-1,"correct_answer":"Odpowiedz","explanation":"..."}}\n]}}\nWAZNE: Dla single correct=liczba, dla multi correct=lista, dla tf correct=0/1. Urozmaicaj!"""
+    level_desc = level_map.get(level, level_map["liceum"])
+
+    if quiz_type == "multi_choice":
+        type_prompt = f"""Wygeneruj {num_questions} pytan WIELOKROTNEGO WYBORU.
+KAZDE pytanie MUSI miec pole "type":"multi" i "correct" jako LISTA LICZB np. [0,2] lub [1,3].
+Kazde pytanie ma 2 lub 3 poprawne odpowiedzi.
+Format KAZDEGO pytania:
+{{"type":"multi","question":"Ktore z ponizszych...?","options":["opcja A","opcja B","opcja C","opcja D"],"correct":[0,2],"explanation":"A i C sa poprawne poniewaz..."}}"""
+    elif quiz_type == "true_false":
+        type_prompt = f"""Wygeneruj {num_questions} pytan PRAWDA/FALSZ.
+KAZDE pytanie MUSI miec pole "type":"tf", options:["Prawda","Falsz"], correct: 0 (Prawda) lub 1 (Falsz).
+Format KAZDEGO pytania:
+{{"type":"tf","question":"Twierdzenie do oceny.","options":["Prawda","Falsz"],"correct":0,"explanation":"To prawda poniewaz..."}}"""
+    elif quiz_type == "open":
+        type_prompt = f"""Wygeneruj {num_questions} pytan OPISOWYCH OTWARTYCH.
+KAZDE pytanie MUSI miec "type":"open", "options":[], "correct":-1, "correct_answer":"pelna odpowiedz".
+Format KAZDEGO pytania:
+{{"type":"open","question":"Wyjasni/opisz/porownaj...?","options":[],"correct":-1,"correct_answer":"Wzorcowa pelna odpowiedz","explanation":"Kluczowe elementy odpowiedzi"}}"""
+    elif quiz_type == "mixed":
+        type_prompt = f"""Wygeneruj {num_questions} MIESZANYCH pytan roznych typow.
+Uzyj: okolo polowy type=single (correct=liczba 0-3), cwiartka type=multi (correct=lista np.[0,2]), cwiartka type=tf (options=["Prawda","Falsz"], correct=0 lub 1).
+Dla single: {{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
+Dla multi: {{"type":"multi","question":"Ktore?","options":["A","B","C","D"],"correct":[0,2],"explanation":"..."}}
+Dla tf: {{"type":"tf","question":"Twierdzenie?","options":["Prawda","Falsz"],"correct":0,"explanation":"..."}}"""
+    else:  # single_choice
+        type_prompt = f"""Wygeneruj {num_questions} pytan JEDNOKROTNEGO WYBORU (1 poprawna odpowiedz z 4).
+KAZDE pytanie MUSI miec "type":"single", correct to LICZBA 0-3.
+Format: {{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
+WAZNE: Urozmaicaj correct — nie dawaj zawsze 0!"""
+
+    # Wymuś różne indeksy poprawnych odpowiedzi
+    correct_pattern = "KRYTYCZNE: Poprawne odpowiedzi MUSZA byc rozlozone rownomiernie — NIE dawaj zawsze correct=0 (A)! Uzyj: pierwsza 0, druga 2, trzecia 1, czwarta 3, piata 2, szosta 0 — zmieniaj!"
+
+    prompt = f"""Jestes nauczycielem tworzacym quiz.
+Temat: {topic}
+Przedmiot: {subject}
+{level_desc}
+Trudnosc: {diff_pl}
+{instrukcje_blok}
+
+{type_prompt}
+
+{correct_pattern}
+
+Odpowiedz TYLKO czystym JSON (bez markdown, bez komentarzy):
+{{"title": "Tytul quizu", "questions": [/* tutaj pytania */]}}"""
     resp = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
