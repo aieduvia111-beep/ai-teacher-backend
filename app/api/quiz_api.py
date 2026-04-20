@@ -91,10 +91,59 @@ KAZDE pytanie MUSI miec "type":"single", correct to LICZBA 0-3.
 Format: {{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
 WAZNE: Urozmaicaj correct — nie dawaj zawsze 0!"""
 
-    # Wymuś różne indeksy poprawnych odpowiedzi
-    correct_pattern = "KRYTYCZNE: Poprawne odpowiedzi MUSZA byc rozlozone rownomiernie — NIE dawaj zawsze correct=0 (A)! Uzyj: pierwsza 0, druga 2, trzecia 1, czwarta 3, piata 2, szosta 0 — zmieniaj!"
+    if quiz_type == "true_false":
+        format_example = """{"type":"tf","question":"Chlorofil jest niezbędny do fotosyntezy.","options":["Prawda","Falsz"],"correct":0,"explanation":"To prawda — chlorofil pochłania swiatlo."}"""
+        type_prompt = f"""Wygeneruj {num_questions} pytan PRAWDA/FALSZ.
+ZASADY:
+- Kazde pytanie to TWIERDZENIE (zdanie oznajmujace) ktore jest prawdziwe lub falszywe
+- NIE piszaj "Czy...", "Ktore...", "Co to..." — tylko twierdzenia!
+- Przykladowe pytania T/F: "Fotosynteza zachodzi w chloroplastach.", "Tlen jest substratem fotosyntezy."
+- options ZAWSZE = ["Prawda","Falsz"]
+- correct = 0 (Prawda) lub 1 (Falsz) — urozmaicaj polowe Prawda polowe Falsz
+- Dla Falsz napisz w explanation co jest prawda"""
 
-    prompt = f"""Jestes nauczycielem tworzacym quiz.
+    elif quiz_type == "multi_choice":
+        format_example = """{"type":"multi","question":"Ktore z ponizszych sa produktami fotosyntezy?","options":["Tlen","Dwutlenek wegla","Glukoza","Woda"],"correct":[0,2],"explanation":"Tlen i glukoza sa produktami fotosyntezy."}"""
+        type_prompt = f"""Wygeneruj {num_questions} pytan WIELOKROTNEGO WYBORU.
+ZASADY:
+- Kazde pytanie ma 2 lub 3 poprawne odpowiedzi z 4 opcji
+- Pytanie MUSI brzmiec "Ktore z ponizszych...", "Wymien...", "Wskaż WSZYSTKIE..."
+- correct to LISTA indeksow np. [0,2] lub [1,3] lub [0,1,3]
+- Dystraktory realistyczne ale bledne"""
+
+    elif quiz_type == "open":
+        format_example = """{"type":"open","question":"Wyjasni na czym polega fotosynteza i jakie substancje sa potrzebne do tego procesu.","options":[],"correct":-1,"correct_answer":"Fotosynteza to proces w ktorym rosliny przeksztalcaja energie swietlna, CO2 i wode w glukoze i tlen. Zachodzi w chloroplastach dzieki chlorofilowi.","explanation":"Kluczowe elementy: swiatlo, CO2, woda, glukoza, tlen, chloroplasty"}"""
+        type_prompt = f"""Wygeneruj {num_questions} pytan OPISOWYCH OTWARTYCH.
+ZASADY:
+- Pytania wymagajace rozwinietej odpowiedzi (min 2-3 zdania)
+- Typy pytan: "Wyjasni...", "Opisz...", "Porownaj...", "Omow...", "Na czym polega..."
+- options = [] (puste)
+- correct = -1
+- correct_answer = wzorcowa pelna odpowiedz (2-4 zdania)
+- explanation = lista kluczowych elementow odpowiedzi"""
+
+    elif quiz_type == "mixed":
+        format_example = ""
+        type_prompt = f"""Wygeneruj {num_questions} MIESZANYCH pytan — rozne typy:
+- Okolo 40% type=single: pytania z 4 opcjami A-D, correct=liczba 0-3, pytania "Co to jest...", "Ktore..."
+- Okolo 30% type=multi: pytania wielokrotnego wyboru, correct=lista, "Ktore z ponizszych (zaznacz wszystkie)..."  
+- Okolo 30% type=tf: twierdzenia Prawda/Falsz, options=["Prawda","Falsz"], correct=0 lub 1
+
+WAZNE dla kazdego typu:
+- single: {{"type":"single","question":"...?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
+- multi: {{"type":"multi","question":"Ktore z ponizszych...?","options":["A","B","C","D"],"correct":[0,2],"explanation":"..."}}
+- tf: {{"type":"tf","question":"Twierdzenie.","options":["Prawda","Falsz"],"correct":0,"explanation":"..."}}"""
+
+    else:  # single_choice
+        format_example = """{"type":"single","question":"Co jest glownym produktem fotosyntezy?","options":["Tlen","Glukoza","CO2","Woda"],"correct":1,"explanation":"Glukoza jest glownym produktem fotosyntezy."}"""
+        type_prompt = f"""Wygeneruj {num_questions} pytan JEDNOKROTNEGO WYBORU.
+ZASADY:
+- Kazde pytanie ma DOKLADNIE 1 poprawna odpowiedz z 4 opcji
+- correct to LICZBA 0-3 — UROZMAICAJ: nie dawaj zawsze 0!
+- Rozklad: pierwsze=1, drugie=3, trzecie=0, czwarte=2, piute=1 itd.
+- Dystraktory realistyczne"""
+
+    prompt = f"""Jestes nauczycielem tworzacym profesjonalny quiz edukacyjny.
 Temat: {topic}
 Przedmiot: {subject}
 {level_desc}
@@ -103,10 +152,12 @@ Trudnosc: {diff_pl}
 
 {type_prompt}
 
-{correct_pattern}
+{"Przyklad formatu: " + format_example if format_example else ""}
 
-Odpowiedz TYLKO czystym JSON (bez markdown, bez komentarzy):
-{{"title": "Tytul quizu", "questions": [/* tutaj pytania */]}}"""
+Odpowiedz TYLKO czystym JSON:
+{{"title": "Quiz: {topic}", "questions": [pytania]}}
+
+BEZWZGLEDNIE: Nie dodawaj markdown, nie dodawaj komentarzy. Tylko JSON."""
     resp = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
@@ -178,6 +229,48 @@ async def quiz_from_topic(req: QuizTopicRequest):
         return {"success": False, "error": result.get("error")}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@router.post("/check-open")
+async def check_open_answers(req: dict):
+    """Sprawdza odpowiedzi opisowe przez AI."""
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    
+    questions_to_check = req.get("questions", [])
+    if not questions_to_check:
+        return {"success": False, "error": "Brak pytan"}
+    
+    prompt = "Sprawdz odpowiedzi ucznia na pytania opisowe. Dla kazdego pytania oceń odpowiedz.
+
+"
+    for i, item in enumerate(questions_to_check):
+        prompt += f"Pytanie {i+1}: {item.get('question','')}
+"
+        prompt += f"Wzorcowa odpowiedz: {item.get('correct_answer','')}
+"
+        prompt += f"Odpowiedz ucznia: {item.get('user_answer','')}
+
+"
+    
+    prompt += """Odpowiedz TYLKO w JSON:
+{"results": [
+  {"index": 0, "correct": true/false, "score": 0-100, "feedback": "Krotki feedback 1 zdanie", "missing": "Czego brakowalo lub null"}
+]}"""
+    
+    try:
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800, temperature=0.2
+        )
+        raw = resp.choices[0].message.content.strip()
+        raw = raw.replace('```json','').replace('```','').strip()
+        s = raw.find('{'); e = raw.rfind('}')
+        result = json.loads(raw[s:e+1])
+        return {"success": True, **result}
+    except Exception as ex:
+        return {"success": False, "error": str(ex)}
+
 
 @router.post("/generate-file")
 async def quiz_from_file(req: QuizFileRequest):
