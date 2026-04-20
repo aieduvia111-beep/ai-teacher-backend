@@ -1144,31 +1144,40 @@ window.addEventListener('DOMContentLoaded',function(){
         // ALE tylko jeśli NIE wymuszamy AI i pytania są z TEGO SAMEGO tematu
         var fullQs = bWrong.filter(function(q){
           if (!q.options || q.options.length === 0) return false;
-          // Sprawdź czy pytanie pasuje do tematu
-          var qt = (q.question||'').toLowerCase();
           var qs = (q.subject||'').toLowerCase();
-          var tl = bTopic.toLowerCase();
           var sl = bSubject.toLowerCase();
-          return (qt.includes(tl) || qs.includes(sl) || sl.includes(qs));
+          return (qs.includes(sl) || sl.includes(qs) || sl === 'inne');
         });
 
-        if(fullQs.length >= 3 && !bForceAI) {
+        // DEDUPLIKACJA — usuń powtarzające się pytania
+        var seenQ = {};
+        var uniqueFullQs = fullQs.filter(function(q){
+          var key = (q.question||'').trim().toLowerCase();
+          if(seenQ[key]) return false;
+          seenQ[key] = true;
+          return true;
+        });
+
+        if(uniqueFullQs.length >= 1 && !bForceAI) {
           // TRYB PREMIUM: Odtwórz DOKŁADNE błędne pytania natychmiastowo
-          // Zapisz subject dla Firebase
           window._brainQuizSubject = bSubject;
           window._brainQuizTopic = bTopic;
-          quiz = {title: 'Brain Quiz — ' + bTopic, questions: fullQs};
+          _brainOriginalWrong = uniqueFullQs.map(function(q){ return q.question; });
+          _repairedIndexes = [];
+          quiz = {title: 'Brain Quiz — ' + bTopic, questions: uniqueFullQs};
           useLimit('quiz');
-          beginQuiz(fullQs, false);
+          beginQuiz(uniqueFullQs, false);
           setTimeout(function(){
             var t = document.getElementById('quizTitle');
             if(t) t.textContent = 'Brain Quiz — ' + bTopic;
           }, 100);
         } else {
           // TRYB AI: Generuj NOWE pytania z precyzyjną instrukcją
-          // Zapisz subject dla Firebase
           window._brainQuizSubject = bSubject;
           window._brainQuizTopic = bTopic;
+          // Zapisz oryginalne błędy żeby repairedQs działało
+          _brainOriginalWrong = bWrong.map(function(q){ return q.question || ''; }).filter(Boolean);
+          _repairedIndexes = [];
           var bInstr = bd.instrukcje || ('Wygeneruj 10 pytan WYLACZNIE z tematu: ' + bTopic + ' (' + bSubject + '). Pytania musza byc z tego KONKRETNEGO tematu i przedmiotu. Zakaz pytan z innych tematow.');
           showPage('pageLoading');
           var BASE2 = 'https://ai-teacher-backend-1.onrender.com';
