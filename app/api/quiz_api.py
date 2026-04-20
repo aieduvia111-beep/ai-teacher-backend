@@ -24,6 +24,7 @@ class QuizTopicRequest(BaseModel):
     num_questions: int = 10
     difficulty: str = "medium"
     wlasne_instrukcje: str = ""
+    quiz_type: str = "mixed"  # single_choice | multi_choice | true_false | open | mixed
 
 class QuizFileRequest(BaseModel):
     document: str              # base64
@@ -70,7 +71,7 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     resp = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=4000, temperature=0.7
+        max_tokens=5000, temperature=0.7
     )
     raw = resp.choices[0].message.content.strip()
     raw = raw.replace('```json', '').replace('```', '').strip()
@@ -130,7 +131,8 @@ async def quiz_from_topic(req: QuizTopicRequest):
         print(f"[Quiz-Topic] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
         result = await _generate_topic_with_instrukcje(
             req.topic, req.subject, req.level,
-            req.num_questions, req.difficulty, wlasne
+            req.num_questions, req.difficulty, wlasne,
+            getattr(req, 'quiz_type', 'mixed')
         )
         if result["success"]:
             return {"success": True, "quiz": result["quiz"]}
