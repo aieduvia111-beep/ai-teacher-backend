@@ -327,6 +327,192 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 
 </style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentUser = user;
+  localStorage.setItem('eduvia_uid', user.uid);
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (snap.exists()) {
+    const d = snap.data();
+    localStorage.setItem('eduvia_xp', d.xp || 0);
+    // Zaktualizuj XP bar jesli istnieje
+    const xpEl = document.querySelector('.xp-pts');
+    if (xpEl) xpEl.textContent = (d.xp||0) + ' XP';
+  }
+});
+
+window._fbSaveQuiz = async function(title, correct, total, xpEarned) {
+  if (!currentUser) return;
+  try {
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      quizHistory: arrayUnion({title, correct, total, xp: xpEarned, timestamp: new Date().toISOString()}),
+      xp: increment(xpEarned)
+    });
+  } catch(e) { console.log('Firebase save error:', e); }
+};
+</script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import{getFirestore,doc,getDoc,updateDoc,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth=getAuth(app),db=getFirestore(app);
+let currentUser=null;
+onAuthStateChanged(auth,async(user)=>{
+  if(!user){window.location.href='login.html';return;}
+  currentUser=user;
+  localStorage.setItem('eduvia_uid',user.uid);
+  const snap=await getDoc(doc(db,'users',user.uid));
+  if(snap.exists()){
+    const d=snap.data();
+    localStorage.setItem('eduvia_xp',d.xp||0);
+    localStorage.setItem('eduvia_plan',d.plan||'free');
+    setTimeout(()=>{document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML(d.plan||'free'));},200);
+  }
+});
+window._fbSave=async function(collection,data,xp){
+  if(!currentUser)return;
+  try{const upd={[collection]:arrayUnion({...data,timestamp:new Date().toISOString()})};if(xp)upd.xp=increment(xp);await updateDoc(doc(db,'users',currentUser.uid),upd);}catch(e){}
+};
+</script>
+<script>
+// ============================================================
+// EDUVIA LIMITS MODULE - wklej do kazdego pliku
+// ============================================================
+const LIMITS_FREE = {
+  chat: 5,
+  vision: 2,
+  quiz: 3,
+  notes: 2,
+  exam: 1,
+  voice: 3,
+  lesson: 2
+};
+
+async function checkLimit(feature) {
+  // Jesli premium - brak limitow
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if (plan !== 'free') return { allowed: true, remaining: 999 };
+
+  const uid = localStorage.getItem('eduvia_uid');
+  if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
+
+  const today = new Date().toISOString().split('T')[0];
+  const key = `eduvia_limit_${feature}_${today}`;
+  const used = parseInt(localStorage.getItem(key) || '0');
+  const limit = LIMITS_FREE[feature] || 5;
+  const remaining = limit - used;
+
+  if (remaining <= 0) {
+    showLimitPopup(feature, limit);
+    return { allowed: false, remaining: 0 };
+  }
+  return { allowed: true, remaining };
+}
+
+function useLimit(feature) {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `eduvia_limit_${feature}_${today}`;
+  const used = parseInt(localStorage.getItem(key) || '0');
+  localStorage.setItem(key, used + 1);
+}
+
+function showLimitPopup(feature, limit) {
+  // Usun stary popup jesli istnieje
+  const old = document.getElementById('limitPopup');
+  if (old) old.remove();
+
+  const names = {
+    chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
+    notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki'
+  };
+  const name = names[feature] || feature;
+
+  const popup = document.createElement('div');
+  popup.id = 'limitPopup';
+  popup.style.cssText = `
+    position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;
+  `;
+  popup.innerHTML = `
+    <div style="
+      background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;
+      padding:32px 28px;max-width:380px;width:100%;text-align:center;
+      box-shadow:0 0 60px rgba(124,106,255,0.15);position:relative;
+      animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
+    ">
+      <style>@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}</style>
+      <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">
+        Limit ${name} wyczerpany
+      </div>
+      <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
+        Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
+      </p>
+      <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
+        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Nieograniczony Chat, Vision, Quiz
+        </div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Nieograniczone Notatki i Sprawdziany
+        </div>
+        <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Voice AI i Plan nauki bez limitów
+        </div>
+      </div>
+      <button onclick="window.location.href='pricing.html'" style="
+        width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);
+        border:none;border-radius:12px;color:white;font-family:'Syne',sans-serif;
+        font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;
+        box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;
+      " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+        Kup Pro — bez limitów →
+      </button>
+      <button onclick="document.getElementById('limitPopup').remove()" style="
+        width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);
+        border-radius:12px;color:#55556a;font-family:'DM Sans',sans-serif;
+        font-size:.82em;cursor:pointer;transition:all .2s;
+      " onmouseover="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#8888a0'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.color='#55556a'">
+        Może później
+      </button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  // Zamknij na klik poza popupem
+  popup.addEventListener('click', function(e) {
+    if (e.target === popup) popup.remove();
+  });
+}
+
+function getPlanBadgeHTML(plan) {
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+}
+// Załaduj badge od razu z localStorage (przed Firebase)
+(function(){
+  var plan = localStorage.getItem("eduvia_plan") || "free";
+  function initBadges(){ document.querySelectorAll(".plan-badge-slot").forEach(function(el){ el.innerHTML = getPlanBadgeHTML(plan); }); }
+  if(document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", initBadges); } else { initBadges(); }
+})();
+
+</script>
 </head>
 <body>
 
@@ -347,53 +533,44 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 <!-- MOBILE DRAWER -->
 <div class="m-overlay" id="mOverlay" onclick="mClose()"></div>
 <nav class="m-drawer" id="mDrawer">
-  <div class="d-brand">
-    <div class="d-logo"><span>E</span></div>
-    <div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div>
-  </div>
-  <div class="d-sec">Narzędzia</div>
+  <div class="d-brand"><div class="d-logo"><span>E</span></div><div><div class="d-brand-name">Eduvia</div><div class="d-brand-sub">AI Learning Platform</div></div></div>
+  <div class="d-sec">Glowne</div>
   <div class="d-link" onclick="go('dashboard_FINAL.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</div>
+  <div class="d-link" onclick="go('lesson_planner.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</div>
+  <div class="d-sec">Narzedzia</div>
   <div class="d-link" onclick="go('chat.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</div>
-  <div class="d-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</div>
-  <div class="d-link" onclick="go('notes_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</div>
-  <div class="d-link" onclick="go('exam_generator_v2.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</div>
-  <div class="d-link" onclick="go('vision.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
   <div class="d-link" onclick="go('voice_conversation.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</div>
-  <div class="d-link" onclick="go('lesson_planner.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Plan Nauki</div>
+  <div class="d-link" onclick="go('notes_generator.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</div>
+  <div class="d-link" onclick="go('exam_generator.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</div>
+  <div class="d-link" onclick="go('vision.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</div>
+  <div class="d-link active" onclick="mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</div>
+  <div class="d-sec">Konto</div>
+  <div class="d-link" onclick="go('pricing.html');mClose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Twój plan<span class="plan-badge-slot" style="margin-left:auto"></span></div>
 </nav>
 
 <!-- MOBILE BOTTOM NAV -->
-<nav class="m-nav">
-  <div class="m-nb" onclick="go('dashboard_FINAL.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></div>
-  <div class="m-nb" onclick="go('chat.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></div>
-  <div class="m-nb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Quiz</span><span class="m-nb-dot"></span></div>
-  <div class="m-nb" onclick="go('notes_generator_v2.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></div>
-  <div class="m-nb" onclick="go('exam_generator_v2.html')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Testy</span></div>
-</nav>
+<nav class="m-nav"><a class="m-nb" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></a><a class="m-nb" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a><a class="m-nb active" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Quiz</span><span class="m-nb-dot"></span></a><a class="m-nb" href="notes_generator.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></a><a class="m-nb" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg><span>Więcej</span></a></nav>
 
 <div class="app">
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="brand">
-    <div class="brand-logo"><span class="brand-l">E</span></div>
-    <div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div>
-  </div>
+  <div class="brand"><div class="brand-logo"><span class="brand-l">E</span></div><div class="brand-text"><div class="brand-name">Eduvia</div><div class="brand-sub">AI Platform</div></div></div>
   <div class="ng">Główne</div>
-  <a class="nl" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
-  <a class="nl" href="lesson_planner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</a>
+  <a class="nl" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+  <a class="nl" href="lesson_planner.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan nauki</a>
   <div class="ng">Narzędzia</div>
-  <a class="nl" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
-  <a class="nl" href="voice_conversation.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice AI</a>
-  <a class="nl" href="notes_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Notatki AI</a>
-  <a class="nl" href="exam_generator_v2.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a>
-  <a class="nl" href="vision.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a>
-  <a class="nl active" href="quiz_app.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a>
+  <a class="nl" href="chat.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat AI</a>
+  <a class="nl" href="voice_conversation.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Voice AI</a>
+  <a class="nl" href="notes_generator.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notatki AI</a>
+  <a class="nl" href="exam_generator.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Sprawdziany AI</a>
+  <a class="nl" href="vision.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision AI</a>
+  <a class="nl active" href="quiz_app.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Quiz AI</a>
   <div class="ng">Konto</div>
-  <a class="nl" href="pricing.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</a>
+  <a class="nl" href="pricing.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Premium</a>
   <div class="sb-footer">
     <div class="xp-wrap">
-      <div class="xp-top"><span class="xp-lv" id="sbXpLv">Poziom 1</span><span class="xp-pts" id="sbXpPts">0 XP</span></div>
+      <div class="xp-top"><span class="xp-lv" id="sbXpLv">Poziom 1</span><span class="xp-pts" id="sbXpPts">0 / 100 XP</span></div>
       <div class="xp-track"><div class="xp-bar" id="sbXpBar" style="width:0%"></div></div>
       <div class="xp-sub" id="sbXpSub">Zacznij quiz!</div>
     </div>
@@ -442,6 +619,11 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
             </button>
           </div>
           <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+        </div>
+        <div class="field">
+          <span class="field-label">Własne instrukcje <span style="color:var(--muted);font-weight:400;">(opcjonalne)</span></span>
+          <textarea id="wlasneInstrukcje" placeholder="np. Skup się na zadaniach obliczeniowych. Dodaj pytania o wzory. Unikaj historii..." style="width:100%;min-height:80px;padding:12px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.88em;line-height:1.55;resize:vertical;outline:none;transition:all .25s;"></textarea>
+          <div style="font-size:.69em;color:var(--muted);margin-top:5px;">AI uwzgledni Twoje wskazowki podczas generowania quizu.</div>
         </div>
         <button class="start-btn" onclick="startQuiz()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -588,11 +770,11 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
           </div>
           <div style="font-size:.82em;color:var(--muted2);line-height:1.6;">Ukończyłeś quiz i zdobyłeś XP. Wróć jutro żeby utrwalić wiedzę!</div>
           <div style="margin-top:14px;">
-            <a href="notes_generator_v2.html" style="display:flex;align-items:center;gap:8px;padding:11px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:11px;text-decoration:none;color:var(--accent2);font-size:.82em;font-family:var(--h);font-weight:700;margin-bottom:8px;transition:.2s;" onmouseover="this.style.background='rgba(124,106,255,.15)'" onmouseout="this.style.background='rgba(124,106,255,.08)'">
+            <a href="notes_generator.html" style="display:flex;align-items:center;gap:8px;padding:11px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:11px;text-decoration:none;color:var(--accent2);font-size:.82em;font-family:var(--h);font-weight:700;margin-bottom:8px;transition:.2s;" onmouseover="this.style.background='rgba(124,106,255,.15)'" onmouseout="this.style.background='rgba(124,106,255,.08)'">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               Stwórz notatkę z tematu →
             </a>
-            <a href="exam_generator_v2.html" style="display:flex;align-items:center;gap:8px;padding:11px 14px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:11px;text-decoration:none;color:var(--blue);font-size:.82em;font-family:var(--h);font-weight:700;transition:.2s;" onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background='rgba(56,189,248,.06)'">
+            <a href="exam_generator.html" style="display:flex;align-items:center;gap:8px;padding:11px 14px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);border-radius:11px;text-decoration:none;color:var(--blue);font-size:.82em;font-family:var(--h);font-weight:700;transition:.2s;" onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background='rgba(56,189,248,.06)'">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               Wygeneruj sprawdzian →
             </a>
@@ -635,6 +817,8 @@ function go(u){window.location.href=u;}
 const QUIZ_KEY='eduvia_quiz_history';
 function getQuizHistory(){try{return JSON.parse(localStorage.getItem(QUIZ_KEY)||'[]');}catch{return[];}}
 function saveQuiz(title,correct,total,xpEarned){
+  // Zapisz do Firebase jesli dostepne
+  if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned);
   const h=getQuizHistory();
   h.unshift({title,correct,total,xpEarned,time:Date.now()});
   if(h.length>20)h.pop();
@@ -720,30 +904,47 @@ function confetti(){
 }
 
 
-let BASE=(window.location.protocol==='file:'||!window.location.hostname)?'http://127.0.0.1:8000':window.location.origin;
+const BASE='https://ai-teacher-backend-1.onrender.com';
 
-function startQuiz(){
+async function startQuiz(){
+  const _lim=await checkLimit('quiz');if(!_lim.allowed)return;
   let err=document.getElementById('errMsg');err.style.display='none';
   let topic=document.getElementById('topic').value.trim();
   let num=parseInt(document.getElementById('numSlider').value);
+  let wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
   if(photos.length>0){
     showPage('pageLoading');
-    fetch(BASE+'/api/v1/quiz/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff})})
+    fetch(BASE+'/api/v1/quiz/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
     .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-    .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;beginQuiz(quiz.questions,false);})
+    .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
     .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
     return;
   }
   if(!topic){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
   showPage('pageLoading');
-  fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff})})
+  fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
   .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-  .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;beginQuiz(quiz.questions,false);})
+  .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
   .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
 }
 
+function shuffleQuestions(qs){
+  // Tasuje kolejnosc pytan i opcje odpowiedzi (zeby nie zawsze byla ta sama odpowiedz)
+  return qs.map(function(q){
+    // Stworz tablice par [opcja, czyPoprawna]
+    var pairs=q.options.map(function(opt,i){return{text:opt,isCorrect:i===q.correct};});
+    // Tasuj opcje (Fisher-Yates)
+    for(var i=pairs.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pairs[i];pairs[i]=pairs[j];pairs[j]=tmp;}
+    // Nowy correct index
+    var newCorrect=pairs.findIndex(function(p){return p.isCorrect;});
+    return Object.assign({},q,{options:pairs.map(function(p){return p.text;}),correct:newCorrect});
+  });
+}
+
 function beginQuiz(qs,retry){
-  questions=qs;currentQ=0;answers=new Array(qs.length).fill(null);
+  // Tasuj opcje odpowiedzi aby nie zawsze byla ta sama litera
+  var shuffled=shuffleQuestions(qs);
+  questions=shuffled;currentQ=0;answers=new Array(shuffled.length).fill(null);
   xp=retry?xp:0;streak=0;answered=false;isRetry=retry;wrongIndexes=[];
   document.getElementById('quizTitle').textContent=quiz.title||'Quiz';
   document.getElementById('quizBadge')&&(document.getElementById('quizBadge').textContent=retry?'Powtórka':'✦ Quiz');
@@ -860,6 +1061,7 @@ function reviewAll(){
 
 function restartQuiz(){
   document.getElementById('topic').value='';document.getElementById('errMsg').style.display='none';
+  if(document.getElementById('wlasneInstrukcje'))document.getElementById('wlasneInstrukcje').value='';
   clearPhotos();xp=0;streak=0;maxStreak=0;showPage('pageSetup');renderSidebarStats();
 }
 
