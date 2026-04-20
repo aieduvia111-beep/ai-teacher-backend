@@ -353,6 +353,13 @@ def _calc_holes(req: BrainRequest) -> list:
 
     for q in req.quizHistory:
         title = (q.get('title') or '').replace('Brain Quiz — ', '').strip()
+        # Usuń suffix " - Quiz", " — Quiz", " Quiz"
+        import re as _re
+        title = _re.sub(r'\s*[-—]\s*Quiz\s*$', '', title, flags=_re.IGNORECASE).strip()
+        title = _re.sub(r'\s*Quiz\s*$', '', title, flags=_re.IGNORECASE).strip()
+        # Normalizuj wielkość liter — pierwsza litera duża
+        if title:
+            title = title[0].upper() + title[1:]
         subject = q.get('subject', 'inne')
         ts = q.get('timestamp', '')
         pct = q.get('pct', 0) or 0
