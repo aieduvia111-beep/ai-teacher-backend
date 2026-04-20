@@ -129,12 +129,20 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .input-wrap select option{background:#131320;}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.level-btn{padding:12px 8px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.level-btn svg{width:15px;height:15px;stroke:currentColor;}
+.level-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.level-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.35);color:var(--accent2);}
 .sel-btn{padding:11px 7px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;}
 .sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
 .sel-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);color:var(--accent2);}
 .sel-btn .dot{display:block;width:8px;height:8px;border-radius:50%;margin:0 auto 5px;transition:transform .2s;}
 .sel-btn:hover .dot,.sel-btn.active .dot{transform:scale(1.3);}
 .dot-easy{background:#22d3a0;}.dot-med{background:#f5a623;}.dot-hard{background:#f87171;}
+.gen-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:12px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 24px rgba(124,106,255,.3);}
+.gen-btn svg{width:16px;height:16px;stroke:white;flex-shrink:0;}
+.gen-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent 50%);}
+.gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 30px rgba(124,106,255,.4);}
 .start-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5040c8);border:none;border-radius:13px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;cursor:pointer;transition:all .25s;margin-top:4px;box-shadow:0 6px 24px rgba(124,106,255,.3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;}
 .start-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 50%);}
 .start-btn:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(124,106,255,.45);}
@@ -266,6 +274,26 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .confetti-piece{position:fixed;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:1000;animation:confettiFall linear forwards;}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
 
+/* ═══ EXPAND TOGGLES ═══ */
+.expand-toggle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--s2);border:1px solid var(--border-hi);border-radius:100px;color:var(--muted2);font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.expand-toggle:hover{border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.expand-toggle.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.expand-toggle svg{flex-shrink:0;stroke:currentColor;}
+
+
+/* ═══ QUIZ TYPE BUTTONS (styl level-btn z notatek) ═══ */
+.qtype-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.qtype-btn{padding:12px 4px 10px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.7em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
+.qtype-btn svg{width:14px;height:14px;stroke:currentColor;}
+.qtype-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.qtype-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.35);color:var(--accent2);}
+@media(max-width:768px){.qtype-grid{grid-template-columns:repeat(3,1fr)!important;}}
+
+/* EXPAND TOGGLES */
+.expand-toggle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--s2);border:1px solid var(--border-hi);border-radius:100px;color:var(--muted2);font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.expand-toggle:hover{border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.expand-toggle.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.expand-toggle svg{flex-shrink:0;stroke:currentColor;}
 /* ═══ MOBILE ═══ */
 @media(max-width:768px){
   .cursor,.cursor-ring{display:none!important;}
@@ -365,9 +393,10 @@ window._fbSaveQuiz = async function(title, correct, total, xpEarned) {
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import{getFirestore,doc,getDoc,updateDoc,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import{getFirestore,doc,getDoc,updateDoc,arrayUnion,increment,setDoc}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
+window._db=db;window._doc=doc;window._getDoc=getDoc;window._setDoc=setDoc;window._updateDoc=updateDoc;
 let currentUser=null;
 onAuthStateChanged(auth,async(user)=>{
   if(!user){window.location.href='login.html';return;}
@@ -594,40 +623,95 @@ function getPlanBadgeHTML(plan) {
   <div class="page active" id="pageSetup">
     <div class="setup-layout">
       <div class="card">
+        <!-- TEMAT -->
         <div class="field"><span class="field-label">Temat quizu</span><div class="input-wrap"><input type="text" id="topic" placeholder="np. Fotosynteza, Równania kwadratowe..." autocomplete="off"></div></div>
+
+        <!-- PRZEDMIOT + POZIOM -->
         <div class="field"><span class="field-label">Przedmiot</span><div class="input-wrap"><select id="subject"><option value="matematyka">Matematyka</option><option value="fizyka">Fizyka</option><option value="chemia">Chemia</option><option value="biologia">Biologia</option><option value="historia">Historia</option><option value="polski">Język polski</option><option value="geografia">Geografia</option><option value="informatyka">Informatyka</option><option value="angielski">Angielski</option><option value="inne">Inne</option></select></div></div>
         <div class="field"><span class="field-label">Poziom</span><div class="grid-2"><button class="sel-btn" data-g="level" data-v="podstawowka" onclick="sel(this,'level')">Podstawówka</button><button class="sel-btn active" data-g="level" data-v="liceum" onclick="sel(this,'level')">Liceum</button><button class="sel-btn" data-g="level" data-v="technikum" onclick="sel(this,'level')">Technikum</button><button class="sel-btn" data-g="level" data-v="studia" onclick="sel(this,'level')">Studia</button></div></div>
         <div class="field"><span class="field-label">Trudność</span><div class="grid-3"><button class="sel-btn" data-g="diff" data-v="easy" onclick="sel(this,'diff')"><span class="dot dot-easy"></span>Łatwa</button><button class="sel-btn active" data-g="diff" data-v="medium" onclick="sel(this,'diff')"><span class="dot dot-med"></span>Średnia</button><button class="sel-btn" data-g="diff" data-v="hard" onclick="sel(this,'diff')"><span class="dot dot-hard"></span>Trudna</button></div></div>
         <div class="field"><span class="field-label">Liczba pytań</span><div class="slider-wrap"><input type="range" id="numSlider" min="5" max="20" value="10" oninput="updateSlider(this)"><span class="slider-val" id="numVal">10</span></div></div>
+
+        <!-- TYP PYTAŃ -->
         <div class="field">
-          <span class="field-label">Zdjęcia notatek <span style="color:var(--muted);font-weight:400;">(opcjonalne)</span></span>
-          <div id="photosWrap"></div>
-          <div class="capture-grid" id="captureGrid">
-            <button class="capture-btn cam-btn" onclick="openCamera()">
-              <div class="cb-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </div>
-              <div class="cb-title">Zrob zdjecie</div>
-              <div class="cb-sub">Aparat telefonu<br>lub kamery</div>
+          <span class="field-label">Typ pytań</span>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;">
+            <button class="sel-btn active" data-g="quiz_type" data-v="mixed" onclick="sel(this,'quiz_type')" style="font-size:.78em;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>
+              Mieszane
             </button>
-            <button class="capture-btn gal-btn" onclick="pickFiles()">
-              <div class="cb-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              </div>
-              <div class="cb-title">Wybierz z galerii</div>
-              <div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
+            <button class="sel-btn" data-g="quiz_type" data-v="single_choice" onclick="sel(this,'quiz_type')" style="font-size:.78em;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              Jednokrotny
+            </button>
+            <button class="sel-btn" data-g="quiz_type" data-v="multi_choice" onclick="sel(this,'quiz_type')" style="font-size:.78em;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Wielokrotny
+            </button>
+            <button class="sel-btn" data-g="quiz_type" data-v="true_false" onclick="sel(this,'quiz_type')" style="font-size:.78em;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+              Prawda / Fałsz
+            </button>
+            <button class="sel-btn" data-g="quiz_type" data-v="open" onclick="sel(this,'quiz_type')" style="font-size:.78em;grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Opisowe
             </button>
           </div>
-          <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
         </div>
-        <div class="field">
-          <span class="field-label">Własne instrukcje <span style="color:var(--muted);font-weight:400;">(opcjonalne)</span></span>
-          <textarea id="wlasneInstrukcje" placeholder="np. Skup się na zadaniach obliczeniowych. Dodaj pytania o wzory. Unikaj historii..." style="width:100%;min-height:80px;padding:12px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.88em;line-height:1.55;resize:vertical;outline:none;transition:all .25s;"></textarea>
-          <div style="font-size:.69em;color:var(--muted);margin-top:5px;">AI uwzgledni Twoje wskazowki podczas generowania quizu.</div>
+
+        <!-- OPCJE DODATKOWE (zwijane) -->
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;margin-bottom:18px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="toggleSection('photoSection',this)" class="expand-toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Zdjęcia
+            </button>
+            <button onclick="toggleSection('instrSection',this)" class="expand-toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Instrukcje
+            </button>
+            <button onclick="toggleSection('multiSection',this)" class="expand-toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Multiplayer
+            </button>
+          </div>
+
+          <div id="photoSection" style="display:none;margin-top:14px;">
+            <div id="photosWrap"></div>
+            <div class="capture-grid" id="captureGrid">
+              <button class="capture-btn cam-btn" onclick="openCamera()">
+                <div class="cb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                <div class="cb-title">Zrob zdjecie</div><div class="cb-sub">Aparat telefonu<br>lub kamery</div>
+              </button>
+              <button class="capture-btn gal-btn" onclick="pickFiles()">
+                <div class="cb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                <div class="cb-title">Wybierz z galerii</div><div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
+              </button>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
+          </div>
+
+          <div id="instrSection" style="display:none;margin-top:14px;">
+            <textarea id="wlasneInstrukcje" placeholder="np. Skup się na zadaniach obliczeniowych. Dodaj pytania o wzory..." style="width:100%;min-height:72px;padding:12px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.88em;line-height:1.55;resize:vertical;outline:none;transition:all .25s;"></textarea>
+          </div>
+
+          <div id="multiSection" style="display:none;margin-top:14px;" id="multiplayerField">
+            <button class="sel-btn" id="multiBtn" onclick="toggleMultiplayer()" style="width:100%;font-size:.82em;padding:11px;margin-bottom:8px;">Utwórz pokój multiplayer</button>
+            <div id="multiplayerPanel" style="display:none;padding:14px;background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.2);border-radius:12px;margin-bottom:8px;">
+              <div style="font-size:.68em;color:var(--muted2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Kod pokoju</div>
+              <div id="roomCode" style="font-family:'Syne',sans-serif;font-size:1.9em;font-weight:900;color:var(--accent2);letter-spacing:.25em;text-align:center;padding:10px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.15);border-radius:10px;margin-bottom:6px;">------</div>
+              <div id="playersOnline" style="font-size:.72em;color:var(--green);text-align:center;">Oczekiwanie na graczy...</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <input id="joinCode" type="text" placeholder="Wpisz kod pokoju..." maxlength="6" style="flex:1;padding:10px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:10px;color:var(--text);font-family:var(--b);font-size:.85em;outline:none;text-transform:uppercase;letter-spacing:.12em;" oninput="this.value=this.value.toUpperCase()">
+              <button onclick="joinRoom()" style="padding:10px 18px;background:linear-gradient(135deg,rgba(34,211,160,.15),rgba(34,211,160,.05));border:1px solid rgba(34,211,160,.3);border-radius:10px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;font-size:.8em;cursor:pointer;white-space:nowrap;">Dołącz</button>
+            </div>
+          </div>
         </div>
-        <button class="start-btn" onclick="startQuiz()">
+
+        <button class="gen-btn" onclick="startQuiz()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Zacznij quiz
+          Generuj quiz
         </button>
         <div class="error-msg" id="errMsg"></div>
       </div>
@@ -862,7 +946,7 @@ function renderSidebarStats(){
 
 // ═══ QUIZ LOGIC (oryginalna — bez zmian) ═══
 let quiz=null,questions=[],currentQ=0,answers=[],xp=0,streak=0,maxStreak=0,answered=false,isRetry=false,wrongIndexes=[];
-let VALS={level:'liceum',diff:'medium'};
+let VALS={level:'liceum',diff:'medium',quiz_type:'mixed'};
 let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
 let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Nie poddawaj się!"];
 let XP_MAP={easy:10,medium:20,hard:35};
@@ -922,29 +1006,14 @@ async function startQuiz(){
   }
   if(!topic){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
   showPage('pageLoading');
-  fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
+  fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr,quiz_type:VALS.quiz_type||'mixed'})})
   .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
   .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
   .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
 }
 
-function shuffleQuestions(qs){
-  // Tasuje kolejnosc pytan i opcje odpowiedzi (zeby nie zawsze byla ta sama odpowiedz)
-  return qs.map(function(q){
-    // Stworz tablice par [opcja, czyPoprawna]
-    var pairs=q.options.map(function(opt,i){return{text:opt,isCorrect:i===q.correct};});
-    // Tasuj opcje (Fisher-Yates)
-    for(var i=pairs.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pairs[i];pairs[i]=pairs[j];pairs[j]=tmp;}
-    // Nowy correct index
-    var newCorrect=pairs.findIndex(function(p){return p.isCorrect;});
-    return Object.assign({},q,{options:pairs.map(function(p){return p.text;}),correct:newCorrect});
-  });
-}
-
 function beginQuiz(qs,retry){
-  // Tasuj opcje odpowiedzi aby nie zawsze byla ta sama litera
-  var shuffled=shuffleQuestions(qs);
-  questions=shuffled;currentQ=0;answers=new Array(shuffled.length).fill(null);
+  questions=qs;currentQ=0;answers=new Array(qs.length).fill(null);
   xp=retry?xp:0;streak=0;answered=false;isRetry=retry;wrongIndexes=[];
   document.getElementById('quizTitle').textContent=quiz.title||'Quiz';
   document.getElementById('quizBadge')&&(document.getElementById('quizBadge').textContent=retry?'Powtórka':'✦ Quiz');
@@ -953,26 +1022,86 @@ function beginQuiz(qs,retry){
   showPage('pageQuiz');renderQuestion();
 }
 
+// Zaznaczone odpowiedzi dla multi_choice
+var selectedMulti = [];
+
 function renderQuestion(){
   answered=false;
+  selectedMulti=[];
   let q=questions[currentQ],total=questions.length;
+  const qtype = q.type || 'single';
+
   document.getElementById('questionNr').textContent='Pytanie '+(currentQ+1);
   setMath(document.getElementById('questionText'),q.question);
   document.getElementById('progressFill').style.width=(currentQ/total*100)+'%';
   document.getElementById('progressTxt').textContent='Pytanie '+(currentQ+1)+' / '+total;
   document.getElementById('streakTxt').textContent=streak>=2?'🔥 Seria: '+streak:'';
-  // Update quiz info sidebar
   if(document.getElementById('qiQ'))document.getElementById('qiQ').textContent=(currentQ+1)+' / '+total;
   if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent=streak>=2?'🔥 x'+streak:'—';
   if(document.getElementById('qiXP'))document.getElementById('qiXP').textContent=xp;
-  let letters=['A','B','C','D'];
+
   let opts=document.getElementById('options');opts.innerHTML='';
-  q.options.forEach(function(opt,i){
-    let div=document.createElement('div');div.className='option';
-    let span=document.createElement('span');span.className='opt-letter';span.textContent=letters[i];
-    let txt=document.createElement('span');txt.innerHTML=math(opt);
-    div.appendChild(span);div.appendChild(txt);div.onclick=function(){answer(i);};opts.appendChild(div);
-  });
+  let letters=['A','B','C','D'];
+
+  // Badge typu pytania
+  const typeLabels = {single:'Jednokrotny wybór', multi:'Wielokrotny wybór — zaznacz wszystkie poprawne', tf:'Prawda / Fałsz', open:'Pytanie opisowe'};
+  let typeBadge = document.createElement('div');
+  typeBadge.style.cssText='font-size:.65em;color:var(--muted2);margin-bottom:8px;padding:3px 10px;background:rgba(255,255,255,.04);border-radius:100px;display:inline-block;';
+  typeBadge.textContent = typeLabels[qtype] || '';
+  opts.appendChild(typeBadge);
+
+  if(qtype === 'open') {
+    // Pytanie otwarte — pole tekstowe
+    let wrap = document.createElement('div');
+    wrap.style.cssText='margin-top:8px;';
+    let ta = document.createElement('textarea');
+    ta.id = 'openAnswer';
+    ta.placeholder = 'Wpisz swoją odpowiedź...';
+    ta.style.cssText='width:100%;min-height:100px;padding:12px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.9em;resize:vertical;outline:none;transition:border .2s;line-height:1.55;';
+    ta.onfocus=function(){this.style.borderColor='var(--accent)';};
+    ta.onblur=function(){this.style.borderColor='var(--border-hi)';};
+    wrap.appendChild(ta);
+    let btn = document.createElement('button');
+    btn.className='next-btn show';
+    btn.style.cssText='margin-top:10px;width:100%;';
+    btn.textContent='Sprawdź odpowiedź →';
+    btn.onclick=function(){answerOpen();};
+    wrap.appendChild(btn);
+    opts.appendChild(wrap);
+  } else if(qtype === 'multi') {
+    // Wielokrotny wybór
+    let hint = document.createElement('div');
+    hint.style.cssText='font-size:.7em;color:var(--accent2);margin-bottom:6px;';
+    hint.textContent='Zaznacz wszystkie poprawne odpowiedzi';
+    opts.appendChild(hint);
+    (q.options||[]).forEach(function(opt,i){
+      let div=document.createElement('div');div.className='option';div.style.cursor='pointer';
+      let cb=document.createElement('span');cb.className='opt-letter';cb.id='cb_'+i;cb.textContent=letters[i];
+      let txt=document.createElement('span');txt.innerHTML=math(opt);
+      div.appendChild(cb);div.appendChild(txt);
+      div.onclick=function(){
+        if(answered)return;
+        let idx=selectedMulti.indexOf(i);
+        if(idx===-1){selectedMulti.push(i);div.style.borderColor='var(--accent)';div.style.background='rgba(124,106,255,.12)';}
+        else{selectedMulti.splice(idx,1);div.style.borderColor='';div.style.background='';}
+      };
+      opts.appendChild(div);
+    });
+    let btn=document.createElement('button');
+    btn.className='next-btn show';btn.style.cssText='margin-top:10px;width:100%;';
+    btn.textContent='Zatwierdź →';
+    btn.onclick=function(){answerMulti();};
+    opts.appendChild(btn);
+  } else {
+    // Jednokrotny wybór lub Prawda/Fałsz
+    (q.options||[]).forEach(function(opt,i){
+      let div=document.createElement('div');div.className='option';
+      let span=document.createElement('span');span.className='opt-letter';span.textContent=letters[i];
+      let txt=document.createElement('span');txt.innerHTML=math(opt);
+      div.appendChild(span);div.appendChild(txt);div.onclick=function(){answer(i);};opts.appendChild(div);
+    });
+  }
+
   document.getElementById('feedbackBox').className='feedback-box';
   document.getElementById('xpPop').style.display='none';
   let nb=document.getElementById('nextBtn');nb.className='next-btn';
@@ -1006,6 +1135,67 @@ function answer(idx){
   document.getElementById('feedbackMotivation').textContent=rand(correct?MOT_OK:MOT_ERR);
   document.getElementById('nextBtn').className='next-btn show';
   document.getElementById('streakTxt').textContent=streak>=2?'🔥 Seria: '+streak:'';
+}
+
+function answerMulti(){
+  if(answered)return;
+  if(selectedMulti.length===0){alert('Zaznacz przynajmniej jedną odpowiedź!');return;}
+  answered=true;
+  let q=questions[currentQ];
+  let correctArr=Array.isArray(q.correct)?q.correct:[q.correct];
+  let letters=['A','B','C','D'];
+  // Sprawdź czy zaznaczone === poprawne
+  let sel=selectedMulti.slice().sort().join(',');
+  let cor=correctArr.slice().sort().join(',');
+  let correct=(sel===cor);
+  answers[currentQ]=selectedMulti;
+  // Pokoloruj opcje
+  document.querySelectorAll('#options .option').forEach(function(o,i){
+    o.style.cursor='default';
+    if(correctArr.includes(i)){o.classList.add('correct');o.style.borderColor='var(--green)';o.style.background='rgba(34,211,160,.12)';}
+    else if(selectedMulti.includes(i)&&!correctArr.includes(i)){o.classList.add('wrong');o.style.borderColor='var(--red)';o.style.background='rgba(255,77,109,.12)';}
+    else{o.classList.add('dim');}
+  });
+  let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
+  if(correct){
+    let earned=XP_MAP[VALS.diff]||20;xp+=earned;streak++;if(streak>maxStreak)maxStreak=streak;
+    document.getElementById('xpTotal').textContent=xp;
+    fb.className='feedback-box correct-fb show';fh.className='feedback-header correct-h';
+    fh.textContent='✓ Poprawnie! Zaznaczyłeś wszystkie właściwe odpowiedzi!';
+    let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak:'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
+  }else{
+    streak=0;wrongIndexes.push(currentQ);
+    fb.className='feedback-box wrong-fb show';fh.className='feedback-header wrong-h';
+    fh.textContent='✗ Nie wszystkie odpowiedzi. Poprawne: '+correctArr.map(function(i){return letters[i];}).join(', ');
+  }
+  setMath(document.getElementById('feedbackExplain'),q.explanation||'');
+  document.getElementById('feedbackMotivation').textContent=rand(correct?MOT_OK:MOT_ERR);
+  document.getElementById('nextBtn').className='next-btn show';
+  // Ukryj przycisk zatwierdź
+  let btns=document.querySelectorAll('#options button');btns.forEach(function(b){b.style.display='none';});
+}
+
+function answerOpen(){
+  if(answered)return;
+  let ta=document.getElementById('openAnswer');
+  if(!ta||!ta.value.trim()){alert('Wpisz odpowiedź!');return;}
+  answered=true;
+  let q=questions[currentQ];
+  let userAnswer=ta.value.trim();
+  answers[currentQ]=userAnswer;
+  ta.disabled=true;
+  // AI sprawdzi odpowiedź — na razie akceptujemy wszystkie opisowe
+  let earned=Math.round((XP_MAP[VALS.diff]||20)*0.7);xp+=earned;streak++;if(streak>maxStreak)maxStreak=streak;
+  document.getElementById('xpTotal').textContent=xp;
+  let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
+  fb.className='feedback-box correct-fb show';
+  fh.className='feedback-header correct-h';
+  fh.textContent='✓ Odpowiedź zapisana!';
+  let modelAnswer=q.correct_answer||q.explanation||'';
+  setMath(document.getElementById('feedbackExplain'),'Wzorcowa odpowiedź: '+modelAnswer);
+  document.getElementById('feedbackMotivation').textContent='Porównaj swoją odpowiedź ze wzorcową!';
+  document.getElementById('nextBtn').className='next-btn show';
+  let btns=document.querySelectorAll('#options button');btns.forEach(function(b){b.style.display='none';});
 }
 
 function nextQuestion(){if(currentQ<questions.length-1){currentQ++;renderQuestion();}else showResults();}
@@ -1066,6 +1256,110 @@ function restartQuiz(){
 }
 
 document.getElementById('topic').addEventListener('keypress',function(e){if(e.key==='Enter')startQuiz();});
+
+function toggleSection(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var open = el.style.display === 'none' || el.style.display === '';
+  el.style.display = open ? 'block' : 'none';
+  if (btn) btn.classList.toggle('active', open);
+}
+
+// ── MULTIPLAYER ──────────────────────────────────────────────────────────────
+var _roomCode = null;
+var _isHost = false;
+var _multiplayerActive = false;
+var _roomListener = null;
+
+function generateCode(){
+  return Math.random().toString(36).substr(2,6).toUpperCase();
+}
+
+function toggleMultiplayer(){
+  var panel=document.getElementById('multiplayerPanel');
+  var btn=document.getElementById('multiBtn');
+  if(!_multiplayerActive){
+    _multiplayerActive=true;
+    _isHost=true;
+    _roomCode=generateCode();
+    document.getElementById('roomCode').textContent=_roomCode;
+    panel.style.display='block';
+    btn.textContent='Anuluj multiplayer';
+    btn.classList.add('active');
+    // Zarejestruj pokój w Firebase
+    _createRoom(_roomCode);
+  } else {
+    _multiplayerActive=false;
+    _isHost=false;
+    panel.style.display='none';
+    btn.textContent='Utwórz pokój multiplayer';
+    btn.classList.remove('active');
+    _roomCode=null;
+  }
+}
+
+function joinRoom(){
+  var code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(code.length<4){alert('Wpisz kod pokoju!');return;}
+  _roomCode=code;
+  _isHost=false;
+  _multiplayerActive=true;
+  // Sprawdź czy pokój istnieje
+  if(window._db && window._doc && window._getDoc){
+    window._getDoc(window._doc(window._db,'rooms',code)).then(function(snap){
+      if(!snap.exists()){alert('Nie znaleziono pokoju '+code+'!');_multiplayerActive=false;return;}
+      var data=snap.data();
+      // Załaduj quiz z pokoju i zacznij
+      if(data.quiz){
+        quiz=data.quiz;
+        _startMultiplayerQuiz(data.quiz.questions);
+      }
+    }).catch(function(){alert('Błąd połączenia z pokojem.');});
+  }
+}
+
+function _createRoom(code){
+  if(window._db && window._setDoc && window._doc){
+    var uid = window.currentUser ? window.currentUser.uid : 'anon';
+    window._setDoc(window._doc(window._db,'rooms',code),{
+      code:code, host:uid,
+      players:[uid],
+      created:new Date().toISOString(), status:'waiting', quiz:null
+    }).then(function(){
+      document.getElementById('playersOnline').textContent = 'Pokój utworzony. Oczekiwanie na graczy...';
+    }).catch(function(e){
+      console.log('Room create error:',e);
+      document.getElementById('playersOnline').textContent = 'Błąd tworzenia pokoju.';
+    });
+  }
+}
+
+function _saveRoomQuiz(code, quizData){
+  if(window._db && window._updateDoc && window._doc){
+    window._updateDoc(window._doc(window._db,'rooms',code),{
+      quiz:quizData, status:'active'
+    }).catch(function(e){console.log('Room quiz save error:',e);});
+  }
+}
+
+function _startMultiplayerQuiz(questions){
+  beginQuiz(questions, false);
+  showPage('pageQuiz');
+  // Pokaż info że gra multiplayer
+  var banner=document.getElementById('retryBanner');
+  if(banner){banner.style.display='block';banner.innerHTML='<div><strong>👥 Tryb Multiplayer!</strong> Kod pokoju: <strong>'+_roomCode+'</strong></div>';}
+}
+
+function _saveMultiplayerResult(correct, total){
+  if(!_roomCode||!window._db)return;
+  var uid=window.currentUser?window.currentUser.uid:'anon';
+  var result={uid:uid, correct:correct, total:total, pct:Math.round(correct/total*100), time:new Date().toISOString()};
+  if(window._updateDoc && window._doc){
+    var update={};
+    update['results.'+uid]=result;
+    window._updateDoc(window._doc(window._db,'rooms',_roomCode),update).catch(function(){});
+  }
+}
 
 window.addEventListener('DOMContentLoaded',function(){
   updateSlider(document.getElementById('numSlider'));
