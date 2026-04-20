@@ -1030,10 +1030,15 @@ function _setQuestionTypes(questions, quiz_type) {
       var c = typeof q.correct === 'number' ? q.correct : 0;
       q.correct = [c, (c + 2) % 4];
     }
-    // Dla tf — opcje muszą być Prawda/Fałsz
+    // Dla tf — opcje muszą być Prawda/Fałsz (tylko jeśli pytanie jest twierdzeniem)
     if (q.type === 'tf') {
-      q.options = ['Prawda', 'Fałsz'];
-      if (typeof q.correct !== 'number') q.correct = 0;
+      // Jeśli pytanie wygląda jak single (ma 4 opcje) — zostaw jako single
+      if (q.options && q.options.length === 4) {
+        q.type = 'single';
+      } else {
+        q.options = ['Prawda', 'Fałsz'];
+        if (typeof q.correct !== 'number') q.correct = 0;
+      }
     }
     // Dla open — correct = -1
     if (q.type === 'open') {
@@ -1207,75 +1212,189 @@ function answerMulti(){
   let btns=document.querySelectorAll('#options button');btns.forEach(function(b){b.style.display='none';});
 }
 
-function answerOpen(){
-  if(answered)return;
-  let ta=document.getElementById('openAnswer');
-  if(!ta||!ta.value.trim()){alert('Wpisz odpowiedź!');return;}
-  answered=true;
-  let q=questions[currentQ];
-  let userAnswer=ta.value.trim();
-  answers[currentQ]=userAnswer;
-  ta.disabled=true;
-  // AI sprawdzi odpowiedź — na razie akceptujemy wszystkie opisowe
-  let earned=Math.round((XP_MAP[VALS.diff]||20)*0.7);xp+=earned;streak++;if(streak>maxStreak)maxStreak=streak;
-  document.getElementById('xpTotal').textContent=xp;
-  let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
-  fb.className='feedback-box correct-fb show';
-  fh.className='feedback-header correct-h';
-  fh.textContent='✓ Odpowiedź zapisana!';
-  let modelAnswer=q.correct_answer||q.explanation||'';
-  setMath(document.getElementById('feedbackExplain'),'Wzorcowa odpowiedź: '+modelAnswer);
-  document.getElementById('feedbackMotivation').textContent='Porównaj swoją odpowiedź ze wzorcową!';
-  document.getElementById('nextBtn').className='next-btn show';
-  let btns=document.querySelectorAll('#options button');btns.forEach(function(b){b.style.display='none';});
-}
+
 
 function nextQuestion(){if(currentQ<questions.length-1){currentQ++;renderQuestion();}else showResults();}
 
-function showResults(){
+// Przechowuj odpowiedzi opisowe
+var _openAnswers = {};
+
+function answerOpen(){
+  if(answered)return;
+  var ta=document.getElementById('openAnswer');
+  if(!ta||!ta.value.trim()){alert('Wpisz odpowiedź!');return;}
+  answered=true;
+  var q=questions[currentQ];
+  var userAnswer=ta.value.trim();
+  answers[currentQ]=userAnswer;
+  _openAnswers[currentQ] = {
+    question: q.question,
+    correct_answer: q.correct_answer || q.explanation || '',
+    user_answer: userAnswer
+  };
+  ta.disabled=true;
+  var fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
+  fb.className='feedback-box correct-fb show';
+  fh.className='feedback-header correct-h';
+  fh.textContent='Odpowiedź zapisana — AI oceni po zakończeniu quizu';
+  setMath(document.getElementById('feedbackExplain'),'Wzorcowa odpowiedź: '+(q.correct_answer||q.explanation||''));
+  document.getElementById('feedbackMotivation').textContent='Zobaczysz ocenę AI po zakończeniu quizu!';
+  document.getElementById('nextBtn').className='next-btn show';
+  var btns=document.querySelectorAll('#options button');btns.forEach(function(b){b.style.display='none';});
+  // XP za próbę
+  var earned=Math.round((XP_MAP[VALS.diff]||20)*0.5);xp+=earned;
+  document.getElementById('xpTotal').textContent=xp;
+}
+
+async function _checkOpenAnswers() {
+  var toCheck = Object.keys(_openAnswers).map(function(idx) {
+    return _openAnswers[idx];
+  });
+  if (toCheck.length === 0) return null;
+  
+  try {
+    var resp = await fetch(BASE+'/api/v1/quiz/check-open', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({questions: toCheck})
+    });
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    return data.success ? data.results : null;
+  } catch(e) {
+    return null;
+  }
+}
+
+async function showResults(){
   let total=questions.length;
-  let correct=answers.filter(function(a,i){return a===questions[i].correct;}).length;
-  let pct=Math.round(correct/total*100);
+  // Licz poprawne — pomijaj opisowe (będą ocenione przez AI)
+  let nonOpenTotal=0, correct=0;
+  answers.forEach(function(a,i){
+    let q=questions[i];
+    if(q.type==='open') return; // pomijaj opisowe
+    nonOpenTotal++;
+    if(q.type==='multi'){
+      let sel=(a||[]).slice().sort().join(',');
+      let cor=(Array.isArray(q.correct)?q.correct:[]).slice().sort().join(',');
+      if(sel===cor) correct++;
+    } else {
+      if(a===q.correct) correct++;
+    }
+  });
+  let openCount=Object.keys(_openAnswers).length;
+  let pct=nonOpenTotal>0?Math.round(correct/nonOpenTotal*100):0;
+
   document.getElementById('scorePct').textContent=pct+'%';
   document.getElementById('statCorrect').textContent=correct;
-  document.getElementById('statWrong').textContent=total-correct;
+  document.getElementById('statWrong').textContent=nonOpenTotal-correct;
   document.getElementById('statXP').textContent=xp;
+
   let title,sub;
-  if(pct===100){title='Perfekcja! 🏆';sub='Niesamowite — 100% poprawnych!';}
+  if(pct===100&&openCount===0){title='Perfekcja!';sub='Niesamowite — 100% poprawnych!';}
   else if(pct>=80){title='Świetny wynik!';sub='Prawie ideał!';}
   else if(pct>=60){title='Dobra robota!';sub='Solidny wynik. Powtórz błędy!';}
   else if(pct>=40){title='Jest potencjał!';sub='Kilka rzeczy do poprawy.';}
   else{title='Nie poddawaj się!';sub='Każdy zaczyna od zera!';}
-  if(pct===100)confetti();
+  if(pct===100&&openCount===0)confetti();
+
   document.getElementById('resultsTitle').textContent=title;
   document.getElementById('resultsSub').textContent=sub;
   let rb=document.getElementById('retryWrongBtn');
   if(wrongIndexes.length>0&&!isRetry){rb.style.display='block';rb.textContent='Powtórz '+wrongIndexes.length+' błędne pytanie'+(wrongIndexes.length>1?'a':'');}
   else rb.style.display='none';
-  // Zapis do historii
-  saveQuiz(quiz&&quiz.title?quiz.title:document.getElementById('topic').value||'Quiz',correct,total,xp);
+
+  saveQuiz(quiz&&quiz.title?quiz.title:document.getElementById('topic').value||'Quiz',correct,nonOpenTotal||total,xp);
   const storedXP=parseInt(localStorage.getItem('eduvia_xp')||'0');
   localStorage.setItem('eduvia_xp',storedXP+xp);
   renderSidebarStats();
-  showPage('pageResults');document.getElementById('progressFill').style.width='100%';
+  showPage('pageResults');
+  document.getElementById('progressFill').style.width='100%';
+
+  // Sprawdź odpowiedzi opisowe przez AI
+  if(openCount>0){
+    var openSection=document.getElementById('openResultsSection');
+    if(!openSection){
+      openSection=document.createElement('div');
+      openSection.id='openResultsSection';
+      openSection.style.cssText='margin-top:18px;padding:16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;';
+      openSection.innerHTML='<div style="font-family:var(--h);font-size:.75em;font-weight:700;color:var(--accent2);margin-bottom:10px;">AI sprawdza odpowiedzi opisowe...</div><div style="width:32px;height:32px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .85s linear infinite;"></div>';
+      document.getElementById('resultsTitle').parentNode.appendChild(openSection);
+    }
+    var aiResults = await _checkOpenAnswers();
+    if(aiResults){
+      var html='<div style="font-family:var(--h);font-size:.75em;font-weight:700;color:var(--accent2);margin-bottom:12px;">Ocena odpowiedzi opisowych</div>';
+      var openKeys=Object.keys(_openAnswers);
+      aiResults.forEach(function(r,i){
+        var qIdx=openKeys[i];
+        var q=questions[qIdx];
+        var ok=r.correct||r.score>=60;
+        html+='<div style="padding:10px 0;border-bottom:1px solid var(--border);">';
+        html+='<div style="font-size:.78em;color:var(--muted2);margin-bottom:4px;">Pytanie '+(parseInt(qIdx)+1)+'</div>';
+        html+='<div style="font-size:.82em;margin-bottom:6px;">'+q.question+'</div>';
+        html+='<div style="font-size:.78em;padding:8px 12px;border-radius:8px;'+(ok?'background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);color:var(--green)':'background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red)')+';">';
+        html+=(ok?'✓ ':'✗ ')+r.feedback;
+        if(r.missing)html+='<br><span style="font-size:.9em;color:var(--muted2);">Brakowało: '+r.missing+'</span>';
+        html+='</div></div>';
+        if(ok){correct++;} else {wrongIndexes.push(parseInt(qIdx));}
+      });
+      openSection.innerHTML=html;
+      // Aktualizuj wynik
+      var newTotal=nonOpenTotal+openKeys.length;
+      var newPct=Math.round(correct/newTotal*100);
+      document.getElementById('scorePct').textContent=newPct+'%';
+      document.getElementById('statCorrect').textContent=correct;
+    } else {
+      openSection.innerHTML='<div style="font-size:.8em;color:var(--muted2);">Nie udało się sprawdzić odpowiedzi opisowych.</div>';
+    }
+  }
 }
 
 function retryWrong(){let wq=wrongIndexes.map(function(i){return questions[i];});wrongIndexes=[];beginQuiz(wq,true);}
 
 function reviewAll(){
-  let letters=['A','B','C','D'];let list=document.getElementById('reviewList');list.innerHTML='';
+  let letters=['A','B','C','D'];
+  let list=document.getElementById('reviewList');list.innerHTML='';
   questions.forEach(function(q,i){
-    let ua=answers[i],ok=ua===q.correct;
+    let ua=answers[i];
+    let qtype=q.type||'single';
     let d=document.createElement('div');d.className='review-card';
-    d.style.borderColor=ok?'rgba(34,211,160,.25)':'rgba(248,113,113,.25)';
-    let qHtml=math(q.question),correctHtml=math(q.options[q.correct]);
-    let wrongHtml=(ua!==null&&ua!==q.correct)?math(q.options[ua]):'';
+    let qHtml=math(q.question);
     let explHtml=q.explanation?math(q.explanation):'';
-    d.innerHTML='<div style="font-family:let(--h);font-size:.72em;color:let(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Pytanie '+(i+1)+' · '+(ok?'<span style=color:let(--green)>✓ Poprawne</span>':'<span style=color:let(--red)>✗ Błąd</span>')+'</div>'
+    let ok=false;
+    let answerHtml='';
+    let correctHtml='';
+
+    if(qtype==='open'){
+      // Opisowe — pokaż odpowiedź ucznia i wzorcową
+      ok=!!(_openAnswers[i]&&_openAnswers[i].ai_correct);
+      d.style.borderColor='rgba(124,106,255,.25)';
+      answerHtml='<div style="font-size:.83em;color:var(--muted2);margin-bottom:4px;">Twoja odpowiedź: '+(ua||'brak')+'</div>';
+      correctHtml='<div style="font-size:.83em;color:var(--accent2);">Wzorcowa: '+(q.correct_answer||q.explanation||'')+'</div>';
+    } else if(qtype==='multi'){
+      // Wielokrotny — porównaj listy
+      let correctArr=Array.isArray(q.correct)?q.correct:[];
+      let userArr=Array.isArray(ua)?ua:[];
+      ok=userArr.slice().sort().join(',')===correctArr.slice().sort().join(',');
+      d.style.borderColor=ok?'rgba(34,211,160,.25)':'rgba(248,113,113,.25)';
+      answerHtml='<div style="font-size:.83em;color:'+(ok?'var(--green)':'var(--red)')+';">Twoje: '+userArr.map(function(x){return letters[x];}).join(', ')+'</div>';
+      correctHtml='<div style="font-size:.83em;color:var(--green);">Poprawne: '+correctArr.map(function(x){return letters[x]+') '+(q.options&&q.options[x]||'');}).join(', ')+'</div>';
+    } else {
+      // Single lub T/F
+      ok=ua===q.correct;
+      d.style.borderColor=ok?'rgba(34,211,160,.25)':'rgba(248,113,113,.25)';
+      if(!ok&&ua!==null&&ua!==undefined){
+        let wrongTxt=q.options&&q.options[ua]?letters[ua]+') '+math(q.options[ua]):'';
+        if(wrongTxt)answerHtml='<div style="font-size:.83em;color:var(--red);margin-bottom:4px;">Twoja: '+wrongTxt+'</div>';
+      }
+      let corrTxt=q.options&&q.options[q.correct]?letters[q.correct]+') '+math(q.options[q.correct]):'';
+      if(corrTxt&&!ok)correctHtml='<div style="font-size:.83em;color:var(--green);">Poprawna: '+corrTxt+'</div>';
+    }
+
+    d.innerHTML='<div style="font-size:.72em;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:var(--h);">Pytanie '+(i+1)+' · '+(ok?'<span style="color:var(--green)">✓ Poprawne</span>':'<span style="color:var(--red)">✗ Błąd</span>')+'</div>'
       +'<div style="font-size:.93em;line-height:1.65;margin-bottom:12px;">'+qHtml+'</div>'
-      +(wrongHtml?'<div style="font-size:.83em;color:let(--red);margin-bottom:4px;">Twoja: '+letters[ua]+') '+wrongHtml+'</div>':'')
-      +'<div style="font-size:.83em;color:let(--green);margin-bottom:0;">Poprawna: '+letters[q.correct]+') '+correctHtml+'</div>'
-      +(explHtml?'<div style="font-size:.8em;color:let(--muted2);line-height:1.65;border-top:1px solid let(--border);padding-top:9px;margin-top:9px;">'+explHtml+'</div>':'');
+      +answerHtml+correctHtml
+      +(explHtml?'<div style="font-size:.8em;color:var(--muted2);line-height:1.65;border-top:1px solid var(--border);padding-top:9px;margin-top:9px;">'+explHtml+'</div>':'');
     list.appendChild(d);
   });
   showPage('pageReview');
@@ -1284,7 +1403,7 @@ function reviewAll(){
 function restartQuiz(){
   document.getElementById('topic').value='';document.getElementById('errMsg').style.display='none';
   if(document.getElementById('wlasneInstrukcje'))document.getElementById('wlasneInstrukcje').value='';
-  clearPhotos();xp=0;streak=0;maxStreak=0;showPage('pageSetup');renderSidebarStats();
+  clearPhotos();xp=0;streak=0;maxStreak=0;_openAnswers={};showPage('pageSetup');renderSidebarStats();
 }
 
 document.getElementById('topic').addEventListener('keypress',function(e){if(e.key==='Enter')startQuiz();});
