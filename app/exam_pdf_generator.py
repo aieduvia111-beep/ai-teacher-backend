@@ -831,7 +831,42 @@ class ExamGenerator:
             else: result.append(c); i += 1
         return ''.join(result)
 
-    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None) -> dict:
+    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
+        temat_low = temat.lower()
+        przedmiot_low = (przedmiot or '').lower()
+
+        # Wykryj typ zadań na podstawie tematu i przedmiotu
+        ZAWSZE_OBLICZENIA = ['matematyka', 'fizyka', 'chemia']
+        SLOWA_OBLICZENIOWE = [
+            'oblicz', 'procent', 'predkosc', 'stezenie', 'masa', 'cisnienie',
+            'temperatura', 'energia', 'wydajnosc', 'wzrost', 'przyrost',
+            'odleglosc', 'sila', 'moc', 'napiecie', 'gestosc', 'objetosc',
+            'pole', 'obwod', 'calka', 'pochodna', 'rownanie', 'logarytm',
+            'ulamek', 'funkcja', 'wskaznik', 'bilans'
+        ]
+        SLOWA_BEZ_OBLICZEN = [
+            'gramatyka', 'slownictwo', 'grammar', 'czasy', 'reading',
+            'wypracowanie', 'esej', 'lektura', 'literatura', 'epoka',
+            'autor', 'bohater', 'bitwa', 'data', 'wydarzenie', 'postac',
+            'chronologia', 'definicja', 'pojecie', 'grzyby', 'rosliny',
+            'zwierzeta', 'ekologia', 'ewolucja', 'komorka', 'tkanki',
+            'fotosynteza', 'bakterie', 'wirusy', 'mitoza', 'mejoza'
+        ]
+
+        ma_obliczenia = any(s in temat_low for s in SLOWA_OBLICZENIOWE)
+        bez_obliczen = any(s in temat_low for s in SLOWA_BEZ_OBLICZEN)
+        zawsze = any(p in przedmiot_low for p in ZAWSZE_OBLICZENIA)
+
+        if ma_obliczenia or (zawsze and not bez_obliczen):
+            typ_instrukcja = "Ten temat wymaga zadan obliczeniowych — dodaj Czesc B z zadaniami obliczeniowymi i wzorami."
+        else:
+            typ_instrukcja = """WAZNE: Ten temat NIE wymaga zadan obliczeniowych matematycznych.
+Czesc B powinna zawierac zadania OTWARTE OPISOWE:
+- pytania na opis i wyjasnienie zjawisk
+- zadania na analize i interpretacje
+- pytania definicyjne i problemowe
+ZAKAZ: rownania matematyczne, obliczenia liczbowe, wzory fizyczne/chemiczne w Czesci B."""
+
         if wlasne_instrukcje and wlasne_instrukcje.strip():
             instr = wlasne_instrukcje.strip()
             only_closed = any(x in instr.upper() for x in ['TYLKO', 'ZAMKNIETYCH', 'NIE DODAWAJ CZESCI B', 'SPRAWDZIAN MA MIEC'])
@@ -841,9 +876,9 @@ class ExamGenerator:
 STRUKTURA: TYLKO sekcja A (zamkniete). ZAKAZ sekcji B. ZAKAZ zadan otwartych.
 LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             else:
-                blok = f"NAUCZYCIEL CHCE: {instr}\nMUSISZ to uwzglednic w sprawdzianie."
+                blok = f"{typ_instrukcja}\nNAUCZYCIEL CHCE: {instr}\nMUSISZ to uwzglednic w sprawdzianie."
         else:
-            blok = "(brak dodatkowych instrukcji)"
+            blok = typ_instrukcja
         prompt = EXAM_PROMPT.format(
             temat=temat, klasa=klasa,
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
@@ -874,9 +909,13 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,
-                      wariant: str = "A", wlasne_instrukcje: str = None) -> str:
+                      wariant: str = "A", wlasne_instrukcje: str = None,
+                      przedmiot: str = None) -> str:
         print(f"[ExamGen] Generuję: '{temat}' | {klasa} | {trudnosc} | Wariant {wariant}")
-        data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje)
+        # Wyciągnij przedmiot z tematu jeśli format "Przedmiot: Temat"
+        if not przedmiot and ':' in temat:
+            przedmiot = temat.split(':')[0].strip()
+        data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
         data['wariant'] = wariant
