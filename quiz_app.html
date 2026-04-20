@@ -1140,13 +1140,18 @@ window.addEventListener('DOMContentLoaded',function(){
         var bWrong = bd.wrongQuestions || [];
         var bForceAI = bd.forceAI || false;
 
-        // Sprawdź czy mamy pełne pytania z opcjami A,B,C,D
-        // ALE tylko jeśli NIE wymuszamy AI i pytania są z TEGO SAMEGO tematu
+        // Filtruj pytania — TYLKO z tego samego tematu (topic)
+        var tl = bTopic.toLowerCase().replace(/\s*-\s*quiz\s*/i, '').trim();
+        var sl = bSubject.toLowerCase();
         var fullQs = bWrong.filter(function(q){
           if (!q.options || q.options.length === 0) return false;
-          var qs = (q.subject||'').toLowerCase();
-          var sl = bSubject.toLowerCase();
-          return (qs.includes(sl) || sl.includes(qs) || sl === 'inne');
+          var qtopic = (q.topic || q.title || '').toLowerCase().replace(/\s*-\s*quiz\s*/i, '').trim();
+          var qsubj = (q.subject || '').toLowerCase();
+          // Sprawdź czy temat pasuje (nie tylko subject!)
+          var topicMatch = qtopic.includes(tl) || tl.includes(qtopic) || 
+                          (qtopic.length > 3 && tl.includes(qtopic.split(' ')[0]));
+          var subjectMatch = qsubj.includes(sl) || sl.includes(qsubj);
+          return topicMatch && subjectMatch;
         });
 
         // DEDUPLIKACJA — usuń powtarzające się pytania
