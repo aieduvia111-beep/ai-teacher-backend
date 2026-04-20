@@ -178,9 +178,11 @@ ZASADY:
 - KLUCZOWE: jesli pytanie jest w "Naprawione" — znaczy ze uczen juz je opanowal — ZMNIEJSZ severity lub usun z holes
 - Jesli wszystkie bledy z danego tematu sa w "Naprawione" — USUN ten temat z holes calkowicie
 - Jesli polowa bledow naprawiona — zmien severity z high na medium lub medium na low
-- BARDZO WAZNE: bierz pod uwage TYLKO "Bledy (z opcjami)" — to sa prawdziwe bledy z nowych quizow
-- Jesli "Bledy (z opcjami)" = 0 dla danego przedmiotu — NIE dodawaj tego przedmiotu do holes, nawet jesli avg jest niski
-- Jesli avg >= 80% i brak bledow z opcjami — przedmiot jest opanowany, NIE dodawaj do holes
+- BARDZO WAZNE: patrz na "Ostatni quiz" i "Bledy w ostatnim"
+- Jesli "Bledy w ostatnim" = 0 — uczen naprawil ten temat — NIE dodawaj do holes lub USUN z holes
+- Jesli "Ostatni quiz" >= 90% — przedmiot jest opanowany, NIE dodawaj do holes
+- Jesli "Bledy w ostatnim" > 0 — dodaj do holes z odpowiednim severity
+- To jest NAJWAZNIEJSZA zasada — ostatni wynik ma priorytet nad srednia
 - Uwzglednij WSZYSTKIE zrodla: quizy, notatki, ankiety, sprawdziany, plan nauki
 - Podaj TYLKO przedmioty ktore uczen faktycznie robil"""
 
@@ -342,45 +344,50 @@ def _build_data_summary(req: BrainRequest) -> str:
 
     # QUIZY
     if req.quizHistory:
-        subj_quiz = defaultdict(lambda: {'scores': [], 'wrong': [], 'repaired': [], 'wrong_valid': 0})
-        for q in req.quizHistory:
+        # Sortuj po czasie — najnowsze pierwsze
+        sorted_quizzes = sorted(req.quizHistory, key=lambda x: x.get('timestamp', ''), reverse=True)
+
+        subj_quiz = defaultdict(lambda: {
+            'scores': [], 'wrong': [], 'wrong_valid': 0,
+            'last_pct': 0, 'last_wrong_count': 0, 'last_timestamp': ''
+        })
+
+        for q in sorted_quizzes:
             s = q.get('subject', 'inne')
             correct = q.get('correct', 0)
             total = q.get('total', 1) or 1
             pct = q.get('pct') or round(correct / total * 100)
             subj_quiz[s]['scores'].append(pct)
+            ts = q.get('timestamp', '')
 
             wrong_qs = q.get('wrongQuestions') or []
-
-            # KLUCZOWE: licz bledy tylko z pytan ktore maja opcje A-D
-            # Stare quizy bez opcji nie psuja analizy dziur
             valid_wrong = [w for w in wrong_qs if w.get('options') and len(w.get('options', [])) >= 2]
 
             for w in valid_wrong[:3]:
                 subj_quiz[s]['wrong'].append(w.get('question', '')[:50])
-
             if valid_wrong:
                 subj_quiz[s]['wrong_valid'] += len(valid_wrong)
 
-            # Naprawione pytania — zmniejszają severity dziury
-            for r in (q.get('repairedQuestions') or []):
-                subj_quiz[s]['repaired'].append(r.get('question', '')[:50])
+            # Zapisz dane ostatniego (najnowszego) quizu per przedmiot
+            if ts > subj_quiz[s]['last_timestamp']:
+                subj_quiz[s]['last_pct'] = pct
+                subj_quiz[s]['last_wrong_count'] = len(valid_wrong)
+                subj_quiz[s]['last_timestamp'] = ts
 
         lines.append(f"\n=== QUIZY (lacznie {len(req.quizHistory)}) ===")
         for subj, data in subj_quiz.items():
             avg = round(sum(data['scores']) / len(data['scores']))
             wrong_uniq = list(dict.fromkeys(data['wrong']))[:3]
-            repaired_uniq = list(dict.fromkeys(data['repaired']))[:3]
             wrong_str = ' | '.join(wrong_uniq) if wrong_uniq else 'brak'
-            repaired_str = ' | '.join(repaired_uniq) if repaired_uniq else 'brak'
             scores = data['scores']
             trend = ''
             if len(scores) >= 6:
                 old_avg = sum(scores[-6:-3]) / 3
                 new_avg = sum(scores[-3:]) / 3
                 trend = ' [rosnie]' if new_avg > old_avg + 5 else (' [spada]' if new_avg < old_avg - 5 else ' [stabilny]')
-            valid_wrong_count = data.get('wrong_valid', 0)
-            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Bledy (z opcjami): {valid_wrong_count} | Przykladowe bledy: {wrong_str} | Naprawione: {repaired_str}")
+            last_pct = data['last_pct']
+            last_wrong = data['last_wrong_count']
+            lines.append(f"- {subj}: {len(scores)} quizow, avg {avg}%{trend} | Ostatni quiz: {last_pct}% | Bledy w ostatnim: {last_wrong} | Przykladowe bledy: {wrong_str}")
 
     # NOTATKI
     if req.notesHistory:
