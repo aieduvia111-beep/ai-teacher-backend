@@ -80,12 +80,15 @@ Odpowiedz TYLKO czystym JSON bez markdown."""
 
         resp = await client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=3000, temperature=0.7
+            messages=[
+                {"role": "system", "content": "Jestes generatorem quizow. Odpowiadasz WYLACZNIE czystym JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=3000,
+            temperature=0.3,
+            response_format={"type": "json_object"}
         )
-        raw = resp.choices[0].message.content.strip().replace('```json','').replace('```','').strip()
-        s = raw.find('{'); e = raw.rfind('}')
-        quiz_data = json.loads(raw[s:e+1])
+        quiz_data = json.loads(resp.choices[0].message.content)
         # Dodaj type=open do kazdego pytania
         for q in quiz_data.get("questions", []):
             q["type"] = "open"
@@ -132,23 +135,38 @@ Odpowiedz TYLKO czystym JSON bez markdown."""
             correct_idx = q.get("correct", 0)
             options = q.get("options", [])
             correct_ans = options[correct_idx] if correct_idx < len(options) else ""
-            question_base = q.get("question", "").rstrip("?").rstrip(".")
-            # Nieparzyste = falsz (uzywamy blednej odpowiedzi)
+            wrong_opts = [o for j,o in enumerate(options) if j != correct_idx]
+            wrong_ans = wrong_opts[0] if wrong_opts else ""
+            explanation = q.get("explanation", "")
             is_true = (i % 2 == 0)
-            if is_true:
-                statement = f"{question_base}: {correct_ans}."
+            if is_true and correct_ans:
+                # Twierdzenie prawdziwe — używamy poprawnej odpowiedzi
+                statement = f"{correct_ans} jest poprawną odpowiedzią w kontekście tematu {topic}."
+                # Lepiej: używamy explanation żeby zbudować twierdzenie
+                if explanation:
+                    # Bierz pierwsze zdanie z explanation
+                    first_sentence = explanation.split('.')[0].strip()
+                    if len(first_sentence) > 10:
+                        statement = first_sentence + "."
                 correct_val = 0
-            else:
-                wrong_opts = [o for j,o in enumerate(options) if j != correct_idx]
-                wrong = wrong_opts[0] if wrong_opts else correct_ans
-                statement = f"{question_base}: {wrong}."
+            elif not is_true and wrong_ans:
+                # Twierdzenie fałszywe — używamy błędnej odpowiedzi w kontekście
+                statement = f"{wrong_ans} jest głównym produktem/elementem procesu związanego z tematem {topic}."
+                if explanation:
+                    # Neguj pierwsze zdanie
+                    first_sentence = explanation.split('.')[0].strip()
+                    if len(first_sentence) > 10:
+                        statement = f"{wrong_ans}: {first_sentence.lower()}."
                 correct_val = 1
+            else:
+                statement = correct_ans + "." if correct_ans else q.get("question","")
+                correct_val = 0
             new_qs.append({
                 "type": "tf",
                 "question": statement,
                 "options": ["Prawda", "Fałsz"],
                 "correct": correct_val,
-                "explanation": q.get("explanation", "")
+                "explanation": explanation
             })
         questions = new_qs
         quiz_data["questions"] = questions
@@ -185,16 +203,21 @@ Odpowiedz TYLKO czystym JSON bez markdown."""
                 if not isinstance(correct_idx, int): correct_idx = 0
                 options = q.get("options", [])
                 correct_ans = options[correct_idx] if correct_idx < len(options) else ""
-                question_base = q.get("question", "").rstrip("?").rstrip(".")
+                explanation = q.get("explanation", "")
+                wrong_opts = [o for j,o in enumerate(options) if j != correct_idx]
+                wrong_ans = wrong_opts[0] if wrong_opts else ""
                 is_true = (i % 2 == 0)
-                if is_true:
-                    statement = f"{question_base}: {correct_ans}."
+                if is_true and correct_ans:
+                    first = explanation.split('.')[0].strip() if explanation else ""
+                    statement = (first + ".") if len(first) > 10 else (correct_ans + ".")
                     cv = 0
-                else:
-                    wrong_opts = [o for j,o in enumerate(options) if j != correct_idx]
-                    wrong = wrong_opts[0] if wrong_opts else correct_ans
-                    statement = f"{question_base}: {wrong}."
+                elif not is_true and wrong_ans:
+                    first = explanation.split('.')[0].strip() if explanation else ""
+                    statement = (wrong_ans + ": " + first.lower() + ".") if len(first) > 10 else (wrong_ans + ".")
                     cv = 1
+                else:
+                    statement = correct_ans + "."
+                    cv = 0
                 q["type"] = "tf"
                 q["question"] = statement
                 q["options"] = ["Prawda", "Fałsz"]
