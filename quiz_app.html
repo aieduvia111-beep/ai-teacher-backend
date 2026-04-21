@@ -1015,31 +1015,42 @@ async function startQuiz(){
 function _setQuestionTypes(questions, quiz_type) {
   var qt = quiz_type || VALS.quiz_type || 'mixed';
   return questions.map(function(q, i) {
-    if (!q.type || q.type === undefined) {
+
+    // Jeśli mixed — typ powinien być w q.type z backendu, jeśli brak — single
+    if (qt === 'mixed') {
+      if (!q.type) q.type = 'single';
+    } else {
+      // Dla konkretnego typu — nadpisz typ niezależnie od tego co zwrócił AI
       if (qt === 'multi_choice') q.type = 'multi';
       else if (qt === 'true_false') q.type = 'tf';
       else if (qt === 'open') q.type = 'open';
-      else if (qt === 'single_choice') q.type = 'single';
-      else {
-        var types = ['single','single','multi','tf','single'];
-        q.type = types[i % types.length];
+      else q.type = 'single';
+    }
+
+    // NORMALIZACJA per typ
+    if (q.type === 'tf') {
+      // T/F — zawsze 2 opcje, correct 0 lub 1
+      q.options = ['Prawda', 'Fałsz'];
+      if (typeof q.correct !== 'number' || q.correct > 1) q.correct = 0;
+    }
+    else if (q.type === 'multi') {
+      // Multi — correct musi być listą
+      if (!Array.isArray(q.correct)) {
+        var c = typeof q.correct === 'number' ? q.correct : 0;
+        q.correct = [c, (c + 2) % (q.options ? q.options.length : 4)];
       }
     }
-    // Dla multi — correct musi być listą
-    if (q.type === 'multi' && !Array.isArray(q.correct)) {
-      var c = typeof q.correct === 'number' ? q.correct : 0;
-      q.correct = [c, (c + 2) % 4];
-    }
-    // Dla tf — zawsze ustaw opcje Prawda/Fałsz
-    if (q.type === 'tf') {
-      q.options = ['Prawda', 'Fałsz'];
-      if (typeof q.correct !== 'number') q.correct = 0;
-    }
-    // Dla open — correct = -1
-    if (q.type === 'open') {
+    else if (q.type === 'open') {
+      // Open — brak opcji, correct = -1
+      q.options = [];
       q.correct = -1;
       if (!q.correct_answer) q.correct_answer = q.explanation || '';
     }
+    else {
+      // Single — correct musi być liczbą
+      if (typeof q.correct !== 'number') q.correct = 0;
+    }
+
     return q;
   });
 }
