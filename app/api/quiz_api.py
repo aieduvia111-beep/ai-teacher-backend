@@ -63,61 +63,35 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     }
     level_desc = level_map.get(level, level_map["liceum"])
 
-    if quiz_type == "multi_choice":
-        type_prompt = f"""Wygeneruj {num_questions} pytan WIELOKROTNEGO WYBORU.
-KAZDE pytanie MUSI miec pole "type":"multi" i "correct" jako LISTA LICZB np. [0,2] lub [1,3].
-Kazde pytanie ma 2 lub 3 poprawne odpowiedzi.
-Format KAZDEGO pytania:
-{{"type":"multi","question":"Ktore z ponizszych...?","options":["opcja A","opcja B","opcja C","opcja D"],"correct":[0,2],"explanation":"A i C sa poprawne poniewaz..."}}"""
-    elif quiz_type == "true_false":
-        type_prompt = f"""Wygeneruj {num_questions} pytan PRAWDA/FALSZ.
-KAZDE pytanie MUSI miec pole "type":"tf", options:["Prawda","Falsz"], correct: 0 (Prawda) lub 1 (Falsz).
-Format KAZDEGO pytania:
-{{"type":"tf","question":"Twierdzenie do oceny.","options":["Prawda","Falsz"],"correct":0,"explanation":"To prawda poniewaz..."}}"""
-    elif quiz_type == "open":
-        type_prompt = f"""Wygeneruj {num_questions} pytan OPISOWYCH OTWARTYCH.
-KAZDE pytanie MUSI miec "type":"open", "options":[], "correct":-1, "correct_answer":"pelna odpowiedz".
-Format KAZDEGO pytania:
-{{"type":"open","question":"Wyjasni/opisz/porownaj...?","options":[],"correct":-1,"correct_answer":"Wzorcowa pelna odpowiedz","explanation":"Kluczowe elementy odpowiedzi"}}"""
-    elif quiz_type == "mixed":
-        type_prompt = f"""Wygeneruj {num_questions} MIESZANYCH pytan roznych typow.
-Uzyj: okolo polowy type=single (correct=liczba 0-3), cwiartka type=multi (correct=lista np.[0,2]), cwiartka type=tf (options=["Prawda","Falsz"], correct=0 lub 1).
-Dla single: {{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
-Dla multi: {{"type":"multi","question":"Ktore?","options":["A","B","C","D"],"correct":[0,2],"explanation":"..."}}
-Dla tf: {{"type":"tf","question":"Twierdzenie?","options":["Prawda","Falsz"],"correct":0,"explanation":"..."}}"""
-    else:  # single_choice
-        type_prompt = f"""Wygeneruj {num_questions} pytan JEDNOKROTNEGO WYBORU (1 poprawna odpowiedz z 4).
-KAZDE pytanie MUSI miec "type":"single", correct to LICZBA 0-3.
-Format: {{"type":"single","question":"?","options":["A","B","C","D"],"correct":2,"explanation":"..."}}
-WAZNE: Urozmaicaj correct — nie dawaj zawsze 0!"""
-
     if quiz_type == "true_false":
-        format_example = """{"type":"tf","question":"Chlorofil jest niezbędny do fotosyntezy.","options":["Prawda","Falsz"],"correct":0,"explanation":"To prawda — chlorofil pochłania swiatlo."}"""
+        format_example = '{"type":"tf","question":"Chlorofil jest niezbedny do fotosyntezy.","options":["Prawda","Falsz"],"correct":0,"explanation":"To prawda — chlorofil pochlania swiatlo."}'
         type_prompt = f"""Wygeneruj {num_questions} pytan PRAWDA/FALSZ.
 ZASADY:
 - Kazde pytanie to TWIERDZENIE (zdanie oznajmujace) ktore jest prawdziwe lub falszywe
-- NIE piszaj "Czy...", "Ktore...", "Co to..." — tylko twierdzenia!
-- Przykladowe pytania T/F: "Fotosynteza zachodzi w chloroplastach.", "Tlen jest substratem fotosyntezy."
+- NIE pisz pytan z "Ktore...", "Co to...", "Ile..." — TYLKO twierdzenia!
+- Przykladowe twierdzenia T/F: "Fotosynteza zachodzi w mitochondriach.", "Chlorofil nadaje roslinom zielony kolor."
+- "type" MUSI byc "tf"
 - options ZAWSZE = ["Prawda","Falsz"]
-- correct = 0 (Prawda) lub 1 (Falsz) — urozmaicaj polowe Prawda polowe Falsz
-- Dla Falsz napisz w explanation co jest prawda"""
+- correct = 0 (Prawda) lub 1 (Falsz) — urozmaicaj, polowe Prawda polowe Falsz"""
 
     elif quiz_type == "multi_choice":
-        format_example = """{"type":"multi","question":"Ktore z ponizszych sa produktami fotosyntezy?","options":["Tlen","Dwutlenek wegla","Glukoza","Woda"],"correct":[0,2],"explanation":"Tlen i glukoza sa produktami fotosyntezy."}"""
+        format_example = '{"type":"multi","question":"Ktore z ponizszych sa produktami fotosyntezy?","options":["Tlen","Dwutlenek wegla","Glukoza","Woda"],"correct":[0,2],"explanation":"Tlen i glukoza sa produktami fotosyntezy."}'
         type_prompt = f"""Wygeneruj {num_questions} pytan WIELOKROTNEGO WYBORU.
 ZASADY:
 - Kazde pytanie ma 2 lub 3 poprawne odpowiedzi z 4 opcji
-- Pytanie MUSI brzmiec "Ktore z ponizszych...", "Wymien...", "Wskaż WSZYSTKIE..."
+- Pytanie MUSI brzmiec "Ktore z ponizszych...", "Zaznacz WSZYSTKIE...", "Wskaż..."
+- "type" MUSI byc "multi"
 - correct to LISTA indeksow np. [0,2] lub [1,3] lub [0,1,3]
 - Dystraktory realistyczne ale bledne"""
 
     elif quiz_type == "open":
-        format_example = """{"type":"open","question":"Wyjasni na czym polega fotosynteza i jakie substancje sa potrzebne do tego procesu.","options":[],"correct":-1,"correct_answer":"Fotosynteza to proces w ktorym rosliny przeksztalcaja energie swietlna, CO2 i wode w glukoze i tlen. Zachodzi w chloroplastach dzieki chlorofilowi.","explanation":"Kluczowe elementy: swiatlo, CO2, woda, glukoza, tlen, chloroplasty"}"""
+        format_example = '{"type":"open","question":"Wyjasni na czym polega fotosynteza.","options":[],"correct":-1,"correct_answer":"Fotosynteza to proces...","explanation":"Kluczowe: swiatlo, CO2, woda, glukoza, tlen"}'
         type_prompt = f"""Wygeneruj {num_questions} pytan OPISOWYCH OTWARTYCH.
 ZASADY:
 - Pytania wymagajace rozwinietej odpowiedzi (min 2-3 zdania)
-- Typy pytan: "Wyjasni...", "Opisz...", "Porownaj...", "Omow...", "Na czym polega..."
-- options = [] (puste)
+- Typy: "Wyjasni...", "Opisz...", "Porownaj...", "Omow...", "Na czym polega..."
+- "type" MUSI byc "open"
+- options = [] (puste lista)
 - correct = -1
 - correct_answer = wzorcowa pelna odpowiedz (2-4 zdania)
 - explanation = lista kluczowych elementow odpowiedzi"""
