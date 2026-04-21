@@ -52,117 +52,135 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
     diff_map = {"easy":"latwy","medium":"sredni","hard":"trudny"}
     diff_pl = diff_map.get(difficulty, "sredni")
-    level_map = {"podstawowka":"podstawowka","liceum":"liceum","technikum":"technikum","studia":"studia"}
-    level_desc = level_map.get(level, "liceum")
+    level_map = {"podstawowka":"podstawowka klasy 4-8","liceum":"liceum sredni poziom","technikum":"technikum","studia":"studia wyzsze"}
+    level_desc = level_map.get(level, "liceum sredni poziom")
     instr = _build_instrukcje_blok(wlasne_instrukcje)
-    system = "Jestes generatorem quizow edukacyjnych. Odpowiadasz WYLACZNIE poprawnym JSON."
+    system_json = "Odpowiadasz WYLACZNIE poprawnym JSON bez markdown."
 
-    # Opisowe — osobny prompt
+    # ── OPISOWE ──────────────────────────────────────────────────────────────
     if quiz_type == "open":
         prompt = f"""Wygeneruj {num_questions} pytan opisowych otwartych.
 Temat: {topic}, Przedmiot: {subject}, Poziom: {level_desc}, Trudnosc: {diff_pl}.
 {instr}
-Kazde pytanie zaczyna sie od: Wyjasni / Opisz / Porownaj / Omow.
-Format: {{"title":"{topic} - Quiz","questions":[{{"question":"Wyjasni...","options":[],"correct":-1,"correct_answer":"Pelna odpowiedz.","explanation":"Kluczowe elementy"}}]}}"""
+Kazde pytanie: "Wyjasni...", "Opisz...", "Porownaj...", "Omow...".
+Format JSON: {{"title":"{topic} - Quiz","questions":[{{"question":"Wyjasni...","options":[],"correct":-1,"correct_answer":"Pelna odpowiedz.","explanation":"Kluczowe elementy"}}]}}"""
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":system},{"role":"user","content":prompt}],
-            max_tokens=3000, temperature=0.3,
+            model="gpt-4o-mini", temperature=0.3, max_tokens=3000,
+            messages=[{"role":"system","content":system_json},{"role":"user","content":prompt}],
             response_format={"type":"json_object"}
         )
-        quiz_data = json.loads(resp.choices[0].message.content)
-        for q in quiz_data.get("questions",[]):
+        data = json.loads(resp.choices[0].message.content)
+        for q in data.get("questions",[]):
             q["type"]="open"; q["options"]=[]; q["correct"]=-1
             if not q.get("correct_answer"): q["correct_answer"]=q.get("explanation","")
-        return {"success":True,"quiz":quiz_data}
+        return {"success":True,"quiz":data}
 
-    # Wielokrotny — osobny prompt
+    # ── WIELOKROTNY ───────────────────────────────────────────────────────────
     if quiz_type == "multi_choice":
-        prompt = f"""Wygeneruj {num_questions} pytan wielokrotnego wyboru.
+        prompt = f"""Wygeneruj {num_questions} pytan wielokrotnego wyboru (2-3 poprawne z 4).
 Temat: {topic}, Przedmiot: {subject}, Poziom: {level_desc}, Trudnosc: {diff_pl}.
 {instr}
-Kazde pytanie ma 2 lub 3 poprawne odpowiedzi z 4. Pytania: "Ktore z ponizszych...", "Zaznacz WSZYSTKIE...".
-correct to LISTA indeksow np. [0,2].
-Format: {{"title":"{topic} - Quiz","questions":[{{"question":"Ktore z ponizszych sa poprawne?","options":["A","B","C","D"],"correct":[0,2],"explanation":"A i C sa poprawne"}}]}}"""
+Pytania: "Ktore z ponizszych...", "Zaznacz WSZYSTKIE poprawne...". correct = lista indeksow np.[0,2].
+Format JSON: {{"title":"{topic} - Quiz","questions":[{{"question":"Ktore z ponizszych sa poprawne?","options":["A","B","C","D"],"correct":[0,2],"explanation":"A i C sa poprawne"}}]}}"""
         resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":system},{"role":"user","content":prompt}],
-            max_tokens=3000, temperature=0.3,
+            model="gpt-4o-mini", temperature=0.3, max_tokens=3000,
+            messages=[{"role":"system","content":system_json},{"role":"user","content":prompt}],
             response_format={"type":"json_object"}
         )
-        quiz_data = json.loads(resp.choices[0].message.content)
-        for q in quiz_data.get("questions",[]):
+        data = json.loads(resp.choices[0].message.content)
+        for q in data.get("questions",[]):
             q["type"]="multi"
-            if not isinstance(q.get("correct"),list): q["correct"]=[q.get("correct",0)]
-        return {"success":True,"quiz":quiz_data}
+            if not isinstance(q.get("correct"),list):
+                c = q.get("correct",0)
+                if not isinstance(c,int): c=0
+                q["correct"]=[c,(c+2)%4]
+        return {"success":True,"quiz":data}
 
-    # Dla T/F — osobny prompt z gpt-4o który wymusza twierdzenia
+    # ── PRAWDA/FALSZ ─────────────────────────────────────────────────────────
     if quiz_type == "true_false":
-        tf_prompt = f"""Wygeneruj {num_questions} twierdzen prawda/falsz.
-Temat: {topic}, Przedmiot: {subject}.
+        prompt = f"""Wygeneruj {num_questions} twierdzen Prawda/Falsz.
+Temat: {topic}, Przedmiot: {subject}, Poziom: {level_desc}.
 {instr}
-
-TWIERDZENIE = krotkie zdanie oznajmujace (Subject + Orzeczenie + Dopelnienie).
-Przyklad dobrego twierdzenia: "Chlorofil jest zielonym barwnikiem roslin."
-Przyklad zlego (NIE ROB): "Ktory z ponizszych..." lub "Jaki jest..."
-
-Polowe twierdzen ma byc prawdziwych (correct:0), polowe falszywy (correct:1).
-Dla falszywy — zmien jeden fakt w twierdzeniu na bledny.
-
-Format: {{"title":"{topic} - Quiz","questions":[
-  {{"question":"Chlorofil jest zielonym barwnikiem roslin.","options":["Prawda","Falsz"],"correct":0,"explanation":"Prawda - chlorofil odpowiada za zielony kolor."}},
+ZASADA: Kazde pytanie to KROTKIE TWIERDZENIE - zdanie oznajmujace z podmiotem i orzeczeniem.
+DOBRY przyklad: "Chlorofil nadaje roslinom zielony kolor."
+ZLY przyklad: "Ktory z ponizszych..." lub "Jaki jest..." lub "Co to jest..."
+Polowe correct=0 (Prawda), polowe correct=1 (Falsz).
+Format JSON: {{"title":"{topic} - Quiz","questions":[
+  {{"question":"Chlorofil nadaje roslinom zielony kolor.","options":["Prawda","Falsz"],"correct":0,"explanation":"Prawda - chlorofil absorbuje swiatlo."}},
   {{"question":"Fotosynteza zachodzi w mitochondriach.","options":["Prawda","Falsz"],"correct":1,"explanation":"Falsz - zachodzi w chloroplastach."}}
 ]}}"""
-        tf_resp = await client.chat.completions.create(
-            model="gpt-4o",
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini", temperature=0.2, max_tokens=2000,
             messages=[
-                {"role":"system","content":"Generujesz TYLKO twierdzenia oznajmujace (nie pytania). Odpowiadasz czystym JSON."},
-                {"role":"user","content":tf_prompt}
+                {"role":"system","content":"Jestes generatorem twierdzen oznajmujacych (NIE pytan). Kazde question to zdanie oznajmujace. JSON tylko."},
+                {"role":"user","content":prompt}
             ],
-            max_tokens=2000, temperature=0.3,
             response_format={"type":"json_object"}
         )
-        tf_data = json.loads(tf_resp.choices[0].message.content)
-        for q in tf_data.get("questions",[]):
-            q["type"]="tf"
-            q["options"]=["Prawda","Fałsz"]
+        data = json.loads(resp.choices[0].message.content)
+        for q in data.get("questions",[]):
+            q["type"]="tf"; q["options"]=["Prawda","Fałsz"]
             if not isinstance(q.get("correct"),int): q["correct"]=0
-        return {"success":True,"quiz":tf_data}
+        return {"success":True,"quiz":data}
 
-    elif quiz_type == "mixed":
-        result = []
-        for i, q in enumerate(questions[:num_questions]):
-            mod = i % 3
-            ci = q.get("correct",0)
-            if not isinstance(ci,int): ci=0
-            if mod == 0:
-                q["type"]="single"
-            elif mod == 1:
-                q["type"]="multi"
-                opts = q.get("options",[])
-                second = (ci+2) % len(opts) if len(opts)>=2 else 0
-                q["correct"] = sorted(list(set([ci,second])))
+    # ── JEDNOKROTNY + MIESZANY — generuj A-D ─────────────────────────────────
+    n = num_questions + (2 if quiz_type=="mixed" else 0)
+    prompt = f"""Wygeneruj {n} pytan jednokrotnego wyboru z 4 opcjami.
+Temat: {topic}, Przedmiot: {subject}, Poziom: {level_desc}, Trudnosc: {diff_pl}.
+{instr}
+WAZNE: correct to liczba 0-3. Urozmaicaj — nie zawsze 0! Rozklad: 0,2,1,3,1,2,0,3...
+Format JSON: {{"title":"{topic} - Quiz","questions":[{{"question":"Pytanie?","options":["opcja A","opcja B","opcja C","opcja D"],"correct":2,"explanation":"C jest poprawne poniewaz..."}}]}}"""
+    resp = await client.chat.completions.create(
+        model="gpt-4o-mini", temperature=0.3, max_tokens=4000,
+        messages=[{"role":"system","content":system_json},{"role":"user","content":prompt}],
+        response_format={"type":"json_object"}
+    )
+    data = json.loads(resp.choices[0].message.content)
+    questions = data.get("questions",[])
+
+    if quiz_type == "single_choice":
+        for q in questions:
+            q["type"]="single"
+            if not isinstance(q.get("correct"),int): q["correct"]=0
+        data["questions"] = questions
+        return {"success":True,"quiz":data}
+
+    # MIXED — co 3: single, multi, tf
+    result = []
+    for i, q in enumerate(questions[:num_questions]):
+        ci = q.get("correct",0)
+        if not isinstance(ci,int): ci=0
+        mod = i % 3
+        if mod == 0:
+            q["type"]="single"
+        elif mod == 1:
+            q["type"]="multi"
+            opts = q.get("options",[])
+            second = (ci+2) % len(opts) if opts else 0
+            q["correct"]=sorted(list(set([ci,second])))
+        else:
+            # T/F z explanation
+            expl = q.get("explanation","")
+            first = expl.split(".")[0].strip() if expl else ""
+            opts = q.get("options",[])
+            correct_ans = opts[ci] if ci < len(opts) else ""
+            wrong_opts = [o for j,o in enumerate(opts) if j != ci]
+            wrong_ans = wrong_opts[0] if wrong_opts else ""
+            is_true = (i % 2 == 0)
+            if is_true:
+                stmt = (first+".") if len(first)>15 else (correct_ans+".")
+                cv=0
             else:
-                opts = q.get("options",[])
-                correct_ans = opts[ci] if ci < len(opts) else ""
-                wrong_opts = [o for j,o in enumerate(opts) if j != ci]
-                wrong_ans = wrong_opts[0] if wrong_opts else ""
-                expl = q.get("explanation","")
-                first = expl.split(".")[0].strip() if expl else ""
-                is_true = (i % 2 == 0)
-                if is_true:
-                    stmt = (first+".") if len(first)>15 else (correct_ans+" jest poprawna odpowiedzia.")
-                    cv = 0
-                else:
-                    stmt = (wrong_ans+" jest poprawna odpowiedzia.") if wrong_ans else (first+" — falsz.")
-                    cv = 1
-                q["type"]="tf"; q["question"]=stmt; q["options"]=["Prawda","Fałsz"]; q["correct"]=cv
-            result.append(q)
-        quiz_data["questions"] = result
-        questions = result
+                stmt = (wrong_ans+".") if wrong_ans else (first+" — to nieprawda.")
+                cv=1
+            q["type"]="tf"; q["question"]=stmt; q["options"]=["Prawda","Fałsz"]; q["correct"]=cv
+        result.append(q)
 
-    print(f"[Quiz] '{topic}' typ={quiz_type} -> {len(questions)} pytan")
-    return {"success":True,"quiz":quiz_data}
+    data["questions"]=result
+    print(f"[Quiz] '{topic}' typ={quiz_type} -> {len(result)} pytan")
+    return {"success":True,"quiz":data}
+
+
 
 
 
