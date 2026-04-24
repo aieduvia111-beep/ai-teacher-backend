@@ -212,6 +212,50 @@ body::after{content:'';position:fixed;inset:0;opacity:0.45;background-image:url(
 </style>
 </head>
 <body>
+
+<!-- EKRAN DLA NIE-CHROME UŻYTKOWNIKÓW -->
+<style>
+#chromeOverlay{display:none;position:fixed;inset:0;z-index:99999;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;}
+#chromeOverlay .co-inner{max-width:320px;width:100%;}
+#chromeOverlay .co-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),#4f3fcf);border-radius:18px;margin:0 auto 32px;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 40px var(--ag);}
+#chromeOverlay .co-icon{width:52px;height:52px;background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;}
+#chromeOverlay h2{font-family:var(--h);font-size:1.35em;font-weight:800;color:var(--text);margin:0 0 12px;letter-spacing:-.02em;}
+#chromeOverlay p{font-size:.88em;color:var(--muted2);line-height:1.65;margin:0 0 28px;}
+#chromeOverlay .co-btn-primary{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:15px;background:linear-gradient(135deg,var(--accent),#4f3fcf);border-radius:14px;color:white;font-family:var(--h);font-weight:700;font-size:.9em;text-decoration:none;margin-bottom:10px;box-shadow:0 8px 24px var(--ag);transition:transform .2s;}
+#chromeOverlay .co-btn-secondary{width:100%;padding:14px;background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;color:var(--muted2);font-family:var(--h);font-weight:700;font-size:.85em;cursor:pointer;transition:all .2s;}
+#chromeOverlay .co-note{font-size:.7em;color:var(--muted);margin-top:14px;}
+</style>
+<div id="chromeOverlay">
+  <div class="co-inner">
+    <div class="co-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:30px;height:30px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="co-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:26px;height:26px;color:var(--muted2);"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+    </div>
+    <h2>Wymagana przeglądarka Chrome</h2>
+    <p>Eduvia AI działa z przeglądarką <strong style="color:var(--text);">Google Chrome</strong>. Ustaw Chrome jako domyślną lub pobierz ją bezpłatnie.</p>
+    <a href="https://play.google.com/store/apps/details?id=com.android.chrome" target="_blank" class="co-btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:16px;height:16px;"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Pobierz Google Chrome
+    </a>
+    <button onclick="document.getElementById('chromeOverlay').style.display='none'" class="co-btn-secondary">
+      Kontynuuj mimo to
+    </button>
+    <p class="co-note">Bez Chrome niektóre funkcje mogą nie działać</p>
+  </div>
+</div>
+<script>
+(function(){
+  var isChrome=/Chrome/.test(navigator.userAgent)&&/Google Inc/.test(navigator.vendor);
+  var isWV=/wv/.test(navigator.userAgent);
+  if(!isChrome&&!isWV){
+    var o=document.getElementById('chromeOverlay');
+    if(o) o.style.display='flex';
+  }
+})();
+</script>
+
 <canvas id="pc"></canvas>
 <div class="aurora"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
 
