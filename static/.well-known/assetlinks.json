@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.eduvia.app",
+    "sha256_cert_fingerprints": [
+      "CF:38:02:98:68:7F:FF:C2:32:26:88:ED:82:9D:7E:A5:65:66:42:D2:5A:6F:F1:91:E8:12:DC:8F:EB:92:94:E2"
+    ]
+  }
+}]
