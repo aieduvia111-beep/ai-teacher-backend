@@ -366,10 +366,12 @@ window.loginGoogle=async function(){};
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,browserLocalPersistence,setPersistence}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+// Fix Capacitor WebView - uzyj localStorage zamiast sessionStorage
+await setPersistence(auth,browserLocalPersistence).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u)window.location.href='dashboard_FINAL.html';});
 window.loginGoogle=async function(){
   document.getElementById('loginForm').style.display='none';
