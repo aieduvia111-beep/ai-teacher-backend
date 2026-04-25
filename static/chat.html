@@ -1143,9 +1143,16 @@ function explainLevel(level){
 
 // Pokaż przyciski poziomów gdy są wiadomości
 function toggleExplainLevels(){
-  var msgs = document.querySelectorAll('.msg-bubble');
   var levels = document.getElementById('explainLevels');
-  if(levels) levels.style.display = msgs.length > 0 ? 'flex' : 'none';
+  if(!levels) return;
+  var msgs = document.querySelectorAll('.msg-group.ai');
+  if(msgs.length > 0){
+    levels.style.display = 'flex';
+    levels.style.visibility = 'visible';
+    levels.style.opacity = '1';
+  } else {
+    levels.style.display = 'none';
+  }
 }
 
 async function sendMessage() {
@@ -1193,6 +1200,7 @@ async function sendMessage() {
   const thId = 'th_' + Date.now();
   aiGroup.innerHTML = `<div class="msg-meta ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>Eduvia AI</div><div class="bubble" id="${thId}"><div class="thinking"><span></span><span></span><span></span></div></div>`;
   msgs.appendChild(aiGroup); scrollDown();
+  toggleExplainLevels();
 
   try {
     const response = await callAI(fullText, history, imageUrls);
