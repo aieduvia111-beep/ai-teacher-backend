@@ -209,6 +209,46 @@ body::after{content:'';position:fixed;inset:0;opacity:0.45;background-image:url(
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.login-h1{font-size:1.6em;letter-spacing:-.02em;}.login-hero{padding:40px 20px 24px;}.login-card{padding:0 14px 50px;}.card-inner{padding:22px 18px;}.login-sub{font-size:.85em;max-width:100%;}}
+
+/* ── AUTH TABS ── */
+.auth-tabs{display:flex;background:var(--s2);border-radius:12px;padding:4px;gap:3px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:9px 12px;border:none;background:transparent;color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;letter-spacing:.04em;cursor:pointer;border-radius:9px;transition:all .22s;}
+.auth-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(124,106,255,.35);}
+
+/* ── FORM FIELDS ── */
+.field-group{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.field-wrap{position:relative;}
+.field-wrap svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted);pointer-events:none;transition:color .2s;}
+.field-wrap input{
+  width:100%;padding:13px 13px 13px 38px;
+  background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;
+  color:var(--text);font-family:var(--b);font-size:.88em;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.field-wrap input::placeholder{color:var(--muted);}
+.field-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,255,.12);}
+.field-wrap input:focus + svg,.field-wrap svg:has(~ input:focus){color:var(--accent2);}
+.field-wrap input:focus ~ svg{color:var(--accent2);}
+/* icon color on focus via sibling hack */
+.field-wrap:focus-within svg{color:var(--accent2);}
+
+.auth-submit{
+  width:100%;padding:14px;border:none;border-radius:12px;
+  background:var(--accent);color:#fff;
+  font-family:var(--h);font-size:.85em;font-weight:700;letter-spacing:.04em;
+  cursor:pointer;transition:all .22s;
+  box-shadow:0 0 20px rgba(124,106,255,.2);
+  margin-top:4px;
+}
+.auth-submit:hover{background:#8b79ff;transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,106,255,.38);}
+.auth-submit:active{transform:translateY(0);}
+
+.forgot-link{text-align:right;margin-top:-4px;margin-bottom:4px;}
+.forgot-link a{font-size:.74em;color:var(--muted2);text-decoration:none;transition:color .2s;}
+.forgot-link a:hover{color:var(--accent2);}
+
+.auth-success{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:10px;padding:11px 14px;color:var(--green);font-size:.8em;margin-bottom:14px;display:none;}
 </style>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
@@ -276,30 +316,72 @@ setTimeout(function(){
 <!-- KARTA LOGOWANIA -->
 <div class="login-card">
   <div class="card-inner">
+
+    <!-- Error / Success messages -->
     <div id="loginErr" class="login-err"></div>
+    <div id="loginSuccess" class="auth-success"></div>
 
-    <div id="loginForm">
-      <button class="google-btn" onclick="loginGoogle()">
-        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Zaloguj się przez Google
-      </button>
-
-      <div class="or-div">Co dostajesz za darmo</div>
-
-      <div class="login-feats">
-        <div class="lf"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="lf-text">Chat AI — nauczyciel 24/7 po polsku</span></div>
-        <div class="lf"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="lf-text">Vision AI — wyślij zdjęcie, dostań rozwiązanie</span></div>
-        <div class="lf"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="lf-text">Quizy, notatki i sprawdziany AI</span></div>
-        <div class="lf"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="lf-text">Historia i XP synchronizowane na telefonie</span></div>
-      </div>
-
-      <p class="login-terms">Logując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</p>
-    </div>
-
+    <!-- Loading state -->
     <div class="login-loading" id="loginLoading">
       <div class="login-spinner"></div>
-      <span style="color:var(--muted);font-size:.83em">Łączenie z Google...</span>
+      <span style="color:var(--muted);font-size:.83em" id="loadingMsg">Łączenie...</span>
     </div>
+
+    <!-- Main form -->
+    <div id="loginForm">
+
+      <!-- Google button -->
+      <button class="google-btn" onclick="loginGoogle()">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Kontynuuj przez Google
+      </button>
+
+      <div class="or-div">lub emailem</div>
+
+      <!-- Tabs: Logowanie / Rejestracja -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Logowanie</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Rejestracja</button>
+      </div>
+
+      <!-- LOGIN panel -->
+      <div id="panelLogin">
+        <div class="field-group">
+          <div class="field-wrap">
+            <input type="email" id="loginEmail" placeholder="Adres e-mail" autocomplete="email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="field-wrap">
+            <input type="password" id="loginPassword" placeholder="Hasło" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+        </div>
+        <div class="forgot-link"><a href="#" onclick="sendReset();return false;">Zapomniałem hasła</a></div>
+        <button class="auth-submit" onclick="submitLogin()">Zaloguj się</button>
+        <p class="login-terms">Logując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</p>
+      </div>
+
+      <!-- REGISTER panel -->
+      <div id="panelRegister" style="display:none">
+        <div class="field-group">
+          <div class="field-wrap">
+            <input type="text" id="regName" placeholder="Imię (opcjonalnie)" autocomplete="given-name">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="field-wrap">
+            <input type="email" id="regEmail" placeholder="Adres e-mail" autocomplete="email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="field-wrap">
+            <input type="password" id="regPassword" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitRegister()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+        </div>
+        <button class="auth-submit" onclick="submitRegister()">Utwórz konto</button>
+        <p class="login-terms">Rejestrując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</p>
+      </div>
+
+    </div><!-- /loginForm -->
   </div>
 </div>
 
@@ -363,64 +445,114 @@ function navTo(f){window.location.href=window.location.href.replace(/[^\/\\]*$/,
   });
 })();
 window.loginGoogle=async function(){};
+
+// TAB SWITCHING
+window.switchTab=function(tab){
+  const isLogin=tab==='login';
+  document.getElementById('tabLogin').classList.toggle('active',isLogin);
+  document.getElementById('tabRegister').classList.toggle('active',!isLogin);
+  document.getElementById('panelLogin').style.display=isLogin?'':'none';
+  document.getElementById('panelRegister').style.display=isLogin?'none':'';
+  hideMessages();
+};
+function showErr(msg){const e=document.getElementById('loginErr');e.textContent=msg;e.style.display='block';document.getElementById('loginSuccess').style.display='none';}
+function showOk(msg){const s=document.getElementById('loginSuccess');s.textContent=msg;s.style.display='block';document.getElementById('loginErr').style.display='none';}
+function hideMessages(){document.getElementById('loginErr').style.display='none';document.getElementById('loginSuccess').style.display='none';}
+function setLoading(on,msg){
+  document.getElementById('loginLoading').style.display=on?'flex':'none';
+  document.getElementById('loginForm').style.display=on?'none':'block';
+  if(msg)document.getElementById('loadingMsg').textContent=msg;
+}
+function errMsg(code){
+  const map={'auth/invalid-email':'Nieprawidłowy adres e-mail.','auth/user-not-found':'Nie znaleziono konta z tym e-mailem.','auth/wrong-password':'Błędne hasło.','auth/email-already-in-use':'Ten e-mail jest już zajęty.','auth/weak-password':'Hasło jest za słabe (min. 6 znaków).','auth/too-many-requests':'Za dużo prób. Odczekaj chwilę.','auth/invalid-credential':'Błędny e-mail lub hasło.'};
+  return map[code]||'Błąd: '+code;
+}
+// Stubs — replaced by module script below
+window.submitLogin=function(){showErr('Ładowanie Firebase...');};
+window.submitRegister=function(){showErr('Ładowanie Firebase...');};
+window.sendReset=function(){showErr('Ładowanie Firebase...');};
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,browserLocalPersistence,setPersistence}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,browserLocalPersistence,setPersistence}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
-// Fix Capacitor WebView - uzyj localStorage zamiast sessionStorage
 await setPersistence(auth,browserLocalPersistence).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u)window.location.href='dashboard_FINAL.html';});
+
+async function saveUser(u,name){
+  const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
+  if(!snap.exists())await setDoc(ref,{uid:u.uid,name:name||u.displayName||'Użytkownik',email:u.email,avatar:u.photoURL||null,xp:0,streak:0,lastActive:serverTimestamp(),plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:serverTimestamp()});
+}
+
+// Google
 window.loginGoogle=async function(){
-  document.getElementById('loginForm').style.display='none';
-  document.getElementById('loginLoading').style.display='flex';
-  document.getElementById('loginErr').style.display='none';
+  setLoading(true,'Łączenie z Google...');
+  hideMessages();
   try{
-    // Sprawdz czy Capacitor jest dostepny (natywna apka)
-    const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
     let r;
     if(isCapacitor){
-      // W Capacitor uzyj signInWithRedirect bo popup nie dziala w WebView
-      const {signInWithRedirect,getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      // Sprawdz czy mamy juz redirect result
-      const redirectResult = await getRedirectResult(auth).catch(()=>null);
-      if(redirectResult&&redirectResult.user){
-        r=redirectResult;
-      } else {
-        await signInWithRedirect(auth,provider);
-        return; // Strona sie przeladuje
-      }
-    } else {
-      r=await signInWithPopup(auth,provider);
-    }
-    const u=r.user;
-    const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
-    if(!snap.exists())await setDoc(ref,{uid:u.uid,name:u.displayName,email:u.email,avatar:u.photoURL,xp:0,streak:0,lastActive:serverTimestamp(),plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:serverTimestamp()});
+      const{signInWithRedirect,getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const rd=await getRedirectResult(auth).catch(()=>null);
+      if(rd&&rd.user){r=rd;}else{await signInWithRedirect(auth,provider);return;}
+    }else{r=await signInWithPopup(auth,provider);}
+    await saveUser(r.user);
     window.location.href='dashboard_FINAL.html';
   }catch(e){
-    document.getElementById('loginForm').style.display='block';
-    document.getElementById('loginLoading').style.display='none';
-    const err=document.getElementById('loginErr');
-    err.textContent=e.code==='auth/popup-closed-by-user'?'Zamknięto okno logowania':'Błąd: '+e.message;
-    err.style.display='block';
+    setLoading(false);
+    if(e.code!=='auth/popup-closed-by-user')showErr(errMsg(e.code));
   }
 };
 
-// Sprawdz redirect result przy zaladowaniu strony
+// Email login
+window.submitLogin=async function(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  if(!email||!pass){showErr('Uzupełnij e-mail i hasło.');return;}
+  setLoading(true,'Logowanie...');hideMessages();
+  try{
+    const r=await signInWithEmailAndPassword(auth,email,pass);
+    await saveUser(r.user);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){setLoading(false);showErr(errMsg(e.code));}
+};
+
+// Email register
+window.submitRegister=async function(){
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  if(!email||!pass){showErr('Uzupełnij e-mail i hasło.');return;}
+  if(pass.length<6){showErr('Hasło musi mieć min. 6 znaków.');return;}
+  setLoading(true,'Tworzenie konta...');hideMessages();
+  try{
+    const r=await createUserWithEmailAndPassword(auth,email,pass);
+    if(name)await updateProfile(r.user,{displayName:name}).catch(()=>{});
+    await saveUser(r.user,name);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){setLoading(false);showErr(errMsg(e.code));}
+};
+
+// Reset password
+window.sendReset=async function(){
+  const email=document.getElementById('loginEmail').value.trim();
+  if(!email){showErr('Wpisz e-mail, a wyślemy link do resetu hasła.');return;}
+  try{
+    await sendPasswordResetEmail(auth,email);
+    showOk('Link do resetu hasła wysłany na '+email);
+  }catch(e){showErr(errMsg(e.code));}
+};
+
+// Capacitor redirect check
 (async()=>{
   try{
-    const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
     if(isCapacitor){
-      const {getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const{getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
       const result=await getRedirectResult(auth);
-      if(result&&result.user){
-        const u=result.user;
-        const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
-        if(!snap.exists())await setDoc(ref,{uid:u.uid,name:u.displayName,email:u.email,avatar:u.photoURL,xp:0,streak:0,lastActive:serverTimestamp(),plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:serverTimestamp()});
-        window.location.href='dashboard_FINAL.html';
-      }
+      if(result&&result.user){await saveUser(result.user);window.location.href='dashboard_FINAL.html';}
     }
   }catch(e){console.log('redirect check:',e);}
 })();
