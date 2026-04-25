@@ -1001,9 +1001,9 @@ function answer(idx){
     let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak:'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
   }else{streak=0;wrongIndexes.push(currentQ);if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';}
   let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
-  if(correct){fb.className='feedback-box correct-fb show';fh.className='feedback-header correct-h';fh.textContent='✓ Poprawnie!';}
+  if(correct){fb.className='feedback-box correct-fb show';window._haptic('ok');fh.className='feedback-header correct-h';fh.textContent='✓ Poprawnie!';}
   else{
-    fb.className='feedback-box wrong-fb show';fh.className='feedback-header wrong-h';
+    fb.className='feedback-box wrong-fb show';window._haptic('err');fh.className='feedback-header wrong-h';
     let span=document.createElement('span');span.innerHTML='Poprawna: '+letters[q.correct]+') '+math(q.options[q.correct]);fh.innerHTML='';fh.appendChild(span);
   }
   setMath(document.getElementById('feedbackExplain'),q.explanation||'');
