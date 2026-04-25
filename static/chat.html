@@ -252,6 +252,11 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .send-btn:disabled{opacity:.4;transform:none;cursor:default;}
 .send-btn svg{width:17px;height:17px;}
 .input-hint{font-size:.67em;color:var(--muted);margin-top:7px;text-align:center;}
+.explain-levels{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap;}
+.explain-levels::-webkit-scrollbar{display:none;}
+.lvl-btn{flex-shrink:0;padding:6px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:100px;color:var(--muted2);font-family:var(--h);font-weight:700;font-size:.7em;cursor:pointer;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.lvl-btn:active{transform:scale(.95);}
+.lvl-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.5);color:var(--accent2);}
 #fileInput{display:none;}
 .viz-card [data-step]{transition:transform .2s ease,box-shadow .2s ease;cursor:default;}
 .viz-card [data-step]:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
@@ -784,6 +789,14 @@ function getPlanBadgeHTML(plan) {
     </div>
 
     <div class="input-area">
+      <!-- WYJAŚNIJ NA 4 POZIOMACH -->
+      <div class="explain-levels" id="explainLevels" style="display:none;">
+        <span style="font-size:.68em;color:var(--muted);font-family:var(--h);font-weight:700;padding:6px 4px;white-space:nowrap;">Wyjaśnij jak:</span>
+        <button class="lvl-btn" onclick="explainLevel('5latek')">👶 5-latek</button>
+        <button class="lvl-btn" onclick="explainLevel('kumpel')">😎 Kumpel</button>
+        <button class="lvl-btn" onclick="explainLevel('normalnie')">📖 Normalnie</button>
+        <button class="lvl-btn" onclick="explainLevel('profesor')">🎓 Profesor</button>
+      </div>
       <div class="attachments-row" id="attachmentsRow"></div>
       <div class="input-box">
         <textarea id="msgInput" placeholder="Wpisz pytanie lub wrzuć plik..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -1102,6 +1115,39 @@ function removeAtt(i) { attachments.splice(i, 1); renderAttachments(); }
 function quickAsk(text) { document.getElementById('msgInput').value = text; sendMessage(); }
 
 // SEND MESSAGE
+function explainLevel(level){
+  var input = document.getElementById('msgInput');
+  var lastMsg = '';
+  // Pobierz ostatnią wiadomość użytkownika
+  var msgs = document.querySelectorAll('.msg-text');
+  if(msgs.length > 0) lastMsg = msgs[msgs.length-2]?msgs[msgs.length-2].textContent:'';
+  
+  var prompts = {
+    '5latek': 'Wyjaśnij to samo co ostatnio, ale jakbyś tłumaczył 5-letniemu dziecku. Używaj prostych słów, porównań do zabawy i codziennego życia.',
+    'kumpel': 'Wyjaśnij to jeszcze raz ale po przyjacielsku, jakbyś gadał z kumplem. Luz, potoczny język, może żart.',
+    'normalnie': 'Wyjaśnij to normalnie, dokładnie i zrozumiale. Standardowe wyjaśnienie dla ucznia.',
+    'profesor': 'Wyjaśnij to bardzo szczegółowo i naukowo, jak profesor na wykładzie. Używaj fachowej terminologii i głębokiej analizy.'
+  };
+  
+  document.querySelectorAll('.lvl-btn').forEach(function(b){b.classList.remove('active');});
+  event.target.classList.add('active');
+  
+  input.value = prompts[level];
+  input.dispatchEvent(new Event('input'));
+  sendMessage();
+  
+  setTimeout(function(){
+    document.querySelectorAll('.lvl-btn').forEach(function(b){b.classList.remove('active');});
+  }, 500);
+}
+
+// Pokaż przyciski poziomów gdy są wiadomości
+function toggleExplainLevels(){
+  var msgs = document.querySelectorAll('.msg-bubble');
+  var levels = document.getElementById('explainLevels');
+  if(levels) levels.style.display = msgs.length > 0 ? 'flex' : 'none';
+}
+
 async function sendMessage() {
   const _lim = await checkLimit('chat');
   if(!_lim.allowed) return;
@@ -1244,6 +1290,7 @@ async function sendMessage() {
 
   isThinking = false;
   document.getElementById('sendBtn').disabled = false;
+  toggleExplainLevels();
   input.focus();
   // Zapis do Firebase
   saveCurrentChat();
