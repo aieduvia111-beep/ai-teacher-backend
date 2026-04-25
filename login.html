@@ -370,8 +370,6 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,browserLoca
 import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
-provider.setCustomParameters({prompt:'select_account'});
-setPersistence(auth,browserLocalPersistence).catch(console.error);
 // Fix Capacitor WebView - uzyj localStorage zamiast sessionStorage
 await setPersistence(auth,browserLocalPersistence).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u)window.location.href='dashboard_FINAL.html';});
@@ -380,7 +378,24 @@ window.loginGoogle=async function(){
   document.getElementById('loginLoading').style.display='flex';
   document.getElementById('loginErr').style.display='none';
   try{
-    const r=await signInWithPopup(auth,provider),u=r.user;
+    // Sprawdz czy Capacitor jest dostepny (natywna apka)
+    const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    let r;
+    if(isCapacitor){
+      // W Capacitor uzyj signInWithRedirect bo popup nie dziala w WebView
+      const {signInWithRedirect,getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      // Sprawdz czy mamy juz redirect result
+      const redirectResult = await getRedirectResult(auth).catch(()=>null);
+      if(redirectResult&&redirectResult.user){
+        r=redirectResult;
+      } else {
+        await signInWithRedirect(auth,provider);
+        return; // Strona sie przeladuje
+      }
+    } else {
+      r=await signInWithPopup(auth,provider);
+    }
+    const u=r.user;
     const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
     if(!snap.exists())await setDoc(ref,{uid:u.uid,name:u.displayName,email:u.email,avatar:u.photoURL,xp:0,streak:0,lastActive:serverTimestamp(),plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:serverTimestamp()});
     window.location.href='dashboard_FINAL.html';
@@ -392,6 +407,23 @@ window.loginGoogle=async function(){
     err.style.display='block';
   }
 };
+
+// Sprawdz redirect result przy zaladowaniu strony
+(async()=>{
+  try{
+    const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    if(isCapacitor){
+      const {getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const result=await getRedirectResult(auth);
+      if(result&&result.user){
+        const u=result.user;
+        const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
+        if(!snap.exists())await setDoc(ref,{uid:u.uid,name:u.displayName,email:u.email,avatar:u.photoURL,xp:0,streak:0,lastActive:serverTimestamp(),plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:serverTimestamp()});
+        window.location.href='dashboard_FINAL.html';
+      }
+    }
+  }catch(e){console.log('redirect check:',e);}
+})();
 </script>
 </body>
 </html>
