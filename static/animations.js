@@ -25,3 +25,15 @@ window._showXPPop=function(xp,x,y){
   setTimeout(function(){el.remove();},900);
 };
 })();
+
+// HAPTIC FEEDBACK
+if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics){
+  window._haptic=function(type){
+    var H=window.Capacitor.Plugins.Haptics;
+    if(type==='ok') H.impact({style:'light'});
+    else if(type==='err') H.notification({type:'error'});
+    else H.impact({style:'medium'});
+  };
+} else {
+  window._haptic=function(){};
+}
