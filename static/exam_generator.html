@@ -533,7 +533,7 @@ function getPlanBadgeHTML(plan) {
         </div>
         <div id="photosWrap"></div>
         <div class="capture-grid" id="captureGrid">
-          <button class="capture-btn cam-btn" onclick="document.getElementById('inputCam').click()">
+          <button class="capture-btn cam-btn" onclick="takePhoto()">
             <div class="cb-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
@@ -998,6 +998,18 @@ function clearPhotos(){
 function pickFiles(){
   const inp=document.getElementById('fileInput');
   if(inp)inp.click();
+}
+
+function takePhoto(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/*';
+  inp.capture='environment';
+  inp.style.display='none';
+  inp.onchange=handleFiles;
+  document.body.appendChild(inp);
+  inp.click();
+  setTimeout(()=>document.body.removeChild(inp),30000);
 }
 
 function handleFiles(e){
