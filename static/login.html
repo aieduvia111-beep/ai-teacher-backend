@@ -511,6 +511,7 @@ window.loginGoogle=async function(){
   try{
     const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
     if(isCapacitor){
+      const {Browser} = Capacitor.Plugins;
       const clientId='613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com';
       const redirectUri='https://ai-teacher-backend-inky.vercel.app/login.html';
       const nonce=Math.random().toString(36).substring(2);
@@ -520,7 +521,7 @@ window.loginGoogle=async function(){
         +'&response_type=id_token'
         +'&scope=openid%20email%20profile'
         +'&nonce='+nonce;
-      window.open(authUrl,'_system');
+      await Browser.open({url: authUrl});
       setLoading(false);
     }else{
       const r=await signInWithPopup(auth,provider);
