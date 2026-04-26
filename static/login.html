@@ -512,7 +512,7 @@ window.loginGoogle=async function(){
     const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
     if(isCapacitor){
       const clientId='613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com';
-      const redirectUri='com.eduvia.app://callback';
+      const redirectUri='https://ai-teacher-backend-inky.vercel.app/login.html';
       const nonce=Math.random().toString(36).substring(2);
       const authUrl='https://accounts.google.com/o/oauth2/v2/auth'
         +'?client_id='+encodeURIComponent(clientId)
