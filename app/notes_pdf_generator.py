@@ -1475,12 +1475,27 @@ class PremiumNotesGenerator:
                             _pc = _PILc.open(_ioc.BytesIO(png))
                             return RLImage(_ioc.BytesIO(png), width=col_w-8,
                                           height=_pc.size[1]/150*72)
-                    # Zwykły tekst - zawsze Paragraph z DejaVu (polskie znaki!)
-                    return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
+                    # Zwykły tekst - przez matplotlib żeby polskie znaki działały
+                    txt = _l2u(s)
+                    png = _render_text_png(txt, col_w - 8, 28, fontsize=10,
+                                          color=TXT_MAIN, bg=BG_CARD2)
+                    if png:
+                        from PIL import Image as _PILc2; import io as _ioc2
+                        _pc2 = _PILc2.open(_ioc2.BytesIO(png))
+                        return RLImage(_ioc2.BytesIO(png), width=col_w-8,
+                                      height=_pc2.size[1]/150*72)
+                    return Paragraph(st(txt), ParagraphStyle("tc", fontName=FN,
                         fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
                 def _nagl_cell(n, cw):
                     txt = _l2u(n)
+                    png = _render_text_png(txt, cw - 8, 28, fontsize=10,
+                                          color='#FFFFFF', bg=ACC_PURPLE)
+                    if png:
+                        from PIL import Image as _PILn; import io as _ion
+                        _pn = _PILn.open(_ion.BytesIO(png))
+                        return RLImage(_ion.BytesIO(png), width=cw-8,
+                                      height=_pn.size[1]/150*72)
                     return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
                 nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
                 t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
