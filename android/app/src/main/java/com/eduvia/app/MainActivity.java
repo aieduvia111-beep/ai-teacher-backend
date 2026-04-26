@@ -1,12 +1,12 @@
 package com.eduvia.app;
 
 import com.getcapacitor.BridgeActivity;
-import ee.forgr.capacitor.social.login.SocialLoginPlugin;
+import com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth;
 
 public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(android.os.Bundle savedInstanceState) {
-    registerPlugin(SocialLoginPlugin.class);
+    registerPlugin(GoogleAuth.class);
     super.onCreate(savedInstanceState);
   }
 }

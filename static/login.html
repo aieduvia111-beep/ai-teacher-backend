@@ -444,7 +444,25 @@ function navTo(f){window.location.href=window.location.href.replace(/[^\/\\]*$/,
     el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';cur.style.border='none';});
   });
 })();
-window.loginGoogle=async function(){};
+
+
+// Obsługa powrotu z OAuth Google (Custom Tab)
+(async()=>{
+  try{
+    const hash=window.location.hash;
+    if(hash&&hash.includes('id_token')){
+      setLoading(true,'Logowanie...');
+      const params=new URLSearchParams(hash.substring(1));
+      const idToken=params.get('id_token');
+      if(idToken){
+        const{GoogleAuthProvider,signInWithCredential}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        const r=await signInWithCredential(auth,GoogleAuthProvider.credential(idToken));
+        await saveUser(r.user);
+        window.location.href='dashboard_FINAL.html';
+      }
+    }
+  }catch(e){console.error('OAuth callback error:',e);}
+})();
 
 // TAB SWITCHING
 window.switchTab=function(tab){
@@ -492,29 +510,26 @@ window.loginGoogle=async function(){
   hideMessages();
   try{
     const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-    let r;
     if(isCapacitor){
-      const {GoogleAuth} = Capacitor.Plugins;
-      await GoogleAuth.initialize({clientId:'613529563678-1vdtja45k7gbatknstnprlqp2gm1h7jg.apps.googleusercontent.com',scopes:['profile','email'],grantOfflineAccess:true}).catch(()=>{});
-      const googleUser = await GoogleAuth.signIn();
-      console.log('googleUser:', JSON.stringify(googleUser));
-      const idToken = googleUser.authentication?.idToken || googleUser.idToken || null;
-      const accessToken = googleUser.authentication?.accessToken || googleUser.accessToken || null;
-      if(!idToken && !accessToken) throw new Error('brak tokena: ' + JSON.stringify(googleUser.authentication));
-      const {GoogleAuthProvider,signInWithCredential} = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      const credential = idToken 
-        ? GoogleAuthProvider.credential(idToken, accessToken)
-        : GoogleAuthProvider.credential(null, accessToken);
-      r = await signInWithCredential(auth, credential);
+      const clientId='613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com';
+      const redirectUri='com.eduvia.app://callback';
+      const nonce=Math.random().toString(36).substring(2);
+      const authUrl='https://accounts.google.com/o/oauth2/v2/auth'
+        +'?client_id='+encodeURIComponent(clientId)
+        +'&redirect_uri='+encodeURIComponent(redirectUri)
+        +'&response_type=id_token'
+        +'&scope=openid%20email%20profile'
+        +'&nonce='+nonce;
+      window.open(authUrl,'_system');
+      setLoading(false);
     }else{
-      r=await signInWithPopup(auth,provider);
+      const r=await signInWithPopup(auth,provider);
+      await saveUser(r.user);
+      window.location.href='dashboard_FINAL.html';
     }
-    await saveUser(r.user);
-    window.location.href='dashboard_FINAL.html';
   }catch(e){
     setLoading(false);
-    console.error('Google login error:',e);
-    if(e.code!=='auth/popup-closed-by-user')showErr('Błąd logowania przez Google. Spróbuj przez e-mail.');
+    showErr('Błąd logowania przez Google. Spróbuj przez e-mail.');
   }
 };
 </script>

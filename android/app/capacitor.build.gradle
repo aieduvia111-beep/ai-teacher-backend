@@ -10,7 +10,7 @@ android {
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-haptics')
-    implementation project(':capgo-capacitor-social-login')
+    implementation project(':codetrix-studio-capacitor-google-auth')
 
 }
 
