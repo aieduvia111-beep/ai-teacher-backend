@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "613529563678-1vdtja45k7gbatknstnprlqp2gm1h7jg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eduvia.app",
+            "certificate_hash": "5d9c88749e3510b1e83ac91f53608dd4348dcefe"
+          }
+        },
+        {
           "client_id": "613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com",
           "client_type": 3
         }

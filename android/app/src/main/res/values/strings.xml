@@ -4,4 +4,5 @@
     <string name="title_activity_main">Eduvia AI</string>
     <string name="package_name">com.eduvia.app</string>
     <string name="custom_url_scheme">com.eduvia.app</string>
+    <string name="server_client_id">613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com</string>
 </resources>

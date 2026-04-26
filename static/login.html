@@ -497,9 +497,15 @@ window.loginGoogle=async function(){
       const {GoogleAuth} = Capacitor.Plugins;
       await GoogleAuth.initialize({clientId:'613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com',scopes:['profile','email'],grantOfflineAccess:true}).catch(()=>{});
       const googleUser = await GoogleAuth.signIn();
-      const idToken = googleUser.authentication.idToken;
+      console.log('googleUser:', JSON.stringify(googleUser));
+      const idToken = googleUser.authentication?.idToken || googleUser.idToken || null;
+      const accessToken = googleUser.authentication?.accessToken || googleUser.accessToken || null;
+      if(!idToken && !accessToken) throw new Error('brak tokena: ' + JSON.stringify(googleUser.authentication));
       const {GoogleAuthProvider,signInWithCredential} = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      r = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+      const credential = idToken 
+        ? GoogleAuthProvider.credential(idToken, accessToken)
+        : GoogleAuthProvider.credential(null, accessToken);
+      r = await signInWithCredential(auth, credential);
     }else{
       r=await signInWithPopup(auth,provider);
     }
