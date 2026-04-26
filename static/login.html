@@ -495,7 +495,7 @@ window.loginGoogle=async function(){
     let r;
     if(isCapacitor){
       const {GoogleAuth} = Capacitor.Plugins;
-      await GoogleAuth.initialize({clientId:'613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com',scopes:['profile','email'],grantOfflineAccess:true}).catch(()=>{});
+      await GoogleAuth.initialize({clientId:'613529563678-1vdtja45k7gbatknstnprlqp2gm1h7jg.apps.googleusercontent.com',scopes:['profile','email'],grantOfflineAccess:true}).catch(()=>{});
       const googleUser = await GoogleAuth.signIn();
       console.log('googleUser:', JSON.stringify(googleUser));
       const idToken = googleUser.authentication?.idToken || googleUser.idToken || null;
