@@ -590,7 +590,7 @@ function getPlanBadgeHTML(plan) {
 
         <!-- KAFELKI APARAT / GALERIA -->
         <div class="capture-grid" id="captureGrid">
-          <button class="capture-btn cam-btn" onclick="document.getElementById('inputCam').click()">
+          <button class="capture-btn cam-btn" onclick="takePhoto()">
             <div class="cb-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
@@ -784,6 +784,16 @@ function mClose(){document.getElementById('mDrawer').classList.remove('open');do
 
 /* PLIK */
 function pickFile(){document.getElementById('fileInput').click();}
+function takePhoto(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/*';
+  inp.capture='environment';
+  inp.style.display='none';
+  inp.onchange=e=>{const f=e.target.files[0];if(f)processFile(f);document.body.removeChild(inp);};
+  document.body.appendChild(inp);
+  inp.click();
+}
 function handleFile(e){const f=e.target.files[0];if(f)processFile(f);}
 function processFile(f){
   if(!f.type.startsWith('image/')){showErr('Wybierz plik graficzny (JPG, PNG, WEBP)');return;}
