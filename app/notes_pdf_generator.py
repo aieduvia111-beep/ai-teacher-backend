@@ -702,13 +702,31 @@ class ConceptCard(Flowable):
         _canvas_draw_text(c, p, 10, H - 10, W - 20,
                           fontsize=9, color='white', bold=True)
 
-        # Definicja - CIEMNY na jasnym tle - przez matplotlib
-        import re as _re2
-        defn = _re2.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), self.definicja)
-        defn = defn.replace('\\','').replace('\\int','int').replace('\\sum','sum')
-        defn = defn.replace('\\to','->').replace('\\rightarrow','->').replace('\\cdot','*')
-        _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16,
-                          fontsize=8, color='#2D3436', bg=bg)
+        # Definicja - renderuj przez matplotlib żeby wzory LaTeX działały
+        import re as _re2, io as _io2
+        defn_raw = self.definicja[:220]
+        # Czy zawiera LaTeX?
+        if '$' in defn_raw:
+            try:
+                png = _render_text_png(defn_raw, W - 16, fontsize=8, color='#2D3436', bg=bg)
+                if png:
+                    from PIL import Image as _PIL2
+                    pil = _PIL2.open(_io2.BytesIO(png))
+                    iw, ih = pil.size
+                    scale = (W - 16) / (iw / 200 * 72)
+                    h_pt = min((ih / 200 * 72) * scale, H - 32)
+                    c.drawImage(ImageReader(_io2.BytesIO(png)), 8, 4, width=W-16, height=h_pt)
+                else:
+                    raise Exception("no png")
+            except:
+                # fallback - zwykły tekst bez wzorów
+                defn = _re2.sub(r'\$([^$]*)\$', lambda m: m.group(1), defn_raw)
+                defn = defn.replace('\\frac{','(').replace('}{',')/(').replace('}',')')
+                defn = defn.replace('\\cdot','·').replace('\\times','×').replace('\\','').replace('  ',' ')
+                _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16, fontsize=8, color='#2D3436', bg=bg)
+        else:
+            _canvas_draw_text(c, defn_raw[:180], 8, H - 32, W - 16,
+                              fontsize=8, color='#2D3436', bg=bg)
 
 
 
@@ -838,12 +856,17 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Body
     ax_b = fig.add_axes([0.04, 0.02, 0.92, 0.68])
     ax_b.set_facecolor(BG_CARD); ax_b.axis('off')
-    # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
+    # Konwertuj LaTeX na czytelny tekst w kartach
     import re as _re_def
-    defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
-    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
-    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
+    defn_clean = _re_def.sub(r'\\\$', lambda m: m.group(1), definicja)
+    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
+    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
+    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
+    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
+    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
+    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
+    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
+    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
@@ -1054,9 +1077,14 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
     import re as _re_def
     defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
-    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
-    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
+    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
+    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
+    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
+    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
+    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
+    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
+    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
+    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
