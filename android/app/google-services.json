@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "613529563678",
+    "project_id": "eduvia-c69bc",
+    "storage_bucket": "eduvia-c69bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:613529563678:android:5cdaf847bc8fd749d4340f",
+        "android_client_info": {
+          "package_name": "com.eduvia.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA01a8507-BTN76Ll2fMQTf1ci05PIJahk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

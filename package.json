@@ -3,6 +3,7 @@
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^7.6.2",
     "@capacitor/core": "^8.3.1",
-    "@capacitor/haptics": "^8.0.2"
+    "@capacitor/haptics": "^8.0.2",
+    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4"
   }
 }

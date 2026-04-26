@@ -494,68 +494,23 @@ window.loginGoogle=async function(){
     const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
     let r;
     if(isCapacitor){
-      const{signInWithRedirect,getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      const rd=await getRedirectResult(auth).catch(()=>null);
-      if(rd&&rd.user){r=rd;}else{await signInWithRedirect(auth,provider);return;}
-    }else{r=await signInWithPopup(auth,provider);}
+      const {GoogleAuth} = Capacitor.Plugins;
+      await GoogleAuth.initialize({clientId:'613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com',scopes:['profile','email'],grantOfflineAccess:true}).catch(()=>{});
+      const googleUser = await GoogleAuth.signIn();
+      const idToken = googleUser.authentication.idToken;
+      const {GoogleAuthProvider,signInWithCredential} = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      r = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+    }else{
+      r=await signInWithPopup(auth,provider);
+    }
     await saveUser(r.user);
     window.location.href='dashboard_FINAL.html';
   }catch(e){
     setLoading(false);
-    if(e.code!=='auth/popup-closed-by-user')showErr(errMsg(e.code));
+    console.error('Google login error:',e);
+    if(e.code!=='auth/popup-closed-by-user')showErr('Błąd logowania przez Google. Spróbuj przez e-mail.');
   }
 };
-
-// Email login
-window.submitLogin=async function(){
-  const email=document.getElementById('loginEmail').value.trim();
-  const pass=document.getElementById('loginPassword').value;
-  if(!email||!pass){showErr('Uzupełnij e-mail i hasło.');return;}
-  setLoading(true,'Logowanie...');hideMessages();
-  try{
-    const r=await signInWithEmailAndPassword(auth,email,pass);
-    await saveUser(r.user);
-    window.location.href='dashboard_FINAL.html';
-  }catch(e){setLoading(false);showErr(errMsg(e.code));}
-};
-
-// Email register
-window.submitRegister=async function(){
-  const name=document.getElementById('regName').value.trim();
-  const email=document.getElementById('regEmail').value.trim();
-  const pass=document.getElementById('regPassword').value;
-  if(!email||!pass){showErr('Uzupełnij e-mail i hasło.');return;}
-  if(pass.length<6){showErr('Hasło musi mieć min. 6 znaków.');return;}
-  setLoading(true,'Tworzenie konta...');hideMessages();
-  try{
-    const r=await createUserWithEmailAndPassword(auth,email,pass);
-    if(name)await updateProfile(r.user,{displayName:name}).catch(()=>{});
-    await saveUser(r.user,name);
-    window.location.href='dashboard_FINAL.html';
-  }catch(e){setLoading(false);showErr(errMsg(e.code));}
-};
-
-// Reset password
-window.sendReset=async function(){
-  const email=document.getElementById('loginEmail').value.trim();
-  if(!email){showErr('Wpisz e-mail, a wyślemy link do resetu hasła.');return;}
-  try{
-    await sendPasswordResetEmail(auth,email);
-    showOk('Link do resetu hasła wysłany na '+email);
-  }catch(e){showErr(errMsg(e.code));}
-};
-
-// Capacitor redirect check
-(async()=>{
-  try{
-    const isCapacitor=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-    if(isCapacitor){
-      const{getRedirectResult}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      const result=await getRedirectResult(auth);
-      if(result&&result.user){await saveUser(result.user);window.location.href='dashboard_FINAL.html';}
-    }
-  }catch(e){console.log('redirect check:',e);}
-})();
 </script>
 </body>
 </html>
