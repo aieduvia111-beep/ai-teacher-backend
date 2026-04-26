@@ -245,9 +245,9 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .photos-count{font-size:.72em;color:var(--muted2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .photos-count span{color:var(--accent2);font-weight:700;}
 /* Camera modal */
-.camera-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;}
-.camera-modal.open{display:flex;}
-.camera-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:22px;width:min(480px,94vw);box-shadow:0 40px 80px rgba(0,0,0,.6);}
+.camera-modal{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.92);backdrop-filter:blur(14px);align-items:center;justify-content:center;}
+.camera-modal.open{display:flex;align-items:center;justify-content:center;}
+.camera-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:22px;width:min(480px,94vw);box-shadow:0 40px 80px rgba(0,0,0,.6);position:relative;margin:auto;}
 .camera-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .camera-title{font-family:var(--h);font-size:.95em;font-weight:800;}
 .camera-close{width:30px;height:30px;border-radius:8px;background:var(--s2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
