@@ -273,14 +273,18 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .sidebar{display:none!important;}
   .app{display:block;}
   .m-hdr{display:flex!important;}
-  .m-nav{display:grid!important;}
-  .main{padding:14px!important;padding-top:70px!important;padding-bottom:100px!important;}
-  .question-card{padding-bottom:12px!important;}
-  .next-btn{margin-bottom:8px!important;}
+  .m-nav{display:grid!important;position:fixed;bottom:0;left:0;right:0;z-index:9000;}
+  .main{padding:14px!important;padding-top:70px!important;padding-bottom:140px!important;}
+  .question-card{padding-bottom:20px!important;margin-bottom:12px!important;}
+  .feedback-box{margin-bottom:12px!important;}
+  .next-btn{margin-bottom:16px!important;position:relative;z-index:1;}
   .setup-layout,.quiz-layout,.results-layout{grid-template-columns:1fr!important;}
   .info-col,.quiz-info-sidebar,.results-info-col{display:none!important;}
   .page-topbar{flex-direction:column;gap:8px;align-items:flex-start;}
   .page-h1{font-size:1.5em!important;}
+  /* Upewnij sie ze ostatni element strony ma odstep od nava */
+  .page.active > *:last-child{margin-bottom:20px!important;}
+  .results-btns{padding-bottom:10px!important;}
 }
 /* ── UPLOAD MULTI-ZDJECIA ── */
 .capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
