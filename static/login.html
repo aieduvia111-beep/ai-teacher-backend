@@ -513,7 +513,7 @@ window.loginGoogle=async function(){
     if(isCapacitor){
       const {Browser} = Capacitor.Plugins;
       const clientId='613529563678-dlqssqaioih725p44do2ce0t5i42b2vm.apps.googleusercontent.com';
-      const redirectUri='https://ai-teacher-backend-inky.vercel.app';
+      const redirectUri='https://eduvia-c69bc.firebaseapp.com/__/auth/handler';
       const nonce=Math.random().toString(36).substring(2);
       const authUrl='https://accounts.google.com/o/oauth2/v2/auth'
         +'?client_id='+encodeURIComponent(clientId)
