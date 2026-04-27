@@ -249,6 +249,29 @@ body::after{content:'';position:fixed;inset:0;opacity:0.45;background-image:url(
 .forgot-link a:hover{color:var(--accent2);}
 
 .auth-success{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:10px;padding:11px 14px;color:var(--green);font-size:.8em;margin-bottom:14px;display:none;}
+
+/* ── PARTICLES ── */
+.login-particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.lp{position:absolute;border-radius:50%;opacity:0;animation:lpRise var(--d,6s) ease-in var(--dl,0s) infinite;}
+@keyframes lpRise{
+  0%{opacity:0;transform:translateY(0) scale(0);}
+  15%{opacity:.5;}85%{opacity:.15;}
+  100%{opacity:0;transform:translateY(-500px) scale(.2);}
+}
+/* ── SHIMMER BTN ── */
+.auth-submit{position:relative;overflow:hidden;}
+.auth-submit::after{
+  content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent);
+  animation:btnShimmer 3s ease-in-out infinite;
+}
+@keyframes btnShimmer{0%{left:-100%;}50%,100%{left:150%;}}
+/* ── INPUT LIFT ── */
+.field-wrap input{transition:border-color .25s,box-shadow .25s,transform .2s;}
+.field-wrap input:focus{transform:translateY(-1px);}
+/* ── CARD GLOW ── */
+.card-inner{transition:box-shadow .35s;}
+.card-inner:hover{box-shadow:0 0 60px rgba(124,106,255,.09),0 24px 60px rgba(0,0,0,.35);}
 </style>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
@@ -486,9 +509,9 @@ function errMsg(code){
   return map[code]||'Błąd: '+code;
 }
 // Stubs — replaced by module script below
-window.submitLogin=function(){showErr('Ładowanie Firebase...');};
-window.submitRegister=function(){showErr('Ładowanie Firebase...');};
-window.sendReset=function(){showErr('Ładowanie Firebase...');};
+window.submitLogin=function(){setLoading(true,'Logowanie...');};
+window.submitRegister=function(){setLoading(true,'Rejestracja...');};
+window.sendReset=function(){setLoading(true,'Wysyłanie...');};
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -533,6 +556,27 @@ window.loginGoogle=async function(){
     showErr('Błąd logowania przez Google. Spróbuj przez e-mail.');
   }
 };
+</script>
+<div class="login-particles" id="loginParticles"></div>
+<script>
+(function(){
+  const c=document.getElementById('loginParticles');
+  if(!c)return;
+  const colors=['#7c6aff','#a78bfa','#38bdf8','#22d3a0'];
+  for(let i=0;i<28;i++){
+    const p=document.createElement('div');
+    p.className='lp';
+    const size=Math.random()*2.5+1;
+    p.style.cssText=`left:${Math.random()*100}%;top:${65+Math.random()*35}%;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};--d:${5+Math.random()*8}s;--dl:${Math.random()*9}s;`;
+    c.appendChild(p);
+  }
+  // Staggered card children
+  const card=document.querySelector('.card-inner');
+  if(card){
+    const kids=card.querySelectorAll(':scope>*:not(#loginErr):not(#loginSuccess):not(.login-loading)');
+    kids.forEach((el,i)=>{el.style.animation=`fadeUp .5s ease ${.2+i*.07}s backwards`;});
+  }
+})();
 </script>
 </body>
 </html>
