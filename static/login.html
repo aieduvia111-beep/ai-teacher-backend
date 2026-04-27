@@ -509,8 +509,8 @@ function errMsg(code){
   return map[code]||'Błąd: '+code;
 }
 // Stubs — replaced by module script below
-window.submitLogin=function(){};
-window.submitRegister=function(){};
+window.submitLogin=function(){setLoading(true,'Ładowanie...');setTimeout(()=>{if(window._submitLogin)window._submitLogin();else{setLoading(false);showErr('Spróbuj ponownie za chwilę.');}},2000);};
+window.submitRegister=function(){setLoading(true,'Ładowanie...');setTimeout(()=>{if(window._submitRegister)window._submitRegister();else{setLoading(false);showErr('Spróbuj ponownie za chwilę.');}},2000);};
 window.sendReset=function(){};
 </script>
 <script type="module">
@@ -521,6 +521,42 @@ const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDo
 const auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 await setPersistence(auth,browserLocalPersistence).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u)window.location.href='dashboard_FINAL.html';});
+
+window.submitLogin=async function(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  if(!email||!pass){showErr('Wypełnij wszystkie pola.');return;}
+  setLoading(true,'Logowanie...');hideMessages();
+  try{
+    const r=await signInWithEmailAndPassword(auth,email,pass);
+    await saveUser(r.user);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){setLoading(false);showErr(errMsg(e.code));}
+};
+
+window.submitRegister=async function(){
+  const name=document.getElementById('regName')?.value.trim()||'';
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  if(!email||!pass){showErr('Wypełnij wszystkie pola.');return;}
+  setLoading(true,'Tworzenie konta...');hideMessages();
+  try{
+    const r=await createUserWithEmailAndPassword(auth,email,pass);
+    if(name)await updateProfile(r.user,{displayName:name});
+    await saveUser(r.user,name);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){setLoading(false);showErr(errMsg(e.code));}
+};
+
+window.sendReset=async function(){
+  const email=document.getElementById('resetEmail')?.value.trim()||document.getElementById('loginEmail')?.value.trim()||'';
+  if(!email){showErr('Podaj adres e-mail.');return;}
+  setLoading(true,'Wysyłanie...');hideMessages();
+  try{
+    await sendPasswordResetEmail(auth,email);
+    setLoading(false);showSuccess('Link resetowania wysłany na '+email);
+  }catch(e){setLoading(false);showErr(errMsg(e.code));}
+};
 
 async function saveUser(u,name){
   const ref=doc(db,'users',u.uid),snap=await getDoc(ref);
