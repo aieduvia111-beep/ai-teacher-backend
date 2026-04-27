@@ -1346,17 +1346,26 @@ function enrichBubble(bubble) {
 
 async function streamMarkdown(el, text) {
   el.innerHTML = ''; el.classList.add('typing');
-  // formatText raz — już uwzględniony w renderMarkdownWithLatex
   const fixed = formatText(text);
-  const SPEED = 12, FAST_AFTER = 120;
+  // Jeśli tekst zawiera LaTeX — pokaż od razu bez animacji
+  const hasLatex = /\$|\\\(|\\\[|\\frac|\\int|\\sum/.test(text);
+  if (hasLatex) {
+    el.classList.remove('typing');
+    el.innerHTML = renderMarkdownWithLatex(text);
+    setTimeout(() => {
+      renderLatex(el);
+      const m = document.getElementById('msgsArea');
+      if (m) m.scrollTop = m.scrollHeight;
+    }, 80);
+    return;
+  }
+  const SPEED = 8, FAST_AFTER = 100;
   let i = 0, displayed = '';
   await new Promise(resolve => {
     function tick() {
       if (i >= fixed.length) {
         el.classList.remove('typing');
-        // Wstaw HTML — renderMarkdownWithLatex dostaje raw text (sam woła formatText)
         el.innerHTML = renderMarkdownWithLatex(text);
-        // renderLatex po wyrenderowaniu przez przeglądarkę — setTimeout daje KaTeX czas
         setTimeout(() => {
           renderLatex(el);
           const m = document.getElementById('msgsArea');
@@ -1365,13 +1374,12 @@ async function streamMarkdown(el, text) {
         resolve();
         return;
       }
-      const chunk = i > FAST_AFTER ? 4 : 1;
+      const chunk = i > FAST_AFTER ? 6 : 1;
       displayed += fixed.slice(i, i + chunk); i += chunk;
-      // Podczas animacji: plain text — nie dotykamy HTML
       el.textContent = displayed;
       const m = document.getElementById('msgsArea');
       if (m.scrollTop + m.clientHeight > m.scrollHeight - 80) m.scrollTop = m.scrollHeight;
-      setTimeout(tick, i > FAST_AFTER ? 4 : SPEED);
+      setTimeout(tick, i > FAST_AFTER ? 2 : SPEED);
     }
     tick();
   });
