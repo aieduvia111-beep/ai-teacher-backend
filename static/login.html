@@ -549,7 +549,7 @@ window.submitRegister=async function(){
 };
 
 window.sendReset=async function(){
-  const email=document.getElementById('resetEmail')?.value.trim()||document.getElementById('loginEmail')?.value.trim()||'';
+  const email=document.getElementById('loginEmail')?.value.trim()||'';
   if(!email){showErr('Podaj adres e-mail.');return;}
   setLoading(true,'Wysyłanie...');hideMessages();
   try{
