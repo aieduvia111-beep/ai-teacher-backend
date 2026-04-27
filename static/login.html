@@ -509,9 +509,9 @@ function errMsg(code){
   return map[code]||'Błąd: '+code;
 }
 // Stubs — replaced by module script below
-window.submitLogin=function(){setLoading(true,'Logowanie...');};
-window.submitRegister=function(){setLoading(true,'Rejestracja...');};
-window.sendReset=function(){setLoading(true,'Wysyłanie...');};
+window.submitLogin=function(){};
+window.submitRegister=function(){};
+window.sendReset=function(){};
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
