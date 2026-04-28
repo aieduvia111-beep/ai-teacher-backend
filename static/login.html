@@ -508,9 +508,29 @@ function errMsg(code){
   const map={'auth/invalid-email':'Nieprawidłowy adres e-mail.','auth/user-not-found':'Nie znaleziono konta z tym e-mailem.','auth/wrong-password':'Błędne hasło.','auth/email-already-in-use':'Ten e-mail jest już zajęty.','auth/weak-password':'Hasło jest za słabe (min. 6 znaków).','auth/too-many-requests':'Za dużo prób. Odczekaj chwilę.','auth/invalid-credential':'Błędny e-mail lub hasło.'};
   return map[code]||'Błąd: '+code;
 }
-// Stubs — replaced by module script below
-window.submitLogin=function(){setLoading(true,'Ładowanie...');setTimeout(()=>{if(window._submitLogin)window._submitLogin();else{setLoading(false);showErr('Spróbuj ponownie za chwilę.');}},2000);};
-window.submitRegister=function(){setLoading(true,'Ładowanie...');setTimeout(()=>{if(window._submitRegister)window._submitRegister();else{setLoading(false);showErr('Spróbuj ponownie za chwilę.');}},2000);};
+// Stubs — Firebase module nadpisuje te funkcje po załadowaniu
+// Czeka az Firebase module sie zaladuje
+let _fbReady = false;
+window.submitLogin=function(){
+  if(_fbReady){return;}
+  setLoading(true,'Łączenie...');
+  let tries=0;
+  const wait=setInterval(()=>{
+    tries++;
+    if(_fbReady){clearInterval(wait);setLoading(false);window.submitLogin();}
+    else if(tries>20){clearInterval(wait);setLoading(false);showErr('Błąd połączenia. Odśwież stronę.');}
+  },150);
+};
+window.submitRegister=function(){
+  if(_fbReady){return;}
+  setLoading(true,'Łączenie...');
+  let tries=0;
+  const wait=setInterval(()=>{
+    tries++;
+    if(_fbReady){clearInterval(wait);setLoading(false);window.submitRegister();}
+    else if(tries>20){clearInterval(wait);setLoading(false);showErr('Błąd połączenia. Odśwież stronę.');}
+  },150);
+};
 window.sendReset=function(){};
 </script>
 <script type="module">
@@ -522,6 +542,7 @@ const auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 await setPersistence(auth,browserLocalPersistence).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u)window.location.href='dashboard_FINAL.html';});
 
+_fbReady = true;
 window.submitLogin=async function(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPassword').value;

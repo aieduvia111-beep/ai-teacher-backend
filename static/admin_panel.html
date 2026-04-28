@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eduvia — Panel Właściciela</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#05050c;--s1:#0a0a15;--s2:#0f0f1e;--s3:#141428;
+  --accent:#7c6aff;--accent2:#a78bfa;--green:#22d3a0;--gold:#f5a623;--red:#f87171;--blue:#38bdf8;
+  --text:#eeeef5;--muted:#44445a;--muted2:#6e6e88;
+  --border:rgba(255,255,255,.05);--border-hi:rgba(255,255,255,.09);
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;}
+body::before{content:'';position:fixed;inset:0;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* SIDEBAR */
+.sidebar{width:200px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;gap:2px;height:100vh;overflow-y:auto;position:relative;z-index:10;}
+.brand{display:flex;align-items:center;gap:9px;margin-bottom:24px;padding:0 4px;}
+.brand-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.85em;color:white;box-shadow:0 0 20px rgba(124,106,255,.3);}
+.brand-text{font-family:var(--h);font-weight:700;font-size:.85em;}
+.brand-sub{font-size:.58em;color:var(--muted2);font-family:var(--mono);}
+.nav-label{font-family:var(--mono);font-size:.55em;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:.79em;color:var(--muted2);cursor:pointer;transition:all .15s;border:1px solid transparent;}
+.nav-item:hover{background:rgba(124,106,255,.06);border-color:rgba(124,106,255,.1);color:var(--accent2);}
+.nav-item.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.18);color:white;}
+.nav-item svg{width:14px;height:14px;flex-shrink:0;}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(34,211,160,.5);margin-left:auto;animation:pulse 2s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:28px 24px;position:relative;z-index:1;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.page-title{font-family:var(--h);font-size:1.3em;font-weight:800;letter-spacing:-.02em;}
+.page-sub{font-size:.75em;color:var(--muted2);margin-top:2px;font-family:var(--mono);}
+.status-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.15);font-size:.7em;font-family:var(--mono);color:var(--green);}
+.status-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;}
+.stat-card:hover{border-color:rgba(124,106,255,.2);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.2),transparent);}
+.stat-label{font-family:var(--mono);font-size:.6em;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px;}
+.stat-val{font-family:var(--h);font-size:1.8em;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.stat-val.green{color:var(--green);}
+.stat-val.gold{color:var(--gold);}
+.stat-val.blue{color:var(--blue);}
+.stat-change{font-size:.68em;color:var(--muted2);margin-top:6px;font-family:var(--mono);}
+.stat-change.up{color:var(--green);}
+.stat-icon{position:absolute;right:14px;top:14px;width:28px;height:28px;border-radius:8px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.12);display:flex;align-items:center;justify-content:center;color:var(--accent2);}
+.stat-icon svg{width:13px;height:13px;}
+
+/* GRID */
+.grid3{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:20px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border-hi);border-radius:14px;padding:18px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.15),transparent);}
+.card-title{font-family:var(--h);font-size:.78em;font-weight:700;letter-spacing:.04em;margin-bottom:14px;color:var(--muted2);text-transform:uppercase;}
+
+/* USERS */
+.user-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.user-row:last-child{border-bottom:none;}
+.user-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:700;font-size:.7em;color:white;flex-shrink:0;}
+.user-plan{font-size:.6em;font-family:var(--mono);padding:2px 7px;border-radius:4px;font-weight:500;}
+.user-plan.free{background:rgba(255,255,255,.05);color:var(--muted2);}
+.user-plan.pro{background:rgba(124,106,255,.15);color:var(--accent2);}
+
+/* AI CHAT */
+.ai-chat{display:flex;flex-direction:column;height:380px;}
+.ai-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;margin-bottom:12px;}
+.ai-msgs::-webkit-scrollbar{width:3px;}
+.ai-msgs::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:100px;}
+.ai-bubble{padding:10px 12px;border-radius:10px;font-size:.78em;line-height:1.6;}
+.ai-bubble.user{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.18);align-self:flex-end;max-width:85%;}
+.ai-bubble.ai{background:var(--s2);border:1px solid var(--border-hi);align-self:flex-start;max-width:92%;color:var(--muted2);}
+.ai-bubble.ai strong{color:var(--text);}
+.ai-input-row{display:flex;gap:8px;}
+.ai-input{flex:1;padding:9px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:9px;color:var(--text);font-family:var(--b);font-size:.78em;outline:none;transition:border-color .2s;}
+.ai-input:focus{border-color:rgba(124,106,255,.3);}
+.ai-input::placeholder{color:var(--muted);}
+.ai-send{padding:9px 16px;background:var(--accent);border:none;border-radius:9px;color:white;font-family:var(--h);font-size:.72em;font-weight:700;cursor:pointer;transition:all .2s;}
+.ai-send:hover{background:#8b79ff;}
+.ai-thinking{display:flex;gap:4px;padding:4px 0;align-items:center;}
+.ai-thinking span{width:5px;height:5px;border-radius:50%;background:var(--accent2);opacity:.4;animation:th .9s ease-in-out infinite;}
+.ai-thinking span:nth-child(2){animation-delay:.15s;}
+.ai-thinking span:nth-child(3){animation-delay:.3s;}
+@keyframes th{0%,100%{opacity:.4;transform:scale(1);}50%{opacity:1;transform:scale(1.3);}}
+
+/* GMAIL */
+.mail-list{display:flex;flex-direction:column;gap:2px;}
+.mail-row{padding:11px 13px;border-radius:10px;cursor:pointer;transition:all .15s;border:1px solid transparent;}
+.mail-row:hover{background:var(--s2);border-color:var(--border-hi);}
+.mail-row.unread{border-left:2px solid var(--accent);}
+.mail-row.selected{background:rgba(124,106,255,.06);border-color:rgba(124,106,255,.2);}
+.mail-from{font-size:.79em;font-weight:600;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;}
+.mail-subject{font-size:.75em;color:var(--muted2);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mail-date{font-size:.63em;color:var(--muted);font-family:var(--mono);flex-shrink:0;margin-left:8px;}
+.mail-ai-reply{font-size:.7em;color:var(--green);margin-top:4px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* MAIL DETAIL */
+.mail-detail{background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;padding:18px;margin-top:12px;}
+.mail-detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.mail-detail-subject{font-family:var(--h);font-size:.9em;font-weight:700;}
+.mail-detail-from{font-size:.72em;color:var(--muted2);font-family:var(--mono);margin-top:3px;}
+.mail-body{font-size:.77em;color:var(--muted2);line-height:1.7;max-height:150px;overflow-y:auto;padding:10px 12px;background:var(--s1);border-radius:8px;margin-bottom:12px;white-space:pre-wrap;}
+.ai-reply-box{background:rgba(34,211,160,.04);border:1px solid rgba(34,211,160,.12);border-radius:10px;padding:12px;}
+.ai-reply-label{font-family:var(--mono);font-size:.6em;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ai-reply-text{font-size:.77em;color:var(--text);line-height:1.65;min-height:60px;}
+.ai-reply-btns{display:flex;gap:8px;margin-top:10px;}
+.btn-approve{flex:1;padding:9px;background:var(--green);border:none;border-radius:9px;color:var(--bg);font-family:var(--h);font-size:.75em;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-approve:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(34,211,160,.3);}
+.btn-reject{padding:9px 14px;background:transparent;border:1px solid var(--border-hi);border-radius:9px;color:var(--muted2);font-family:var(--h);font-size:.75em;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-reject:hover{border-color:var(--red);color:var(--red);}
+.btn-edit{padding:9px 14px;background:transparent;border:1px solid rgba(124,106,255,.2);border-radius:9px;color:var(--accent2);font-family:var(--h);font-size:.75em;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-edit:hover{background:rgba(124,106,255,.08);}
+.edit-area{width:100%;padding:9px 12px;background:var(--s1);border:1px solid rgba(124,106,255,.25);border-radius:8px;color:var(--text);font-family:var(--b);font-size:.77em;outline:none;resize:vertical;min-height:80px;margin-top:8px;display:none;}
+
+/* GMAIL CONNECT */
+.gmail-connect-box{text-align:center;padding:48px 20px;}
+.gmail-connect-icon{width:52px;height:52px;border-radius:14px;background:var(--s2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.gmail-btn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;background:white;border:none;border-radius:11px;font-family:var(--h);font-size:.83em;font-weight:700;color:#1f1f1f;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.gmail-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+.login-card{width:min(360px,90vw);background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:32px 28px;text-align:center;}
+.login-logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 30px rgba(124,106,255,.35);}
+.login-title{font-family:var(--h);font-size:1.15em;font-weight:800;margin-bottom:4px;}
+.login-sub{font-size:.74em;color:var(--muted2);margin-bottom:24px;}
+.login-input{width:100%;padding:11px 13px;background:var(--s2);border:1px solid var(--border-hi);border-radius:9px;color:var(--text);font-family:var(--b);font-size:.84em;outline:none;transition:border-color .2s;margin-bottom:10px;text-align:left;}
+.login-input:focus{border-color:rgba(124,106,255,.4);}
+.login-btn{width:100%;padding:12px;background:var(--accent);border:none;border-radius:9px;color:white;font-family:var(--h);font-size:.82em;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(124,106,255,.25);}
+.login-btn:hover{background:#8b79ff;transform:translateY(-1px);}
+.login-err{font-size:.73em;color:var(--red);margin-top:8px;display:none;}
+
+/* API KEY MODAL */
+.api-modal{position:fixed;inset:0;z-index:9998;background:rgba(5,5,12,.92);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;}
+.api-card{width:min(400px,90vw);background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:28px;}
+.api-card::before{content:'';display:block;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);margin-bottom:24px;}
+
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .grid2,.grid3{grid-template-columns:1fr;}
+  .sidebar{width:56px;}
+  .sidebar .brand-text,.sidebar .brand-sub,.sidebar .nav-label,.sidebar .nav-item span{display:none;}
+  .nav-item{justify-content:center;padding:10px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+    <div class="login-title">Panel Właściciela</div>
+    <div class="login-sub">Dostęp tylko dla administratora</div>
+    <input class="login-input" type="password" id="loginPass" placeholder="Hasło dostępu" onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="login-btn" onclick="checkLogin()">Zaloguj się</button>
+    <div class="login-err" id="loginErr">Nieprawidłowe hasło</div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="api-modal" id="apiModal" style="display:none">
+  <div class="api-card">
+    <div class="card-title">Klucz API Claude</div>
+    <div style="font-size:.78em;color:var(--muted2);margin-bottom:16px;line-height:1.6;">Wpisz klucz Anthropic API żeby AI mogło działać. Klucz jest zapisany tylko w tej przeglądarce.</div>
+    <input class="login-input" type="password" id="apiKeyInput" placeholder="sk-ant-...">
+    <div style="font-size:.7em;color:var(--muted);margin-bottom:14px;">Znajdziesz go na console.anthropic.com</div>
+    <button class="login-btn" onclick="saveApiKey()">Zapisz klucz</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">E</div>
+    <div>
+      <div class="brand-text">Eduvia</div>
+      <div class="brand-sub">admin panel</div>
+    </div>
+  </div>
+  <div class="nav-label">Główne</div>
+  <div class="nav-item active" onclick="showTab('overview',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Przegląd</span><div class="nav-dot"></div>
+  </div>
+  <div class="nav-item" onclick="showTab('users',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    <span>Użytkownicy</span>
+  </div>
+  <div class="nav-item" onclick="showTab('gmail',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    <span>Gmail</span>
+  </div>
+  <div class="nav-item" onclick="showTab('ai',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+    <span>Doradca AI</span>
+  </div>
+  <div class="nav-label" style="margin-top:8px;">Linki</div>
+  <a class="nav-item" href="https://console.firebase.google.com/project/eduvia-c69bc" target="_blank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>Firebase</span>
+  </a>
+  <a class="nav-item" href="https://vercel.com/dashboard" target="_blank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 19h20L12 2z"/></svg>
+    <span>Vercel</span>
+  </a>
+  <div class="nav-item" onclick="changeApiKey()" style="margin-top:auto;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    <span>Klucz API</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- OVERVIEW -->
+  <div id="tab-overview">
+    <div class="topbar">
+      <div><div class="page-title">Przegląd</div><div class="page-sub" id="lastUpdate">Ładowanie...</div></div>
+      <div class="status-badge"><div class="status-dot"></div>Live</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Użytkownicy</div>
+        <div class="stat-val" id="sUsers">—</div>
+        <div class="stat-change up" id="sUsersC">...</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Plan Pro</div>
+        <div class="stat-val green" id="sPro">—</div>
+        <div class="stat-change" id="sProC">...</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Aktywni dziś</div>
+        <div class="stat-val blue" id="sActive">—</div>
+        <div class="stat-change" id="sActiveC">...</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Śr. XP/user</div>
+        <div class="stat-val gold" id="sXP">—</div>
+        <div class="stat-change" id="sXPC">...</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="card">
+        <div class="card-title">Rejestracje w czasie</div>
+        <canvas id="chartUsers" height="120"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Ostatni użytkownicy</div>
+        <div id="recentUsers"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div id="tab-users" style="display:none">
+    <div class="topbar"><div><div class="page-title">Użytkownicy</div><div class="page-sub" id="usersCount">Ładowanie...</div></div></div>
+    <div class="card"><div id="allUsers"></div></div>
+  </div>
+
+  <!-- GMAIL -->
+  <div id="tab-gmail" style="display:none">
+    <div class="topbar">
+      <div><div class="page-title">Gmail</div><div class="page-sub">AI przygotował odpowiedzi — zatwierdź lub odrzuć</div></div>
+      <button class="ai-send" onclick="loadGmail()" id="refreshGmail" style="display:none">Odśwież</button>
+    </div>
+    <div id="gmailArea">
+      <div class="card gmail-connect-box">
+        <div class="gmail-connect-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div style="font-family:var(--h);font-size:1em;font-weight:700;margin-bottom:6px;">Połącz Gmail</div>
+        <div style="font-size:.77em;color:var(--muted2);margin-bottom:20px;">AI przygotuje odpowiedzi na wiadomości od użytkowników</div>
+        <button class="gmail-btn" onclick="gmailConnect()">
+          <svg viewBox="0 0 24 24" width="17" height="17"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Zaloguj przez Google
+        </button>
+      </div>
+    </div>
+    <div id="mailDetailArea"></div>
+  </div>
+
+  <!-- AI DORADCA -->
+  <div id="tab-ai" style="display:none">
+    <div class="topbar"><div><div class="page-title">Doradca AI</div><div class="page-sub">Zadaj pytanie o swoją aplikację</div></div></div>
+    <div class="card">
+      <div class="ai-chat">
+        <div class="ai-msgs" id="aiMsgs">
+          <div class="ai-bubble ai">Cześć! Analizuję dane Eduvia i mogę doradzić jak rozwijać apkę i zwiększać przychody. Co chcesz wiedzieć?</div>
+        </div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="aiInput" placeholder="np. Jak zdobyć więcej użytkowników Pro?" onkeydown="if(event.key==='Enter')sendAI()">
+          <button class="ai-send" onclick="sendAI()">Wyślij</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const PASS = 'Eduvia2026!';
+const GMAIL_CLIENT_ID = '613529563678-ohcfvlraneusnkspfig9jshs82neau82.apps.googleusercontent.com';
+
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
+  authDomain:"eduvia-c69bc.firebaseapp.com",
+  projectId:"eduvia-c69bc",
+  storageBucket:"eduvia-c69bc.firebasestorage.app",
+  messagingSenderId:"613529563678",
+  appId:"1:613529563678:web:5028a3edfbd68969d4340f"
+}));
+
+let allUsers = [], gmailToken = null, gmailMsgs = [], apiKey = '';
+
+// ── LOGIN ──
+window.checkLogin = () => {
+  if(document.getElementById('loginPass').value === PASS) {
+    document.getElementById('loginScreen').style.display = 'none';
+    apiKey = localStorage.getItem('anthropic_key') || '';
+    if(!apiKey) { document.getElementById('apiModal').style.display = 'flex'; }
+    loadFirebase();
+    checkGmailReturn();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+};
+
+window.saveApiKey = () => {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  if(apiKey) { localStorage.setItem('anthropic_key', apiKey); document.getElementById('apiModal').style.display = 'none'; }
+};
+window.changeApiKey = () => { document.getElementById('apiKeyInput').value = apiKey; document.getElementById('apiModal').style.display = 'flex'; };
+
+// ── FIREBASE ──
+async function loadFirebase() {
+  const snap = await getDocs(collection(db,'users'));
+  allUsers = [];
+  snap.forEach(d => allUsers.push({id:d.id,...d.data()}));
+  allUsers.sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  renderStats(); renderChart(); renderRecentUsers(); renderAllUsers();
+  document.getElementById('lastUpdate').textContent = 'Zaktualizowano: '+new Date().toLocaleTimeString('pl-PL');
+}
+
+function renderStats() {
+  const n = allUsers.length;
+  const pro = allUsers.filter(u=>u.plan==='pro').length;
+  const today = new Date().toDateString();
+  const active = allUsers.filter(u=>u.lastActive?.seconds && new Date(u.lastActive.seconds*1000).toDateString()===today).length;
+  const avgXP = n > 0 ? Math.round(allUsers.reduce((s,u)=>s+(u.xp||0),0)/n) : 0;
+  const newW = allUsers.filter(u=>u.createdAt?.seconds && Date.now()-u.createdAt.seconds*1000 < 7*86400000).length;
+
+  document.getElementById('sUsers').textContent = n;
+  document.getElementById('sUsersC').textContent = `+${newW} w tym tygodniu`;
+  document.getElementById('sPro').textContent = pro;
+  document.getElementById('sProC').textContent = n>0?`${Math.round(pro/n*100)}% konwersja`:'0%';
+  document.getElementById('sActive').textContent = active;
+  document.getElementById('sActiveC').textContent = `z ${n} łącznie`;
+  document.getElementById('sXP').textContent = avgXP;
+  document.getElementById('sXPC').textContent = 'punktów średnio';
+  document.getElementById('usersCount').textContent = `${n} zarejestrowanych`;
+}
+
+function renderChart() {
+  const ctx = document.getElementById('chartUsers').getContext('2d');
+  const days = 14;
+  const labels = [], counts = [];
+  for(let i=days-1;i>=0;i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    labels.push(d.toLocaleDateString('pl-PL',{day:'numeric',month:'short'}));
+    counts.push(allUsers.filter(u=>{
+      if(!u.createdAt?.seconds)return false;
+      const ud=new Date(u.createdAt.seconds*1000);
+      return ud.toDateString()===d.toDateString();
+    }).length);
+  }
+  new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Rejestracje',data:counts,borderColor:'#7c6aff',backgroundColor:'rgba(124,106,255,.1)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#7c6aff'}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#44445a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#44445a',font:{size:10},stepSize:1},grid:{color:'rgba(255,255,255,.04)'}}},responsive:true,maintainAspectRatio:true}});
+}
+
+function av(u){return (u.name||u.email||'?').substring(0,2).toUpperCase();}
+
+function renderRecentUsers() {
+  document.getElementById('recentUsers').innerHTML = allUsers.slice(0,8).map(u=>`
+    <div class="user-row">
+      <div class="user-avatar">${av(u)}</div>
+      <div style="flex:1;min-width:0;"><div style="font-size:.79em;font-weight:500;">${u.name||u.email?.split('@')[0]||'?'}</div><div style="font-size:.67em;color:var(--muted2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.email||'—'}</div></div>
+      <span class="user-plan ${u.plan||'free'}">${u.plan||'free'}</span>
+    </div>`).join('');
+}
+
+function renderAllUsers() {
+  document.getElementById('allUsers').innerHTML = allUsers.map(u=>`
+    <div class="user-row">
+      <div class="user-avatar">${av(u)}</div>
+      <div style="flex:1;min-width:0;"><div style="font-size:.79em;font-weight:500;">${u.name||'?'}</div><div style="font-size:.67em;color:var(--muted2);font-family:var(--mono);">${u.email||'—'}</div></div>
+      <div style="font-size:.67em;color:var(--muted2);font-family:var(--mono);margin:0 12px;">XP: ${u.xp||0} • Streak: ${u.streak||0}d</div>
+      <span class="user-plan ${u.plan||'free'}">${u.plan||'free'}</span>
+      <div style="font-size:.63em;color:var(--muted);font-family:var(--mono);margin-left:10px;">${u.createdAt?.seconds?new Date(u.createdAt.seconds*1000).toLocaleDateString('pl-PL'):'—'}</div>
+    </div>`).join('');
+}
+
+// ── TABS ──
+window.showTab = (tab, el) => {
+  ['overview','users','gmail','ai'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'block':'none');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+};
+
+// ── GMAIL ──
+window.gmailConnect = () => {
+  const scope = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GMAIL_CLIENT_ID}&redirect_uri=${encodeURIComponent(location.origin+location.pathname)}&response_type=token&scope=${encodeURIComponent(scope)}&prompt=select_account`;
+};
+
+function checkGmailReturn() {
+  const token = sessionStorage.getItem('gmail_token');
+  if(token){gmailToken=token;}
+  const hash = location.hash;
+  if(hash.includes('access_token')){
+    const p = new URLSearchParams(hash.substring(1));
+    gmailToken = p.get('access_token');
+    sessionStorage.setItem('gmail_token',gmailToken);
+    history.replaceState(null,'',location.pathname);
+    showTab('gmail',document.querySelector('.nav-item:nth-child(5)'));
+    loadGmail();
+  }
+}
+
+window.loadGmail = async () => {
+  if(!gmailToken){document.getElementById('refreshGmail').style.display='none';return;}
+  document.getElementById('refreshGmail').style.display='block';
+  document.getElementById('gmailArea').innerHTML = '<div style="color:var(--muted);font-size:.78em;padding:16px;">Ładowanie wiadomości i generowanie odpowiedzi AI...</div>';
+  
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=in:inbox -category:promotions -category:social -category:updates',{headers:{'Authorization':'Bearer '+gmailToken}});
+  const data = await res.json();
+  if(!data.messages){document.getElementById('gmailArea').innerHTML='<div class="card" style="padding:20px;color:var(--muted);font-size:.78em;">Brak nowych wiadomości</div>';return;}
+
+  gmailMsgs = await Promise.all(data.messages.slice(0,8).map(async m=>{
+    const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`,{headers:{'Authorization':'Bearer '+gmailToken}});
+    return r.json();
+  }));
+
+  // Generuj odpowiedzi AI dla każdej wiadomości
+  await Promise.all(gmailMsgs.map(async m=>{
+    const from = getH(m,'From');
+    const subject = getH(m,'Subject');
+    const body = getBody(m);
+    m._aiReply = await genReply(from,subject,body);
+  }));
+
+  renderGmailList();
+};
+
+function getH(m,n){return m.payload?.headers?.find(h=>h.name===n)?.value||'—';}
+function getBody(m){
+  const part = m.payload?.parts?.find(p=>p.mimeType==='text/plain')||m.payload;
+  if(!part?.body?.data)return '';
+  return atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/')).substring(0,500);
+}
+
+async function genReply(from,subject,body){
+  if(!apiKey)return '(Brak klucza API)';
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:'Jesteś właścicielem aplikacji edukacyjnej Eduvia AI (eduvia.pl). Piszesz profesjonalne, ciepłe i krótkie odpowiedzi na emaile od użytkowników po polsku. Tylko treść odpowiedzi, bez powitania i podpisu.',messages:[{role:'user',content:`Email od: ${from}\nTemat: ${subject}\n\nTreść:\n${body}\n\nNapisz odpowiedź:`}]})
+    });
+    const d = await r.json();
+    return d.content?.[0]?.text||'(Błąd AI)';
+  }catch(e){return '(Błąd połączenia z AI)';}
+}
+
+function renderGmailList(){
+  document.getElementById('gmailArea').innerHTML = `<div class="card"><div class="card-title">Skrzynka — AI przygotował odpowiedzi</div><div class="mail-list">${gmailMsgs.map((m,i)=>{
+    const from = getH(m,'From').replace(/<.*>/,'').trim();
+    const subj = getH(m,'Subject');
+    const date = new Date(parseInt(m.internalDate)).toLocaleString('pl-PL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const unread = m.labelIds?.includes('UNREAD');
+    return `<div class="mail-row ${unread?'unread':''}" onclick="showMail(${i})" id="mailrow${i}">
+      <div class="mail-from">${from}<span class="mail-date">${date}</span></div>
+      <div class="mail-subject">${subj}</div>
+      <div class="mail-ai-reply">AI: ${m._aiReply?.substring(0,80)}...</div>
+    </div>`;
+  }).join('')}</div></div>`;
+}
+
+window.showMail = (i) => {
+  document.querySelectorAll('.mail-row').forEach(r=>r.classList.remove('selected'));
+  document.getElementById('mailrow'+i)?.classList.add('selected');
+  const m = gmailMsgs[i];
+  const from = getH(m,'From');
+  const subj = getH(m,'Subject');
+  const body = getBody(m);
+  document.getElementById('mailDetailArea').innerHTML = `
+    <div class="mail-detail" style="margin-top:12px;">
+      <div class="mail-detail-header">
+        <div><div class="mail-detail-subject">${subj}</div><div class="mail-detail-from">Od: ${from}</div></div>
+      </div>
+      <div class="mail-body">${body||'(Brak treści)'}</div>
+      <div class="ai-reply-box">
+        <div class="ai-reply-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+          Odpowiedź przygotowana przez AI
+        </div>
+        <div class="ai-reply-text" id="replyText${i}">${m._aiReply||'...'}</div>
+        <textarea class="edit-area" id="editArea${i}">${m._aiReply||''}</textarea>
+        <div class="ai-reply-btns">
+          <button class="btn-approve" onclick="sendReply(${i},'${from.replace(/'/g,"\\'").replace(/"/g,'\\"')}','${subj.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">✓ Zatwierdź i wyślij</button>
+          <button class="btn-edit" onclick="toggleEdit(${i})">Edytuj</button>
+          <button class="btn-reject" onclick="rejectReply(${i})">✕ Odrzuć</button>
+        </div>
+      </div>
+    </div>`;
+};
+
+window.toggleEdit = (i) => {
+  const ea = document.getElementById('editArea'+i);
+  const rt = document.getElementById('replyText'+i);
+  if(ea.style.display==='none'||!ea.style.display){ea.style.display='block';rt.style.display='none';}
+  else{gmailMsgs[i]._aiReply=ea.value;rt.textContent=ea.value;ea.style.display='none';rt.style.display='block';}
+};
+
+window.sendReply = async (i,to,subject) => {
+  const ea = document.getElementById('editArea'+i);
+  const body = ea.style.display==='block' ? ea.value : gmailMsgs[i]._aiReply;
+  const email = [`To: ${to}`,`Subject: Re: ${subject}`,'Content-Type: text/plain; charset=utf-8','',body].join('\n');
+  const enc = btoa(unescape(encodeURIComponent(email))).replace(/\+/g,'-').replace(/\//g,'_');
+  try{
+    await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{'Authorization':'Bearer '+gmailToken,'Content-Type':'application/json'},body:JSON.stringify({raw:enc})});
+    document.getElementById('mailDetailArea').innerHTML = '<div style="padding:16px;color:var(--green);font-size:.78em;font-family:var(--mono);">✓ Wysłano pomyślnie</div>';
+    document.getElementById('mailrow'+i).style.opacity='.4';
+  }catch(e){alert('Błąd wysyłania');}
+};
+
+window.rejectReply = (i) => {
+  document.getElementById('mailDetailArea').innerHTML = '';
+  document.getElementById('mailrow'+i).style.opacity='.4';
+};
+
+// ── AI DORADCA ──
+window.sendAI = async () => {
+  const input = document.getElementById('aiInput');
+  const msg = input.value.trim();
+  if(!msg||!apiKey)return;
+  input.value='';
+  const msgs = document.getElementById('aiMsgs');
+  msgs.innerHTML += `<div class="ai-bubble user">${msg}</div>`;
+  const think = document.createElement('div');
+  think.className='ai-bubble ai';
+  think.innerHTML='<div class="ai-thinking"><span></span><span></span><span></span></div>';
+  msgs.appendChild(think); msgs.scrollTop=msgs.scrollHeight;
+  const n=allUsers.length,pro=allUsers.filter(u=>u.plan==='pro').length;
+  const ctx=`Jesteś doradcą dla właściciela Eduvia AI. Dane: ${n} użytkowników, ${pro} Pro (${n>0?Math.round(pro/n*100):0}%). Stack: Firebase+Render+Vercel+Capacitor Android. Funkcje: czat AI, notatki PDF, quiz, sprawdziany, voice AI. Odpowiadaj krótko i konkretnie po polsku.`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:ctx,messages:[{role:'user',content:msg}]})});
+    const d=await r.json();
+    think.innerHTML=(d.content?.[0]?.text||'Błąd').replace(/\n/g,'<br>');
+  }catch(e){think.innerHTML='Błąd połączenia';}
+  msgs.scrollTop=msgs.scrollHeight;
+};
+</script>
+</body>
+</html>
