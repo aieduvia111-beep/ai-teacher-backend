@@ -177,7 +177,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
           </div>
           <div class="field">
             <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
-            <input type="password" id="lP" placeholder="Hasło" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+            <input type="password" id="lP" placeholder="Hasło" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" onclick="togglePass('lP',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:0;">👁</button>
           </div>
           <div class="forgot"><a href="#" onclick="doReset();return false;">Zapomniałem hasła</a></div>
           <button class="submit" onclick="doLogin()">Zaloguj się</button>
@@ -195,7 +195,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
           </div>
           <div class="field">
             <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
-            <input type="password" id="rP" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()">
+            <input type="password" id="rP" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button type="button" onclick="togglePass('rP',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:0;">👁</button>
           </div>
           <button class="submit" onclick="doReg()">Utwórz konto</button>
           <div class="legal">Rejestrując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</div>
@@ -217,6 +217,18 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
     c.appendChild(p);
   }
 })();
+
+// Splash screen
+window.addEventListener("load",function(){
+  var s=document.getElementById("splash");
+  if(s)setTimeout(function(){s.style.opacity="0";setTimeout(function(){s.style.display="none"},400)},1200);
+});
+
+function togglePass(id,btn){
+  var i=document.getElementById(id);
+  if(i.type==="password"){i.type="text";btn.textContent="🙈";}
+  else{i.type="password";btn.textContent="👁";}
+}
 
 function sw(t){
   document.getElementById('pL').style.display=t==='login'?'':'none';
@@ -285,5 +297,14 @@ window.doReset=async function(){
   catch(e){load(false);err(eTxt(e.code));}
 };
 </script>
+<div id="splash" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .4s;">
+  <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:1.4em;color:white;box-shadow:0 0 40px rgba(124,106,255,.5);animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) both;">E</div>
+  <div style="font-family:var(--h);font-weight:800;font-size:1.1em;letter-spacing:-.02em;">Eduvia AI</div>
+  <div style="width:40px;height:2px;background:var(--border-hi);border-radius:100px;overflow:hidden;margin-top:4px;"><div style="height:100%;background:var(--accent);animation:splashBar 1.2s ease forwards;"></div></div>
+</div>
+<style>
+@keyframes splashPop{from{transform:scale(0);}to{transform:scale(1);}}
+@keyframes splashBar{from{width:0}to{width:100%}}
+</style>
 </body>
 </html>
