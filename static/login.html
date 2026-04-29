@@ -379,7 +379,7 @@ setTimeout(function(){
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
         </div>
-        <div class="forgot-link"><a href="#" onclick="sendReset();return false;">Zapomniałem hasła</a></div>
+        <div class="forgot-link"><a href="#" onclick="if(window._fbReady){sendReset();}else{showErr('Ładowanie... spróbuj za chwilę.');}return false;">Zapomniałem hasła</a></div>
         <button class="auth-submit" onclick="submitLogin()">Zaloguj się</button>
         <p class="login-terms">Logując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</p>
       </div>
@@ -569,6 +569,7 @@ window.submitRegister=async function(){
   }catch(e){setLoading(false);showErr(errMsg(e.code));}
 };
 
+window._fbReady=true;
 window.sendReset=async function(){
   const email=document.getElementById('loginEmail')?.value.trim()||'';
   if(!email){showErr('Podaj adres e-mail.');return;}
