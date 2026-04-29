@@ -4,122 +4,221 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eduvia — Zaloguj się</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --bg:#07070d;--s1:#0f0f1a;--s2:#161622;
-  --accent:#7c6aff;--accent2:#a78bfa;--green:#22d3a0;--red:#f87171;
-  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --border:rgba(255,255,255,.07);--border-hi:rgba(255,255,255,.11);
+  --bg:#06060f;--s1:#0c0c18;--s2:#121220;--s3:#18182a;
+  --accent:#7c6aff;--accent2:#a78bfa;--green:#22d3a0;--red:#f87171;--gold:#f5a623;
+  --text:#eeeef5;--muted:#44445a;--muted2:#6e6e88;
+  --border:rgba(255,255,255,.06);--border-hi:rgba(255,255,255,.1);
   --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --gg:rgba(34,211,160,.5);
 }
-html,body{min-height:100vh;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
-body::before{content:'';position:fixed;inset:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
-.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;}
-.a1{position:absolute;width:600px;height:400px;top:-100px;left:-100px;background:radial-gradient(ellipse,rgba(124,106,255,.12) 0%,transparent 70%);animation:a1 8s ease-in-out infinite alternate;}
-.a2{position:absolute;width:400px;height:400px;bottom:-100px;right:-100px;background:radial-gradient(ellipse,rgba(56,189,248,.08) 0%,transparent 70%);animation:a2 10s ease-in-out infinite alternate;}
-@keyframes a1{0%{transform:translate(0,0);}100%{transform:translate(50px,30px);}}
-@keyframes a2{0%{transform:translate(0,0);}100%{transform:translate(-40px,-20px);}}
-.hdr{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(7,7,13,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);}
+html,body{min-height:100%;height:100%;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+
+/* NOISE */
+body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* AURORA */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.aurora::before{content:'';position:absolute;width:700px;height:500px;top:-150px;left:-150px;background:radial-gradient(ellipse,rgba(124,106,255,.14) 0%,transparent 65%);animation:au1 10s ease-in-out infinite alternate;}
+.aurora::after{content:'';position:absolute;width:500px;height:500px;bottom:-100px;right:-100px;background:radial-gradient(ellipse,rgba(56,189,248,.09) 0%,transparent 65%);animation:au2 12s ease-in-out infinite alternate;}
+@keyframes au1{0%{transform:translate(0,0) scale(1);}100%{transform:translate(60px,40px) scale(1.1);}}
+@keyframes au2{0%{transform:translate(0,0) scale(1);}100%{transform:translate(-50px,-30px) scale(1.05);}}
+
+/* PARTICLES */
+.particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.p{position:absolute;border-radius:50%;opacity:0;animation:pRise var(--d,6s) ease-in var(--dl,0s) infinite;}
+@keyframes pRise{0%{opacity:0;transform:translateY(0) scale(0);}15%{opacity:.5;}85%{opacity:.1;}100%{opacity:0;transform:translateY(-500px) scale(.2);}}
+
+/* HEADER */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(6,6,15,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);}
-.brand-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.9em;color:white;box-shadow:0 0 20px rgba(124,106,255,.35);}
-.brand-name{font-family:var(--h);font-weight:700;font-size:.95em;}
-.plans-btn{padding:6px 16px;border-radius:100px;border:1px solid var(--border-hi);background:transparent;color:var(--muted2);font-family:var(--b);font-size:.78em;cursor:pointer;transition:all .2s;text-decoration:none;}
-.plans-btn:hover{border-color:var(--accent);color:var(--accent2);}
-.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 20px 40px;position:relative;z-index:1;}
-.hero{text-align:center;margin-bottom:28px;}
-.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);font-size:.72em;color:var(--accent2);margin-bottom:14px;}
-.badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
-.hero-title{font-family:var(--h);font-size:1.9em;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:8px;}
-.hero-title span{background:linear-gradient(120deg,var(--accent),var(--accent2),#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.hero-sub{font-size:.83em;color:var(--muted2);line-height:1.6;max-width:300px;margin:0 auto;}
-.card{width:min(400px,100%);background:rgba(15,15,26,.9);border:1px solid var(--border-hi);border-radius:22px;padding:26px 24px;backdrop-filter:blur(20px);box-shadow:0 40px 80px rgba(0,0,0,.4),0 0 60px rgba(124,106,255,.06);position:relative;}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);border-radius:22px 22px 0 0;}
-.msg{padding:10px 13px;border-radius:9px;font-size:.78em;margin-bottom:13px;display:none;line-height:1.5;}
-.msg.err{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red);}
-.msg.ok{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);color:var(--green);}
-.tabs{display:flex;gap:4px;background:var(--s2);border-radius:10px;padding:4px;margin-bottom:18px;}
-.tab{flex:1;padding:8px;border-radius:7px;border:none;font-family:var(--h);font-size:.77em;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted2);}
-.tab.active{background:var(--accent);color:white;box-shadow:0 4px 12px rgba(124,106,255,.3);}
+.brand-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.95em;color:white;box-shadow:0 0 24px rgba(124,106,255,.4),inset 0 1px 0 rgba(255,255,255,.15);position:relative;overflow:hidden;}
+.brand-icon::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);}
+.brand-name{font-family:var(--h);font-weight:700;font-size:.95em;letter-spacing:-.01em;}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.plans-link{font-size:.75em;color:var(--muted2);text-decoration:none;padding:6px 14px;border-radius:100px;border:1px solid var(--border-hi);transition:all .2s;}
+.plans-link:hover{border-color:rgba(124,106,255,.3);color:var(--accent2);}
+
+/* MAIN LAYOUT */
+.main{flex:1;display:flex;min-height:100vh;padding-top:72px;position:relative;z-index:2;}
+
+/* LEFT SIDE */
+.left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;display:none;}
+
+/* RIGHT - FORM */
+.right{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;}
+
+/* HERO (mobile) */
+.hero-mobile{text-align:center;margin-bottom:28px;}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.18);font-size:.7em;font-weight:500;color:var(--accent2);margin-bottom:14px;letter-spacing:.02em;}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--gg);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.hero-title{font-family:var(--h);font-size:2em;font-weight:800;letter-spacing:-.04em;line-height:1.08;margin-bottom:10px;}
+.hero-title .grad{background:linear-gradient(130deg,var(--accent),var(--accent2) 50%,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:.82em;color:var(--muted2);line-height:1.7;font-weight:300;}
+
+/* FORM CARD */
+.form-wrap{width:min(400px,100%);}
+.card{background:rgba(12,12,24,.92);border:1px solid var(--border-hi);border-radius:22px;padding:28px 26px;backdrop-filter:blur(24px);box-shadow:0 50px 100px rgba(0,0,0,.5),0 0 80px rgba(124,106,255,.07);position:relative;overflow:hidden;animation:cardIn .6s cubic-bezier(.16,1,.3,1) both;}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.97);}to{opacity:1;transform:none;}}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.5),transparent);}
+.card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,255,.03),transparent 60%);pointer-events:none;}
+
+/* MSG */
+.msg{padding:10px 13px;border-radius:10px;font-size:.77em;margin-bottom:13px;display:none;line-height:1.5;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+.msg.err{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);color:var(--red);}
+.msg.ok{background:rgba(34,211,160,.07);border:1px solid rgba(34,211,160,.18);color:var(--green);}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:var(--s2);border-radius:12px;padding:4px;margin-bottom:20px;}
+.tab{flex:1;padding:9px;border-radius:9px;border:none;font-family:var(--h);font-size:.77em;font-weight:700;cursor:pointer;transition:all .22s;background:transparent;color:var(--muted2);letter-spacing:.02em;}
+.tab.active{background:var(--accent);color:white;box-shadow:0 4px 14px rgba(124,106,255,.35);}
+.tab:not(.active):hover{color:var(--accent2);}
+
+/* FIELDS */
 .field{position:relative;margin-bottom:10px;}
-.fi{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
-.field input{width:100%;padding:12px 12px 12px 38px;background:var(--s2);border:1px solid var(--border-hi);border-radius:10px;color:var(--text);font-family:var(--b);font-size:.84em;outline:none;transition:all .2s;}
-.field input:focus{border-color:rgba(124,106,255,.45);background:rgba(124,106,255,.04);box-shadow:0 0 0 3px rgba(124,106,255,.08);}
+.fi{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;transition:color .2s;}
+.field:focus-within .fi{color:var(--accent2);}
+.field input{width:100%;padding:12px 13px 12px 39px;background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;color:var(--text);font-family:var(--b);font-size:.84em;outline:none;transition:all .22s;}
+.field input:focus{border-color:rgba(124,106,255,.45);background:rgba(124,106,255,.04);box-shadow:0 0 0 3px rgba(124,106,255,.09);transform:translateY(-1px);}
 .field input::placeholder{color:var(--muted);}
-.forgot{text-align:right;margin:-2px 0 10px;}
+
+/* FORGOT */
+.forgot{text-align:right;margin:-2px 0 12px;}
 .forgot a{font-size:.73em;color:var(--muted2);text-decoration:none;transition:color .2s;}
 .forgot a:hover{color:var(--accent2);}
-.submit{width:100%;padding:13px;border:none;border-radius:10px;background:var(--accent);color:white;font-family:var(--h);font-size:.84em;font-weight:700;cursor:pointer;transition:all .22s;box-shadow:0 4px 18px rgba(124,106,255,.28);position:relative;overflow:hidden;margin-top:2px;}
+
+/* SUBMIT */
+.submit{width:100%;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--accent),#5a48e0);color:white;font-family:var(--h);font-size:.84em;font-weight:700;cursor:pointer;transition:all .22s;box-shadow:0 4px 20px rgba(124,106,255,.3);position:relative;overflow:hidden;margin-top:2px;letter-spacing:.03em;}
+.submit::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);border-radius:11px;}
 .submit::after{content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:shimmer 3s ease-in-out infinite;}
 @keyframes shimmer{0%{left:-100%;}50%,100%{left:150%;}}
-.submit:hover{background:#8b79ff;transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,106,255,.4);}
+.submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,106,255,.45);}
 .submit:active{transform:none;}
-.legal{font-size:.69em;color:var(--muted);text-align:center;margin-top:10px;line-height:1.5;}
-.load-ov{position:fixed;inset:0;z-index:999;background:rgba(7,7,13,.88);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+
+/* LEGAL */
+.legal{font-size:.68em;color:var(--muted);text-align:center;margin-top:11px;line-height:1.55;}
+
+/* STATS */
+.stats{display:flex;gap:20px;justify-content:center;margin-top:20px;}
+.stat{text-align:center;}
+.stat-n{font-family:var(--h);font-size:1em;font-weight:800;background:linear-gradient(130deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-l{font-size:.65em;color:var(--muted2);margin-top:2px;}
+
+/* LOADING */
+.load-ov{position:fixed;inset:0;z-index:9999;background:rgba(6,6,15,.9);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 .load-ov.on{display:flex;}
-.spin{width:30px;height:30px;border:2px solid rgba(124,106,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+.spin{width:32px;height:32px;border:2px solid rgba(124,106,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.load-txt{font-size:.79em;color:var(--muted2);}
-@media(max-width:480px){.hero-title{font-size:1.55em;}.card{padding:20px 16px;}}
+.load-txt{font-size:.78em;color:var(--muted2);font-family:var(--mono, monospace);}
+
+@media(min-width:800px){
+  .left{display:flex;}
+  .hero-mobile{display:none;}
+  .right{flex:none;width:460px;padding:60px 50px 60px 0;}
+}
+@media(max-width:480px){
+  .hero-title{font-size:1.65em;}
+  .card{padding:22px 18px;border-radius:18px;}
+}
 </style>
 </head>
 <body>
-<div class="aurora"><div class="a1"></div><div class="a2"></div></div>
+<div class="aurora"></div>
+<div class="particles" id="parts"></div>
 <div class="load-ov" id="loadOv"><div class="spin"></div><div class="load-txt" id="loadTxt">Łączenie...</div></div>
+
 <header class="hdr">
   <a class="brand" href="#"><div class="brand-icon">E</div><div class="brand-name">Eduvia</div></a>
-  <a class="plans-btn" href="pricing.html">☆ Zobacz plany</a>
+  <div class="hdr-right"><a class="plans-link" href="pricing.html">☆ Zobacz plany</a></div>
 </header>
+
 <main class="main">
-  <div class="hero">
-    <div class="hero-badge"><span class="badge-dot"></span>Ucz się szybciej z AI</div>
-    <h1 class="hero-title">Zaloguj się do<br><span>Eduvia AI</span></h1>
-    <p class="hero-sub">Generuj notatki, quizy i rozwiązuj zadania ze zdjęcia.</p>
+  <!-- LEFT - tylko desktop -->
+  <div class="left">
+    <div style="max-width:380px;">
+      <div class="hero-badge" style="margin-bottom:20px;"><span class="badge-dot"></span>Platforma edukacyjna AI</div>
+      <h1 class="hero-title" style="font-size:2.8em;margin-bottom:14px;">Ucz się<br>szybciej z <span class="grad">AI</span></h1>
+      <p style="font-size:.88em;color:var(--muted2);line-height:1.75;font-weight:300;margin-bottom:32px;">Generuj profesjonalne notatki PDF, quizy, rozwiązuj zadania ze zdjęcia i rozmawiaj z AI tutorem.</p>
+      <div class="stats">
+        <div class="stat"><div class="stat-n">50k+</div><div class="stat-l">Uczniów</div></div>
+        <div class="stat"><div class="stat-n">4.9★</div><div class="stat-l">Ocena</div></div>
+        <div class="stat"><div class="stat-n">1M+</div><div class="stat-l">Notatek</div></div>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <div class="msg err" id="msgErr"></div>
-    <div class="msg ok" id="msgOk"></div>
-    <div class="tabs">
-      <button class="tab active" id="tL" onclick="sw('login')">Logowanie</button>
-      <button class="tab" id="tR" onclick="sw('reg')">Rejestracja</button>
-    </div>
-    <!-- LOGIN -->
-    <div id="pL">
-      <div class="field">
-        <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-        <input type="email" id="lE" placeholder="Adres e-mail" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+
+  <!-- RIGHT - FORM -->
+  <div class="right">
+    <div class="form-wrap">
+      <!-- Hero mobile -->
+      <div class="hero-mobile">
+        <div class="hero-badge"><span class="badge-dot"></span>Ucz się szybciej z AI</div>
+        <h1 class="hero-title">Zaloguj się do<br><span class="grad">Eduvia AI</span></h1>
+        <p class="hero-sub">Generuj notatki, quizy i rozwiązuj zadania ze zdjęcia.</p>
       </div>
-      <div class="field">
-        <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
-        <input type="password" id="lP" placeholder="Hasło" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+      <div class="card">
+        <div class="msg err" id="msgErr"></div>
+        <div class="msg ok" id="msgOk"></div>
+        <div class="tabs">
+          <button class="tab active" id="tL" onclick="sw('login')">Logowanie</button>
+          <button class="tab" id="tR" onclick="sw('reg')">Rejestracja</button>
+        </div>
+        <!-- LOGIN -->
+        <div id="pL">
+          <div class="field">
+            <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+            <input type="email" id="lE" placeholder="Adres e-mail" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+          <div class="field">
+            <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
+            <input type="password" id="lP" placeholder="Hasło" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+          <div class="forgot"><a href="#" onclick="doReset();return false;">Zapomniałem hasła</a></div>
+          <button class="submit" onclick="doLogin()">Zaloguj się</button>
+          <div class="legal">Logując się akceptujesz regulamin Eduvia.</div>
+        </div>
+        <!-- REGISTER -->
+        <div id="pR" style="display:none">
+          <div class="field">
+            <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>
+            <input type="text" id="rN" placeholder="Imię (opcjonalnie)" autocomplete="given-name">
+          </div>
+          <div class="field">
+            <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+            <input type="email" id="rE" placeholder="Adres e-mail" autocomplete="email" onkeydown="if(event.key==='Enter')doReg()">
+          </div>
+          <div class="field">
+            <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
+            <input type="password" id="rP" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()">
+          </div>
+          <button class="submit" onclick="doReg()">Utwórz konto</button>
+          <div class="legal">Rejestrując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</div>
+        </div>
       </div>
-      <div class="forgot"><a href="#" onclick="doReset();return false;">Zapomniałem hasła</a></div>
-      <button class="submit" onclick="doLogin()">Zaloguj się</button>
-      <div class="legal">Logując się akceptujesz regulamin Eduvia.</div>
-    </div>
-    <!-- REGISTER -->
-    <div id="pR" style="display:none">
-      <div class="field">
-        <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>
-        <input type="text" id="rN" placeholder="Imię (opcjonalnie)" autocomplete="given-name">
-      </div>
-      <div class="field">
-        <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-        <input type="email" id="rE" placeholder="Adres e-mail" autocomplete="email" onkeydown="if(event.key==='Enter')doReg()">
-      </div>
-      <div class="field">
-        <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"/></svg>
-        <input type="password" id="rP" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()">
-      </div>
-      <button class="submit" onclick="doReg()">Utwórz konto</button>
-      <div class="legal">Rejestrując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</div>
     </div>
   </div>
 </main>
+
 <script>
+// Particles
+(function(){
+  const c=document.getElementById('parts');
+  const cols=['#7c6aff','#a78bfa','#22d3a0','#38bdf8'];
+  for(let i=0;i<25;i++){
+    const p=document.createElement('div');p.className='p';
+    const s=Math.random()*2.5+1;
+    p.style.cssText=`left:${Math.random()*100}%;top:${60+Math.random()*40}%;width:${s}px;height:${s}px;background:${cols[Math.floor(Math.random()*cols.length)]};--d:${5+Math.random()*8}s;--dl:${Math.random()*9}s;`;
+    c.appendChild(p);
+  }
+})();
+
 function sw(t){
   document.getElementById('pL').style.display=t==='login'?'':'none';
   document.getElementById('pR').style.display=t==='reg'?'':'none';
