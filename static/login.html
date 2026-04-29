@@ -504,7 +504,7 @@ function setLoading(on,msg){
   document.getElementById('loginForm').style.display=on?'none':'block';
   if(msg)document.getElementById('loadingMsg').textContent=msg;
 }
-function errMsg(code){
+function errMsg(code){if(!code)return "Błąd logowania. Spróbuj ponownie.";
   const map={'auth/invalid-email':'Nieprawidłowy adres e-mail.','auth/user-not-found':'Nie znaleziono konta z tym e-mailem.','auth/wrong-password':'Błędne hasło.','auth/email-already-in-use':'Ten e-mail jest już zajęty.','auth/weak-password':'Hasło jest za słabe (min. 6 znaków).','auth/too-many-requests':'Za dużo prób. Odczekaj chwilę.','auth/invalid-credential':'Błędny e-mail lub hasło.'};
   return map[code]||'Błąd: '+code;
 }
