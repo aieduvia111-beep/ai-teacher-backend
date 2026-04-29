@@ -297,14 +297,24 @@ window.doReset=async function(){
   catch(e){load(false);err(eTxt(e.code));}
 };
 </script>
-<div id="splash" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .4s;">
-  <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:1.4em;color:white;box-shadow:0 0 40px rgba(124,106,255,.5);animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) both;">E</div>
-  <div style="font-family:var(--h);font-weight:800;font-size:1.1em;letter-spacing:-.02em;">Eduvia AI</div>
-  <div style="width:40px;height:2px;background:var(--border-hi);border-radius:100px;overflow:hidden;margin-top:4px;"><div style="height:100%;background:var(--accent);animation:splashBar 1.2s ease forwards;"></div></div>
+<div class="splash" id="splash">
+  <div class="splash-logo">E</div>
+  <div class="splash-name">Eduvia AI</div>
+  <div class="splash-sub">Platforma edukacyjna</div>
+  <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
 </div>
 <style>
-@keyframes splashPop{from{transform:scale(0);}to{transform:scale(1);}}
-@keyframes splashBar{from{width:0}to{width:100%}}
+.splash{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .5s ease;}
+.splash::before{content:'';position:absolute;width:600px;height:400px;top:-100px;left:50%;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(124,106,255,.15) 0%,transparent 65%);pointer-events:none;}
+.splash-logo{width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:2em;color:white;box-shadow:0 0 60px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.2);animation:logoPop .6s cubic-bezier(.34,1.56,.64,1) both;margin-bottom:16px;}
+@keyframes logoPop{from{opacity:0;transform:scale(0) rotate(-10deg);}to{opacity:1;transform:scale(1) rotate(0);}}
+.splash-name{font-family:var(--h);font-weight:800;font-size:1.5em;letter-spacing:-.03em;margin-bottom:4px;animation:fadeUpS .5s .3s cubic-bezier(.16,1,.3,1) both;}
+.splash-sub{font-size:.72em;color:var(--muted2);font-weight:300;letter-spacing:.06em;text-transform:uppercase;animation:fadeUpS .5s .4s cubic-bezier(.16,1,.3,1) both;margin-bottom:32px;}
+@keyframes fadeUpS{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.splash-bar-wrap{width:100px;height:2px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;animation:fadeUpS .5s .5s cubic-bezier(.16,1,.3,1) both;}
+.splash-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--green));border-radius:100px;animation:barFill 1.5s ease forwards .3s;width:0;}
+@keyframes barFill{0%{width:0;}60%{width:70%;}100%{width:100%;}}
+.splash.hide{opacity:0;pointer-events:none;}
 </style>
 </body>
 </html>
