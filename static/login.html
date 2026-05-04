@@ -289,6 +289,19 @@ window.doReg=async function(){
   catch(e){load(false);err(eTxt(e.code));}
 };
 
+async function saveFCMToken(uid){
+  try{
+    const {getMessaging,getToken}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js');
+    const msg=getMessaging(app);
+    const token=await getToken(msg,{vapidKey:'BFmavKDNgwYncEt3q9RW9NGtF7kEUDOB8cbDspgtnwxk7kxtz-Wbu086UVvjIV_5ouPyJyYbVBmgWrh-RhEaIvQ'});
+    if(token){
+      const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      await setDoc(doc(db,'users',uid),{fcmToken:token},{merge:true});
+      console.log('FCM token saved');
+    }
+  }catch(e){console.log('FCM:',e);}
+}
+
 window.doReset=async function(){
   const email=document.getElementById('lE').value.trim();
   if(!email){err('Wpisz email w polu powyżej, a potem kliknij zapomniałem hasła.');return;}
