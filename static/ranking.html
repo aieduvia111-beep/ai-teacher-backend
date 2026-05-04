@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Eduvia — Ranking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,.1);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --blue:#38bdf8;--gold:#f5a623;--red:#f87171;--pink:#f472b6;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --silver:#94a3b8;--bronze:#cd7c3a;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--b);}
+body{padding-bottom:80px;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* AURORA */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.aurora::before{content:'';position:absolute;width:600px;height:400px;top:-100px;left:50%;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(124,106,255,.1) 0%,transparent 65%);}
+.aurora::after{content:'';position:absolute;width:400px;height:300px;bottom:-50px;right:-50px;background:radial-gradient(ellipse,rgba(245,166,35,.06) 0%,transparent 65%);}
+
+/* HEADER */
+.m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,106,255,.4);}50%{box-shadow:0 0 0 6px rgba(124,106,255,0);}}
+.m-hdr-info{flex:1;min-width:0;}
+.m-hdr-title{font-family:var(--h);font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-sub{font-size:.6em;color:var(--muted);margin-top:1px;}
+.hdr-timer{font-size:.65em;color:var(--muted2);font-family:var(--h);letter-spacing:.02em;flex-shrink:0;}
+.hdr-timer b{color:var(--gold);}
+@media(max-width:900px){.m-hdr{display:flex!important;}}
+
+/* PAGE */
+.page{padding:68px 14px 0;position:relative;z-index:1;}
+
+/* PRIZE BANNER */
+.prize-wrap{background:linear-gradient(135deg,rgba(245,166,35,.08),rgba(124,106,255,.05));border:1px solid rgba(245,166,35,.18);border-radius:18px;padding:16px;margin-bottom:16px;position:relative;overflow:hidden;}
+.prize-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.45),transparent);}
+.prize-head{font-family:var(--h);font-size:.75em;font-weight:800;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:6px;letter-spacing:.02em;}
+.prizes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.prize{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:10px 6px;text-align:center;}
+.p-medal{font-size:1.3em;margin-bottom:4px;}
+.p-place{font-family:var(--h);font-size:.62em;font-weight:700;margin-bottom:3px;}
+.p-val{font-size:.68em;color:var(--text);font-weight:500;}
+.p-tag{font-size:.55em;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.18);color:var(--gold);padding:2px 7px;border-radius:100px;margin-top:4px;display:inline-block;font-family:var(--h);font-weight:700;}
+
+/* MY POS */
+.my-pos{background:rgba(124,106,255,.07);border:1px solid rgba(124,106,255,.18);border-radius:14px;padding:13px 14px;margin-bottom:16px;display:none;align-items:center;gap:10px;}
+.mp-rank{font-family:var(--h);font-size:1.3em;font-weight:800;color:var(--accent2);min-width:38px;}
+.mp-av{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.85em;color:white;flex-shrink:0;}
+.mp-info{flex:1;min-width:0;}
+.mp-name{font-size:.8em;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mp-xp{font-size:.66em;color:var(--muted2);margin-top:1px;}
+.mp-badge{font-size:.58em;padding:2px 8px;border-radius:100px;font-family:var(--h);font-weight:700;}
+.b-pro{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.18);color:var(--gold);}
+.b-free{background:rgba(255,255,255,.05);border:1px solid var(--border-hi);color:var(--muted2);}
+
+/* PODIUM */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:6px;margin-bottom:20px;padding:0 4px;display:none;}
+.pod{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.pod-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;color:white;position:relative;}
+.pod-av.r1{width:62px;height:62px;font-size:1.25em;animation:pp .6s .1s cubic-bezier(.34,1.56,.64,1) both;}
+.pod-av.r2{width:50px;height:50px;font-size:1em;animation:pp .6s .25s cubic-bezier(.34,1.56,.64,1) both;}
+.pod-av.r3{width:44px;height:44px;font-size:.9em;animation:pp .6s .4s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes pp{from{opacity:0;transform:scale(0);}to{opacity:1;transform:scale(1);}}
+.pod-crown{position:absolute;top:-13px;font-size:1.1em;animation:cb 2s ease-in-out infinite;}
+@keyframes cb{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+.pod-name{font-size:.67em;font-weight:600;text-align:center;max-width:65px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.pod-xp{font-size:.58em;color:var(--muted2);}
+.pod-block{border-radius:10px 10px 0 0;width:100%;display:flex;align-items:center;justify-content:center;font-size:1em;}
+.pb1{height:64px;background:linear-gradient(180deg,rgba(245,166,35,.2),rgba(245,166,35,.05));border:1px solid rgba(245,166,35,.25);border-bottom:none;animation:br .4s .05s ease both;}
+.pb2{height:46px;background:linear-gradient(180deg,rgba(148,163,184,.12),rgba(148,163,184,.03));border:1px solid rgba(148,163,184,.18);border-bottom:none;animation:br .4s .15s ease both;}
+.pb3{height:34px;background:linear-gradient(180deg,rgba(205,124,58,.12),rgba(205,124,58,.03));border:1px solid rgba(205,124,58,.18);border-bottom:none;animation:br .4s .25s ease both;}
+@keyframes br{from{opacity:0;transform:scaleY(0);transform-origin:bottom;}to{opacity:1;transform:scaleY(1);}}
+
+/* LIST */
+.sec-lbl{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0 3px;margin-bottom:8px;}
+.list{background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;overflow:hidden;}
+.li{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--border);animation:fu .35s ease both;}
+.li:last-child{border-bottom:none;}
+.li.me{background:rgba(124,106,255,.05);border-left:2px solid var(--accent);}
+@keyframes fu{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.li-r{font-family:var(--h);font-size:.78em;font-weight:800;min-width:26px;text-align:center;color:var(--muted2);}
+.li-r.t3{color:var(--gold);}
+.li-av{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.72em;color:white;flex-shrink:0;}
+.li-inf{flex:1;min-width:0;}
+.li-name{font-size:.78em;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.li-xp{font-size:.62em;color:var(--muted2);margin-top:1px;}
+.li-side{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.li-badge{font-size:.54em;padding:2px 7px;border-radius:100px;font-family:var(--h);font-weight:700;}
+.xpb{width:52px;height:3px;background:var(--border-hi);border-radius:100px;overflow:hidden;}
+.xpf{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
+
+/* NAV — identyczny jak dashboard */
+.m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,minmax(0,1fr));background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
+.m-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6em;color:var(--muted);text-decoration:none;position:relative;transition:.18s;}
+.m-nb.active{color:#a78bfa;}
+.m-nb-dot{position:absolute;top:6px;width:4px;height:4px;border-radius:50%;background:#7c6aff;}
+@media(max-width:900px){.m-nav{display:grid!important;}}
+
+.empty{padding:32px;text-align:center;color:var(--muted);font-size:.78em;}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+
+<header class="m-hdr"><div class="m-logo"><span>E</span></div><div class="m-hdr-info"><div class="m-hdr-title">Ranking miesięczny</div><div class="m-hdr-sub">Zdobywaj XP i wygrywaj nagrody</div></div><div class="hdr-timer">Koniec za <b id="timer">—</b></div></header>
+
+<div class="page">
+
+  <div class="prize-wrap">
+    <div class="prize-head">Nagrody — reset co miesiąc</div>
+    <div class="prizes">
+      <div class="prize"><div class="p-medal">#1</div><div class="p-place" style="color:var(--gold)">1. miejsce</div><div class="p-val">12 miesięcy</div><div class="p-tag">⭐ Pro</div></div>
+      <div class="prize"><div class="p-medal">#2</div><div class="p-place" style="color:var(--silver)">2. miejsce</div><div class="p-val">6 miesięcy</div><div class="p-tag">⭐ Pro</div></div>
+      <div class="prize"><div class="p-medal">#3</div><div class="p-place" style="color:var(--bronze)">3. miejsce</div><div class="p-val">3 miesiące</div><div class="p-tag">⭐ Pro</div></div>
+    </div>
+  </div>
+
+  <div class="my-pos" id="myPos">
+    <div class="mp-rank" id="myRank">#—</div>
+    <div class="mp-av" id="myAv">?</div>
+    <div class="mp-info">
+      <div class="mp-name" id="myName">Ty</div>
+      <div class="mp-xp" id="myXP">0 XP</div>
+    </div>
+    <div class="mp-badge b-free" id="myBadge">Free</div>
+  </div>
+
+  <div class="podium" id="podium">
+    <div class="pod" id="p2"><div class="pod-av r2" id="p2av">?</div><div class="pod-name" id="p2n">—</div><div class="pod-xp" id="p2x">0</div><div class="pod-block pb2">#2</div></div>
+    <div class="pod" id="p1"><div style="position:relative"><div class="pod-crown"></div><div class="pod-av r1" id="p1av">?</div></div><div class="pod-name" id="p1n">—</div><div class="pod-xp" id="p1x">0</div><div class="pod-block pb1">#1</div></div>
+    <div class="pod" id="p3"><div class="pod-av r3" id="p3av">?</div><div class="pod-name" id="p3n">—</div><div class="pod-xp" id="p3x">0</div><div class="pod-block pb3">#3</div></div>
+  </div>
+
+  <div class="sec-lbl">Wszyscy gracze</div>
+  <div class="list" id="rankList"><div class="empty">Ładowanie...</div></div>
+
+</div>
+
+<nav class="m-nav">
+  <a class="m-nb" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></a>
+  <a class="m-nb" href="chat.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
+  <a class="m-nb active" href="ranking.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span>Ranking</span></a>
+  <a class="m-nb" href="notes_generator.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Notatki</span></a>
+  <a class="m-nb" href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Profil</span></a>
+</nav>
+
+<script>
+const COLS=['#7c6aff','#a78bfa','#22d3a0','#38bdf8','#f5a623','#f87171','#34d399','#60a5fa','#f472b6','#818cf8'];
+function gc(i){return COLS[i%COLS.length];}
+function gi(n){return(n||'?')[0].toUpperCase();}
+
+function updateTimer(){
+  const now=new Date(),end=new Date(now.getFullYear(),now.getMonth()+1,1),diff=end-now;
+  const d=Math.floor(diff/86400000),h=Math.floor(diff%86400000/3600000),m=Math.floor(diff%3600000/60000);
+  document.getElementById('timer').textContent=`${d}d ${h}h ${m}m`;
+}
+updateTimer();setInterval(updateTimer,60000);
+</script>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import{getAuth,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getFirestore,collection,getDocs,query,orderBy,limit}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth=getAuth(app),db=getFirestore(app);
+
+onAuthStateChanged(auth,async u=>{
+  if(!u){window.location.href='login.html';return;}
+  
+  const q=query(collection(db,'users'),orderBy('xp','desc'),limit(50));
+  const snap=await getDocs(q);
+  const users=[];
+  snap.forEach(d=>users.push({id:d.id,...d.data()}));
+  
+  const maxXP=users[0]?.xp||1;
+  
+  // Podium
+  if(users.length>0){
+    document.getElementById('podium').style.display='flex';
+    const sp=(n,u2,g)=>{
+      if(!u2)return;
+      const nm=u2.name||u2.email?.split('@')[0]||'?';
+      document.getElementById(`p${n}av`).textContent=gi(nm);
+      document.getElementById(`p${n}av`).style.background=g;
+      document.getElementById(`p${n}n`).textContent=nm;
+      document.getElementById(`p${n}x`).textContent=(u2.xp||0).toLocaleString('pl-PL')+' XP';
+    };
+    sp(1,users[0],'linear-gradient(135deg,#f5a623,#d97706)');
+    sp(2,users[1],'linear-gradient(135deg,#64748b,#475569)');
+    sp(3,users[2],'linear-gradient(135deg,#cd7c3a,#a16207)');
+  }
+  
+  // Moja pozycja
+  const mi=users.findIndex(x=>x.id===u.uid);
+  if(mi>=0){
+    const me=users[mi];
+    const mn=me.name||u.email?.split('@')[0]||'Ty';
+    const mp=document.getElementById('myPos');
+    mp.style.display='flex';
+    document.getElementById('myRank').textContent=`#${mi+1}`;
+    document.getElementById('myAv').textContent=gi(mn);
+    document.getElementById('myName').textContent=mn+' (Ty)';
+    document.getElementById('myXP').textContent=(me.xp||0).toLocaleString('pl-PL')+' XP';
+    if(me.plan==='pro'){const b=document.getElementById('myBadge');b.textContent='⭐ Pro';b.className='mp-badge b-pro';}
+  }
+  
+  // Lista
+  const list=document.getElementById('rankList');
+  if(!users.length){list.innerHTML='<div class="empty">Brak danych</div>';return;}
+  list.innerHTML=users.map((u2,i)=>{
+    const nm=u2.name||u2.email?.split('@')[0]||'?';
+    const xp=u2.xp||0;
+    const pct=Math.round(xp/maxXP*100);
+    const isMe=u2.id===u.uid;
+    const isPro=u2.plan==='pro';
+    const medal=i===0?'#1':i===1?'#2':i===2?'#3':`${i+1}.`;
+    return `<div class="li${isMe?' me':''}" style="animation-delay:${i*.04}s">
+      <div class="li-r${i<3?' t3':''}">${medal}</div>
+      <div class="li-av" style="background:linear-gradient(135deg,${gc(i)},${gc(i+3)})">${gi(nm)}</div>
+      <div class="li-inf">
+        <div class="li-name">${nm}${isMe?'<span style="color:var(--accent2);font-size:.82em;margin-left:4px;">(Ty)</span>':''}</div>
+        <div class="li-xp">${xp.toLocaleString('pl-PL')} XP</div>
+      </div>
+      <div class="li-side">
+        <div class="li-badge ${isPro?'b-pro':'b-free'}">${isPro?'⭐ Pro':'Free'}</div>
+        <div class="xpb"><div class="xpf" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+});
+</script>
+</body>
+</html>
