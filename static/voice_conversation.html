@@ -680,25 +680,31 @@ async function initSes(){
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
-  if(!navigator.mediaDevices?.getUserMedia){showErr('Użyj Chrome.');g('perm').classList.remove('hidden');return;}
+  setHint('Łączenie z serwerem...');
+  try{ fetch(BACKEND_URL+'/health').catch(()=>{}); }catch(e){}
+
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  
+  if(isNative){
+    try{
+      const {Microphone} = window.Capacitor.Plugins;
+      await Microphone.requestPermissions();
+    }catch(e){ console.log('mic perm:', e); }
+  }
+
+  if(!navigator.mediaDevices?.getUserMedia){showErr('Brak mikrofonu.');g('perm').classList.remove('hidden');return;}
   try{
-    stream=await Promise.race([
-      navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}),
-      new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),10000))
-    ]);
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
   }catch(e){
-    showErr(e.name==='NotAllowedError'?'Zablokowano mikrofon.':e.name==='NotFoundError'?'Brak mikrofonu.':'Błąd: '+e.message);
+    showErr(e.name==='NotAllowedError'?'Zablokowano mikrofon.':'Błąd mikrofonu: '+e.message);
     g('perm').classList.remove('hidden'); return;
   }
-  try{_actx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){showErr("Błąd audio: "+e.message);g("perm").classList.remove("hidden");return;}
+  try{_actx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){showErr("Błąd audio.");g("perm").classList.remove("hidden");return;}
   _an=_actx.createAnalyser(); _an.fftSize=512;
   _ms=_actx.createMediaStreamSource(stream); _ms.connect(_an);
   g('micBtn').classList.remove('disabled');
   g('liveDot').classList.add('on');
   setHint('Przytrzymaj mikrofon i mów');
-
-  // Kamera tylko na mobile
-  if(IS_MOB) startCam();
 }
 
 async function startCam(){

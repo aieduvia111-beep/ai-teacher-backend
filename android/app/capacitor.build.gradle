@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-browser')
     implementation project(':capacitor-haptics')
     implementation project(':codetrix-studio-capacitor-google-auth')
+    implementation project(':mozartec-capacitor-microphone')
 
 }
 
