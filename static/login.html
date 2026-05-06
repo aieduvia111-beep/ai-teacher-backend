@@ -221,7 +221,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 // Splash screen
 window.addEventListener("load",function(){
   var s=document.getElementById("splash");
-  if(s){s.style.opacity="0";setTimeout(function(){s.style.display="none";s.style.pointerEvents="none";},500);}
+  if(s)setTimeout(function(){s.style.opacity="0";setTimeout(function(){s.style.display="none"},400)},1200);
 });
 
 function togglePass(id,btn){
