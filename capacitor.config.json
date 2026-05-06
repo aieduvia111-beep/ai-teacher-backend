@@ -2,5 +2,10 @@
   "appId": "com.eduvia.app",
   "appName": "Eduvia AI",
   "webDir": "static",
-  "server": {}
+  "server": {},
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
 }
