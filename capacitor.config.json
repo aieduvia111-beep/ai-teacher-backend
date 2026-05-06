@@ -2,7 +2,5 @@
   "appId": "com.eduvia.app",
   "appName": "Eduvia AI",
   "webDir": "static",
-  "server": {
-    "initialNavigation": "enabled"
-  }
+  "server": {}
 }
