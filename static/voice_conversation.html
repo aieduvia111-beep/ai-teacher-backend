@@ -690,7 +690,7 @@ async function initSes(){
     showErr(e.name==='NotAllowedError'?'Zablokowano mikrofon.':e.name==='NotFoundError'?'Brak mikrofonu.':'Błąd: '+e.message);
     g('perm').classList.remove('hidden'); return;
   }
-  _actx=new(window.AudioContext||window.webkitAudioContext)();
+  try{_actx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){showErr("Błąd audio: "+e.message);g("perm").classList.remove("hidden");return;}
   _an=_actx.createAnalyser(); _an.fftSize=512;
   _ms=_actx.createMediaStreamSource(stream); _ms.connect(_an);
   g('micBtn').classList.remove('disabled');
