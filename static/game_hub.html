@@ -346,7 +346,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .topic-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,106,255,.35);}
 .quick-topics{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
 .qt{padding:5px 12px;border-radius:100px;background:var(--s2);border:1px solid var(--border-hi);font-size:.72em;color:var(--muted2);cursor:pointer;transition:all .18s;user-select:none;}
-.qt:hover,.qt.sel{border-color:rgba(124,106,255,.35);color:var(--accent2);background:rgba(124,106,255,.06);}
+.qt:hover,.qt.sel{border-color:rgba(124,106,255,.35);color:var(--accent2);background:rgba(124,106,255,.08);}
 
 /* TOPIC BADGE */
 .topic-active{display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:12px;margin-bottom:16px;font-size:.78em;}
@@ -500,292 +500,68 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 </div>
 
 <script>
-// ═══ CURSOR ═══
-const cur=document.getElementById('cur'),ring=document.getElementById('ring');
-let mx=0,my=0,rx=0,ry=0;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
-(function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
-document.querySelectorAll('button,a,.nl,.level-btn,.tab-btn').forEach(el=>{
-  el.addEventListener('mouseenter',()=>{cur.style.width='18px';cur.style.height='18px';cur.style.background='var(--accent2)';});
-  el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';});
-});
+// CURSOR
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursorRing');
+if(cur&&ring){
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;if(ring){ring.style.left=rx+'px';ring.style.top=ry+'px';}requestAnimationFrame(loop);})();
+  document.querySelectorAll('button,a,.nl,.gc').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{cur.style.width='18px';cur.style.height='18px';});
+    el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';});
+  });
+}
 
-// ═══ MOBILE MENU ═══
+// MENU
 function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
 function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
 function go(u){window.location.href=u;}
 
-// ═══ STORAGE — PRAWDZIWE STATYSTYKI ═══
-const NOTES_KEY='eduvia_notes_history';
-function getNotes(){try{return JSON.parse(localStorage.getItem(NOTES_KEY)||'[]');}catch{return[];}}
-function saveNote(topic){
-  const notes=getNotes();
-  notes.unshift({topic,time:Date.now()});
-  if(notes.length>20)notes.pop();
-  localStorage.setItem(NOTES_KEY,JSON.stringify(notes));
-}
-function timeAgo(ts){
-  const diff=Date.now()-ts,m=60000,h=3600000,d=86400000;
-  if(diff<m)return 'właśnie teraz';
-  if(diff<h)return Math.floor(diff/m)+' min temu';
-  if(diff<2*h)return '1 godz. temu';
-  if(diff<d)return Math.floor(diff/h)+' godz. temu';
-  if(diff<2*d)return 'wczoraj';
-  return Math.floor(diff/d)+' dni temu';
-}
-function renderStats(){
-  const notes=getNotes();
-  const xpKey='eduvia_xp';
-  const xp=parseInt(localStorage.getItem(xpKey)||'0');
-  // Animate counters
-  animCount('statCount',notes.length);
-  animCount('statPages',notes.length*3);
-  animCount('statXP',xp);
-  // XP bar in sidebar
-  const lvl=Math.floor(xp/100)+1;
-  const xpInLevel=xp%100;
-  const _xl=document.getElementById('sbXpLv');if(_xl)_xl.textContent='Poziom '+lvl;
-  const _xp=document.getElementById('sbXpPts');if(_xp)_xp.textContent=xp+' / '+(lvl*100)+' XP';
-  const _xb=document.getElementById('sbXpBar');if(_xb)_xb.style.width=xpInLevel+'%';
-  const _xs=document.getElementById('sbXpSub');if(_xs)_xs.textContent=(100-xpInLevel)+' XP do poz. '+(lvl+1);
-  // Recent
-  const list=document.getElementById('recentList');
-  if(notes.length===0){list.innerHTML='<div class="empty-recent">📝 Brak notatek — wygeneruj pierwszą!</div>';return;}
-  list.innerHTML=notes.slice(0,4).map(n=>`
-    <div class="recent-item">
-      <div class="ri-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-      <div class="ri-name">${n.topic}</div>
-      <div class="ri-meta">${timeAgo(n.time)}</div>
-    </div>`).join('');
-}
-function animCount(id,target){
-  const el=document.getElementById(id);
-  let cur=0;const step=Math.max(1,Math.floor(target/20));
-  const t=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(t);},40);
+// QUICK TOPIC BUTTONS
+function qt(el){
+  document.querySelectorAll('.qt').forEach(q=>q.classList.remove('sel'));
+  el.classList.add('sel');
 }
 
-// ═══ LOGIKA ═══
-let level='liceum', pages=4, numSections=3, photos=[], stepTimer=null;
-
-const PAGES_INFO = {
-  2: '<strong>Szybka notatka</strong> — kluczowe pojęcia, 2 sekcje z przykładami, quiz (2 pytania)',
-  4: '<strong>Normalna notatka</strong> — pojęcia, 3 sekcje z przykładami, quiz, oś czasu, mapa myślowa',
-  6: '<strong>Dokładna notatka</strong> — 4 sekcje, więcej przykładów, tabela porównawcza, quiz (4 pytania)',
-  8: '<strong>Mega notatka</strong> — 5 sekcji, pogłębione przykłady, pełny quiz (6 pytań), kompletne podsumowanie',
-};
-const PAGES_TIME = {2:'~1 min', 4:'~2 min', 6:'~3 min', 8:'~4 min'};
-
-function setPages(btn){
-  document.querySelectorAll('.pages-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  pages = parseInt(btn.dataset.pages);
-  numSections = parseInt(btn.dataset.sections);
-  document.getElementById('pagesInfoText').innerHTML = PAGES_INFO[pages];
-  document.getElementById('featTime').textContent = PAGES_TIME[pages];
+// SET TOPIC
+function setTopic(){
+  const inp=document.getElementById('topicInput');
+  const t=inp?inp.value.trim():'';
+  if(!t){if(inp)inp.focus();return;}
+  localStorage.setItem('eduviaGameTopic',t);
+  const selSubj=document.querySelector('.qt.sel');
+  const subj=selSubj?selSubj.textContent:'';
+  localStorage.setItem('eduviaGameSubject',subj);
+  const card=document.getElementById('topicCard');
+  const active=document.getElementById('topicActive');
+  const name=document.getElementById('topicActiveName');
+  const gcQuiz=document.getElementById('gcQuiz');
+  if(card) card.style.display='none';
+  if(active) active.classList.add('on');
+  if(name) name.textContent=t;
+  if(gcQuiz) gcQuiz.href='quiz_runner.html?topic='+encodeURIComponent(t)+'&subject='+encodeURIComponent(subj||'');
 }
 
-function setLevel(btn){document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');level=btn.dataset.val;}
-
-
-
-function startProgress(fromImg){
-  const steps=['st0','st1','st2','st3','st4'],targets=[15,35,55,75,90];
-  document.getElementById('loadingSubtitle').textContent=fromImg?'AI analizuje zdjęcie i buduje PDF':'AI analizuje temat i buduje PDF';
-  let i=0;
-  stepTimer=setInterval(()=>{
-    if(i>=steps.length){
-      clearInterval(stepTimer);const last=document.getElementById('st4');let blink=false;
-      stepTimer=setInterval(()=>{blink=!blink;last.style.opacity=blink?'1':'0.45';},700);
-      document.getElementById('loadingView').querySelector('h3').textContent='Finalizuję PDF...';return;
-    }
-    if(i>0)document.getElementById(steps[i-1]).className='step-item done';
-    document.getElementById(steps[i]).className='step-item current';
-    document.getElementById('progressFill').style.width=targets[i]+'%';
-    i++;
-  },8000);
+function changeTopic(){
+  const card=document.getElementById('topicCard');
+  const active=document.getElementById('topicActive');
+  if(card) card.style.display='';
+  if(active) active.classList.remove('on');
+  const inp=document.getElementById('topicInput');
+  if(inp) inp.focus();
 }
-function finishProgress(){
-  clearInterval(stepTimer);
-  ['st0','st1','st2','st3','st4'].forEach(s=>{const el=document.getElementById(s);el.className='step-item done';el.style.opacity='1';});
-  document.getElementById('progressFill').style.width='100%';
-}
-function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
 
-async function generate(){
-  const _lim = await checkLimit('notes');
-  if(!_lim.allowed) return;
-  document.getElementById('errMsg').classList.remove('visible');
-  const wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
-  let body={klasa:level, pages:pages, num_sections:numSections, ...(wlasneInstr?{wlasne_instrukcje:wlasneInstr}:{})};
-  console.log('[Eduvia] Generuję: pages='+pages+' num_sections='+numSections);
-  let topicName='';
-  const t=document.getElementById('temat').value.trim();
-  if(!t && photos.length===0){showErr('Wpisz temat notatki lub dodaj zdjecie.');return;}
-  if(t){body.temat=t;topicName=t;}
-  if(photos.length>0){body.images=photos;body.image=photos[0];if(!topicName)topicName='Analiza ze zdjecia';}
-  if(!body.temat)body.temat=topicName;
-  document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';
-  startProgress(photos.length>0);
-  try{
-    const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/notes-pdf/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!res.ok)throw new Error('Błąd serwera '+res.status);
-    const ct=res.headers.get('content-type')||'';
-    if(ct.includes('application/pdf')){
-      const blob=await res.blob(),url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
-      link.href=url;link.download=`Notatka_${topicName.replace(/\s+/g,'_')}.pdf`;finishProgress();
-      // Zapisz do historii i XP
-      saveNote(topicName);
-      const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
-      if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
-      localStorage.setItem('eduvia_xp',xp+50);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();},600);
-    }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
-  }catch(e){
-    clearInterval(stepTimer);
-    ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');
-    document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';
-    showErr(e.message);
+// LOAD SAVED TOPIC
+window.addEventListener('load',function(){
+  const t=localStorage.getItem('eduviaGameTopic');
+  if(t){
+    const inp=document.getElementById('topicInput');
+    if(inp) inp.value=t;
+    setTopic();
   }
-}
-function reset(){
-  document.getElementById('successView').style.display='none';document.getElementById('formView').style.display='block';
-  document.getElementById('temat').value='';
-  if(document.getElementById('wlasneInstrukcje'))document.getElementById('wlasneInstrukcje').value='';
-  document.getElementById('errMsg').classList.remove('visible');document.getElementById('progressFill').style.width='0%';
-  clearPhotos();['st0','st1','st2','st3','st4'].forEach((s,i)=>document.getElementById(s).className='step-item'+(i===0?' current':''));
-}
-document.getElementById('temat').addEventListener('keypress',e=>{if(e.key==='Enter')generate();});
-
-// Init
-renderStats();
-
-
-/* ── KAMERA JS (jak Vision) ── */
-let cameraStream=null,facingMode="environment";
-
-
-
-
-
-/* ── MULTI-ZDJECIA ── */
-
-function renderPhotos(){
-  const wrap=document.getElementById('photosWrap');
-  const grid=document.getElementById('captureGrid');
-  if(!wrap)return;
-  if(photos.length===0){
-    wrap.innerHTML='';
-    if(grid)grid.style.display='grid';
-    return;
-  }
-  // Ukryj kafelki gdy sa juz zdjecia
-  if(grid)grid.style.display='none';
-  let html='<div class="photos-count">Dodano: <span>'+photos.length+'</span> '+
-    (photos.length===1?'zdjecie':(photos.length<5?'zdjecia':'zdjeciach'))+'</div>';
-  html+='<div class="photos-grid">';
-  photos.forEach((b64,i)=>{
-    html+='<div class="photo-thumb"><img src="data:image/jpeg;base64,'+b64+'">'
-      +'<button class="photo-thumb-del" onclick="removePhoto('+i+')">'
-      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-      +'</button></div>';
-  });
-  // Przyciski dodaj wiecej (max 15)
-  if(photos.length<15){
-    html+='<div class="photo-add-more" onclick="takePhoto()" style="background:rgba(124,106,255,.08);border:2px dashed rgba(124,106,255,.3);">'
-      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'
-      +'<span>Aparat</span></div>';
-    html+='<div class="photo-add-more" onclick="pickFiles()">'
-      +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-      +'<span>Galeria</span></div>';
-  }
-  html+='</div>';
-  // Przycisk wyczysc wszystko
-  html+='<button onclick="clearPhotos()" style="width:100%;padding:8px;background:transparent;border:1px solid var(--border-hi);border-radius:9px;color:var(--muted);font-size:.76em;cursor:pointer;margin-bottom:12px;font-family:var(--b);transition:.2s;" onmouseover=\"this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'\" onmouseout=\"this.style.borderColor=\'var(--border-hi)\';this.style.color=\'var(--muted)\'\">Wyczysc wszystkie zdjecia</button>';
-  wrap.innerHTML=html;
-}
-
-function removePhoto(i){
-  photos.splice(i,1);
-  renderPhotos();
-}
-
-function clearPhotos(){
-  photos=[];
-  renderPhotos();
-  const grid=document.getElementById('captureGrid');
-  if(grid)grid.style.display='grid';
-}
-
-function pickFiles(){
-  const inp=document.getElementById('fileInput');
-  if(inp)inp.click();
-}
-
-function takePhoto(){
-  const inp=document.createElement('input');
-  inp.type='file';
-  inp.accept='image/*';
-  inp.capture='environment';
-  inp.style.display='none';
-  inp.onchange=handleFiles;
-  document.body.appendChild(inp);
-  inp.click();
-  setTimeout(()=>document.body.removeChild(inp),30000);
-}
-
-function handleFiles(e){
-  const files=Array.from(e.target.files);
-  files.forEach(f=>{
-    if(!f.type.startsWith('image/'))return;
-    if(photos.length>=15)return;
-    const r=new FileReader();
-    r.onload=ev=>{
-      photos.push(ev.target.result.split(',')[1]);
-      renderPhotos();
-    };
-    r.readAsDataURL(f);
-  });
-  e.target.value='';
-}
-
-async function openCamera(){
-  document.getElementById('cameraModal').classList.add('open');
-  await startCamera();
-}
-
-async function startCamera(){
-  try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}},audio:false});
-    document.getElementById('cameraVideo').srcObject=cameraStream;
-  }catch(e){
-    closeCamera();
-    showErr('Brak dostepu do kamery. Wybierz zdjecie z galerii.');
-  }
-}
-
-function closeCamera(){
-  document.getElementById('cameraModal').classList.remove('open');
-  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-}
-
-async function snapPhoto(){
-  const video=document.getElementById('cameraVideo');
-  const canvas=document.getElementById('cameraCanvas');
-  canvas.width=video.videoWidth;
-  canvas.height=video.videoHeight;
-  canvas.getContext('2d').drawImage(video,0,0);
-  const b64=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
-  photos.push(b64);
-  renderPhotos();
-  closeCamera();
-}
-
-function switchCamera(){
-  facingMode=facingMode==='environment'?'user':'environment';
-  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  startCamera();
-}
+});
 </script>
+
 
 </body>
 </html>
