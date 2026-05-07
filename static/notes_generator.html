@@ -595,14 +595,14 @@ function getPlanBadgeHTML(plan) {
         </div>
         <div id="photosWrap"></div>
         <div class="capture-grid" id="captureGrid">
-          <button class="capture-btn cam-btn" onclick="takePhoto()">
+          <button class="capture-btn cam-btn" onclick="takePhoto()" ontouchend="event.preventDefault();takePhoto();">
             <div class="cb-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
             <div class="cb-title">Zrob zdjecie</div>
             <div class="cb-sub">Aparat telefonu<br>lub kamery</div>
           </button>
-          <button class="capture-btn gal-btn" onclick="pickFiles()">
+          <button class="capture-btn gal-btn" onclick="pickFiles()" ontouchend="event.preventDefault();pickFiles();">
             <div class="cb-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </div>
