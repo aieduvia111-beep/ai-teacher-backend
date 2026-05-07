@@ -658,8 +658,8 @@ async function generate(){
         body:JSON.stringify({
           topic:document.getElementById('temat').value.trim(),
           level:level,
-          images:photos.length>0?photos:undefined,
-          wlasne_instrukcje:document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim()||undefined:undefined
+          images:photos.length>0?photos:null,
+          wlasne_instrukcje:(document.getElementById('wlasneInstrukcje')||{}).value||''
         })}),
       new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),25000))
     ]);
@@ -965,11 +965,13 @@ canvas.addEventListener('click',e=>{
 });
 
 // VOICE
-const synth=window.speechSynthesis;
+const synth=window.speechSynthesis||null;
 let vUtter=null;
-if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=()=>{};
+function initVoices(){if(synth&&synth.onvoiceschanged!==undefined)synth.onvoiceschanged=()=>{};}
+try{initVoices();}catch(e){}
 function getVoice(){const vs=synth.getVoices();return vs.find(v=>v.lang.startsWith('pl'))||null;}
 function speak(text,cb){
+  if(!synth){if(cb)cb();return;}
   synth.cancel();
   const u=new SpeechSynthesisUtterance(text);
   const v=getVoice();if(v)u.voice=v;
@@ -979,9 +981,9 @@ function speak(text,cb){
   u.onerror=()=>{if(cb)cb();};
   vUtter=u;synth.speak(u);
 }
-function vPlay(){if(synth.paused){synth.resume();document.getElementById('btVind').classList.add('on');}else if(curStep>=0&&steps[curStep])speak(steps[curStep].narration);}
-function vPause(){synth.pause();document.getElementById('btVind').classList.remove('on');document.getElementById('bvLbl').textContent='Pauza';}
-function vStop(){synth.cancel();document.getElementById('btVind').classList.remove('on');document.getElementById('bvLbl').textContent='Głos: gotowy';}
+function vPlay(){if(synth&&synth.paused){synth.resume();document.getElementById('btVind').classList.add('on');}else if(curStep>=0&&steps[curStep])speak(steps[curStep].narration);}
+function vPause(){if(synth)synth.pause();document.getElementById('btVind').classList.remove('on');document.getElementById('bvLbl').textContent='Pauza';}
+function vStop(){if(synth)synth.cancel();document.getElementById('btVind').classList.remove('on');document.getElementById('bvLbl').textContent='Głos: gotowy';}
 function setSpd(s,btn){voiceSpd=s;document.querySelectorAll('.bv-s').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
 </script>
 <script type="module">
