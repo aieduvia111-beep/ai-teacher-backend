@@ -998,21 +998,44 @@ function clearPhotos(){
   if(grid)grid.style.display='grid';
 }
 
-function pickFiles(){
+
+// NATYWNY FILE PICKER (Capacitor)
+async function pickFiles(){
+  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
+  if(isNative){
+    try{
+      const {FilePicker}=window.Capacitor.Plugins;
+      const result=await FilePicker.pickImages({multiple:true,readData:true});
+      if(result&&result.files){
+        result.files.forEach(f=>{
+          if(photos.length>=15)return;
+          photos.push(f.data);
+          renderPhotos();
+        });
+      }
+      return;
+    }catch(e){console.log('FilePicker error:',e);}
+  }
+  // Fallback przeglądarka
   const inp=document.getElementById('fileInput');
-  if(inp)inp.click();
+  if(inp){inp.value='';inp.removeAttribute('capture');inp.click();}
 }
 
-function takePhoto(){
-  const inp=document.createElement('input');
-  inp.type='file';
-  inp.accept='image/*';
-  inp.capture='environment';
-  inp.style.display='none';
-  inp.onchange=handleFiles;
-  document.body.appendChild(inp);
-  inp.click();
-  setTimeout(()=>document.body.removeChild(inp),30000);
+async function takePhoto(){
+  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
+  if(isNative){
+    try{
+      const {FilePicker}=window.Capacitor.Plugins;
+      const result=await FilePicker.pickImages({multiple:false,readData:true});
+      if(result&&result.files&&result.files[0]){
+        if(photos.length<15){photos.push(result.files[0].data);renderPhotos();}
+      }
+      return;
+    }catch(e){console.log('Camera error:',e);}
+  }
+  // Fallback przeglądarka
+  const inp=document.getElementById('inputCam');
+  if(inp){inp.value='';inp.click();}
 }
 
 function handleFiles(e){
