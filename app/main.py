@@ -349,3 +349,10 @@ async def startup():
     print(f"💎 Dashboard: http://127.0.0.1:8000/static/dashboard_FINAL.html")
     print(f"🎤 Voice:     http://127.0.0.1:8000/static/voice_conversation.html")
     print("=" * 60)
+
+try:
+    from .api.whiteboard import router as whiteboard_router
+    app.include_router(whiteboard_router)
+    print("✅ whiteboard OK")
+except Exception as e:
+    print(f"❌ whiteboard: {e}")
