@@ -317,6 +317,56 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .camera-switch svg{width:13px;height:13px;stroke:currentColor;}
 .camera-switch:hover{color:var(--text);border-color:var(--accent2);}
 
+
+/* TEMPO BUTTONS */
+.tempo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:4px;}
+.tempo-btn{padding:11px 8px;background:var(--s2);border:1.5px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.72em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.tempo-btn svg{width:14px;height:14px;stroke:currentColor;}
+.tempo-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.tempo-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.35);color:var(--accent2);}
+.tempo-desc{font-size:.68em;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+/* STORIES MODE (telefon pionowy) */
+#storiesView{display:none;position:fixed;inset:0;z-index:6000;background:#07070d;flex-direction:column;}
+#storiesView.show{display:flex;}
+#sProg{position:absolute;top:0;left:0;right:0;height:3px;display:flex;gap:2px;padding:8px 12px;z-index:10;}
+.sp-bar{flex:1;height:3px;border-radius:100px;background:rgba(255,255,255,.2);overflow:hidden;}
+.sp-fill{height:100%;background:white;width:0%;transition:width linear;}
+.sp-fill.done{width:100%;}
+#sTopbar{position:absolute;top:0;left:0;right:0;padding:20px 14px 0;display:flex;align-items:center;gap:10px;z-index:10;}
+.st-back{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.1);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:white;}
+.st-topic{font-family:var(--h);font-size:.7em;font-weight:700;color:rgba(255,255,255,.7);}
+.st-vind{display:none;align-items:center;gap:5px;margin-left:auto;padding:4px 10px;background:rgba(124,106,255,.2);border:1px solid rgba(124,106,255,.3);border-radius:100px;}
+.st-vind.on{display:flex;}
+.st-vw{display:flex;gap:2px;align-items:center;}
+.st-vb{width:2px;background:#a78bfa;border-radius:100px;animation:stw var(--d,.5s) ease-in-out infinite alternate;}
+@keyframes stw{from{height:3px}to{height:12px}}
+.st-vt{font-size:.6em;color:#a78bfa;font-family:var(--h);font-weight:700;}
+#sContent{flex:1;display:flex;align-items:center;justify-content:center;padding:80px 20px 120px;overflow:hidden;}
+.s-card{width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;animation:sCardIn .3s cubic-bezier(.16,1,.3,1);}
+@keyframes sCardIn{from{opacity:0;transform:translateX(60px);}to{opacity:1;transform:none;}}
+.s-stepnum{width:32px;height:32px;border-radius:10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.8em;font-weight:800;color:var(--accent2);}
+.s-title{font-family:var(--h);font-size:1.3em;font-weight:800;color:white;line-height:1.2;}
+.s-divider{height:1px;background:rgba(124,106,255,.2);}
+.s-text{font-size:.9em;color:rgba(238,238,245,.85);line-height:1.6;}
+.s-formula{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);border-radius:12px;padding:14px 18px;font-family:var(--h);font-size:1em;font-weight:700;color:#38bdf8;text-align:center;letter-spacing:.02em;}
+.s-box{background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.25);border-radius:12px;padding:14px 16px;font-size:.85em;color:rgba(238,238,245,.9);line-height:1.5;}
+.s-example{background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.18);border-radius:10px;padding:12px 16px;font-size:.82em;color:rgba(34,211,160,.9);line-height:1.5;}
+#sNavbar{position:absolute;bottom:0;left:0;right:0;padding:16px 20px 28px;display:flex;align-items:center;gap:12px;background:linear-gradient(0deg,rgba(7,7,13,.95) 0%,transparent 100%);}
+.sn-btn{flex:1;padding:13px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:white;font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:.2s;}
+.sn-btn.primary{background:linear-gradient(135deg,var(--accent),#5a48e0);border-color:transparent;}
+.sn-btn:active{transform:scale(.97);}
+.sn-voice{display:flex;gap:6px;}
+.sn-v{width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);}
+
+/* SWIPE AREAS */
+#sSwipeL{position:absolute;left:0;top:80px;bottom:120px;width:40%;z-index:5;}
+#sSwipeR{position:absolute;right:0;top:80px;bottom:120px;width:40%;z-index:5;}
+
+/* DESKTOP: zawsze tablica, ukryj stories toggle */
+@media(min-width:769px){
+  .stories-toggle{display:none!important;}
+}
 </style><style>
 /* BOARD FULLSCREEN */
 #boardView{display:none;position:fixed;inset:0;z-index:5000;flex-direction:column;background:#0a0a12;}
@@ -493,6 +543,29 @@ canvas{display:block;width:100%;height:100%;position:relative;z-index:2;cursor:p
           </div>
         </div>
 
+        <!-- TEMPO LEKCJI -->
+        <div class="field">
+          <span class="field-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Tempo lekcji
+          </span>
+          <div class="tempo-grid">
+            <button class="tempo-btn" data-val="szybka" onclick="setTempo(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              Szybka
+            </button>
+            <button class="tempo-btn active" data-val="srednia" onclick="setTempo(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Średnia
+            </button>
+            <button class="tempo-btn" data-val="szczegolowa" onclick="setTempo(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+              Szczegółowa
+            </button>
+          </div>
+          <div class="tempo-desc" id="tempoDesc">Pełne wyjaśnienie z wzorami i przykładami — 5-6 kroków</div>
+        </div>
+
         <!-- FEATURES -->
         <div class="field" style="margin-bottom:20px;">
           <span class="field-label">
@@ -592,10 +665,23 @@ canvas{display:block;width:100%;height:100%;position:relative;z-index:2;cursor:p
 </div>
 <script>
 const BACKEND='https://ai-teacher-backend-1.onrender.com';
-let level='liceum', photos=[], steps=[], curStep=-1, drawEls=[], voiceSpd=1;
+let level='liceum', tempo='srednia', photos=[], steps=[], curStep=-1, drawEls=[], voiceSpd=1;
+let sStep=0, stimer=null, isMobile=window.innerWidth<769;
+window.addEventListener('resize',()=>{isMobile=window.innerWidth<769;});
 
 // LEVEL
 function setLevel(btn){document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');level=btn.dataset.val;}
+function setTempo(btn){
+  document.querySelectorAll('.tempo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  tempo=btn.dataset.val;
+  const descs={
+    szybka:'Szybkie wprowadzenie — kluczowe pojęcia i wzory bez rozbudowanych przykładów',
+    srednia:'Pełne wyjaśnienie z wzorami i przykładami — 5-6 kroków',
+    szczegolowa:'Szczegółowa lekcja z wyprowadzeniami, wieloma przykładami i ćwiczeniami — 8 kroków'
+  };
+  document.getElementById('tempoDesc').textContent=descs[tempo]||'';
+}
 
 // ERROR
 function showErr(msg){const e=document.getElementById('errMsg');document.getElementById('errText').textContent=msg;e.classList.add('visible');setTimeout(()=>e.classList.remove('visible'),4000);}
@@ -658,6 +744,7 @@ async function generate(){
         body:JSON.stringify({
           topic:document.getElementById('temat').value.trim(),
           level:level,
+          tempo:tempo,
           images:photos.length>0?photos:null,
           wlasne_instrukcje:(document.getElementById('wlasneInstrukcje')||{}).value||''
         })}),
@@ -761,10 +848,16 @@ const ctx=canvas.getContext('2d');
 let W,H,scrollY=0,totalH=0,isDragging=false,dragStartY=0,dragScrollStart=0;
 
 function openBoard(topic){
-  document.getElementById('btTopic').textContent=topic;
-  document.getElementById('boardView').classList.add('show');
-  drawEls=[];curStep=-1;scrollY=0;totalH=0;
-  setTimeout(()=>{resizeCv();drawBg();renderStepsList();playAll(0);},80);
+  if(isMobile){
+    // Telefon = Stories mode
+    openStories(topic);
+  } else {
+    // Desktop = Tablica
+    document.getElementById('btTopic').textContent=topic;
+    document.getElementById('boardView').classList.add('show');
+    drawEls=[];curStep=-1;scrollY=0;totalH=0;
+    setTimeout(()=>{resizeCv();drawBg();renderStepsList();playAll(0);},80);
+  }
 }
 function backToForm(){
   vStop();
@@ -964,6 +1057,127 @@ canvas.addEventListener('click',e=>{
   handleCanvasClick(e.clientX, e.clientY);
 });
 
+// ─── STORIES MODE ───────────────────────────────────
+function openStories(topic){
+  sStep=0;
+  document.getElementById('stTopic').textContent=topic;
+  document.getElementById('storiesView').classList.add('show');
+  renderStories();
+  buildProgBars();
+  speakStory(sStep);
+}
+
+function closeStories(){
+  svStop();
+  document.getElementById('storiesView').classList.remove('show');
+  document.getElementById('formView').style.display='';
+  document.getElementById('genBtn').disabled=false;
+  steps=[];
+}
+
+function buildProgBars(){
+  const prog=document.getElementById('sProg');
+  prog.innerHTML=steps.map((_,i)=>`<div class="sp-bar"><div class="sp-fill${i<sStep?' done':''}" id="spf${i}"></div></div>`).join('');
+}
+
+function renderStories(){
+  if(!steps[sStep])return;
+  const s=steps[sStep];
+  const card=document.getElementById('sCard');
+  
+  // Zbuduj karte z elementow kroku
+  let html='';
+  const els=s.elements||[];
+  
+  // Stepnum + title
+  const titleEl=els.find(e=>e.type==='title');
+  const numEl=els.find(e=>e.type==='stepnum');
+  if(numEl||titleEl){
+    html+=`<div style="display:flex;align-items:center;gap:10px;">`;
+    if(numEl) html+=`<div class="s-stepnum">${numEl.text}</div>`;
+    if(titleEl) html+=`<div class="s-title">${titleEl.text}</div>`;
+    html+='</div>';
+  }
+  html+='<div class="s-divider"></div>';
+  
+  // Tekst / definicja
+  const texts=els.filter(e=>e.type==='text'&&(!e.color||e.color==='#eeeef5'));
+  texts.forEach(e=>{html+=`<div class="s-text">${e.text}</div>`;});
+  
+  // Box (kluczowe pojecia)
+  const boxes=els.filter(e=>e.type==='box');
+  boxes.forEach(e=>{html+=`<div class="s-box">${e.text}</div>`;});
+  
+  // Formula
+  const formulas=els.filter(e=>e.type==='formula');
+  formulas.forEach(e=>{html+=`<div class="s-formula">${e.text}</div>`;});
+  
+  // Przykłady (szary tekst)
+  const examples=els.filter(e=>e.type==='text'&&e.color&&e.color!=='#eeeef5');
+  examples.forEach(e=>{html+=`<div class="s-example">${e.text}</div>`;});
+  
+  card.innerHTML=html;
+  card.style.animation='none';
+  setTimeout(()=>card.style.animation='',10);
+  
+  // Progress bars
+  document.querySelectorAll('.sp-fill').forEach((el,i)=>{
+    el.classList.remove('done');
+    el.style.width=i<sStep?'100%':'0%';
+    el.style.transition='none';
+  });
+  const curr=document.getElementById('spf'+sStep);
+  if(curr){setTimeout(()=>{curr.style.transition='width '+((s.narration||'').length*0.06+2)+'s linear';curr.style.width='100%';},50);}
+  
+  // Nawigacja
+  document.getElementById('sNextBtn').textContent=sStep>=steps.length-1?'Zakończ':'Następny';
+}
+
+function sNext(){
+  svStop();
+  if(sStep>=steps.length-1){closeStories();return;}
+  sStep++;buildProgBars();renderStories();speakStory(sStep);
+}
+function sPrev(){
+  svStop();
+  if(sStep<=0)return;
+  sStep--;buildProgBars();renderStories();speakStory(sStep);
+}
+
+function speakStory(idx){
+  if(!steps[idx])return;
+  svSpeak(steps[idx].narration);
+}
+
+// VOICE (stories)
+const synthS=window.speechSynthesis||null;
+function svGetVoice(){if(!synthS)return null;const vs=synthS.getVoices();return vs.find(v=>v.lang.startsWith('pl'))||null;}
+if(synthS&&synthS.onvoiceschanged!==undefined)synthS.onvoiceschanged=()=>{};
+function svSpeak(text,cb){
+  if(!synthS){if(cb)cb();return;}
+  synthS.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  const v=svGetVoice();if(v)u.voice=v;
+  u.lang='pl-PL';u.rate=voiceSpd;
+  u.onstart=()=>{document.getElementById('stVind').classList.add('on');};
+  u.onend=()=>{document.getElementById('stVind').classList.remove('on');if(cb)cb();};
+  u.onerror=()=>{document.getElementById('stVind').classList.remove('on');if(cb)cb();};
+  synthS.speak(u);
+}
+function svPlay(){if(sStep>=0&&steps[sStep])svSpeak(steps[sStep].narration);}
+function svStop(){if(synthS)synthS.cancel();document.getElementById('stVind').classList.remove('on');}
+
+// Swipe gesture
+let touchSX=null;
+document.getElementById('storiesView')?.addEventListener('touchstart',e=>{touchSX=e.touches[0].clientX;},{passive:true});
+document.getElementById('storiesView')?.addEventListener('touchend',e=>{
+  if(touchSX===null)return;
+  const dx=e.changedTouches[0].clientX-touchSX;
+  if(Math.abs(dx)>50){dx<0?sNext():sPrev();}
+  touchSX=null;
+},{passive:true});
+// ─────────────────────────────────────────────────────
+
 // VOICE
 const synth=window.speechSynthesis||null;
 let vUtter=null;
@@ -987,8 +1201,37 @@ function vStop(){if(synth)synth.cancel();document.getElementById('btVind').class
 function setSpd(s,btn){voiceSpd=s;document.querySelectorAll('.bv-s').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
 </script>
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  if(!u)location.href='login.html';
-});
-</script></body></html>
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import{getAuth,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth=getAuth(app);
+onAuthStateChanged(auth,u=>{if(!u)location.href='login.html';});
+</script>
+<!-- STORIES VIEW (telefon pionowy) -->
+<div id="storiesView">
+  <div id="sProg"></div>
+  <div id="sTopbar">
+    <button class="st-back" onclick="closeStories()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="st-topic" id="stTopic">Temat</div>
+    <div class="st-vind" id="stVind">
+      <div class="st-vw"><div class="st-vb" style="--d:.4s"></div><div class="st-vb" style="--d:.6s"></div><div class="st-vb" style="--d:.5s"></div></div>
+      <div class="st-vt">AI mówi</div>
+    </div>
+  </div>
+  <div id="sSwipeL" onclick="sPrev()"></div>
+  <div id="sSwipeR" onclick="sNext()"></div>
+  <div id="sContent">
+    <div class="s-card" id="sCard"></div>
+  </div>
+  <div id="sNavbar">
+    <div class="sn-voice">
+      <button class="sn-v" onclick="svPlay()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+      <button class="sn-v" onclick="svStop()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
+    </div>
+    <button class="sn-btn" onclick="sPrev()">Poprzedni</button>
+    <button class="sn-btn primary" onclick="sNext()" id="sNextBtn">Następny</button>
+  </div>
+</div>
+</body></html>
