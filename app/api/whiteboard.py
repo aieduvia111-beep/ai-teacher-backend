@@ -9,7 +9,8 @@ router = APIRouter(prefix="/api/v1/whiteboard", tags=["whiteboard"])
 
 class WhiteboardRequest(BaseModel):
     topic: str = ""
-    level: str = "liceum"  # kid, liceum, matura, studia
+    level: str = "liceum"
+    tempo: str = "srednia"  # szybka, srednia, szczegolowa
     images: Optional[List[str]] = None
     wlasne_instrukcje: Optional[str] = None
 
@@ -32,9 +33,16 @@ Nigdy nie piszesz ogólników jak "to ważny temat" lub "warto to znać".
 Zawsze podajesz konkretne wzory, definicje, przykłady obliczeń.
 Odpowiadasz TYLKO jako JSON bez markdown, bez komentarzy."""
 
-def build_whiteboard_prompt(topic: str, level: str, extra: str = "") -> str:
+def build_whiteboard_prompt(topic: str, level: str, tempo: str = "srednia", extra: str = "") -> str:
     level_desc = LEVEL_DESC.get(level, LEVEL_DESC["liceum"])
     extra_txt = f"\nDodatkowe instrukcje od ucznia: {extra}" if extra else ""
+    
+    TEMPO_MAP = {
+        "szybka": ("4-5", "Krótkie narration (1-2 zdania). Tylko najważniejsze wzory i definicje. Bez rozbudowanych przykładów."),
+        "srednia": ("5-6", "Narration 2-3 zdania. Pełne definicje, wzory, jeden przykład obliczeniowy per krok."),
+        "szczegolowa": ("7-8", "Narration 3-4 zdania. Szczegółowe wyprowadzenia, wiele przykładów z liczbami, ćwiczenia, wskazówki egzaminacyjne.")
+    }
+    n_steps, tempo_desc = TEMPO_MAP.get(tempo, TEMPO_MAP["srednia"])
     
     return f"""Wytłumacz SZCZEGÓŁOWO i KONKRETNIE temat "{topic}" {level_desc}.{extra_txt}
 
@@ -78,7 +86,7 @@ Odpowiedz TYLKO jako JSON:
   ]
 }}
 
-Wygeneruj 5-6 kroków szczegółowo omawiających "{topic}". Każdy krok Y o 240px wyżej niż poprzedni."""
+Wygeneruj {n_steps} kroków dla "{topic}". {tempo_desc} Każdy krok Y o 240px wyżej niż poprzedni."""
 
 
 def build_vision_prompt(level: str, extra: str = "") -> str:
@@ -114,7 +122,7 @@ async def generate_whiteboard(req: WhiteboardRequest):
             messages = [{
                 "role": "user",
                 "content": build_whiteboard_prompt(
-                    req.topic, req.level, req.wlasne_instrukcje or ""
+                    req.topic, req.level, req.tempo, req.wlasne_instrukcje or ""
                 )
             }]
         
