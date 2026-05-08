@@ -791,7 +791,7 @@ async function takePhoto(){
       const {EduviaFile}=window.Capacitor.Plugins;
       const result=await EduviaFile.takePhoto();
       if(result&&result.base64){
-        if(photos.length<15){photos.push(result.base64);renderPhotos();}
+        setImage('data:image/jpeg;base64,'+result.base64);
       }
       return;
     }catch(e){console.log('takePhoto error:',e);}
