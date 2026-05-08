@@ -360,5 +360,15 @@ const pts=Array.from({length:40},()=>({
   });
 })();
 </script>
+
+<script>
+// Keep-alive - budzi backend co 10 minut
+(function(){
+  const BACKEND='https://ai-teacher-backend-1.onrender.com';
+  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
+  ping(); // od razu przy starcie
+  setInterval(ping, 10*60*1000); // co 10 minut
+})();
+</script>
 </body>
 </html>

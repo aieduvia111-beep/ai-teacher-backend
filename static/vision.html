@@ -1076,5 +1076,15 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbo
   <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
+
+<script>
+// Keep-alive - budzi backend co 10 minut
+(function(){
+  const BACKEND='https://ai-teacher-backend-1.onrender.com';
+  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
+  ping(); // od razu przy starcie
+  setInterval(ping, 10*60*1000); // co 10 minut
+})();
+</script>
 </body>
 </html>

@@ -297,5 +297,15 @@ function mOpen(){document.getElementById("mDrawer").classList.add("open");docume
 function mClose(){document.getElementById("mDrawer").classList.remove("open");document.getElementById("mOverlay").classList.remove("open");}
 function go(url){window.location.href=url;}
 </script>
+
+<script>
+// Keep-alive - budzi backend co 10 minut
+(function(){
+  const BACKEND='https://ai-teacher-backend-1.onrender.com';
+  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
+  ping(); // od razu przy starcie
+  setInterval(ping, 10*60*1000); // co 10 minut
+})();
+</script>
 </body>
 </html>
