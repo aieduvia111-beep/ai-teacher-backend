@@ -1025,15 +1025,13 @@ async function takePhoto(){
   const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
   if(isNative){
     try{
-      const {CameraPreview}=window.Capacitor.Plugins;
-      await CameraPreview.start({position:'rear',toBack:false,width:window.innerWidth,height:window.innerHeight});
-      const result=await CameraPreview.capture({quality:85});
-      await CameraPreview.stop();
-      if(result&&result.value){
-        if(photos.length<15){photos.push(result.value);renderPhotos();}
+      const {EduviaFile}=window.Capacitor.Plugins;
+      const result=await EduviaFile.takePhoto();
+      if(result&&result.base64){
+        if(photos.length<15){photos.push(result.base64);renderPhotos();}
       }
       return;
-    }catch(e){console.log('CameraPreview error:',e);}
+    }catch(e){console.log('takePhoto error:',e);}
   }
   const inp=document.getElementById('inputCam');
   if(inp){inp.value='';inp.click();}
