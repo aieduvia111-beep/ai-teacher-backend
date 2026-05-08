@@ -5,7 +5,6 @@
   "server": {},
   "android": {
     "allowMixedContent": true,
-    "captureInput": true,
     "webContentsDebuggingEnabled": true
   },
   "plugins": {
