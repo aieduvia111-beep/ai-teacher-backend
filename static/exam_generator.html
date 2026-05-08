@@ -977,7 +977,7 @@ function clearPhotos(){
 
 
 // NATYWNY FILE PICKER (Capacitor)
-async async function pickFiles(){
+async function pickFiles(){
   const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
   if(isNative){
     try{
@@ -997,7 +997,7 @@ async async function pickFiles(){
   if(inp){inp.value='';inp.removeAttribute('capture');inp.click();}
 }
 
-async async function takePhoto(){
+async function takePhoto(){
   const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
   if(isNative){
     try{
