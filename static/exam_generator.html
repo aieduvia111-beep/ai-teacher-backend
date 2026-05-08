@@ -263,30 +263,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 
 </style>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
-const auth = getAuth(app);
-const db = getFirestore(app);
-let currentUser = null;
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.href = 'login.html'; return; }
-  currentUser = user;
-  localStorage.setItem('eduvia_uid', user.uid);
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
-});
-window._fbSave = async function(collection, data, xp) {
-  if (!currentUser) return;
-  try {
-    const upd = {[collection]: arrayUnion({...data, timestamp: new Date().toISOString()})};
-    if (xp) upd.xp = increment(xp);
-    await updateDoc(doc(db, 'users', currentUser.uid), upd);
-  } catch(e) { console.log('FB err:', e); }
-};
-</script>
+
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
