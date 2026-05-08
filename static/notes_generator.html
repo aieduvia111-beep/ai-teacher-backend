@@ -1055,24 +1055,8 @@ async function pickFiles(){
 }
 
 async function takePhoto(){
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {Camera}=window.Capacitor.Plugins;
-      const photo=await Camera.getPhoto({
-        resultType:'base64',
-        source:'CAMERA',
-        quality:85,
-        allowEditing:false
-      });
-      if(photo&&photo.base64String){
-        if(photos.length<15){photos.push(photo.base64String);renderPhotos();}
-      }
-      return;
-    }catch(e){console.log('Camera error:',e);}
-  }
   const inp=document.getElementById('inputCam');
-  if(inp){inp.value='';inp.click();}
+  if(inp){inp.value='';inp.setAttribute('capture','environment');inp.click();}
 }
 
 function handleFiles(e){
