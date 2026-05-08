@@ -2,6 +2,7 @@ package com.eduvia.app;
 
 import com.getcapacitor.BridgeActivity;
 import com.eduvia.app.EduviaFilePlugin;
+import com.eduvia.app.EduviaSpeechPlugin;
 import com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth;
 import android.webkit.WebView;
 import android.webkit.PermissionRequest;
@@ -12,6 +13,7 @@ public class MainActivity extends BridgeActivity {
   public void onCreate(android.os.Bundle savedInstanceState) {
     registerPlugin(GoogleAuth.class);
     registerPlugin(EduviaFilePlugin.class);
+    registerPlugin(EduviaSpeechPlugin.class);
     super.onCreate(savedInstanceState);
   }
 

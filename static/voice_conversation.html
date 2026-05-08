@@ -723,7 +723,29 @@ async function startCam(){
 }
 
 // RECORDING
-function startRec(){
+async function startRec(){
+  if(isProc||isRec) return;
+  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
+  if(isNative){
+    isRec=true;
+    g('micBtn').classList.add('recording');
+    setOrb('listening');setHint('Słucham...');
+    try{
+      const {EduviaSpeech}=window.Capacitor.Plugins;
+      const result=await EduviaSpeech.startListening();
+      isRec=false;
+      g('micBtn').classList.remove('recording');
+      if(result&&result.text){
+        transcribedText=result.text;
+        await process();
+      }
+    }catch(e){
+      isRec=false;
+      g('micBtn').classList.remove('recording');
+      setOrb('idle');setHint('Spróbuj ponownie');
+    }
+    return;
+  }
   if(!stream||isProc||isRec) return;
   if(curAudio){curAudio.pause();curAudio=null;isSpeak=false;}
   isRec=true; audioChunks=[];

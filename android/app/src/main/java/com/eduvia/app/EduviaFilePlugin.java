@@ -8,10 +8,16 @@ import android.provider.MediaStore;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import androidx.core.content.FileProvider;
-import com.getcapacitor.*;
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import com.getcapacitor.PermissionState;
 import java.io.File;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -22,7 +28,6 @@ import java.util.Locale;
     name = "EduviaFile",
     permissions = {
         @Permission(strings = {Manifest.permission.CAMERA}, alias = "camera"),
-        @Permission(strings = {Manifest.permission.READ_MEDIA_IMAGES}, alias = "photos"),
         @Permission(strings = {Manifest.permission.READ_EXTERNAL_STORAGE}, alias = "storage")
     }
 )
@@ -44,7 +49,7 @@ public class EduviaFilePlugin extends Plugin {
         if (getPermissionState("camera") == PermissionState.GRANTED) {
             launchCamera(call);
         } else {
-            call.reject("Brak uprawnień do aparatu");
+            call.reject("Brak uprawnien do aparatu");
         }
     }
 
