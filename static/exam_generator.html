@@ -204,7 +204,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 @media(max-width:768px){
   .cursor,.cursor-ring{display:none!important;}
-  body{cursor:auto;overflow:auto;height:auto;}
+  *{cursor:auto!important;}body{overflow:auto;height:auto;}
   html,body{overflow:auto;}
   .app{display:block;}
   .sidebar{display:none!important;}
