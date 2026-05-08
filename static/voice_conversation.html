@@ -680,6 +680,14 @@ async function initSes(){
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
+  // Native APK - nie uzywaj getUserMedia
+  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
+  if(isNative){
+    g('micBtn').classList.remove('disabled');
+    g('liveDot').classList.add('on');
+    setHint('Przytrzymaj mikrofon i mów');
+    return;
+  }
   if(!navigator.mediaDevices?.getUserMedia){showErr('Użyj Chrome.');g('perm').classList.remove('hidden');return;}
   try{
     stream=await Promise.race([
