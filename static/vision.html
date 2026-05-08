@@ -1042,7 +1042,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbo
   const c=document.getElementById('cur'),r=document.getElementById('ring');
   let mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
   document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
-  (function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
+  if(!('ontouchstart' in window)){(function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();};
   document.querySelectorAll('a,.nl,button,input,select,.capture-btn,.history-item').forEach(el=>{
     el.addEventListener('mouseenter',()=>{c.style.width='20px';c.style.height='20px';c.style.background='rgba(124,106,255,.2)';c.style.border='1.5px solid var(--accent)';r.style.width='40px';r.style.height='40px';});
     el.addEventListener('mouseleave',()=>{c.style.width='10px';c.style.height='10px';c.style.background='var(--accent)';c.style.border='none';r.style.width='32px';r.style.height='32px';});

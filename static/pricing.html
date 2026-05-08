@@ -353,7 +353,7 @@ const pts=Array.from({length:40},()=>({
   if(!cur||window.innerWidth<769)return;
   let mx=0,my=0,cx=0,cy=0;
   document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
-  (function loop(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(loop);})();
+  if(!('ontouchstart' in window)){(function loop(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(loop);})();};
   document.querySelectorAll('a,button,[onclick]').forEach(el=>{
     el.addEventListener('mouseenter',()=>{cur.style.width='22px';cur.style.height='22px';cur.style.background='rgba(124,106,255,0.25)';cur.style.border='1.5px solid var(--accent)';});
     el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';cur.style.border='none';});
