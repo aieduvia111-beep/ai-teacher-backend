@@ -2,7 +2,6 @@
   "dependencies": {
     "@capacitor/android": "^8.3.1",
     "@capacitor/browser": "^8.0.3",
-    "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^7.6.2",
     "@capacitor/core": "^8.3.1",
     "@capacitor/haptics": "^8.0.2",

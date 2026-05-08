@@ -1005,7 +1005,7 @@ async function pickFiles(){
   if(isNative){
     try{
       const {FilePicker}=window.Capacitor.Plugins;
-      const result=await FilePicker.pickImages({multiple:true,readData:true});
+      const result=await FilePicker.pickMedia({multiple:true,readData:true});
       if(result&&result.files){
         result.files.forEach(f=>{
           if(photos.length>=15)return;
