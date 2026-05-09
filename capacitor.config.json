@@ -5,14 +5,7 @@
   "server": {},
   "android": {
     "allowMixedContent": true,
+    "captureInput": true,
     "webContentsDebuggingEnabled": true
-  },
-  "plugins": {
-    "Filesystem": {
-      "androidScheme": "https"
-    },
-    "CapacitorHttp": {
-      "enabled": true
-    }
   }
 }
