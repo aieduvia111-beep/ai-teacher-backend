@@ -18,6 +18,23 @@
 html,body{min-height:100%;height:100%;}
 body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
 
+
+/* CHROME REQUIRED SCREEN */
+.chrome-screen{position:fixed;inset:0;z-index:99999;background:#06060f;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;}
+.chrome-logo{width:80px;height:80px;margin:0 auto 24px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853,#FBBC05,#EA4335);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(66,133,244,.3);}
+.chrome-logo svg{width:44px;height:44px;}
+.chrome-title{font-family:'Syne',sans-serif;font-size:1.5em;font-weight:800;color:white;margin-bottom:12px;}
+.chrome-sub{font-size:.88em;color:#6e6e88;line-height:1.65;max-width:300px;margin:0 auto 32px;}
+.chrome-install-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;padding:16px;background:linear-gradient(135deg,#4285F4,#1a73e8);border:none;border-radius:14px;color:white;font-family:'Syne',sans-serif;font-size:.95em;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:12px;box-shadow:0 6px 24px rgba(66,133,244,.35);}
+.chrome-install-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(66,133,244,.45);}
+.chrome-skip{font-size:.75em;color:#44445a;cursor:pointer;text-decoration:underline;margin-top:8px;}
+.chrome-skip:hover{color:#6e6e88;}
+.chrome-steps{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;max-width:300px;width:100%;margin-bottom:24px;text-align:left;}
+.chrome-step{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.chrome-step:last-child{border-bottom:none;}
+.chrome-step-num{width:26px;height:26px;border-radius:50%;background:rgba(66,133,244,.15);border:1px solid rgba(66,133,244,.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.72em;font-weight:800;color:#4285F4;flex-shrink:0;}
+.chrome-step-txt{font-size:.8em;color:#8888a0;line-height:1.4;}
+
 /* NOISE */
 body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
 
@@ -101,6 +118,14 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 .submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,106,255,.45);}
 .submit:active{transform:none;}
 
+
+/* GOOGLE BTN */
+.google-btn{width:100%;padding:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.9em;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:16px;}
+.google-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);transform:translateY(-1px);}
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border-hi);}
+.divider span{font-size:.72em;color:var(--muted);white-space:nowrap;}
+
 /* LEGAL */
 .legal{font-size:.68em;color:var(--muted);text-align:center;margin-top:11px;line-height:1.55;}
 
@@ -129,6 +154,44 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 </style>
 </head>
 <body>
+
+<!-- CHROME REQUIRED SCREEN -->
+<div class="chrome-screen" id="chromeScreen" style="display:none;">
+  <div class="chrome-logo">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" fill="white" opacity="0.9"/>
+      <circle cx="12" cy="12" r="4" fill="#4285F4"/>
+      <path d="M12 8h8.5a10 10 0 0 1 0 8H12" fill="#34A853" opacity="0.8"/>
+      <path d="M12 8H3.5a10 10 0 0 0 4 13.66L12 12" fill="#FBBC05" opacity="0.8"/>
+      <path d="M12 21.66A10 10 0 0 1 3.5 8" fill="#EA4335" opacity="0.8"/>
+    </svg>
+  </div>
+  <div class="chrome-title">Wymagana przeglądarka Chrome</div>
+  <div class="chrome-sub">Eduvia AI wymaga przeglądarki Chrome aby działać poprawnie. Zainstaluj Chrome lub ustaw go jako domyślną przeglądarkę.</div>
+  
+  <div class="chrome-steps">
+    <div class="chrome-step">
+      <div class="chrome-step-num">1</div>
+      <div class="chrome-step-txt">Zainstaluj Google Chrome z Google Play</div>
+    </div>
+    <div class="chrome-step">
+      <div class="chrome-step-num">2</div>
+      <div class="chrome-step-txt">Otwórz Ustawienia → Aplikacje domyślne</div>
+    </div>
+    <div class="chrome-step">
+      <div class="chrome-step-num">3</div>
+      <div class="chrome-step-txt">Ustaw Chrome jako domyślną przeglądarkę</div>
+    </div>
+  </div>
+
+  <a class="chrome-install-btn" href="https://play.google.com/store/apps/details?id=com.android.chrome" target="_blank">
+    <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+    Zainstaluj Chrome
+  </a>
+  <div class="chrome-skip" onclick="document.getElementById('chromeScreen').style.display='none'">Kontynuuj mimo to</div>
+</div>
+
+
 <div class="aurora"></div>
 <div class="particles" id="parts"></div>
 <div class="load-ov" id="loadOv"><div class="spin"></div><div class="load-txt" id="loadTxt">Łączenie...</div></div>
@@ -171,6 +234,12 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
         </div>
         <!-- LOGIN -->
         <div id="pL">
+          <button class="google-btn" onclick="doGoogle()">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Kontynuuj z Google
+          </button>
+          <div class="divider"><span>lub</span></div>
+
           <div class="field">
             <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
             <input type="email" id="lE" placeholder="Adres e-mail" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
@@ -185,6 +254,12 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
         </div>
         <!-- REGISTER -->
         <div id="pR" style="display:none">
+          <button class="google-btn" onclick="doGoogle()">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Kontynuuj z Google
+          </button>
+          <div class="divider"><span>lub</span></div>
+
           <div class="field">
             <svg class="fi" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>
             <input type="text" id="rN" placeholder="Imię (opcjonalnie)" autocomplete="given-name">
@@ -206,6 +281,21 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 </main>
 
 <script>
+
+// Wykryj czy Chrome jest zainstalowany i czy jest domyślna przeglądarka
+(function(){
+  var ua = navigator.userAgent;
+  var isChrome = /Chrome/.test(ua) && /Google Inc/.test(navigator.vendor);
+  var isSamsungBrowser = /SamsungBrowser/.test(ua);
+  var isFirefox = /Firefox/.test(ua);
+  var isEdge = /Edg/.test(ua);
+  
+  // Jeśli nie Chrome lub Samsung Browser (który blokuje TWA)
+  if(!isChrome || isSamsungBrowser){
+    document.getElementById('chromeScreen').style.display='flex';
+  }
+})();
+
 // Particles
 (function(){
   const c=document.getElementById('parts');
@@ -253,11 +343,25 @@ function eTxt(c){
     'auth/network-request-failed':'Brak połączenia z internetem.'
   }[c]||'Błąd: '+(c||'nieznany');
 }
+
+window.doGoogle=async function(){
+  load(true,'Logowanie przez Google...');
+  try{
+    const provider=new GoogleAuthProvider();
+    const r=await signInWithPopup(auth,provider);
+    await saveUser(r.user,r.user.displayName);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){
+    load(false);
+    if(e.code!=='auth/popup-closed-by-user')err(eTxt(e.code));
+  }
+};
+
 </script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,browserLocalPersistence,setPersistence}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,browserLocalPersistence,setPersistence,GoogleAuthProvider,signInWithPopup}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
@@ -296,6 +400,20 @@ window.doReset=async function(){
   try{await sendPasswordResetEmail(auth,email);load(false);ok('✓ Link wysłany na '+email+'. Sprawdź skrzynkę i folder spam!');}
   catch(e){load(false);err(eTxt(e.code));}
 };
+
+window.doGoogle=async function(){
+  load(true,'Logowanie przez Google...');
+  try{
+    const provider=new GoogleAuthProvider();
+    const r=await signInWithPopup(auth,provider);
+    await saveUser(r.user,r.user.displayName);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){
+    load(false);
+    if(e.code!=='auth/popup-closed-by-user')err(eTxt(e.code));
+  }
+};
+
 </script>
 <div class="splash" id="splash">
   <div class="splash-logo">E</div>
