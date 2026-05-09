@@ -363,3 +363,11 @@ try:
     print("whiteboard OK")
 except Exception as e:
     print(f"whiteboard error: {e}")
+
+# ═══ PUSH NOTIFICATIONS ═══
+try:
+    from .api.push import router as push_router
+    app.include_router(push_router)
+    print("✅ push OK")
+except Exception as e:
+    print(f"❌ push: {e}")
