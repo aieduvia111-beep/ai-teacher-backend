@@ -285,6 +285,39 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 .m-nb:active{transform:scale(.85)!important;}
 .m-nb.active{transform:translateY(-2px);}
 
+
+/* LEADERBOARD */
+.leaderboard-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:20px;overflow:hidden;position:relative;}
+.leaderboard-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(124,106,255,.08),transparent 70%);pointer-events:none;}
+.lb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.lb-title{font-family:var(--h);font-size:.85em;font-weight:800;color:white;display:flex;align-items:center;gap:8px;}
+.lb-refresh{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;color:var(--muted);}
+.lb-refresh:hover{background:rgba(124,106,255,.1);color:#a78bfa;transform:rotate(180deg);}
+.lb-list{display:flex;flex-direction:column;gap:6px;}
+.lb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid transparent;transition:.2s;animation:lbIn .35s cubic-bezier(.22,1,.36,1) both;}
+.lb-item.me{background:linear-gradient(135deg,rgba(124,106,255,.1),rgba(34,211,160,.05));border-color:rgba(124,106,255,.25);box-shadow:0 0 20px rgba(124,106,255,.08);}
+.lb-item:hover{background:rgba(255,255,255,.05);}
+.lb-medal{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.8em;font-weight:800;flex-shrink:0;}
+.lb-medal.gold{background:linear-gradient(135deg,rgba(245,166,35,.2),rgba(245,166,35,.05));border:1px solid rgba(245,166,35,.3);color:#f5a623;box-shadow:0 0 12px rgba(245,166,35,.15);}
+.lb-medal.silver{background:linear-gradient(135deg,rgba(170,170,170,.2),rgba(170,170,170,.05));border:1px solid rgba(170,170,170,.3);color:#aaa;}
+.lb-medal.bronze{background:linear-gradient(135deg,rgba(205,127,50,.2),rgba(205,127,50,.05));border:1px solid rgba(205,127,50,.3);color:#cd7f32;}
+.lb-medal.other{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--muted);}
+.lb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.82em;color:white;flex-shrink:0;border:2px solid rgba(255,255,255,.1);}
+.lb-info{flex:1;min-width:0;}
+.lb-name{font-size:.83em;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lb-name .me-badge{font-size:.7em;background:rgba(124,106,255,.2);border:1px solid rgba(124,106,255,.3);color:#a78bfa;padding:1px 6px;border-radius:100px;margin-right:5px;font-family:var(--h);font-weight:700;}
+.lb-level{font-size:.67em;color:var(--muted2);margin-top:1px;}
+.lb-xp-wrap{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;}
+.lb-xp{font-family:var(--h);font-size:.82em;font-weight:800;color:#a78bfa;}
+.lb-xp-lbl{font-size:.6em;color:var(--muted);margin-top:1px;}
+.lb-loading,.lb-empty{text-align:center;padding:20px;color:var(--muted);font-size:.82em;}
+.lb-divider{height:1px;background:var(--border);margin:6px 0;}
+.lb-mypos{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(124,106,255,.06);border:1px dashed rgba(124,106,255,.2);margin-top:6px;}
+.lb-mypos-txt{font-size:.78em;color:var(--muted2);flex:1;}
+.lb-mypos-xp{font-family:var(--h);font-size:.78em;font-weight:800;color:#a78bfa;}
+@keyframes lbIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+.lb-item:nth-child(1){animation-delay:.05s;}.lb-item:nth-child(2){animation-delay:.1s;}.lb-item:nth-child(3){animation-delay:.15s;}.lb-item:nth-child(4){animation-delay:.2s;}.lb-item:nth-child(5){animation-delay:.25s;}
+
 </style>
 
 <script type="module">
@@ -396,6 +429,97 @@ window._fbSave=async function(collection,data,xp){
     await updateDoc(doc(db,'users',currentUser.uid),upd);
   }catch(e){console.log('FB err:',e);}
 };
+
+// LEADERBOARD
+import{collection,query,orderBy,limit,getDocs}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const LEVELS_LB=[{min:0,name:'Uczen'},{min:100,name:'Zak'},{min:250,name:'Student'},{min:500,name:'Scholar'},{min:900,name:'Ekspert'},{min:1500,name:'Mistrz'},{min:2500,name:'Geniusz'},{min:4000,name:'Legenda'}];
+function getLvl(xp){for(let i=LEVELS_LB.length-1;i>=0;i--){if(xp>=LEVELS_LB[i].min)return LEVELS_LB[i].name;}return 'Uczen';}
+const colors=['#7c6aff,#a78bfa','#22d3a0,#38bdf8','#f5a623,#f472b6','#f87171,#fb923c','#4ade80,#22d3a0'];
+const rankClass=['gold','silver','bronze'];
+const medals=['1','2','3'];
+
+async function loadLeaderboard(){
+  const list=document.getElementById('lbList');
+  if(!list)return;
+  list.innerHTML='<div class="lb-loading">Ladowanie rankingu...</div>';
+  try{
+    const q=query(collection(db,'users'),orderBy('xp','desc'),limit(10));
+    const snap=await getDocs(q);
+    if(snap.empty){list.innerHTML='<div class="lb-empty">Brak danych rankingu</div>';return;}
+    
+    const avatarColors=[
+      'linear-gradient(135deg,#7c6aff,#a78bfa)',
+      'linear-gradient(135deg,#22d3a0,#38bdf8)',
+      'linear-gradient(135deg,#f5a623,#f472b6)',
+      'linear-gradient(135deg,#f87171,#fb923c)',
+      'linear-gradient(135deg,#4ade80,#22d3a0)',
+    ];
+    const medalCls=['gold','silver','bronze'];
+    
+    let html='';
+    let rank=1;
+    let myRank=null;
+    let myXp=0;
+    
+    // Znajdz moja pozycje
+    snap.forEach(d=>{
+      if(currentUser&&d.id===currentUser.uid){myRank=rank;myXp=d.data().xp||0;}
+      rank++;
+    });
+    
+    rank=1;
+    let shown=0;
+    snap.forEach(d=>{
+      if(shown>=5)return;
+      const data=d.data();
+      const xp=data.xp||0;
+      const email=data.email||'';
+      // Ukryj email - pokaz tylko pierwsza litere i domene
+      const rawName=data.displayName||email.split('@')[0]||'Uzytkownik';
+      // Zanonimizuj - pokaz tylko inicjal + ****
+      const name=rawName.charAt(0).toUpperCase()+'***';
+      const isMe=currentUser&&d.id===currentUser.uid;
+      // Dla siebie pokaz prawdziwe imie
+      const displayName=isMe?(data.displayName||email.split('@')[0]||'Ty'):name;
+      const cls=rank<=3?medalCls[rank-1]:'other';
+      const color=avatarColors[(rank-1)%avatarColors.length];
+      const meBadge=isMe?'<span class="me-badge">Ty</span>':'';
+      
+      html+=`<div class="lb-item ${isMe?'me':''}">
+        <div class="lb-medal ${cls}">${rank}</div>
+        <div class="lb-avatar" style="background:${color}">${displayName.charAt(0).toUpperCase()}</div>
+        <div class="lb-info">
+          <div class="lb-name">${meBadge}${displayName}</div>
+          <div class="lb-level">${getLvl(xp)}</div>
+        </div>
+        <div class="lb-xp-wrap">
+          <div class="lb-xp">${xp.toLocaleString('pl-PL')}</div>
+          <div class="lb-xp-lbl">XP</div>
+        </div>
+      </div>`;
+      rank++;
+      shown++;
+    });
+    
+    // Dodaj moja pozycje jesli nie jestem w top 5
+    if(myRank&&myRank>5){
+      html+='<div class="lb-divider"></div>';
+      html+=`<div class="lb-mypos"><div class="lb-mypos-txt">Twoja pozycja: #${myRank}</div><div class="lb-mypos-xp">${myXp.toLocaleString('pl-PL')} XP</div></div>`;
+    }
+    
+    list.innerHTML=html;
+  }catch(e){list.innerHTML='<div class="lb-empty">Blad ladowania rankingu</div>';}
+}
+
+// Przycisk odswierz
+document.addEventListener('DOMContentLoaded',function(){
+  var btn=document.getElementById('lbRefreshBtn');
+  if(btn)btn.addEventListener('click',loadLeaderboard);
+});
+
+setTimeout(loadLeaderboard,1500);
+
 </script>
 <script>
 // ============================================================
@@ -748,6 +872,23 @@ function getPlanBadgeHTML(plan) {
   </section>
 
   <!-- MOTIVATIONAL FOOTER -->
+
+  <section class="leaderboard-sec">
+    <div class="sec-label">Ranking graczy</div>
+    <div class="leaderboard-card">
+      <div class="lb-header">
+        <div class="lb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          Top 5 tego tygodnia
+        </div>
+        <div class="lb-refresh" id="lbRefreshBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </div>
+      </div>
+      <div class="lb-list" id="lbList"><div class="lb-loading">Ladowanie rankingu...</div></div>
+    </div>
+  </section>
+
   <div class="dash-footer">
     <div class="dash-footer-txt">Eduvia AI &mdash; Twój prywatny korepetytor 24/7</div>
   </div>
