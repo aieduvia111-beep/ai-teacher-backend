@@ -151,6 +151,33 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
   .hero-title{font-size:1.65em;}
   .card{padding:22px 18px;border-radius:18px;}
 }
+
+/* ═══ WOW ANIMACJE ═══ */
+@keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
+button{transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease!important;}
+button:active{transform:scale(.95)!important;}
+.submit:hover,.btn-primary:hover,.plan-cta:hover{transform:translateY(-2px)!important;box-shadow:0 10px 28px rgba(124,106,255,.35)!important;}
+
+.card,.glass,.plan-card,.feat-card{animation:cardIn .35s cubic-bezier(.22,1,.36,1) both;}
+.plan-card:nth-child(1){animation-delay:.05s;}
+.plan-card:nth-child(2){animation-delay:.1s;}
+.plan-card:nth-child(3){animation-delay:.15s;}
+.plan-card{transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s!important;}
+.plan-card:hover{transform:translateY(-4px)!important;box-shadow:0 16px 48px rgba(0,0,0,.4)!important;}
+
+.tab{transition:all .2s cubic-bezier(.34,1.56,.64,1)!important;}
+.tab:hover{transform:translateY(-1px)!important;}
+.tab.active{transform:scale(1.02)!important;}
+
+.google-btn{transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s!important;}
+.google-btn:hover{transform:translateY(-2px)!important;}
+.google-btn:active{transform:scale(.97)!important;}
+
+.hero-title{animation:fadeInUp .5s cubic-bezier(.22,1,.36,1) .05s both;}
+.hero-sub{animation:fadeInUp .5s cubic-bezier(.22,1,.36,1) .1s both;}
+
 </style>
 </head>
 <body>
