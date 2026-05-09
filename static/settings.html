@@ -130,6 +130,30 @@ button:active{transform:scale(.95)!important;}
 .feat-card,.stat-card,.info-card{animation:cardIn .35s cubic-bezier(.22,1,.36,1) both;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s!important;}
 .feat-card:hover,.stat-card:hover,.info-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 32px rgba(0,0,0,.3)!important;}
 
+
+/* XP BAR */
+.xp-bar-wrap{margin-top:14px;}
+.xp-bar-top{display:flex;justify-content:space-between;margin-bottom:6px;}
+.xp-bar-lv{font-family:var(--h);font-size:.72em;font-weight:800;color:var(--accent2);}
+.xp-bar-next{font-size:.65em;color:var(--muted2);}
+.xp-track{height:6px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden;position:relative;}
+.xp-fill{height:100%;background:linear-gradient(90deg,#7c6aff,#a78bfa,#22d3a0);border-radius:100px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+.xp-shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:xpsh 2.5s ease-in-out infinite;}
+@keyframes xpsh{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+
+/* ACHIEVEMENTS */
+.ach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:4px 0;}
+.ach{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--border);transition:.2s;}
+.ach.unlocked{background:rgba(124,106,255,.08);border-color:rgba(124,106,255,.2);}
+.ach-icon{display:flex;align-items:center;justify-content:center;color:var(--muted);}
+.ach.unlocked .ach-icon{color:var(--accent2);}
+.ach-name{font-size:.55em;color:var(--muted2);text-align:center;font-family:var(--h);font-weight:700;line-height:1.3;}
+.ach.unlocked .ach-name{color:var(--accent2);}
+
+/* ITEM hover */
+.item{transition:background .15s,transform .15s!important;}
+.item:active{background:rgba(124,106,255,.06)!important;transform:scale(.99)!important;}
+
 </style>
 </head>
 <body>
@@ -157,6 +181,17 @@ button:active{transform:scale(.95)!important;}
         <div class="hs"><div class="hs-v" id="hXP">0</div><div class="hs-l">XP</div></div>
         <div class="hs"><div class="hs-v" id="hStreak">0</div><div class="hs-l">Streak</div></div>
         <div class="hs"><div class="hs-v" id="hDays">0</div><div class="hs-l">Dni</div></div>
+      </div>
+
+      <div class="xp-bar-wrap">
+        <div class="xp-bar-top">
+          <div class="xp-bar-lv" id="hLevel">Uczeń</div>
+          <div class="xp-bar-next" id="hXpNext">0 / 100 XP</div>
+        </div>
+        <div class="xp-track">
+          <div class="xp-fill" id="hXpFill" style="width:0%"></div>
+          <div class="xp-shine"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -216,6 +251,22 @@ button:active{transform:scale(.95)!important;}
     </div>
 
     <div class="sec">
+      <div class="sec-lbl">Osiągnięcia</div>
+      <div class="sec-body" style="padding:14px;">
+        <div class="ach-grid" id="achGrid">
+          <div class="ach" id="ach1"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="ach-name">Pierwszy Quiz</div></div>
+          <div class="ach" id="ach2"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 2c0 0 4 4 4 8a4 4 0 01-8 0c0-4 4-8 4-8z"/><path d="M12 14v4"/><path d="M8 18h8"/></svg></div><div class="ach-name">Streak 3 dni</div></div>
+          <div class="ach" id="ach3"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="ach-name">100 XP</div></div>
+          <div class="ach" id="ach4"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ach-name">5 Notatek</div></div>
+          <div class="ach" id="ach5"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div><div class="ach-name">10 Quizow</div></div>
+          <div class="ach" id="ach6"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="ach-name">500 XP</div></div>
+          <div class="ach" id="ach7"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="ach-name">Streak 7 dni</div></div>
+          <div class="ach" id="ach8"><div class="ach-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg></div><div class="ach-name">Legenda</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-lbl">Sesja</div>
       <div class="sec-body">
         <div class="item red" onclick="showModal()">
@@ -262,6 +313,32 @@ import{getFirestore,doc,getDoc}from'https://www.gstatic.com/firebasejs/10.7.1/fi
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
 
+
+// XP BAR + POZIOMY + OSIAGNIĘCIA
+const LEVELS_S=[{min:0,max:100,name:'Uczen'},{min:100,max:250,name:'Zak'},{min:250,max:500,name:'Student'},{min:500,max:900,name:'Scholar'},{min:900,max:1500,name:'Ekspert'},{min:1500,max:2500,name:'Mistrz'},{min:2500,max:4000,name:'Geniusz'},{min:4000,max:9999,name:'Legenda'}];
+function getLvlS(xp){for(let i=LEVELS_S.length-1;i>=0;i--){if(xp>=LEVELS_S[i].min)return LEVELS_S[i];}return LEVELS_S[0];}
+
+function updateXPBar(xp,data){
+  const lv=getLvlS(xp);
+  const pct=Math.min(100,Math.round(((xp-lv.min)/(lv.max-lv.min))*100));
+  document.getElementById('hLevel').textContent='Poziom: '+lv.name;
+  document.getElementById('hXpNext').textContent=xp+' / '+lv.max+' XP';
+  setTimeout(()=>{document.getElementById('hXpFill').style.width=pct+'%';},200);
+  
+  // Osiagniecia
+  const q=data.totalQuizzes||0;
+  const n=data.notes?.length||0;
+  const streak=data.streak||0;
+  if(q>=1)document.getElementById('ach1').classList.add('unlocked');
+  if(streak>=3)document.getElementById('ach2').classList.add('unlocked');
+  if(xp>=100)document.getElementById('ach3').classList.add('unlocked');
+  if(n>=5)document.getElementById('ach4').classList.add('unlocked');
+  if(q>=10)document.getElementById('ach5').classList.add('unlocked');
+  if(xp>=500)document.getElementById('ach6').classList.add('unlocked');
+  if(streak>=7)document.getElementById('ach7').classList.add('unlocked');
+  if(xp>=4000)document.getElementById('ach8').classList.add('unlocked');
+}
+
 onAuthStateChanged(auth,async u=>{
   if(!u){window.location.href='login.html';return;}
   const name=u.displayName||u.email?.split('@')[0]||'Użytkownik';
@@ -276,7 +353,8 @@ onAuthStateChanged(auth,async u=>{
       document.getElementById('hStreak').textContent=(d.streak||0)+'d';
       const days=d.createdAt?.seconds?Math.floor((Date.now()-d.createdAt.seconds*1000)/86400000):0;
       document.getElementById('hDays').textContent=days+'d';
-      if(d.plan==='pro'){const b=document.getElementById('hBadge');b.textContent='⭐ Pro';b.className='badge pro';}
+      if(d.plan==='pro'){const b=document.getElementById('hBadge');b.textContent='Pro';b.className='badge pro';}
+      updateXPBar(d.xp||0,d);
     }
   }catch(e){}
 });
