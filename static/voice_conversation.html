@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;overflow:hidden;background:#000;color:#fff;font-family:'DM Sans',sans-serif;}
+html,body{height:100%;overflow:hidden;background:#000;color:#fff;font-family:'DM Sans',sans-serif;cursor:none;}
 
 /* ── CURSOR desktop ── */
 .cur{position:fixed;width:10px;height:10px;background:#7c6aff;border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(124,106,255,.6);}
@@ -680,14 +680,6 @@ async function initSes(){
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
-  // Native APK - nie uzywaj getUserMedia
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    g('micBtn').classList.remove('disabled');
-    g('liveDot').classList.add('on');
-    setHint('Przytrzymaj mikrofon i mów');
-    return;
-  }
   if(!navigator.mediaDevices?.getUserMedia){showErr('Użyj Chrome.');g('perm').classList.remove('hidden');return;}
   try{
     stream=await Promise.race([
@@ -731,29 +723,7 @@ async function startCam(){
 }
 
 // RECORDING
-async function startRec(){
-  if(isProc||isRec) return;
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    isRec=true;
-    g('micBtn').classList.add('recording');
-    setOrb('listening');setHint('Słucham...');
-    try{
-      const {EduviaSpeech}=window.Capacitor.Plugins;
-      const result=await EduviaSpeech.startListening();
-      isRec=false;
-      g('micBtn').classList.remove('recording');
-      if(result&&result.text){
-        transcribedText=result.text;
-        await process();
-      }
-    }catch(e){
-      isRec=false;
-      g('micBtn').classList.remove('recording');
-      setOrb('idle');setHint('Spróbuj ponownie');
-    }
-    return;
-  }
+function startRec(){
   if(!stream||isProc||isRec) return;
   if(curAudio){curAudio.pause();curAudio=null;isSpeak=false;}
   isRec=true; audioChunks=[];
@@ -1002,16 +972,6 @@ if(!IS_MOB)(function(){
     e.addEventListener('mouseenter',()=>{c.style.width='20px';c.style.height='20px';c.style.background='rgba(124,106,255,.2)';c.style.border='1.5px solid #7c6aff';});
     e.addEventListener('mouseleave',()=>{c.style.width='10px';c.style.height='10px';c.style.background='#7c6aff';c.style.border='none';});
   });
-})();
-</script>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
 })();
 </script>
 </body>

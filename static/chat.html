@@ -1659,42 +1659,8 @@ function toggleAttachMenu(e) {
   const m = document.getElementById('attachMenu');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
-async function doOpenCamera(){
-  document.getElementById('attachMenu').style.display='none';
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {EduviaFile}=window.Capacitor.Plugins;
-      const result=await EduviaFile.takePhoto();
-      if(result&&result.base64){
-        pendingImages=pendingImages||[];
-        pendingImages.push(result.base64);
-        updateImagePreview();
-      }
-      return;
-    }catch(e){console.log('camera error:',e);}
-  }
-  document.getElementById('inputCam').click();
-}
-async function doOpenGallery(){
-  document.getElementById('attachMenu').style.display='none';
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {EduviaFile}=window.Capacitor.Plugins;
-      const result=await EduviaFile.pickFromGallery();
-      if(result&&result.images){
-        pendingImages=pendingImages||[];
-        for(let i=0;i<result.images.length;i++){
-          pendingImages.push(result.images[i]);
-        }
-        updateImagePreview();
-      }
-      return;
-    }catch(e){console.log('gallery error:',e);}
-  }
-  document.getElementById('inputGal').click();
-}
+function doOpenCamera()  { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputCam').click(); }
+function doOpenGallery() { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputGal').click(); }
 function doOpenFile()    { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputFil').click(); }
 document.addEventListener('click', function(e) {
   const menu = document.getElementById('attachMenu');
@@ -1986,15 +1952,5 @@ window.addEventListener('DOMContentLoaded', () => {
   </button>
   <div class="hist-scroll" id="histList"></div>
 </div>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
-})();
-</script>
 </body>
 </html>

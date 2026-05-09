@@ -22,7 +22,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
 body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;}
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s;box-shadow:0 0 12px var(--ag);}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
@@ -1041,21 +1041,11 @@ function renderTags(){
   if(!c||!r)return;
   var mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
   document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
-  if(!('ontouchstart' in window)){(function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();};
+  (function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
   document.querySelectorAll('a,.nl,button,input,select').forEach(function(el){
     el.addEventListener('mouseenter',function(){c.style.width='20px';c.style.height='20px';c.style.background='rgba(124,106,255,.2)';c.style.border='1.5px solid var(--accent)';r.style.width='40px';r.style.height='40px';});
     el.addEventListener('mouseleave',function(){c.style.width='10px';c.style.height='10px';c.style.background='var(--accent)';c.style.border='none';r.style.width='32px';r.style.height='32px';});
   });
-})();
-</script>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
 })();
 </script>
 </body>

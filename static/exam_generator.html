@@ -22,7 +22,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
 .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
@@ -204,7 +204,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 @media(max-width:768px){
   .cursor,.cursor-ring{display:none!important;}
-  *{cursor:auto!important;}body{overflow:auto;height:auto;}
+  body{cursor:auto;overflow:auto;height:auto;}
   html,body{overflow:auto;}
   .app{display:block;}
   .sidebar{display:none!important;}
@@ -263,7 +263,30 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 
 </style>
-
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentUser = user;
+  localStorage.setItem('eduvia_uid', user.uid);
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+});
+window._fbSave = async function(collection, data, xp) {
+  if (!currentUser) return;
+  try {
+    const upd = {[collection]: arrayUnion({...data, timestamp: new Date().toISOString()})};
+    if (xp) upd.xp = increment(xp);
+    await updateDoc(doc(db, 'users', currentUser.uid), upd);
+  } catch(e) { console.log('FB err:', e); }
+};
+</script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -749,7 +772,7 @@ function getPlanBadgeHTML(plan) {
 const cur=document.getElementById('cur'),ring=document.getElementById('ring');
 let mx=0,my=0,rx=0,ry=0;
 document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
-if(!('ontouchstart' in window)){(function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();};
+(function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
 document.querySelectorAll('button,a,.nl,.sel-btn').forEach(el=>{
   el.addEventListener('mouseenter',()=>{cur.style.width='18px';cur.style.height='18px';cur.style.background='var(--blue)';});
   el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';});
@@ -975,42 +998,21 @@ function clearPhotos(){
   if(grid)grid.style.display='grid';
 }
 
-
-// NATYWNY FILE PICKER (Capacitor)
-async function pickFiles(){
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {EduviaFile}=window.Capacitor.Plugins;
-      const result=await EduviaFile.pickFromGallery();
-      if(result&&result.images){
-        const arr=result.images;
-        for(let i=0;i<arr.length;i++){
-          if(photos.length>=15)break;
-          photos.push(arr[i]);renderPhotos();
-        }
-      }
-      return;
-    }catch(e){console.log('gallery error:',e);}
-  }
+function pickFiles(){
   const inp=document.getElementById('fileInput');
-  if(inp){inp.value='';inp.removeAttribute('capture');inp.click();}
+  if(inp)inp.click();
 }
 
-async function takePhoto(){
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {EduviaFile}=window.Capacitor.Plugins;
-      const result=await EduviaFile.takePhoto();
-      if(result&&result.base64){
-        if(photos.length<15){photos.push(result.base64);renderPhotos();}
-      }
-      return;
-    }catch(e){console.log('takePhoto error:',e);}
-  }
-  const inp=document.getElementById('inputCam');
-  if(inp){inp.value='';inp.click();}
+function takePhoto(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/*';
+  inp.capture='environment';
+  inp.style.display='none';
+  inp.onchange=handleFiles;
+  document.body.appendChild(inp);
+  inp.click();
+  setTimeout(()=>document.body.removeChild(inp),30000);
 }
 
 function handleFiles(e){
@@ -1087,15 +1089,5 @@ function switchCamera(){
     </button>
   </div>
 </div>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
-})();
-</script>
 </body>
 </html>

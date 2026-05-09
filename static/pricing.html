@@ -18,7 +18,7 @@
   --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;cursor:none;}
 
 #pc{position:fixed;inset:0;pointer-events:none;z-index:0;}
 .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
@@ -353,21 +353,11 @@ const pts=Array.from({length:40},()=>({
   if(!cur||window.innerWidth<769)return;
   let mx=0,my=0,cx=0,cy=0;
   document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
-  if(!('ontouchstart' in window)){(function loop(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(loop);})();};
+  (function loop(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(loop);})();
   document.querySelectorAll('a,button,[onclick]').forEach(el=>{
     el.addEventListener('mouseenter',()=>{cur.style.width='22px';cur.style.height='22px';cur.style.background='rgba(124,106,255,0.25)';cur.style.border='1.5px solid var(--accent)';});
     el.addEventListener('mouseleave',()=>{cur.style.width='10px';cur.style.height='10px';cur.style.background='var(--accent)';cur.style.border='none';});
   });
-})();
-</script>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
 })();
 </script>
 </body>

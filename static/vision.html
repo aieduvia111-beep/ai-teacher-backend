@@ -23,7 +23,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1.5px solid rgba(124,106,255,.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s linear,width .2s,height .2s;}
 /* LIGHTBOX */
@@ -308,7 +308,30 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 
 @media print{html,body{height:auto!important;overflow:visible!important;background:white!important;color:black!important;}.sidebar,.info-panel,.m-hdr,.m-nav,.aurora,.cursor,.cursor-ring,.gen-btn,.result-btns{display:none!important;}.main{overflow:visible!important;padding:0!important;}.problem-card{background:white!important;border:1px solid #ddd!important;color:black!important;page-break-inside:avoid;}}
 </style>
-
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentUser = user;
+  localStorage.setItem('eduvia_uid', user.uid);
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+});
+window._fbSave = async function(collection, data, xp) {
+  if (!currentUser) return;
+  try {
+    const upd = {[collection]: arrayUnion({...data, timestamp: new Date().toISOString()})};
+    if (xp) upd.xp = increment(xp);
+    await updateDoc(doc(db, 'users', currentUser.uid), upd);
+  } catch(e) { console.log('FB err:', e); }
+};
+</script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -761,20 +784,15 @@ function mClose(){document.getElementById('mDrawer').classList.remove('open');do
 
 /* PLIK */
 function pickFile(){document.getElementById('fileInput').click();}
-async function takePhoto(){
-  const isNative=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
-  if(isNative){
-    try{
-      const {EduviaFile}=window.Capacitor.Plugins;
-      const result=await EduviaFile.takePhoto();
-      if(result&&result.base64){
-        setImage('data:image/jpeg;base64,'+result.base64);
-      }
-      return;
-    }catch(e){console.log('takePhoto error:',e);}
-  }
-  const inp=document.getElementById('inputCam');
-  if(inp){inp.value='';inp.click();}
+function takePhoto(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/*';
+  inp.capture='environment';
+  inp.style.display='none';
+  inp.onchange=e=>{const f=e.target.files[0];if(f)processFile(f);document.body.removeChild(inp);};
+  document.body.appendChild(inp);
+  inp.click();
 }
 function handleFile(e){const f=e.target.files[0];if(f)processFile(f);}
 function processFile(f){
@@ -1042,7 +1060,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbo
   const c=document.getElementById('cur'),r=document.getElementById('ring');
   let mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
   document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
-  if(!('ontouchstart' in window)){(function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();};
+  (function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
   document.querySelectorAll('a,.nl,button,input,select,.capture-btn,.history-item').forEach(el=>{
     el.addEventListener('mouseenter',()=>{c.style.width='20px';c.style.height='20px';c.style.background='rgba(124,106,255,.2)';c.style.border='1.5px solid var(--accent)';r.style.width='40px';r.style.height='40px';});
     el.addEventListener('mouseleave',()=>{c.style.width='10px';c.style.height='10px';c.style.background='var(--accent)';c.style.border='none';r.style.width='32px';r.style.height='32px';});
@@ -1053,15 +1071,5 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbo
   <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
-
-<script>
-// Keep-alive - budzi backend co 10 minut
-(function(){
-  const BACKEND='https://ai-teacher-backend-1.onrender.com';
-  function ping(){fetch(BACKEND+'/health',{method:'GET',cache:'no-store'}).catch(()=>{});}
-  ping(); // od razu przy starcie
-  setInterval(ping, 10*60*1000); // co 10 minut
-})();
-</script>
 </body>
 </html>
