@@ -48,6 +48,11 @@ async function subscribePush(reg) {
 
 window.addEventListener('load', function() {
   // Test - pokaż div na ekranie
+  var perm = document.createElement('div');
+  perm.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;background:blue;color:white;padding:12px;border-radius:10px;z-index:99999;font-size:14px;';
+  perm.textContent = 'Notification permission: ' + Notification.permission;
+  document.body.appendChild(perm);
+  setTimeout(function(){ perm.remove(); }, 5000);
   var test = document.createElement('div');
   test.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;background:red;color:white;padding:12px;border-radius:10px;z-index:99999;font-size:14px;';
   test.textContent = 'Push.js załadowany!';
