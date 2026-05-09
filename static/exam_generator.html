@@ -297,6 +297,20 @@ button:active{transform:scale(.95)!important;}
 .feat-card,.stat-card,.info-card{animation:cardIn .35s cubic-bezier(.22,1,.36,1) both;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s!important;}
 .feat-card:hover,.stat-card:hover,.info-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 32px rgba(0,0,0,.3)!important;}
 
+
+/* SKELETON LOADING */
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skeletonAnim 1.5s infinite;border-radius:8px;}
+@keyframes skeletonAnim{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+/* ANIMACJA LICZNIKOW */
+@keyframes countUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.count-anim{animation:countUp .5s cubic-bezier(.22,1,.36,1) both;}
+
+/* ERROR HANDLING */
+.edu-error{position:fixed;bottom:80px;left:16px;right:16px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.25);border-radius:14px;padding:14px 16px;color:#f87171;font-size:.82em;z-index:9998;display:none;animation:fadeInUp .3s cubic-bezier(.22,1,.36,1);}
+.edu-error.show{display:flex;align-items:center;gap:10px;}
+.edu-error svg{flex-shrink:0;}
+
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1124,5 +1138,39 @@ function switchCamera(){
     </button>
   </div>
 </div>
+
+<script>
+// ANIMACJA LICZNIKOW
+function animateCounter(el, target, duration) {
+  if(!el) return;
+  const start = 0;
+  const step = target / (duration / 16);
+  let current = 0;
+  el.classList.add('count-anim');
+  const timer = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = Math.floor(current).toLocaleString('pl-PL');
+    if(current >= target) clearInterval(timer);
+  }, 16);
+}
+
+// ERROR HANDLER
+window.showError = function(msg) {
+  let el = document.getElementById('eduError');
+  if(!el) {
+    el = document.createElement('div');
+    el.id = 'eduError';
+    el.className = 'edu-error';
+    el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span></span>';
+    document.body.appendChild(el);
+  }
+  el.querySelector('span').textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+};
+
+window.animateCounter = animateCounter;
+</script>
+
 </body>
 </html>
