@@ -46,4 +46,12 @@ async function subscribePush(reg) {
   } catch(e) { console.log('Subscribe error:', e); }
 }
 
-window.addEventListener('load', initPush);
+window.addEventListener('load', function() {
+  // Test - pokaż div na ekranie
+  var test = document.createElement('div');
+  test.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;background:red;color:white;padding:12px;border-radius:10px;z-index:99999;font-size:14px;';
+  test.textContent = 'Push.js załadowany!';
+  document.body.appendChild(test);
+  setTimeout(function(){ test.remove(); }, 3000);
+  initPush();
+});
