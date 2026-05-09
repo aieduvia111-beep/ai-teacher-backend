@@ -2,7 +2,10 @@
   "appId": "com.eduvia.app",
   "appName": "Eduvia AI",
   "webDir": "static",
-  "server": {},
+  "server": {
+    "url": "https://ai-teacher-backend-inky.vercel.app",
+    "cleartext": true
+  },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
