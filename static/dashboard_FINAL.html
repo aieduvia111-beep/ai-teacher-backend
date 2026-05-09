@@ -206,6 +206,85 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
   .tc-name{font-size:.85em!important;}
   .tc-desc{font-size:.73em!important;}
 }
+
+/* ═══ ANIMACJE KART WOW ═══ */
+
+/* Wejście kart ze stagger */
+@keyframes cardIn{
+  from{opacity:0;transform:translateY(24px) scale(.97);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+.tool-card{
+  animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease,border-color .25s ease!important;
+}
+.tool-card:nth-child(1){animation-delay:.05s;}
+.tool-card:nth-child(2){animation-delay:.1s;}
+.tool-card:nth-child(3){animation-delay:.15s;}
+.tool-card:nth-child(4){animation-delay:.2s;}
+.tool-card:nth-child(5){animation-delay:.25s;}
+.tool-card:nth-child(6){animation-delay:.3s;}
+.tool-card:nth-child(7){animation-delay:.35s;}
+
+/* Hover efekt kart - bardziej wow */
+.tool-card:hover{
+  transform:translateY(-4px) scale(1.01)!important;
+  box-shadow:0 16px 48px rgba(0,0,0,.4),0 0 0 1px var(--tc-color,rgba(124,106,255,.4))!important;
+  border-color:var(--tc-color,rgba(124,106,255,.5))!important;
+}
+.tool-card:active{transform:translateY(-1px) scale(.99)!important;}
+
+/* Ikona kart animacja */
+.tool-card:hover .tc-icon{
+  transform:scale(1.12) rotate(-4deg);
+  box-shadow:0 0 20px var(--tc-bg,rgba(124,106,255,.3));
+}
+.tc-icon{transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;}
+
+/* Quick buttons wow */
+.quick-btn{
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease,background .2s!important;
+}
+.quick-btn:hover{transform:translateY(-3px)!important;box-shadow:0 10px 28px rgba(0,0,0,.3)!important;}
+.quick-btn:active{transform:scale(.96)!important;}
+
+/* Hero stats animacja */
+@keyframes statsIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:translateX(0);}}
+.hero-stats{animation:statsIn .5s cubic-bezier(.22,1,.36,1) .2s both;}
+
+/* XP bar animacja wejścia */
+@keyframes xpIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.hero-xpbar{animation:xpIn .5s cubic-bezier(.22,1,.36,1) .3s both;}
+
+/* Hero tekst animacja */
+@keyframes heroIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.hero-name{animation:heroIn .5s cubic-bezier(.22,1,.36,1) .05s both;}
+.hero-sub{animation:heroIn .5s cubic-bezier(.22,1,.36,1) .1s both;}
+
+/* Sidebar links */
+.nl{transition:all .18s cubic-bezier(.34,1.56,.64,1)!important;}
+.nl:hover{transform:translateX(3px)!important;}
+
+/* Section labels animacja */
+@keyframes secIn{from{opacity:0;}to{opacity:1;}}
+.sec-label{animation:secIn .4s ease .1s both;}
+
+/* Glow na tool cards mocniejszy */
+.tc-glow{
+  background:radial-gradient(ellipse at 30% 50%,var(--tc-bg,rgba(124,106,255,.12)),transparent 65%)!important;
+  transition:.3s ease!important;
+}
+.tool-card:hover .tc-glow{opacity:1;}
+
+/* Strzałka animacja */
+.tc-arrow{transition:transform .25s cubic-bezier(.34,1.56,.64,1),color .2s!important;}
+.tool-card:hover .tc-arrow{transform:translateX(6px)!important;}
+
+/* Mobile bottom nav animacja */
+.m-nb{transition:transform .2s cubic-bezier(.34,1.56,.64,1),color .2s!important;}
+.m-nb:active{transform:scale(.85)!important;}
+.m-nb.active{transform:translateY(-2px);}
+
 </style>
 
 <script type="module">
