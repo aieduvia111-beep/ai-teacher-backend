@@ -12,7 +12,7 @@ async function initPush() {
   try {
     const reg = await navigator.serviceWorker.register('/sw.js');
     if (Notification.permission === 'granted') { await subscribePush(reg); return; }
-    if (Notification.permission === 'default') { setTimeout(() => showPushPrompt(reg), 3000); }
+    if (Notification.permission === 'default') { showPushPrompt(reg); }
   } catch(e) { console.log('Push init error:', e); }
 }
 
