@@ -371,3 +371,10 @@ try:
     print("✅ push OK")
 except Exception as e:
     print(f"❌ push: {e}")
+
+try:
+    from .api.multiplayer import router as multiplayer_router
+    app.include_router(multiplayer_router)
+    print("✅ multiplayer OK")
+except Exception as e:
+    print(f"❌ multiplayer: {e}")
