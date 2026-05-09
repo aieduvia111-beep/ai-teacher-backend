@@ -1,7 +1,18 @@
 (function(){
 var s=document.createElement('style');
-s.textContent='.ripple-wave{position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rA .6s linear;pointer-events:none;}@keyframes rA{to{transform:scale(4);opacity:0;}}.card,.tool-card,.feat-card,.stat-card,.quick-card,.review-card{transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease!important;}.card:active,.tool-card:active,.feat-card:active,.stat-card:active,.quick-card:active,.review-card:active{transform:translateY(-3px) scale(1.01)!important;box-shadow:0 12px 32px rgba(124,106,255,.15)!important;}@keyframes xpFloat{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-30px);}}.xp-float-pop{position:fixed;font-family:"Syne",sans-serif;font-weight:800;font-size:.9em;color:#22d3a0;pointer-events:none;z-index:9999;animation:xpFloat .9s ease forwards;}';
+s.textContent=`
+.ripple-wave{position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rA .6s linear;pointer-events:none;}
+@keyframes rA{to{transform:scale(4);opacity:0;}}
+.card,.tool-card,.feat-card,.stat-card,.quick-card,.review-card{transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease!important;}
+.card:active,.tool-card:active,.feat-card:active,.stat-card:active,.quick-card:active,.review-card:active{transform:translateY(-3px) scale(1.01)!important;box-shadow:0 12px 32px rgba(124,106,255,.15)!important;}
+@keyframes xpFloat{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-30px);}}
+.xp-float-pop{position:fixed;font-family:"Syne",sans-serif;font-weight:800;font-size:.9em;color:#22d3a0;pointer-events:none;z-index:9999;animation:xpFloat .9s ease forwards;}
+`;
 document.head.appendChild(s);
+
+
+
+// RIPPLE
 document.addEventListener('click',function(e){
   var btn=e.target.closest('button');
   if(!btn)return;
@@ -15,6 +26,8 @@ document.addEventListener('click',function(e){
   btn.appendChild(r);
   setTimeout(function(){r.remove();},600);
 });
+
+// XP POP
 window._showXPPop=function(xp,x,y){
   var el=document.createElement('div');
   el.className='xp-float-pop';
@@ -24,16 +37,28 @@ window._showXPPop=function(xp,x,y){
   document.body.appendChild(el);
   setTimeout(function(){el.remove();},900);
 };
-})();
 
-// HAPTIC FEEDBACK
-if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics){
-  window._haptic=function(type){
+// HAPTIC - działa w TWA przez Web Vibration API
+window._haptic=function(type){
+  // Spróbuj Capacitor (dla wersji Capacitor)
+  if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics){
     var H=window.Capacitor.Plugins.Haptics;
-    if(type==='ok') H.impact({style:'light'});
-    else if(type==='err') H.notification({type:'error'});
+    if(type==='ok')H.impact({style:'light'});
+    else if(type==='err')H.notification({type:'error'});
     else H.impact({style:'medium'});
-  };
-} else {
-  window._haptic=function(){};
-}
+    return;
+  }
+  // Web Vibration API (działa w TWA/Chrome)
+  if(navigator.vibrate){
+    if(type==='ok')navigator.vibrate(30);
+    else if(type==='err')navigator.vibrate([50,30,50]);
+    else navigator.vibrate(50);
+  }
+};
+
+// Haptic na każdy przycisk
+document.addEventListener('click',function(e){
+  if(e.target.closest('button'))window._haptic('ok');
+},true);
+
+})();
