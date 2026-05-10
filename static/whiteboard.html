@@ -1139,7 +1139,7 @@ async function explainWord(word){
   synth&&synth.cancel();
   document.querySelectorAll('.wb-explain').forEach(p=>p.remove());
   const popup=document.createElement('div');popup.className='wb-explain';
-  popup.innerHTML='<div class="wb-explain-hdr"><div class="wb-explain-word">'+word+'</div><button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="wb-explain-body" id="wbExpBody">Ladowanie...</div>';
+  popup.innerHTML=`<div class="wb-explain-hdr"><div class="wb-explain-word">${word}</div><button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="wb-explain-body" id="wbExpBody">Ladowanie...</div>`;
   document.body.appendChild(popup);
   try{
     const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element_text:word,element_type:'word',topic:steps[curSlide]?.title||'',level:document.getElementById('wbLevel')?.value||'liceum',style:'Wytłumacz prosto, max 2 zdania, zacznij od To znaczy ze lub Chodzi o to ze'})});
