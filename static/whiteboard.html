@@ -835,39 +835,48 @@ function writeEl(el, raw, totalTime){
   const isF = el.classList.contains('wb-formula');
 
   if(isF){
-    // Wzory: raw moze byc "\frac{a}{b}" lub "\( \frac{a}{b} \)"
     let tex = raw
-      .replace(/^\s*\\\(/,'').replace(/\\\)\s*$/,'')
-      .replace(/^\s*\\\[/,'').replace(/\\\]\s*$/,'')
-      .replace(/^\s*\$\$/,'').replace(/\$\$\s*$/,'')
+      .replace(/^\\\(/,'').replace(/\\\)$/,'')
+      .replace(/^\\\[/,'').replace(/\\\]$/,'')
+      .replace(/^\$\$/,'').replace(/\$\$$/,'')
       .trim();
-    // Jesli po usunieciu delimiterow wychodzi to samo - to juz czysty TeX
-    if(!tex) tex = raw.trim();
+    if(!tex) tex = raw;
 
     const speed = Math.max(35, Math.min(70, totalTime / Math.max(tex.length, 1)));
     writeChars(el, tex, speed, ()=>{
-      if(window.katex){
-        try{
-          katex.render(tex, el, {throwOnError:false, displayMode:false});
-        } catch(e){
-          el.style.fontFamily = "'Caveat',cursive";
-          el.textContent = tex;
+      const doRender = ()=>{
+        if(window.katex){
+          try{
+            katex.render(tex, el, {throwOnError:false, displayMode:true, trust:true});
+          } catch(e){
+            el.style.fontFamily="'Caveat',cursive";
+            el.style.fontSize="1.25em";
+            el.textContent=tex;
+          }
+        } else {
+          setTimeout(doRender, 500);
         }
-      } else {
-        el.style.fontFamily = "'Caveat',cursive";
-        el.textContent = tex;
-      }
+      };
+      doRender();
     });
     return;
   }
 
-  // Tekst: slowo po slowie
+  // Box i highlight tez moga miec wzory inline
+  const hasLatex = raw.includes('\\') || raw.includes('$');
+  if(hasLatex && !isF){
+    const words = raw.trim().split(/\s+/);
+    const msPerWord = Math.max(200, Math.min(400, totalTime / Math.max(words.length,1)));
+    writeWords(el, raw, words, msPerWord, true);
+    return;
+  }
+
   const words = raw.trim().split(/\s+/);
   const msPerWord = Math.max(200, Math.min(400, totalTime / Math.max(words.length,1)));
-  writeWords(el, raw, words, msPerWord);
+  writeWords(el, raw, words, msPerWord, false);
 }
 
-function writeWords(el, raw, words, msPerWord){
+function writeWords(el, raw, words, msPerWord, hasLatex){
   let wi = 0;
   el.innerHTML = '';
   const cur = makeCursor();
@@ -876,7 +885,17 @@ function writeWords(el, raw, words, msPerWord){
     if(wi >= words.length){
       clearInterval(t);
       cur.parentNode && cur.remove();
-      el.textContent = raw;
+      if(hasLatex && window.katex){
+        // Renderuj inline LaTeX
+        try{
+          const html = raw
+            .replace(/\\\((.+?)\\\)/g, (_,p)=>katex.renderToString(p,{throwOnError:false,displayMode:false}))
+            .replace(/\$(.+?)\$/g, (_,p)=>katex.renderToString(p,{throwOnError:false,displayMode:false}));
+          el.innerHTML = html;
+        } catch(e){ el.textContent = raw; }
+      } else {
+        el.textContent = raw;
+      }
       return;
     }
     cur.parentNode && cur.remove();
@@ -1055,7 +1074,7 @@ if(!('ontouchstart' in window)){
   (function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
 }
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
 </body>
