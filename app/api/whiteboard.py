@@ -43,9 +43,9 @@ def build_whiteboard_prompt(topic: str, level: str, tempo: str = "srednia", extr
     extra_txt = f"\nDodatkowe instrukcje od ucznia: {extra}" if extra else ""
     
     TEMPO_MAP = {
-        "szybka": ("4-5", "Krótkie narration (1-2 zdania). Tylko najważniejsze wzory i definicje. Bez rozbudowanych przykładów."),
-        "srednia": ("5-6", "Narration 2-3 zdania. Pełne definicje, wzory, jeden przykład obliczeniowy per krok."),
-        "szczegolowa": ("7-8", "Narration 3-4 zdania. Szczegółowe wyprowadzenia, wiele przykładów z liczbami, ćwiczenia, wskazówki egzaminacyjne.")
+        "szybka": ("5-6", "Narration MINIMUM 3-4 zdania per krok - tłumacz jak nauczyciel przy tablicy. Mów co piszesz, tłumacz każdy wzór słowami, podaj przykład z liczbami."),
+        "srednia": ("6-7", "Narration MINIMUM 4-5 zdań per krok. Pełne definicje, wzory z wyjaśnieniem słownym, dwa przykłady obliczeniowe, wskazówki."),
+        "szczegolowa": ("8-10", "Narration MINIMUM 5-6 zdań per krok. Szczegółowe wyprowadzenia krok po kroku, wiele przykładów z liczbami, typowe błędy uczniów, wskazówki egzaminacyjne.")
     }
     n_steps, tempo_desc = TEMPO_MAP.get(tempo, TEMPO_MAP["srednia"])
     
