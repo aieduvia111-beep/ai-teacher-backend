@@ -504,13 +504,13 @@ button:active{transform:scale(.95)!important;}
 .wb-pdf-slide.active{display:flex;}
 
 
-/* TAK / NIE PRZYCISKI */
-.wb-understand{display:none;align-items:center;gap:8px;padding:10px 0 0;}
-.wb-understand.show{display:flex;}
-.wb-yes{flex:1;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22d3a0,#16a085);color:white;font-family:var(--h);font-size:.85em;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;box-shadow:0 4px 16px rgba(34,211,160,.25);}
-.wb-yes:active{transform:scale(.96);}
-.wb-no{flex:1;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#f87171,#dc2626);color:white;font-family:var(--h);font-size:.85em;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;box-shadow:0 4px 16px rgba(248,113,113,.25);}
-.wb-no:active{transform:scale(.96);}
+
+
+
+
+
+
+
 
 /* RETRY PANEL */
 .wb-retry{display:none;background:linear-gradient(135deg,rgba(248,113,113,.08),rgba(248,113,113,.03));border:1px solid rgba(248,113,113,.2);border-radius:14px;padding:14px;margin-top:8px;}
@@ -693,19 +693,6 @@ button:active{transform:scale(.95)!important;}
     </div>
     <div class="wb-prog-bar"><div class="wb-prog-fill" id="wbProgFill"></div></div>
     <div class="wb-slides" id="wbSlides"></div>
-
-    <div class="wb-understand" id="wbUnderstand">
-      <button class="wb-yes" onclick="understood(true)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg>
-        Rozumiem!
-      </button>
-      <button class="wb-no" onclick="understood(false)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Nie rozumiem
-      </button>
-    </div>
-    <div class="wb-retry" id="wbRetry">
-      <div class="wb-retry-lbl">AI tlumaczy prosciej</div>
       <div class="wb-retry-txt" id="wbRetryTxt">Ladowanie...</div>
       <button class="wb-retry-ok" onclick="retryOk()">Teraz rozumiem!</button>
     </div>
@@ -1107,7 +1094,7 @@ function speakNow(idx){
     u.onend=()=>{
       document.getElementById('wbVoiceWave').classList.remove('on');
       document.querySelectorAll('#wbn-'+idx+' .word').forEach(w=>{w.classList.remove('active');w.classList.add('said');});
-      if(curSlide<steps.length)showUnderstand();
+
     };
     synth.speak(u);
   };
