@@ -105,7 +105,6 @@ async def generate_whiteboard(req: WhiteboardRequest):
     try:
         # Buduj wiadomosc
         if req.images and len(req.images) > 0:
-            # Vision mode
             content = []
             for img_b64 in req.images[:4]:
                 content.append({
@@ -116,22 +115,21 @@ async def generate_whiteboard(req: WhiteboardRequest):
                 "type": "text",
                 "text": build_vision_prompt(req.level, req.wlasne_instrukcje or "")
             })
-            messages = [{"role": "user", "content": content}]
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": content}
+            ]
         else:
-            # Text mode
-            messages = [{
-                "role": "user",
-                "content": build_whiteboard_prompt(
-                    req.topic, req.level, req.tempo, req.wlasne_instrukcje or ""
-                )
-            }]
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": build_whiteboard_prompt(req.topic, req.level, req.tempo, req.wlasne_instrukcje or "")}
+            ]
         
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
             max_tokens=4000,
             temperature=0.3,
-            system=SYSTEM_PROMPT if not req.images else None,
             timeout=30
         )
         
