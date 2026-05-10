@@ -529,9 +529,9 @@ button:active{transform:scale(.95)!important;}
 @media(hover:none){.cursor,.cursor-ring{display:none!important;}}
 
 /* KaTeX jak Caveat */
-.wb-board .katex,.wb-board .katex *{font-family:'Caveat',cursive!important;}
+.wb-board .katex{font-size:1.1em!important;}
 .wb-text .katex,.wb-box .katex,.wb-highlight .katex{font-size:1.1em!important;color:var(--text)!important;}
-.wb-formula .katex,.wb-formula .katex *{font-family:'Caveat',cursive!important;font-size:1.25em!important;color:#38bdf8!important;}
+.wb-formula .katex{font-size:1.1em!important;color:#38bdf8!important;}
 .wb-formula .katex-display{text-align:center;margin:0!important;}
 
 
@@ -977,7 +977,7 @@ function writeEl(el, raw, totalTime){
     writeChars(el, tex, speed, ()=>{
       if(window.katex){
         try{
-          katex.render(tex, el, {throwOnError:false, displayMode:false});
+          katex.render(tex, el, {throwOnError:false, displayMode:false, trust:true});
         } catch(e){
           el.style.fontFamily = "'Caveat',cursive";
           el.textContent = tex;
@@ -1041,7 +1041,7 @@ function finalizeText(el, raw){
   if(!raw){el.textContent='';return;}
   if(!window.katex||!raw.includes('\\')){el.textContent=raw;return;}
   try{
-    const re=/\\((.+?)\\)/g;
+    const re=/\\\((.+?)\\\)/g;
     let last=0,m,parts=[],hasM=false;
     while((m=re.exec(raw))!==null){
       hasM=true;
