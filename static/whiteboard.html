@@ -498,10 +498,9 @@ button:active{transform:scale(.95)!important;}
 }
 
 
-/* KaTeX wyglada jak Caveat */
-.wb-formula .katex{font-size:1.2em!important;}
-.wb-formula .katex *{font-family:'Caveat',cursive!important;}
-.katex-html{font-family:'Caveat',cursive!important;}
+/* KaTeX - wyglad jak Caveat */
+.wb-formula .katex{font-size:1.25em!important;color:var(--text)!important;}
+.wb-formula .katex .mord,.wb-formula .katex .mrel,.wb-formula .katex .mop,.wb-formula .katex .mbin{font-family:'Caveat',cursive!important;}
 
 </style>
 </head>
@@ -763,134 +762,134 @@ function proc(txt){if(!txt)return'';return esc(txt).replace(/\b([A-ZŁÓĄŻŚŹ
 
 
 // ═══ TYPEWRITER + SYNC VOICE ═══
-// Pisanie: ~120ms/znak = wolno jak człowiek piszący ręcznie
+
+// Oblicz czas mowienia na podstawie tekstu
+function speechDuration(txt){
+  // ~130 slow/min przy rate 0.78 = ~2.2 slowa/sec
+  const words = txt.trim().split(/\s+/).length;
+  return (words / 2.2) * 1000; // ms
+}
 
 function animateSlide(idx){
   if(idx>=steps.length)return;
   document.querySelectorAll('.wb-cursor').forEach(el=>el.style.display='none');
   const cont=document.getElementById('wbels-'+idx);
   if(!cont)return;
-
-  // Ukryj elementy ale NIE czyszcz tekstu - unikamy migania
   const els=Array.from(cont.querySelectorAll('.wb-el'));
+
+  // Ukryj wszystkie
+  els.forEach(el=>{el.style.opacity='0';el.textContent='';});
+
+  // Najpierw oblicz ile czasu zajmie mowienie narracji
+  const narr=steps[idx].narration||'';
+  const totalSpeechMs=speechDuration(narr);
+
+  // Rozloz elementy rowno na czas mowienia
+  const visEls=els.filter(el=>el.getAttribute('data-raw'));
+  const timePerEl=visEls.length>0?totalSpeechMs/visEls.length:500;
+
+  let delay=0;
   els.forEach(el=>{
-    el.style.opacity='0';
-    el.style.transition='none';
-  });
-
-  // Pisz sekwencyjnie - jeden element po drugim
-  let totalDelay=0;
-  const queue=[];
-
-  els.forEach((el,ei)=>{
     const raw=el.getAttribute('data-raw')||'';
-    if(!raw||raw.length<2){
-      queue.push({el,raw:'',delay:totalDelay});
-      totalDelay+=80;
+    if(!raw){
+      setTimeout(()=>{el.style.opacity='1';},delay);
+      delay+=100;
       return;
     }
-    queue.push({el,raw,delay:totalDelay});
-    // Czas pisania: 120ms/znak dla tekstu, 80ms dla wzorów
-    const isF=el.classList.contains('wb-formula');
-    totalDelay+=raw.length*(isF?50:120)+300;
-  });
-
-  // Uruchom kolejkę
-  queue.forEach(({el,raw,delay})=>{
+    const d2=delay;
     setTimeout(()=>{
       el.style.opacity='1';
-      if(!raw||raw.length<2){return;}
-      typeWordByWord(el,raw,idx);
-    },delay);
+      writeElement(el,raw);
+    },d2);
+    delay+=timePerEl;
   });
 
-  // Kursor na koncu
-  const cur=document.getElementById('wbcur-'+idx);
-  setTimeout(()=>{
-    if(cur){cur.style.display='inline-block';setTimeout(()=>{if(cur)cur.style.display='none';},800);}
-  },totalDelay);
-
-  // Glos startuje razem z pisaniem
+  // Glos startuje razem z pierwszym elementem
   speakNow(idx);
 }
 
-function typeWordByWord(el,raw,slideIdx){
+function writeElement(el,raw){
   const isF=el.classList.contains('wb-formula');
 
   if(isF){
-    // Wzory: pisz TeX literka po literce, potem renderuj
-    const tex=raw.replace(/^\\\(/,'').replace(/\\\)$/,'').replace(/^\\\[/,'').replace(/\\\]$/,'').replace(/^\$\$/,'').replace(/\$\$$/,'').trim();
-    typeChars(el, tex, ()=>{
-      // Po napisaniu - renderuj KaTeX z Caveat style
+    // Wzor: usun delimitery LaTeX i pisz TeX chars
+    const tex=raw
+      .replace(/^\s*\\\(/,'').replace(/\\\)\s*$/,'')
+      .replace(/^\s*\\\[/,'').replace(/\\\]\s*$/,'')
+      .replace(/^\s*\$\$/,'').replace(/\$\$\s*$/,'')
+      .trim();
+    writeChars(el, tex, ()=>{
       if(window.katex){
         try{
-          katex.render(tex,el,{
-            throwOnError:false,
-            displayMode:false,
-            trust:true,
-            macros:{}
-          });
-          // Dodaj Caveat font do KaTeX output
-          el.style.fontFamily="'Caveat', cursive";
-          el.style.fontSize='1.3em';
-        }catch(e){el.textContent=tex;}
-      } else {el.textContent=tex;}
+          katex.render(tex,el,{throwOnError:false,displayMode:true});
+        }catch(e){
+          el.style.fontFamily="'Caveat',cursive";
+          el.textContent=tex;
+        }
+      } else {
+        el.style.fontFamily="'Caveat',cursive";
+        el.textContent=tex;
+      }
     });
     return;
   }
 
-  // Tekst zwykly: pisz słowo po słowie
-  const words=raw.split(' ');
-  let wordIdx=0;
-  el.textContent='';
+  // Tekst zwykly: pisz slowo po slowie
+  writeWords(el, raw);
+}
 
-  const cur=document.createElement('span');
-  cur.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+function writeWords(el, raw){
+  const words=raw.split(' ').filter(w=>w);
+  let wi=0;
+  el.textContent='';
+  const cur=makeCursor();
   el.appendChild(cur);
 
-  const wordSpeed=280; // ms na słowo - tempo czytania
+  // Oblicz czas na slowo zeby zgadzal sie z glosem
+  // Glos mowi ~2.2 slowa/sec przy rate 0.78
+  const msPerWord=Math.max(200, Math.min(450, 1000/2.2));
 
-  const timer=setInterval(()=>{
-    if(wordIdx>=words.length){
-      clearInterval(timer);
+  const t=setInterval(()=>{
+    if(wi>=words.length){
+      clearInterval(t);
       cur.remove();
-      // Finalny tekst
       el.textContent=raw;
       return;
     }
     cur.remove();
-    el.textContent=words.slice(0,wordIdx+1).join(' ');
+    el.textContent=words.slice(0,wi+1).join(' ');
     el.appendChild(cur);
-    wordIdx++;
-  },wordSpeed);
+    wi++;
+  },msPerWord);
 }
 
-function typeChars(el,txt,onDone){
+function writeChars(el, txt, onDone){
   let i=0;
   el.textContent='';
-  const cur=document.createElement('span');
-  cur.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  const cur=makeCursor();
   el.appendChild(cur);
-  const timer=setInterval(()=>{
-    if(i>=txt.length){clearInterval(timer);cur.remove();onDone();return;}
+  const t=setInterval(()=>{
+    if(i>=txt.length){clearInterval(t);cur.remove();onDone();return;}
     cur.remove();
     el.textContent=txt.substring(0,i+1);
     el.appendChild(cur);
     i++;
-  },50);
+  },60);
+}
+
+function makeCursor(){
+  const cur=document.createElement('span');
+  cur.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  return cur;
 }
 
 function speakNow(idx){
   if(!voiceOn||!synth||idx>=steps.length)return;
   synth.cancel();
   const txt=steps[idx].narration||'';if(!txt)return;
-
   const go=()=>{
     const u=new SpeechSynthesisUtterance(txt);
-    u.lang='pl-PL';
-    u.rate=0.78; // wolno - jak nauczyciel
-    u.pitch=1.0;
-    u.volume=1;
+    u.lang='pl-PL';u.rate=0.78;u.pitch=1.0;u.volume=1;
     const vs=synth.getVoices();
     const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
       ||vs.find(v=>v.lang==='pl-PL')
@@ -900,10 +899,9 @@ function speakNow(idx){
     u.onend=()=>document.getElementById('wbVoiceWave').classList.remove('on');
     synth.speak(u);
   };
-
   synth.getVoices().length===0
     ?speechSynthesis.addEventListener('voiceschanged',go,{once:true})
-    :setTimeout(go,150);
+    :setTimeout(go,50);
 }
 
 function speak(idx){speakNow(idx);}
