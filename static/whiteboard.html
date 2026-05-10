@@ -693,6 +693,22 @@ button:active{transform:scale(.95)!important;}
     </div>
     <div class="wb-prog-bar"><div class="wb-prog-fill" id="wbProgFill"></div></div>
     <div class="wb-slides" id="wbSlides"></div>
+
+    <div class="wb-understand" id="wbUnderstand">
+      <button class="wb-yes" onclick="understood(true)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg>
+        Rozumiem!
+      </button>
+      <button class="wb-no" onclick="understood(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Nie rozumiem
+      </button>
+    </div>
+    <div class="wb-retry" id="wbRetry">
+      <div class="wb-retry-lbl">AI tlumaczy prosciej</div>
+      <div class="wb-retry-txt" id="wbRetryTxt">Ladowanie...</div>
+      <button class="wb-retry-ok" onclick="retryOk()">Teraz rozumiem!</button>
+    </div>
     <div class="wb-controls">
       <button class="wb-ctrl icon" onclick="toggleVoice()" id="wbVoiceBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16" id="wbVoiceIco"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
@@ -978,6 +994,13 @@ function writeEl(el, raw, totalTime){
   const words = raw.trim().split(/\s+/);
   const msPerWord = Math.max(200, Math.min(400, totalTime / Math.max(words.length,1)));
   writeWords(el, raw, words, msPerWord);
+}
+
+
+function makeCursor(){
+  const s=document.createElement('span');
+  s.style.cssText='display:inline-block;width:2px;height:.85em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  return s;
 }
 
 function writeWords(el, raw, words, msPerWord){
