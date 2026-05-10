@@ -503,6 +503,29 @@ button:active{transform:scale(.95)!important;}
 .wb-pdf-slide{display:none;}
 .wb-pdf-slide.active{display:flex;}
 
+
+/* KARAOKE */
+.wb-narration-txt .word{display:inline;transition:all .15s ease;}
+.wb-narration-txt .word.said{color:var(--accent2);font-weight:600;}
+.wb-narration-txt .word.active{color:white;background:rgba(124,106,255,.25);border-radius:4px;padding:0 2px;}
+
+/* XP STREAK POPUP */
+.wb-xp-pop{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:9999;pointer-events:none;text-align:center;animation:none;}
+.wb-xp-pop.show{animation:xpPopAnim .8s cubic-bezier(.22,1,.36,1) forwards;}
+@keyframes xpPopAnim{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
+  40%{transform:translate(-50%,-60%) scale(1.2);opacity:1;}
+  70%{transform:translate(-50%,-65%) scale(1);opacity:1;}
+  100%{transform:translate(-50%,-80%) scale(.9);opacity:0;}
+}
+.wb-xp-num{font-family:var(--h);font-size:3em;font-weight:800;background:linear-gradient(135deg,#f5a623,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
+.wb-xp-lbl{font-family:var(--h);font-size:.85em;font-weight:700;color:var(--accent2);margin-top:4px;}
+.wb-xp-stars{font-size:1.5em;letter-spacing:4px;}
+
+/* CONFETTI DOTS */
+.wb-conf{position:fixed;pointer-events:none;z-index:9998;border-radius:50%;animation:wbConfFall linear forwards;}
+@keyframes wbConfFall{to{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
 </style>
 </head>
 <body>
@@ -665,6 +688,11 @@ button:active{transform:scale(.95)!important;}
 
 </div>
 </main>
+<div class="wb-xp-pop" id="wbXpPop">
+  <div class="wb-xp-stars">⭐</div>
+  <div class="wb-xp-num" id="wbXpNum">+15 XP</div>
+  <div class="wb-xp-lbl">Krok ukończony!</div>
+</div>
 </div>
 
 <script type="module">
@@ -750,7 +778,7 @@ function buildSlideHTML(step,i){
   return`
     <div class="wb-narration">
       <div class="wb-narration-lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="10" height="10"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>AI mowi</div>
-      <div class="wb-narration-txt">${esc(step.narration||'')}</div>
+      <div class="wb-narration-txt" id="wbn-${i}">${(step.narration||'').split(' ').map((w,wi)=>`<span class="word" id="wbn-${i}-${wi}">${w}</span>`).join(' ')}</div>
     </div>
     <div class="wb-board">
       <div class="wb-board-inner">
@@ -911,6 +939,9 @@ function speakNow(idx){
   synth.cancel();
   const txt = steps[idx].narration || '';
   if(!txt)return;
+  const words = txt.split(' ');
+  let wordIdx = 0;
+
   const go = ()=>{
     const u = new SpeechSynthesisUtterance(txt);
     u.lang = 'pl-PL'; u.rate = 0.78; u.pitch = 1.05; u.volume = 1;
@@ -919,13 +950,63 @@ function speakNow(idx){
       || vs.find(v=>v.lang==='pl-PL')
       || vs.find(v=>v.lang.startsWith('pl'));
     if(pl) u.voice = pl;
-    u.onstart = ()=>document.getElementById('wbVoiceWave').classList.add('on');
-    u.onend   = ()=>document.getElementById('wbVoiceWave').classList.remove('on');
+
+    u.onstart = ()=>{
+      document.getElementById('wbVoiceWave').classList.add('on');
+      wordIdx = 0;
+    };
+
+    // KARAOKE - podswietlaj slowo po slowie
+    u.onboundary = (e)=>{
+      if(e.name !== 'word') return;
+      // Poprzednie slowo - oznacz jako powiedziane
+      const prevEl = document.getElementById('wbn-'+idx+'-'+(wordIdx-1));
+      if(prevEl){ prevEl.classList.remove('active'); prevEl.classList.add('said'); }
+      // Aktualne slowo - podswietl
+      const currEl = document.getElementById('wbn-'+idx+'-'+wordIdx);
+      if(currEl){ currEl.classList.add('active'); currEl.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+      wordIdx++;
+    };
+
+    u.onend = ()=>{
+      document.getElementById('wbVoiceWave').classList.remove('on');
+      // Wszystkie slowa powiedziane
+      document.querySelectorAll('#wbn-'+idx+' .word').forEach(w=>{
+        w.classList.remove('active');
+        w.classList.add('said');
+      });
+      // Pokaz XP streak
+      showXPStreak();
+    };
+
     synth.speak(u);
   };
+
   synth.getVoices().length===0
     ? speechSynthesis.addEventListener('voiceschanged', go, {once:true})
     : go();
+}
+
+function showXPStreak(){
+  const xp = 10 + Math.floor(Math.random()*6); // 10-15 XP
+  const pop = document.getElementById('wbXpPop');
+  const num = document.getElementById('wbXpNum');
+  if(!pop||!num) return;
+  num.textContent = '+'+xp+' XP';
+  pop.classList.remove('show');
+  void pop.offsetWidth; // reflow
+  pop.classList.add('show');
+  // Confetti
+  const colors = ['#7c6aff','#a78bfa','#22d3a0','#f5a623','#f472b6'];
+  for(let i=0;i<20;i++){
+    const el=document.createElement('div');
+    el.className='wb-conf';
+    const size=Math.random()*8+4;
+    el.style.cssText='width:'+size+'px;height:'+size+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';top:50%;left:'+(20+Math.random()*60)+'%;animation-duration:'+(Math.random()*1.5+1)+'s;animation-delay:'+(Math.random()*.3)+'s;';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 2000);
+  }
+  setTimeout(()=>pop.classList.remove('show'), 1000);
 }
 
 function speak(idx){speakNow(idx);}
