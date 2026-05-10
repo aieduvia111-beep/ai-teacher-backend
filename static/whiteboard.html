@@ -729,12 +729,12 @@ function buildSlideHTML(step,i){
     const cls=`wb-el`;const style=`animation-delay:${d}s`;
     if(el.type==='title'||el.type==='stepnum')return'';
     if(el.type==='divider')return`<div class="wb-divider ${cls}" style="${style}"></div>`;
-    if(el.type==='formula')return`<div class="wb-formula ${cls}" style="${style}">${esc(el.text)}</div>`;
-    if(el.type==='box')return`<div class="wb-box ${cls}" style="${style}">${proc(el.text)}</div>`;
-    if(el.type==='highlight')return`<div class="wb-highlight ${cls}" style="${style}">${proc(el.text)}</div>`;
+    if(el.type==='formula')return`<div class="wb-formula ${cls}" style="${style}" data-raw="${esc(el.text||'')}">${esc(el.text||'')}</div>`;
+    if(el.type==='box')return`<div class="wb-box ${cls}" style="${style}" data-raw="${esc(el.text||'')}">${esc(el.text||'')}</div>`;
+    if(el.type==='highlight')return`<div class="wb-highlight ${cls}" style="${style}" data-raw="${esc(el.text||'')}">${esc(el.text||'')}</div>`;
     if(el.type==='arrow')return`<div class="wb-arrow-row ${cls}" style="${style}"><div class="wb-arrow-line"></div><span>${esc(el.label||'')}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     if(el.type==='circle')return`<span class="wb-circle ${cls}" style="${style}">${esc(el.text)}</span>`;
-    return`<div class="wb-text ${cls}" style="${style}">${proc(el.text||'')}</div>`;
+    return`<div class="wb-text ${cls}" style="${style}" data-raw="${esc(el.text||'')}">${esc(el.text||'')}</div>`;
   }).join('');
   const tip=step.tip?`<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:11px;padding:9px 12px;font-size:.8em;color:var(--muted2);line-height:1.5;margin-top:8px;"><strong style="color:var(--accent2);">Wskazowka:</strong> ${esc(step.tip)}</div>`:'';
   return`
@@ -757,117 +757,64 @@ function proc(txt){if(!txt)return'';return esc(txt).replace(/\b([A-ZŁÓĄŻŚŹ
 
 
 // ═══ TYPEWRITER + SYNC VOICE ═══
+const CHAR_SPEED=55;
 function animateSlide(idx){
   if(idx>=steps.length)return;
-  document.querySelectorAll('.wb-cursor').forEach(c=>c.style.display='none');
-  
-  // Pobierz elementy tablicy
-  const elsContainer = document.getElementById('wbels-'+idx);
-  if(!elsContainer) return;
-  
-  // Ukryj wszystkie elementy
-  const els = Array.from(elsContainer.querySelectorAll('.wb-el'));
-  els.forEach(el=>{ el.style.opacity='0'; el.style.transform='none'; });
-  
-  // Pisz element po elemencie
-  let delay = 0;
-  els.forEach((el, i) => {
-    const text = el.textContent.trim();
-    if(!text) {
-      // Bez tekstu - pokaz od razu
-      setTimeout(()=>{ el.style.opacity='1'; }, delay);
-      delay += 80;
-      return;
-    }
-    
-    const originalHTML = el.innerHTML;
-    
-    setTimeout(()=>{
-      el.style.opacity='1';
-      // Typewriter dla tego elementu
-      typewriterEl(el, originalHTML, ()=>{});
-    }, delay);
-    
-    // Opoznienie zalezy od dlugosci tekstu
-    delay += Math.min(text.length * 28, 1200) + 100;
+  document.querySelectorAll('.wb-cursor').forEach(el=>el.style.display='none');
+  const cont=document.getElementById('wbels-'+idx);
+  if(!cont)return;
+  const els=Array.from(cont.querySelectorAll('.wb-el'));
+  els.forEach(el=>{el.style.opacity='0';});
+  let delay=0;
+  els.forEach(el=>{
+    const raw=el.getAttribute('data-raw')||el.textContent.trim();
+    if(!raw){setTimeout(()=>el.style.opacity='1',delay);delay+=60;return;}
+    const d2=delay;
+    setTimeout(()=>{el.style.opacity='1';typeEl(el,raw);},d2);
+    delay+=Math.min(raw.length*55,2000)+200;
   });
-  
-  // Pokaz kursor na koncu
-  const cur = document.getElementById('wbcur-'+idx);
-  setTimeout(()=>{ if(cur){ cur.style.display='inline-block'; setTimeout(()=>{ if(cur) cur.style.display='none'; }, 800); } }, delay);
-  
-  // Mow narration w tym samym czasie co pisanie
-  speakNarration(idx);
+  const cur=document.getElementById('wbcur-'+idx);
+  setTimeout(()=>{if(cur){cur.style.display='inline-block';setTimeout(()=>{if(cur)cur.style.display='none';},700);}},delay);
+  speakNow(idx);
 }
 
-function typewriterEl(el, originalHTML, onDone){
-  // Wyciagnij czysty tekst
-  const text = el.textContent;
-  if(!text || text.length < 3){ el.innerHTML = originalHTML; onDone(); return; }
-  
-  // Zachowaj klasy i style
-  let i = 0;
-  el.textContent = '';
-  const cur = document.createElement('span');
-  cur.style.cssText = 'display:inline-block;width:2px;height:.9em;background:var(--accent2);border-radius:1px;animation:wbBlink .5s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+function typeEl(el,raw){
+  const isF=el.classList.contains('wb-formula');
+  const txt=isF?raw.replace(/\\(/g,'').replace(/\\)/g,'').replace(/\\[/g,'').replace(/\\]/g,'').replace(/\$\$/g,'').trim():raw;
+  let i=0;
+  el.textContent='';
+  const cur=document.createElement('span');
+  cur.style.cssText='display:inline-block;width:2px;height:1em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
   el.appendChild(cur);
-  
-  const speed = Math.max(18, Math.min(45, 1200 / text.length));
-  
-  const timer = setInterval(()=>{
-    if(i >= text.length){
-      clearInterval(timer);
-      cur.remove();
-      // Renderuj KaTeX jesli jest wzor
-      if(el.classList.contains('wb-formula')){
-        try{ katex.render(text, el, {throwOnError:false, displayMode:false}); }catch(e){ el.textContent = text; }
-      } else {
-        el.textContent = text;
-      }
-      onDone();
+  const timer=setInterval(()=>{
+    if(i>=txt.length){
+      clearInterval(timer);cur.remove();
+      if(isF&&window.katex){try{katex.render(txt,el,{throwOnError:false,displayMode:false});}catch(e){el.textContent=txt;}}
+      else el.textContent=txt;
       return;
     }
-    cur.remove();
-    el.textContent = text.substring(0, i+1);
-    el.appendChild(cur);
-    i++;
-  }, speed);
+    cur.remove();el.textContent=txt.substring(0,i+1);el.appendChild(cur);i++;
+  },55);
 }
 
-function speakNarration(idx){
+function speakNow(idx){
   if(!voiceOn||!synth||idx>=steps.length)return;
   synth.cancel();
-  const txt = steps[idx].narration || '';
-  if(!txt) return;
-  
-  // Poczekaj az zaladuja sie glosy
-  const doSpeak = () => {
-    const utt = new SpeechSynthesisUtterance(txt);
-    utt.lang = 'pl-PL';
-    utt.rate = 0.82;
-    utt.pitch = 1.0;
-    utt.volume = 1;
-    
-    const voices = synth.getVoices();
-    // Szukaj najlepszego polskiego glosu
-    const pl = voices.find(v=>v.lang==='pl-PL'&&v.name.includes('Google'))
-      || voices.find(v=>v.lang==='pl-PL')
-      || voices.find(v=>v.lang.startsWith('pl'));
-    if(pl) utt.voice = pl;
-    
-    utt.onstart = ()=>document.getElementById('wbVoiceWave').classList.add('on');
-    utt.onend = ()=>document.getElementById('wbVoiceWave').classList.remove('on');
-    synth.speak(utt);
+  const txt=steps[idx].narration||'';if(!txt)return;
+  const go=()=>{
+    const u=new SpeechSynthesisUtterance(txt);
+    u.lang='pl-PL';u.rate=0.80;u.pitch=1.0;u.volume=1;
+    const vs=synth.getVoices();
+    const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))||vs.find(v=>v.lang==='pl-PL')||vs.find(v=>v.lang.startsWith('pl'));
+    if(pl)u.voice=pl;
+    u.onstart=()=>document.getElementById('wbVoiceWave').classList.add('on');
+    u.onend=()=>document.getElementById('wbVoiceWave').classList.remove('on');
+    synth.speak(u);
   };
-  
-  if(synth.getVoices().length === 0){
-    speechSynthesis.addEventListener('voiceschanged', doSpeak, {once:true});
-  } else {
-    setTimeout(doSpeak, 200);
-  }
+  synth.getVoices().length===0?speechSynthesis.addEventListener('voiceschanged',go,{once:true}):setTimeout(go,100);
 }
 
-function speak(idx){ speakNarration(idx); }
+function speak(idx){speakNow(idx);}
 
 function toggleVoice(){
   voiceOn=!voiceOn;
