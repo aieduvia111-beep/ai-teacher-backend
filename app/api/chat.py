@@ -104,7 +104,7 @@ def _build_response(ai_data: dict, user_message: str) -> dict:
 
     return {
         "title": ai_data.get("title", ""),
-        "text": ai_data.get("text", ""),
+        "text": ai_data.get("text", "") or "Rozumiem! Pisz śmiało jeśli masz więcej pytań. 😊",
         "has_latex": ai_data.get("has_latex", False),
         "sources": sources,
         "videos": videos,
@@ -288,7 +288,7 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
                 # Wyślij odpowiedź
                 response_data = {
                     "title": ai_data.get("title", ""),
-                    "text": ai_data.get("text", ""),
+                    "text": ai_data.get("text", "") or "Rozumiem! Pisz śmiało jeśli masz więcej pytań. 😊",
                     "has_latex": ai_data.get("has_latex", False),
                     "sources": sources,
                     "videos": videos,
