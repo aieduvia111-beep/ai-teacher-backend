@@ -789,142 +789,133 @@ function buildSpeechText(step){
 
 function animateSlide(idx){
   if(idx>=steps.length)return;
+  synth && synth.cancel();
   document.querySelectorAll('.wb-cursor').forEach(el=>el.style.display='none');
   const cont=document.getElementById('wbels-'+idx);
   if(!cont)return;
   const els=Array.from(cont.querySelectorAll('.wb-el'));
 
-  // Wyczysc i ukryj wszystkie od razu
+  // Ukryj wszystkie i wyczysc
+  els.forEach(el=>{el.style.opacity='0';el.innerHTML='';});
+
+  // Pisz sekwencyjnie - 300ms/slowo jak wolne ludzkie pisanie
+  const MS_PER_WORD = 300;
+  let delay = 0;
+
   els.forEach(el=>{
-    el.style.opacity='0';
-    el.textContent='';
-  });
-
-  // Oblicz czas narracji
-  const narr=steps[idx].narration||'';
-  const wordCount=narr.trim().split(/\s+/).length;
-  const totalMs=(wordCount/2.0)*1000; // ~2 slowa/sek przy rate 0.78
-
-  const visEls=els.filter(el=>el.getAttribute('data-raw'));
-  const timePerEl=visEls.length>0?Math.max(400,totalMs/visEls.length):600;
-
-  let delay=0;
-  els.forEach(el=>{
-    const raw=el.getAttribute('data-raw')||'';
+    const raw = el.getAttribute('data-raw') || '';
     if(!raw){
-      setTimeout(()=>{el.style.opacity='1';},delay);
-      delay+=100;
+      setTimeout(()=>{ el.style.opacity='1'; }, delay);
+      delay += 80;
       return;
     }
-    const d2=delay;
-    setTimeout(()=>{
-      el.style.opacity='1';
-      writeElement(el,raw,timePerEl);
-    },d2);
-    delay+=timePerEl;
+    const isF = el.classList.contains('wb-formula');
+    const wordCount = isF ? Math.max(3, raw.length/6) : raw.trim().split(/\s+/).length;
+    const elTime = wordCount * MS_PER_WORD;
+    const d = delay;
+    setTimeout(()=>{ el.style.opacity='1'; writeEl(el, raw, elTime); }, d);
+    delay += elTime + 150;
   });
 
-  // Glos startuje razem z pisaniem
-  speakNow(idx);
+  // Glos startuje po 200ms - daje czas na pierwsze slowo
+  setTimeout(()=> speakNow(idx), 200);
 }
 
-function writeElement(el,raw,totalTime){
-  const isF=el.classList.contains('wb-formula');
+function writeEl(el, raw, totalTime){
+  const isF = el.classList.contains('wb-formula');
 
   if(isF){
-    // Usun delimitery LaTeX
-    const tex=raw
+    // Wzory: raw moze byc "\frac{a}{b}" lub "\( \frac{a}{b} \)"
+    let tex = raw
       .replace(/^\s*\\\(/,'').replace(/\\\)\s*$/,'')
       .replace(/^\s*\\\[/,'').replace(/\\\]\s*$/,'')
       .replace(/^\s*\$\$/,'').replace(/\$\$\s*$/,'')
       .trim();
+    // Jesli po usunieciu delimiterow wychodzi to samo - to juz czysty TeX
+    if(!tex) tex = raw.trim();
 
-    // Pisz znaki TeX-a literka po literce
-    const speed=Math.max(40,Math.min(80,totalTime/Math.max(tex.length,1)));
+    const speed = Math.max(35, Math.min(70, totalTime / Math.max(tex.length, 1)));
     writeChars(el, tex, speed, ()=>{
-      // Renderuj KaTeX
       if(window.katex){
         try{
-          katex.render(tex, el, {throwOnError:false, displayMode:true, trust:true});
-        }catch(e){
-          el.style.fontFamily="'Caveat',cursive";
-          el.textContent=tex;
+          katex.render(tex, el, {throwOnError:false, displayMode:false});
+        } catch(e){
+          el.style.fontFamily = "'Caveat',cursive";
+          el.textContent = tex;
         }
       } else {
-        el.style.fontFamily="'Caveat',cursive";
-        el.textContent=tex;
+        el.style.fontFamily = "'Caveat',cursive";
+        el.textContent = tex;
       }
     });
     return;
   }
 
-  // Tekst zwykly - pisz slowo po slowie
-  const words=raw.split(' ').filter(w=>w);
-  const msPerWord=Math.max(180,Math.min(500,totalTime/Math.max(words.length,1)));
+  // Tekst: slowo po slowie
+  const words = raw.trim().split(/\s+/);
+  const msPerWord = Math.max(200, Math.min(400, totalTime / Math.max(words.length,1)));
   writeWords(el, raw, words, msPerWord);
 }
 
 function writeWords(el, raw, words, msPerWord){
-  let wi=0;
-  el.textContent='';
-  const cur=makeCursor();
+  let wi = 0;
+  el.innerHTML = '';
+  const cur = makeCursor();
   el.appendChild(cur);
-
-  const t=setInterval(()=>{
-    if(wi>=words.length){
+  const t = setInterval(()=>{
+    if(wi >= words.length){
       clearInterval(t);
-      cur.remove();
-      el.textContent=raw;
+      cur.parentNode && cur.remove();
+      el.textContent = raw;
       return;
     }
-    cur.remove();
-    el.textContent=words.slice(0,wi+1).join(' ');
+    cur.parentNode && cur.remove();
+    el.textContent = words.slice(0, wi+1).join(' ');
     el.appendChild(cur);
     wi++;
-  },msPerWord);
+  }, msPerWord);
 }
 
 function writeChars(el, txt, speed, onDone){
-  let i=0;
-  el.textContent='';
-  const cur=makeCursor();
+  let i = 0;
+  el.innerHTML = '';
+  const cur = makeCursor();
   el.appendChild(cur);
-  const t=setInterval(()=>{
-    if(i>=txt.length){clearInterval(t);cur.remove();onDone();return;}
-    cur.remove();
-    el.textContent=txt.substring(0,i+1);
+  const t = setInterval(()=>{
+    if(i >= txt.length){ clearInterval(t); cur.parentNode && cur.remove(); onDone(); return; }
+    cur.parentNode && cur.remove();
+    el.textContent = txt.substring(0, i+1);
     el.appendChild(cur);
     i++;
-  },speed);
+  }, speed);
 }
 
 function makeCursor(){
-  const s=document.createElement('span');
-  s.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  const s = document.createElement('span');
+  s.style.cssText = 'display:inline-block;width:2px;height:.85em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
   return s;
 }
 
 function speakNow(idx){
   if(!voiceOn||!synth||idx>=steps.length)return;
   synth.cancel();
-  // Mow narracje - jest juz naturalna
-  const txt=steps[idx].narration||'';
+  const txt = steps[idx].narration || '';
   if(!txt)return;
-  const go=()=>{
-    const u=new SpeechSynthesisUtterance(txt);
-    u.lang='pl-PL';u.rate=0.78;u.pitch=1.05;u.volume=1;
-    const vs=synth.getVoices();
-    const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
-      ||vs.find(v=>v.lang==='pl-PL')
-      ||vs.find(v=>v.lang.startsWith('pl'));
-    if(pl)u.voice=pl;
-    u.onstart=()=>document.getElementById('wbVoiceWave').classList.add('on');
-    u.onend=()=>document.getElementById('wbVoiceWave').classList.remove('on');
+  const go = ()=>{
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'pl-PL'; u.rate = 0.78; u.pitch = 1.05; u.volume = 1;
+    const vs = synth.getVoices();
+    const pl = vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
+      || vs.find(v=>v.lang==='pl-PL')
+      || vs.find(v=>v.lang.startsWith('pl'));
+    if(pl) u.voice = pl;
+    u.onstart = ()=>document.getElementById('wbVoiceWave').classList.add('on');
+    u.onend   = ()=>document.getElementById('wbVoiceWave').classList.remove('on');
     synth.speak(u);
   };
   synth.getVoices().length===0
-    ?speechSynthesis.addEventListener('voiceschanged',go,{once:true})
-    :setTimeout(go,50);
+    ? speechSynthesis.addEventListener('voiceschanged', go, {once:true})
+    : go();
 }
 
 function speak(idx){speakNow(idx);}
@@ -937,16 +928,15 @@ function toggleVoice(){
 }
 
 function nextSlide(){
-  if(curSlide>=steps.length-1){
-    updateProgress();
-    return;
-  }
+  synth && synth.cancel();
+  if(curSlide>=steps.length-1){updateProgress();return;}
   curSlide++;
   updateProgress();
   animateSlide(curSlide);
 }
 
 function prevSlide(){
+  synth && synth.cancel();
   curSlide=Math.max(curSlide-1,0);
   updateProgress();
   animateSlide(curSlide);
