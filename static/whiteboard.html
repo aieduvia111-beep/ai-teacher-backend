@@ -23,7 +23,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
 
 /* ═══ CURSOR ═══ */
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
@@ -497,6 +497,17 @@ button:active{transform:scale(.95)!important;}
   .wb-slide{min-height:auto!important;}
 }
 
+
+@media(hover:hover){
+  body{cursor:none;}
+  .cursor{display:block;}
+  .cursor-ring{display:block;}
+}
+@media(hover:none){
+  .cursor{display:none!important;}
+  .cursor-ring{display:none!important;}
+}
+
 </style>
 </head>
 <body>
@@ -688,10 +699,10 @@ async function startLesson(){
   const msgs=['Analizuje temat...','Przygotowuje wyjasnienia...','Tworze kroki lekcji...','Prawie gotowe...'];
   let mi=0;const t=setInterval(()=>{document.getElementById('wbLoadSub').textContent=msgs[mi%msgs.length];mi++;},1400);
   try{
-    const res=await fetch(BACKEND+'/api/v1/whiteboard/generate',{
+    const res=await Promise.race([fetch(BACKEND+'/api/v1/whiteboard/generate',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({topic:topic||'Rozwiaz zadanie ze zdjecia',level:document.getElementById('wbLevel').value,tempo:selMode,images:photoB64?[photoB64]:null})
-    });
+    }),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),30000))]);
     const data=await res.json();
     if(data.ok&&data.steps&&data.steps.length>0)steps=data.steps;
     else throw new Error('brak steps');
@@ -780,7 +791,7 @@ function animateSlide(idx){
 
 function typeEl(el,raw){
   const isF=el.classList.contains('wb-formula');
-  const txt=isF?raw.replace(/\\(/g,'').replace(/\\)/g,'').replace(/\\[/g,'').replace(/\\]/g,'').replace(/\$\$/g,'').trim():raw;
+  const txt=isF?raw.replace(/[\\()\[\]]/g,'').replace(/\$\$/g,'').trim():raw;
   let i=0;
   el.textContent='';
   const cur=document.createElement('span');
