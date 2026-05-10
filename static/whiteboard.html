@@ -907,37 +907,42 @@ function buildSpeechText(step){
 
 function animateSlide(idx){
   if(idx>=steps.length)return;
-  synth && synth.cancel();
+  synth&&synth.cancel();
   document.querySelectorAll('.wb-cursor').forEach(el=>el.style.display='none');
   const cont=document.getElementById('wbels-'+idx);
   if(!cont)return;
   const els=Array.from(cont.querySelectorAll('.wb-el'));
 
-  // Ukryj wszystkie i wyczysc
-  els.forEach(el=>{el.style.opacity='0';el.innerHTML='';});
-
-  // Pisz sekwencyjnie - 300ms/slowo jak wolne ludzkie pisanie
-  const MS_PER_WORD = 300;
-  let delay = 0;
-
+  // Reset - ukryj wszystkie i wyczysc tekst
   els.forEach(el=>{
-    const raw = el.getAttribute('data-raw') || '';
-    if(!raw){
-      setTimeout(()=>{ el.style.opacity='1'; }, delay);
-      delay += 80;
-      return;
-    }
-    const isF = el.classList.contains('wb-formula');
-    const wordCount = isF ? Math.max(3, raw.length/6) : raw.trim().split(/\s+/).length;
-    const elTime = wordCount * MS_PER_WORD;
-    const d = delay;
-    setTimeout(()=>{ el.style.opacity='1'; writeEl(el, raw, elTime); }, d);
-    delay += elTime + 150;
+    el.style.opacity='0';
+    el.style.animation='none';
+    el.innerHTML='';
   });
 
-  // Glos startuje po 200ms - daje czas na pierwsze slowo
-  setTimeout(()=> speakNow(idx), 200);
+  // Pisz sekwencyjnie z opoznieniem
+  let delay=0;
+  els.forEach(el=>{
+    const raw=el.getAttribute('data-raw')||'';
+    if(!raw){
+      setTimeout(()=>{el.style.opacity='1';},delay);
+      delay+=80;
+      return;
+    }
+    const words=raw.trim().split(/\s+/).length;
+    const elTime=Math.max(400, words*300);
+    const d=delay;
+    setTimeout(()=>{
+      el.style.opacity='1';
+      writeEl(el,raw,elTime);
+    },d);
+    delay+=elTime+150;
+  });
+
+  // Glos i XP
+  setTimeout(()=>speakNow(idx),100);
 }
+
 
 function writeEl(el, raw, totalTime){
   const isF = el.classList.contains('wb-formula');
