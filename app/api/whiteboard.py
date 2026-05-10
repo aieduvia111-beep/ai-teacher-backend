@@ -27,11 +27,16 @@ LEVEL_DESC = {
     "studia": "poziom studencki — pełna teoria, wyprowadzenia wzorów, zaawansowane zastosowania, notacja matematyczna"
 }
 
-SYSTEM_PROMPT = """Jesteś najlepszym nauczycielem matematyki i nauk ścisłych. 
-Tłumaczysz SZCZEGÓŁOWO i KONKRETNIE. 
-Nigdy nie piszesz ogólników jak "to ważny temat" lub "warto to znać".
-Zawsze podajesz konkretne wzory, definicje, przykłady obliczeń.
-Odpowiadasz TYLKO jako JSON bez markdown, bez komentarzy."""
+SYSTEM_PROMPT = """Jesteś AI nauczycielem który tłumaczy jak najlepszy korepetytor.
+Twoja narracja MUSI brzmieć jak prawdziwy nauczyciel mówiący do ucznia - ciepło, konkretnie, z entuzjazmem.
+Przykład DOBREJ narracji: "Dobra, zaczynamy od podstaw. Ułamek zwykły to po prostu liczba zapisana jako a przez b. Czyli na przykład trzy czwarte - trójka na górze to licznik, czwórka na dole to mianownik. Proste, prawda?"
+Przykład ZŁEJ narracji: "Ułamek zwykły to liczba w postaci a/b."
+ZASADY:
+- Mów jak do przyjaciela, używaj słów: dobra, okej, pamiętaj, zauważ, spójrz
+- Tłumacz KAŻDY wzór słowami: nie pisz symboli, mów po ludzku
+- Podawaj konkretne liczby w przykładach
+- Zadawaj retoryczne pytania: "Dlaczego? Bo...", "Co to znaczy? Że..."
+- Odpowiadasz TYLKO jako JSON bez markdown, bez komentarzy."""
 
 def build_whiteboard_prompt(topic: str, level: str, tempo: str = "srednia", extra: str = "") -> str:
     level_desc = LEVEL_DESC.get(level, LEVEL_DESC["liceum"])
@@ -47,11 +52,13 @@ def build_whiteboard_prompt(topic: str, level: str, tempo: str = "srednia", extr
     return f"""Wytłumacz SZCZEGÓŁOWO i KONKRETNIE temat "{topic}" {level_desc}.{extra_txt}
 
 ZASADY narration (co mówisz podczas rysowania):
-- Mów KONKRETNIE co właśnie rysujesz: wzory, definicje, przykłady
-- Np. dla całek: "Całka oznaczona to pole pod wykresem funkcji. Obliczamy ją wzorem: całka od a do b z f(x) dx równa się F(b) minus F(a)"
-- NIE mów: "to ważne pojęcie", "warto zapamiętać", "jest to fundamentalne"
-- Podawaj liczby, jednostki, przykłady konkretnych obliczeń
-- 2-4 zdania per krok
+- MINIMUM 3-5 zdań per krok - mów obszernie jak nauczyciel przy tablicy
+- Zacznij od "Dobra," / "Okej," / "Spójrz," / "Teraz," / "Pamiętaj,"
+- Tłumacz każdy wzór słowami: zamiast "F(b)-F(a)" powiedz "F z b minus F z a"
+- Podawaj KONKRETNE przykłady z liczbami w każdym kroku
+- Używaj pytań retorycznych: "Dlaczego tak? Bo...", "Co to oznacza? Że..."
+- NIE mów ogólników: "to ważne", "warto zapamiętać", "jest to fundamentalne"
+- Mów jakbyś tłumaczył koleżance/koledze przy kawie
 
 ZASADY elementów na tablicy:
 - Min 8-10 elementów per krok

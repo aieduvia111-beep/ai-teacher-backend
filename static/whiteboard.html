@@ -497,6 +497,12 @@ button:active{transform:scale(.95)!important;}
   .wb-slide{min-height:auto!important;}
 }
 
+
+.wb-slide{display:none;}
+.wb-slide.active{display:flex;}
+.wb-pdf-slide{display:none;}
+.wb-pdf-slide.active{display:flex;}
+
 </style>
 </head>
 <body>
@@ -719,8 +725,12 @@ function buildLesson(topic){
   const pdf=document.createElement('div');pdf.className='wb-pdf';
   pdf.innerHTML=`<div class="wb-pdf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8" width="28" height="28"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="wb-pdf-title">Lekcja ukonczona!</div><div class="wb-pdf-sub">Pobierz profesjonalne notatki z tej lekcji jako PDF.</div><button class="wb-pdf-btn" onclick="downloadPDF()">Pobierz PDF z notatkami</button><button class="wb-pdf-back" onclick="endLesson()">Wroc do menu</button>`;
   wrap.appendChild(pdf);
+  // Pokaz tylko aktywny slide
+  document.querySelectorAll('.wb-slide,.wb-pdf-slide').forEach(s=>s.classList.remove('active'));
+  const firstSlide=document.getElementById('wbs-0');
+  if(firstSlide)firstSlide.classList.add('active');
   updateProgress();
-  setTimeout(()=>{animateSlide(0);speak(0);},300);
+  setTimeout(()=>{animateSlide(0);},300);
 }
 
 function buildSlideHTML(step,i){
@@ -929,15 +939,31 @@ function toggleVoice(){
 
 function nextSlide(){
   synth && synth.cancel();
-  if(curSlide>=steps.length-1){updateProgress();return;}
+  // Ukryj aktywny
+  document.querySelectorAll('.wb-slide.active,.wb-pdf-slide.active').forEach(s=>s.classList.remove('active'));
+  if(curSlide>=steps.length-1){
+    // Pokaz PDF slide
+    const wrap=document.getElementById('wbSlides');
+    const pdf=wrap.lastElementChild;
+    if(pdf)pdf.classList.add('active');
+    document.getElementById('wbNextBtn').innerHTML='Koniec';
+    updateProgress();
+    return;
+  }
   curSlide++;
+  // Pokaz nowy slide
+  const newSlide=document.getElementById('wbs-'+curSlide);
+  if(newSlide)newSlide.classList.add('active');
   updateProgress();
   animateSlide(curSlide);
 }
 
 function prevSlide(){
   synth && synth.cancel();
+  document.querySelectorAll('.wb-slide.active,.wb-pdf-slide.active').forEach(s=>s.classList.remove('active'));
   curSlide=Math.max(curSlide-1,0);
+  const slide=document.getElementById('wbs-'+curSlide);
+  if(slide)slide.classList.add('active');
   updateProgress();
   animateSlide(curSlide);
 }
@@ -951,25 +977,59 @@ function updateProgress(){
 }
 
 async function explainWord(word){
-  synth.cancel();
+  synth && synth.cancel();
   document.querySelectorAll('.wb-explain').forEach(p=>p.remove());
-  const popup=document.createElement('div');popup.className='wb-explain';
-  popup.innerHTML=`<div class="wb-explain-hdr"><div class="wb-explain-word">${esc(word)}</div><button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="wb-explain-body">Ladowanie...</div>`;
+  
+  const popup=document.createElement('div');
+  popup.className='wb-explain';
+  popup.innerHTML=`
+    <div class="wb-explain-hdr">
+      <div class="wb-explain-word">${esc(word)}</div>
+      <button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();synth&&synth.cancel();return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="wb-explain-body" id="wbExplainBody">
+      <div style="display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:.8em;">
+        <div style="width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:wbSpin .7s linear infinite;flex-shrink:0;"></div>
+        AI tłumaczy...
+      </div>
+    </div>`;
   document.body.appendChild(popup);
+
   try{
-    const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element_text:word,element_type:'word',topic:steps[curSlide]?.title||'',level:document.getElementById('wbLevel')?.value||'liceum'})});
+    const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        element_text: word,
+        element_type: 'word',
+        topic: steps[curSlide]?.title||'',
+        level: document.getElementById('wbLevel')?.value||'liceum',
+        style: 'prosty jak dla ucznia, max 2 zdania, zacznij od "To znaczy że..." lub "Chodzi o to że..."'
+      })
+    });
     const data=await res.json();
-    popup.querySelector('.wb-explain-body').textContent=data.explanation||'Brak wyjasnienia.';
-    if(voiceOn&&data.explanation){
-    synth.cancel();
-    const utt=new SpeechSynthesisUtterance(data.explanation);
-    utt.lang='pl-PL';utt.rate=0.82;utt.pitch=1.0;
-    const voices=synth.getVoices();
-    const pl=voices.find(v=>v.lang==='pl-PL'&&v.name.includes('Google'))||voices.find(v=>v.lang==='pl-PL')||voices.find(v=>v.lang.startsWith('pl'));
-    if(pl)utt.voice=pl;
-    synth.speak(utt);
+    const explanation=data.explanation||'Brak wyjaśnienia.';
+    
+    const body=document.getElementById('wbExplainBody');
+    if(body) body.textContent=explanation;
+    
+    // Mow wyjasnenie
+    if(voiceOn){
+      const u=new SpeechSynthesisUtterance(explanation);
+      u.lang='pl-PL';u.rate=0.78;u.pitch=1.05;
+      const vs=synth.getVoices();
+      const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
+        ||vs.find(v=>v.lang==='pl-PL')
+        ||vs.find(v=>v.lang.startsWith('pl'));
+      if(pl)u.voice=pl;
+      synth.speak(u);
+    }
+  }catch(e){
+    const body=document.getElementById('wbExplainBody');
+    if(body) body.textContent='Nie udało się pobrać wyjaśnienia.';
   }
-  }catch(e){popup.querySelector('.wb-explain-body').textContent='Blad ladowania.';}
 }
 
 async function downloadPDF(){
