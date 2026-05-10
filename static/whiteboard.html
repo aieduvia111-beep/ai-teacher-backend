@@ -23,7 +23,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
 
 /* ═══ CURSOR ═══ */
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
@@ -498,15 +498,10 @@ button:active{transform:scale(.95)!important;}
 }
 
 
-@media(hover:hover){
-  body{cursor:none;}
-  .cursor{display:block;}
-  .cursor-ring{display:block;}
-}
-@media(hover:none){
-  .cursor{display:none!important;}
-  .cursor-ring{display:none!important;}
-}
+/* KaTeX wyglada jak Caveat */
+.wb-formula .katex{font-size:1.2em!important;}
+.wb-formula .katex *{font-family:'Caveat',cursive!important;}
+.katex-html{font-family:'Caveat',cursive!important;}
 
 </style>
 </head>
@@ -699,10 +694,10 @@ async function startLesson(){
   const msgs=['Analizuje temat...','Przygotowuje wyjasnienia...','Tworze kroki lekcji...','Prawie gotowe...'];
   let mi=0;const t=setInterval(()=>{document.getElementById('wbLoadSub').textContent=msgs[mi%msgs.length];mi++;},1400);
   try{
-    const res=await Promise.race([fetch(BACKEND+'/api/v1/whiteboard/generate',{
+    const res=await fetch(BACKEND+'/api/v1/whiteboard/generate',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({topic:topic||'Rozwiaz zadanie ze zdjecia',level:document.getElementById('wbLevel').value,tempo:selMode,images:photoB64?[photoB64]:null})
-    }),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),30000))]);
+    });
     const data=await res.json();
     if(data.ok&&data.steps&&data.steps.length>0)steps=data.steps;
     else throw new Error('brak steps');
@@ -768,61 +763,147 @@ function proc(txt){if(!txt)return'';return esc(txt).replace(/\b([A-ZŁÓĄŻŚŹ
 
 
 // ═══ TYPEWRITER + SYNC VOICE ═══
-const CHAR_SPEED=55;
+// Pisanie: ~120ms/znak = wolno jak człowiek piszący ręcznie
+
 function animateSlide(idx){
   if(idx>=steps.length)return;
   document.querySelectorAll('.wb-cursor').forEach(el=>el.style.display='none');
   const cont=document.getElementById('wbels-'+idx);
   if(!cont)return;
+
+  // Ukryj elementy ale NIE czyszcz tekstu - unikamy migania
   const els=Array.from(cont.querySelectorAll('.wb-el'));
-  els.forEach(el=>{el.style.opacity='0';});
-  let delay=0;
   els.forEach(el=>{
-    const raw=el.getAttribute('data-raw')||el.textContent.trim();
-    if(!raw){setTimeout(()=>el.style.opacity='1',delay);delay+=60;return;}
-    const d2=delay;
-    setTimeout(()=>{el.style.opacity='1';typeEl(el,raw);},d2);
-    delay+=Math.min(raw.length*55,2000)+200;
+    el.style.opacity='0';
+    el.style.transition='none';
   });
+
+  // Pisz sekwencyjnie - jeden element po drugim
+  let totalDelay=0;
+  const queue=[];
+
+  els.forEach((el,ei)=>{
+    const raw=el.getAttribute('data-raw')||'';
+    if(!raw||raw.length<2){
+      queue.push({el,raw:'',delay:totalDelay});
+      totalDelay+=80;
+      return;
+    }
+    queue.push({el,raw,delay:totalDelay});
+    // Czas pisania: 120ms/znak dla tekstu, 80ms dla wzorów
+    const isF=el.classList.contains('wb-formula');
+    totalDelay+=raw.length*(isF?50:120)+300;
+  });
+
+  // Uruchom kolejkę
+  queue.forEach(({el,raw,delay})=>{
+    setTimeout(()=>{
+      el.style.opacity='1';
+      if(!raw||raw.length<2){return;}
+      typeWordByWord(el,raw,idx);
+    },delay);
+  });
+
+  // Kursor na koncu
   const cur=document.getElementById('wbcur-'+idx);
-  setTimeout(()=>{if(cur){cur.style.display='inline-block';setTimeout(()=>{if(cur)cur.style.display='none';},700);}},delay);
+  setTimeout(()=>{
+    if(cur){cur.style.display='inline-block';setTimeout(()=>{if(cur)cur.style.display='none';},800);}
+  },totalDelay);
+
+  // Glos startuje razem z pisaniem
   speakNow(idx);
 }
 
-function typeEl(el,raw){
+function typeWordByWord(el,raw,slideIdx){
   const isF=el.classList.contains('wb-formula');
-  const txt=isF?raw.replace(/[\\()\[\]]/g,'').replace(/\$\$/g,'').trim():raw;
+
+  if(isF){
+    // Wzory: pisz TeX literka po literce, potem renderuj
+    const tex=raw.replace(/^\\\(/,'').replace(/\\\)$/,'').replace(/^\\\[/,'').replace(/\\\]$/,'').replace(/^\$\$/,'').replace(/\$\$$/,'').trim();
+    typeChars(el, tex, ()=>{
+      // Po napisaniu - renderuj KaTeX z Caveat style
+      if(window.katex){
+        try{
+          katex.render(tex,el,{
+            throwOnError:false,
+            displayMode:false,
+            trust:true,
+            macros:{}
+          });
+          // Dodaj Caveat font do KaTeX output
+          el.style.fontFamily="'Caveat', cursive";
+          el.style.fontSize='1.3em';
+        }catch(e){el.textContent=tex;}
+      } else {el.textContent=tex;}
+    });
+    return;
+  }
+
+  // Tekst zwykly: pisz słowo po słowie
+  const words=raw.split(' ');
+  let wordIdx=0;
+  el.textContent='';
+
+  const cur=document.createElement('span');
+  cur.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  el.appendChild(cur);
+
+  const wordSpeed=280; // ms na słowo - tempo czytania
+
+  const timer=setInterval(()=>{
+    if(wordIdx>=words.length){
+      clearInterval(timer);
+      cur.remove();
+      // Finalny tekst
+      el.textContent=raw;
+      return;
+    }
+    cur.remove();
+    el.textContent=words.slice(0,wordIdx+1).join(' ');
+    el.appendChild(cur);
+    wordIdx++;
+  },wordSpeed);
+}
+
+function typeChars(el,txt,onDone){
   let i=0;
   el.textContent='';
   const cur=document.createElement('span');
-  cur.style.cssText='display:inline-block;width:2px;height:1em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  cur.style.cssText='display:inline-block;width:2px;height:.9em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
   el.appendChild(cur);
   const timer=setInterval(()=>{
-    if(i>=txt.length){
-      clearInterval(timer);cur.remove();
-      if(isF&&window.katex){try{katex.render(txt,el,{throwOnError:false,displayMode:false});}catch(e){el.textContent=txt;}}
-      else el.textContent=txt;
-      return;
-    }
-    cur.remove();el.textContent=txt.substring(0,i+1);el.appendChild(cur);i++;
-  },55);
+    if(i>=txt.length){clearInterval(timer);cur.remove();onDone();return;}
+    cur.remove();
+    el.textContent=txt.substring(0,i+1);
+    el.appendChild(cur);
+    i++;
+  },50);
 }
 
 function speakNow(idx){
   if(!voiceOn||!synth||idx>=steps.length)return;
   synth.cancel();
   const txt=steps[idx].narration||'';if(!txt)return;
+
   const go=()=>{
     const u=new SpeechSynthesisUtterance(txt);
-    u.lang='pl-PL';u.rate=0.80;u.pitch=1.0;u.volume=1;
+    u.lang='pl-PL';
+    u.rate=0.78; // wolno - jak nauczyciel
+    u.pitch=1.0;
+    u.volume=1;
     const vs=synth.getVoices();
-    const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))||vs.find(v=>v.lang==='pl-PL')||vs.find(v=>v.lang.startsWith('pl'));
+    const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
+      ||vs.find(v=>v.lang==='pl-PL')
+      ||vs.find(v=>v.lang.startsWith('pl'));
     if(pl)u.voice=pl;
     u.onstart=()=>document.getElementById('wbVoiceWave').classList.add('on');
     u.onend=()=>document.getElementById('wbVoiceWave').classList.remove('on');
     synth.speak(u);
   };
-  synth.getVoices().length===0?speechSynthesis.addEventListener('voiceschanged',go,{once:true}):setTimeout(go,100);
+
+  synth.getVoices().length===0
+    ?speechSynthesis.addEventListener('voiceschanged',go,{once:true})
+    :setTimeout(go,150);
 }
 
 function speak(idx){speakNow(idx);}
