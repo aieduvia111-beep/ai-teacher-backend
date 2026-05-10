@@ -23,7 +23,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;cursor:none;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
 
 /* ═══ CURSOR ═══ */
 .cursor{position:fixed;width:10px;height:10px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 12px var(--ag);}
@@ -526,32 +526,8 @@ button:active{transform:scale(.95)!important;}
 .wb-text .katex,.wb-box .katex,.wb-highlight .katex{font-size:1.1em!important;}
 
 
-/* KARAOKE */
-.word{display:inline;}
-.word.said{color:var(--accent2);}
-.word.active{color:white;background:rgba(124,106,255,.3);border-radius:3px;padding:0 2px;margin:0 1px;}
-
-/* XP POPUP */
-.wb-xp-pop{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:9999;pointer-events:none;text-align:center;}
-.wb-xp-pop.show{animation:xpPop .9s cubic-bezier(.22,1,.36,1) forwards;}
-@keyframes xpPop{
-  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
-  35%{transform:translate(-50%,-60%) scale(1.3);opacity:1;}
-  65%{transform:translate(-50%,-65%) scale(1.1);opacity:1;}
-  100%{transform:translate(-50%,-80%) scale(.9);opacity:0;}
-}
-.wb-xp-num{font-family:var(--h);font-size:3.5em;font-weight:800;background:linear-gradient(135deg,#f5a623,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
-.wb-xp-lbl{font-family:var(--h);font-size:.85em;font-weight:700;color:var(--accent2);margin-top:6px;}
-
-/* CONFETTI */
-.wb-conf{position:fixed;pointer-events:none;z-index:9998;animation:confFall linear forwards;}
-@keyframes confFall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
-
-/* KaTeX jak Caveat */
-.wb-board .katex{font-family:'Caveat',cursive!important;font-size:1.15em!important;color:var(--text)!important;}
-.wb-board .katex-display{margin:.4em 0!important;}
-.wb-formula .katex{font-family:'Caveat',cursive!important;font-size:1.3em!important;color:#38bdf8!important;}
-.wb-formula .katex-display{text-align:center!important;}
+@media(hover:hover){body{cursor:none;}.cursor{display:block;}.cursor-ring{display:block;}}
+@media(hover:none){.cursor{display:none!important;}.cursor-ring{display:none!important;}}
 
 </style>
 </head>
@@ -715,10 +691,6 @@ button:active{transform:scale(.95)!important;}
 
 </div>
 </main>
-<div class="wb-xp-pop" id="wbXpPop">
-  <div class="wb-xp-num" id="wbXpNum">+12 XP</div>
-  <div class="wb-xp-lbl">Swietnie!</div>
-</div>
 </div>
 
 <script type="module">
@@ -804,7 +776,7 @@ function buildSlideHTML(step,i){
   return`
     <div class="wb-narration">
       <div class="wb-narration-lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="10" height="10"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>AI mowi</div>
-      <div class="wb-narration-txt" id="wbn-${i}">${(step.narration||"").split(" ").map((w,wi)=>`<span class="word" id="wbn-${i}-${wi}">${w.replace(/</g,"&lt;")}</span>`).join(" ")}</div>
+      <div class="wb-narration-txt">${esc(step.narration||'')}</div>
     </div>
     <div class="wb-board">
       <div class="wb-board-inner">
@@ -1020,34 +992,198 @@ function writeChars(el, txt, speed, onDone){
 
 function finalizeText(el, raw){
   if(!raw){el.textContent='';return;}
-  if(!window.katex||!raw.includes('\\')){el.textContent=raw;return;}
-  try{
-    // Podziel na czesci tekstowe i LaTeX
-    const parts=[];
-    let remaining=raw;
-    // Szukaj \( ... \) - inline math
-    const re=/\\((.+?)\\)/g;
-    let last=0,m;
-    let hasMatch=false;
-    while((m=re.exec(raw))!==null){
-      hasMatch=true;
-      if(m.index>last)parts.push({t:'text',v:raw.slice(last,m.index)});
-      parts.push({t:'math',v:m[1].trim()});
-      last=m.index+m[0].length;
-    }
-    if(last<raw.length)parts.push({t:'text',v:raw.slice(last)});
-
-    if(hasMatch){
-      el.innerHTML=parts.map(p=>{
-        if(p.t==='text')return p.v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        try{return katex.renderToString(p.v,{throwOnError:false,displayMode:false,trust:true});}
-        catch(e){return '\\('+p.v+'\\)';}
-      }).join('');
-    } else {
-      // Sprobuj caly string jako LaTeX
-      try{katex.render(raw,el,{throwOnError:false,displayMode:false,trust:true});}
-      catch(e){el.textContent=raw;}
-    }
-  }catch(e){el.textContent=raw;}
+  const hasBackslash = raw.includes('\\');
+  if(window.katex && hasBackslash){
+    try{
+      // Renderuj inline wzory - \ oznacza poczatek komendy LaTeX
+      let html = raw
+        // \( ... \) - inline math
+        .replace(/\\\((.+?)\\\)/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:false,trust:true});}catch(e){return p;}
+        })
+        // \[ ... \] - display math  
+        .replace(/\\\[(.+?)\\\]/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:true,trust:true});}catch(e){return p;}
+        })
+        // $$ ... $$ - display math
+        .replace(/\$\$(.+?)\$\$/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:true,trust:true});}catch(e){return p;}
+        })
+        // $ ... $ - inline math
+        .replace(/\$([^$\n]+?)\$/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:false,trust:true});}catch(e){return p;}
+        });
+      // Jesli nadal ma backslash - sprobuj caly tekst jako LaTeX
+      if(html.includes('\\') && !html.includes('<span')){
+        try{
+          katex.render(raw, el, {throwOnError:false,displayMode:false,trust:true});
+          return;
+        }catch(e){}
+      }
+      el.innerHTML = html;
+    }catch(e){el.textContent = raw;}
+  } else {
+    el.textContent = raw;
+  }
 }
->
+
+function makeCursor(){
+  const s = document.createElement('span');
+  s.style.cssText = 'display:inline-block;width:2px;height:.85em;background:#a78bfa;border-radius:1px;animation:wbBlink .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:1px;';
+  return s;
+}
+
+function speakNow(idx){
+  if(!voiceOn||!synth||idx>=steps.length)return;
+  synth.cancel();
+  const txt = steps[idx].narration || '';
+  if(!txt)return;
+  const go = ()=>{
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'pl-PL'; u.rate = 0.78; u.pitch = 1.05; u.volume = 1;
+    const vs = synth.getVoices();
+    const pl = vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
+      || vs.find(v=>v.lang==='pl-PL')
+      || vs.find(v=>v.lang.startsWith('pl'));
+    if(pl) u.voice = pl;
+    u.onstart = ()=>document.getElementById('wbVoiceWave').classList.add('on');
+    u.onend   = ()=>document.getElementById('wbVoiceWave').classList.remove('on');
+    synth.speak(u);
+  };
+  synth.getVoices().length===0
+    ? speechSynthesis.addEventListener('voiceschanged', go, {once:true})
+    : go();
+}
+
+function speak(idx){speakNow(idx);}
+
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  const ico=document.getElementById('wbVoiceIco');
+  if(!voiceOn){synth.cancel();document.getElementById('wbVoiceWave').classList.remove('on');ico.style.stroke='var(--muted)';}
+  else{ico.style.stroke='currentColor';speak(curSlide);}
+}
+
+function nextSlide(){
+  synth && synth.cancel();
+  // Ukryj aktywny
+  document.querySelectorAll('.wb-slide.active,.wb-pdf-slide.active').forEach(s=>s.classList.remove('active'));
+  if(curSlide>=steps.length-1){
+    // Pokaz PDF slide
+    const wrap=document.getElementById('wbSlides');
+    const pdf=wrap.lastElementChild;
+    if(pdf)pdf.classList.add('active');
+    document.getElementById('wbNextBtn').innerHTML='Koniec';
+    updateProgress();
+    return;
+  }
+  curSlide++;
+  // Pokaz nowy slide
+  const newSlide=document.getElementById('wbs-'+curSlide);
+  if(newSlide)newSlide.classList.add('active');
+  updateProgress();
+  animateSlide(curSlide);
+}
+
+function prevSlide(){
+  synth && synth.cancel();
+  document.querySelectorAll('.wb-slide.active,.wb-pdf-slide.active').forEach(s=>s.classList.remove('active'));
+  curSlide=Math.max(curSlide-1,0);
+  const slide=document.getElementById('wbs-'+curSlide);
+  if(slide)slide.classList.add('active');
+  updateProgress();
+  animateSlide(curSlide);
+}
+
+function updateProgress(){
+  const pct=steps.length>0?((curSlide+1)/steps.length)*100:100;
+  document.getElementById('wbProgFill').style.width=Math.min(pct,100)+'%';
+  document.getElementById('wbProgTxt').textContent=`${curSlide+1} / ${steps.length}`;
+  const isLast=curSlide>=steps.length-1;
+  document.getElementById('wbNextBtn').innerHTML=isLast?'PDF <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>':'Dalej <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>';
+}
+
+async function explainWord(word){
+  synth && synth.cancel();
+  document.querySelectorAll('.wb-explain').forEach(p=>p.remove());
+  
+  const popup=document.createElement('div');
+  popup.className='wb-explain';
+  popup.innerHTML=`
+    <div class="wb-explain-hdr">
+      <div class="wb-explain-word">${esc(word)}</div>
+      <button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();synth&&synth.cancel();return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="wb-explain-body" id="wbExplainBody">
+      <div style="display:flex;align-items:center;gap:8px;color:var(--muted2);font-size:.8em;">
+        <div style="width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:wbSpin .7s linear infinite;flex-shrink:0;"></div>
+        AI tłumaczy...
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+
+  try{
+    const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        element_text: word,
+        element_type: 'word',
+        topic: steps[curSlide]?.title||'',
+        level: document.getElementById('wbLevel')?.value||'liceum',
+        style: 'prosty jak dla ucznia, max 2 zdania, zacznij od "To znaczy że..." lub "Chodzi o to że..."'
+      })
+    });
+    const data=await res.json();
+    const explanation=data.explanation||'Brak wyjaśnienia.';
+    
+    const body=document.getElementById('wbExplainBody');
+    if(body) body.textContent=explanation;
+    
+    // Mow wyjasnenie
+    if(voiceOn){
+      const u=new SpeechSynthesisUtterance(explanation);
+      u.lang='pl-PL';u.rate=0.78;u.pitch=1.05;
+      const vs=synth.getVoices();
+      const pl=vs.find(v=>v.lang==='pl-PL'&&v.name.toLowerCase().includes('google'))
+        ||vs.find(v=>v.lang==='pl-PL')
+        ||vs.find(v=>v.lang.startsWith('pl'));
+      if(pl)u.voice=pl;
+      synth.speak(u);
+    }
+  }catch(e){
+    const body=document.getElementById('wbExplainBody');
+    if(body) body.textContent='Nie udało się pobrać wyjaśnienia.';
+  }
+}
+
+async function downloadPDF(){
+  try{
+    const res=await fetch(BACKEND+'/api/v1/whiteboard/pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({steps,topic:document.getElementById('wbTitle').textContent})});
+    const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lekcja_eduvia.pdf';a.click();URL.revokeObjectURL(url);
+  }catch(e){alert('Blad pobierania PDF');}
+}
+
+function endLesson(){
+  synth.cancel();
+  document.getElementById('wbLesson').classList.remove('active');
+  document.getElementById('wbForm').style.display='block';
+  document.getElementById('wbTopic').value='';photoB64=null;steps=[];curSlide=0;
+  document.getElementById('wbPhotoAdded').style.display='none';
+}
+
+// Cursor desktop
+if(!('ontouchstart' in window)){
+  const cur=document.getElementById('cur'),ring=document.getElementById('ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
+}
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="transitions.js"></script>
+<script src="animations.js"></script>
+</body>
+</html>
