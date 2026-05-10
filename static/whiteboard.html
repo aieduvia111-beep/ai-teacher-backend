@@ -520,6 +520,11 @@ button:active{transform:scale(.95)!important;}
 .wb-retry-ok{width:100%;padding:11px;border:none;border-radius:11px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:#f87171;font-family:var(--h);font-size:.8em;font-weight:700;cursor:pointer;}
 .wb-retry-ok:active{transform:scale(.97);}
 
+
+.wb-board .katex{font-size:1.15em!important;color:var(--text)!important;}
+.wb-board .katex-display{margin:.3em 0!important;text-align:center;}
+.wb-text .katex,.wb-box .katex,.wb-highlight .katex{font-size:1.1em!important;}
+
 </style>
 </head>
 <body>
@@ -978,6 +983,44 @@ function writeChars(el, txt, speed, onDone){
     el.appendChild(cur);
     i++;
   }, speed);
+}
+
+
+function finalizeText(el, raw){
+  if(!raw){el.textContent='';return;}
+  const hasBackslash = raw.includes('\\');
+  if(window.katex && hasBackslash){
+    try{
+      // Renderuj inline wzory - \ oznacza poczatek komendy LaTeX
+      let html = raw
+        // \( ... \) - inline math
+        .replace(/\\\((.+?)\\\)/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:false,trust:true});}catch(e){return p;}
+        })
+        // \[ ... \] - display math  
+        .replace(/\\\[(.+?)\\\]/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:true,trust:true});}catch(e){return p;}
+        })
+        // $$ ... $$ - display math
+        .replace(/\$\$(.+?)\$\$/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:true,trust:true});}catch(e){return p;}
+        })
+        // $ ... $ - inline math
+        .replace(/\$([^$\n]+?)\$/g, function(_,p){
+          try{return katex.renderToString(p.trim(),{throwOnError:false,displayMode:false,trust:true});}catch(e){return p;}
+        });
+      // Jesli nadal ma backslash - sprobuj caly tekst jako LaTeX
+      if(html.includes('\\') && !html.includes('<span')){
+        try{
+          katex.render(raw, el, {throwOnError:false,displayMode:false,trust:true});
+          return;
+        }catch(e){}
+      }
+      el.innerHTML = html;
+    }catch(e){el.textContent = raw;}
+  } else {
+    el.textContent = raw;
+  }
 }
 
 function makeCursor(){
