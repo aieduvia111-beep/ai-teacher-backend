@@ -70,8 +70,8 @@ ZASADY elementów na tablicy:
 - Używaj highlight dla podkreślenia ważnych fragmentów
 - Tekst w elementach type=text max 70 znaków na linię
 - Y rośnie o 240px z każdym krokiem
-- KRYTYCZNE: Każdy wzór matematyczny w type=text lub type=box MUSI być otoczony \( i \) np: "Przykład: \(\int_{1}^{3} (2x+1)\,dx\)"
-- KRYTYCZNE: type=formula zawiera TYLKO czysty LaTeX bez żadnego tekstu np: "\frac{a}{b}" lub "\int_a^b f(x)dx"
+- KRYTYCZNE: Każdy wzór matematyczny w type=text lub type=box MUSI być otoczony \( i \) np: "Przykład: \\(\\int_{{1}}^{{3}} (2x+1)\\,dx\\)"
+- KRYTYCZNE: type=formula zawiera TYLKO czysty LaTeX bez żadnego tekstu np: "\\frac{{a}}{{b}}" lub "\\int_a^b f(x)dx"
 - NIE pisz wzorów bez delimiterów - zawsze \( wzór \) dla inline
 
 Odpowiedz TYLKO jako JSON:
