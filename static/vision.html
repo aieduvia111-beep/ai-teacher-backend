@@ -365,19 +365,6 @@ button:active{transform:scale(.95)!important;}
 .edu-error.show{display:flex;align-items:center;gap:10px;}
 .edu-error svg{flex-shrink:0;}
 
-
-/* CROP TOOL */
-.crop-wrap{position:relative;display:inline-block;max-width:100%;user-select:none;}
-.crop-wrap img{display:block;max-width:100%;border-radius:12px;}
-.crop-overlay{position:absolute;inset:0;cursor:crosshair;}
-.crop-selection{position:absolute;border:2px solid #7c6aff;background:rgba(124,106,255,.15);box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;}
-.crop-toolbar{display:none;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:12px;}
-.crop-toolbar.show{display:flex;}
-.crop-info{font-size:.75em;color:var(--muted2);flex:1;}
-.crop-confirm{padding:8px 16px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:9px;color:white;font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;}
-.crop-reset{padding:8px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:9px;color:var(--muted2);font-family:var(--h);font-size:.78em;cursor:pointer;}
-.crop-hint{font-size:.72em;color:var(--muted2);margin-top:6px;display:flex;align-items:center;gap:5px;}
-
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -562,133 +549,6 @@ function getPlanBadgeHTML(plan) {
   if(document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", initBadges); } else { initBadges(); }
 })();
 
-
-// ═══ CROP TOOL ═══
-let cropState = {active:false, startX:0, startY:0, endX:0, endY:0, cropped:false};
-let originalImgBase64 = null;
-
-function initCrop(){
-  const overlay = document.getElementById('cropOverlay');
-  const sel = document.getElementById('cropSelection');
-  if(!overlay) return;
-
-  let dragging = false;
-
-  const getPos = (e, el) => {
-    const r = el.getBoundingClientRect();
-    const touch = e.touches ? e.touches[0] : e;
-    return {
-      x: Math.max(0, Math.min(touch.clientX - r.left, r.width)),
-      y: Math.max(0, Math.min(touch.clientY - r.top, r.height))
-    };
-  };
-
-  const startDrag = (e) => {
-    if(cropState.cropped) return;
-    e.preventDefault();
-    const img = document.getElementById('previewImg');
-    const pos = getPos(e, img);
-    dragging = true;
-    cropState.startX = pos.x; cropState.startY = pos.y;
-    cropState.endX = pos.x; cropState.endY = pos.y;
-    sel.style.display = 'block';
-    updateSelection();
-  };
-
-  const moveDrag = (e) => {
-    if(!dragging) return;
-    e.preventDefault();
-    const img = document.getElementById('previewImg');
-    const pos = getPos(e, img);
-    cropState.endX = pos.x; cropState.endY = pos.y;
-    updateSelection();
-  };
-
-  const endDrag = (e) => {
-    if(!dragging) return;
-    dragging = false;
-    const w = Math.abs(cropState.endX - cropState.startX);
-    const h = Math.abs(cropState.endY - cropState.startY);
-    if(w > 20 && h > 20){
-      document.getElementById('cropToolbar').classList.add('show');
-      document.getElementById('cropInfo').textContent = 'Zaznaczono: '+Math.round(w)+'×'+Math.round(h)+'px';
-    } else {
-      sel.style.display = 'none';
-    }
-  };
-
-  overlay.addEventListener('mousedown', startDrag);
-  overlay.addEventListener('mousemove', moveDrag);
-  overlay.addEventListener('mouseup', endDrag);
-  overlay.addEventListener('touchstart', startDrag, {passive:false});
-  overlay.addEventListener('touchmove', moveDrag, {passive:false});
-  overlay.addEventListener('touchend', endDrag);
-}
-
-function updateSelection(){
-  const sel = document.getElementById('cropSelection');
-  const img = document.getElementById('previewImg');
-  const r = img.getBoundingClientRect();
-  const wrap = document.getElementById('cropWrap').getBoundingClientRect();
-  const x = Math.min(cropState.startX, cropState.endX);
-  const y = Math.min(cropState.startY, cropState.endY);
-  const w = Math.abs(cropState.endX - cropState.startX);
-  const h = Math.abs(cropState.endY - cropState.startY);
-  sel.style.left = x+'px'; sel.style.top = y+'px';
-  sel.style.width = w+'px'; sel.style.height = h+'px';
-  sel.style.display = 'block';
-}
-
-function confirmCrop(){
-  const img = document.getElementById('previewImg');
-  const displayW = img.offsetWidth;
-  const displayH = img.offsetHeight;
-  const natW = img.naturalWidth;
-  const natH = img.naturalHeight;
-  const scaleX = natW / displayW;
-  const scaleY = natH / displayH;
-
-  const x = Math.min(cropState.startX, cropState.endX) * scaleX;
-  const y = Math.min(cropState.startY, cropState.endY) * scaleY;
-  const w = Math.abs(cropState.endX - cropState.startX) * scaleX;
-  const h = Math.abs(cropState.endY - cropState.startY) * scaleY;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-
-  originalImgBase64 = imgBase64;
-  imgBase64 = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
-  img.src = canvas.toDataURL('image/jpeg', 0.92);
-
-  cropState.cropped = true;
-  document.getElementById('cropOverlay').style.display = 'none';
-  document.getElementById('cropSelection').style.display = 'none';
-  document.getElementById('cropToolbar').classList.remove('show');
-  document.getElementById('cropHint').style.display = 'none';
-
-  // Pokaz info ze zaznaczono
-  const hint = document.createElement('div');
-  hint.style.cssText = 'font-size:.72em;color:var(--green);margin-top:6px;display:flex;align-items:center;gap:5px;';
-  hint.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg> Wycięto zaznaczony fragment';
-  document.getElementById('previewWrap').appendChild(hint);
-}
-
-function resetCrop(){
-  if(originalImgBase64){
-    imgBase64 = originalImgBase64;
-    originalImgBase64 = null;
-    document.getElementById('previewImg').src = 'data:image/jpeg;base64,'+imgBase64;
-  }
-  cropState = {active:false, startX:0, startY:0, endX:0, endY:0, cropped:false};
-  document.getElementById('cropSelection').style.display = 'none';
-  document.getElementById('cropToolbar').classList.remove('show');
-  document.getElementById('cropOverlay').style.display = 'block';
-  document.getElementById('cropHint').style.display = 'flex';
-  document.querySelectorAll('.crop-done-info').forEach(e=>e.remove());
-}
-
 </script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
@@ -777,22 +637,9 @@ function resetCrop(){
           Zaladuj zdjecie zadania
         </span>
 
-        <!-- PODGLAD + CROP -->
+        <!-- PODGLAD -->
         <div class="preview-wrap" id="previewWrap">
-          <div class="crop-wrap" id="cropWrap">
-            <img id="previewImg" src="" alt="Podglad">
-            <div class="crop-overlay" id="cropOverlay"></div>
-            <div class="crop-selection" id="cropSelection" style="display:none;"></div>
-          </div>
-          <div class="crop-hint" id="cropHint" style="display:none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            Zaznacz zadanie które chcesz rozwiązać (opcjonalne)
-          </div>
-          <div class="crop-toolbar" id="cropToolbar">
-            <span class="crop-info" id="cropInfo">Zaznaczono obszar</span>
-            <button class="crop-reset" onclick="resetCrop()">Resetuj</button>
-            <button class="crop-confirm" onclick="confirmCrop()">Użyj zaznaczenia</button>
-          </div>
+          <img id="previewImg" src="" alt="Podglad" onclick="openLightbox(this.src)" style="cursor:zoom-in" title="Kliknij aby powiększyć">
           <button class="remove-img" onclick="removeImage()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             Usun
@@ -1036,16 +883,6 @@ function snapPhoto(){
 /* USTAW ZDJECIE */
 function setImage(dataUrl){
   imgBase64=dataUrl;
-  cropState={active:false,startX:0,startY:0,endX:0,endY:0,cropped:false};
-  originalImgBase64=null;
-  setTimeout(()=>{
-    initCrop();
-    document.getElementById('cropHint').style.display='flex';
-    document.getElementById('cropOverlay').style.display='block';
-    document.getElementById('cropSelection').style.display='none';
-    document.getElementById('cropToolbar').classList.remove('show');
-    document.querySelectorAll('.crop-done-info').forEach(e=>e.remove());
-  },100);
   document.getElementById('previewImg').src=dataUrl;
   document.getElementById('previewWrap').style.display='block';
   document.getElementById('captureGrid').style.display='none';
@@ -1056,10 +893,6 @@ function setImage(dataUrl){
 }
 function removeImage(){
   imgBase64=null;
-  originalImgBase64=null;
-  cropState={active:false,startX:0,startY:0,endX:0,endY:0,cropped:false};
-  document.getElementById('cropHint').style.display='none';
-  document.getElementById('cropToolbar').classList.remove('show');
   document.getElementById('previewWrap').style.display='none';
   document.getElementById('captureGrid').style.display='grid';
   document.getElementById('fileInput').value='';
