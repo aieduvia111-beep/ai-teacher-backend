@@ -1359,7 +1359,7 @@ async function sendMessage() {
 
   document.getElementById('sendBtn').disabled = false;
   toggleExplainLevels();
-  input.focus ? (('ontouchstart' in window) ? null : null) : null;
+  
   // Zapis do Firebase
   saveCurrentChat();
 }
@@ -1785,7 +1785,7 @@ function cSendToChat() {
   if(input && val !== '0' && val !== 'Błąd') {
     input.value = 'Wyjaśnij mi to obliczenie: ' + expr + ' = ' + val;
     autoResize(input);
-    input.focus ? (('ontouchstart' in window) ? null : null) : null;
+    
   }
   toggleCalcPanel();
 }
