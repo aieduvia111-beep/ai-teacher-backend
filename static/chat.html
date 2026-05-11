@@ -1362,7 +1362,7 @@ async function sendMessage() {
   }, 150);
   document.getElementById('sendBtn').disabled = false;
   toggleExplainLevels();
-  input.focus();
+  input.focus ? (('ontouchstart' in window) ? null : null) : null;
   // Zapis do Firebase
   saveCurrentChat();
 }
@@ -1788,7 +1788,7 @@ function cSendToChat() {
   if(input && val !== '0' && val !== 'Błąd') {
     input.value = 'Wyjaśnij mi to obliczenie: ' + expr + ' = ' + val;
     autoResize(input);
-    input.focus();
+    input.focus ? (('ontouchstart' in window) ? null : null) : null;
   }
   toggleCalcPanel();
 }
@@ -1811,7 +1811,7 @@ function toggleSpeech() {
 
 window.addEventListener('load', () => {
   document.getElementById('sendBtn').disabled = false;
-  if(!('ontouchstart' in window)) document.getElementById('msgInput').focus();
+  if(!('ontouchstart' in window)) document.getElementById('msgInput').focus ? (('ontouchstart' in window) ? null : null) : null;
 });
 </script>
 <script>/* mjs */
