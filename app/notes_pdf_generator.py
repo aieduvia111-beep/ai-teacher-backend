@@ -1153,6 +1153,24 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         return None
 
 
+
+# Slowa kluczowe tematow bez obliczen
+_BIO_HIST_TOPICS = [
+    "fotosynteza","ewolucja","komórka","dna","ekologia","fizjologia","genetyka",
+    "bakterie","wirusy","grzyby","rośliny","zwierzęta","biologia","metabolizm",
+    "oddychanie","enzymy","hormony","neurony","histologia","anatomia",
+    "rewolucja","historia","wojna","bitwa","imperium","dynastia","kultura",
+    "geografia","klimat","kontynent","ocean","rzeka","góry","kraj","mapa"
+]
+
+def _czy_wymaga_obliczen(temat: str) -> bool:
+    """Zwraca True jezeli temat wymaga obliczen matematycznych."""
+    t = temat.lower()
+    for slowo in _BIO_HIST_TOPICS:
+        if slowo in t:
+            return False
+    return True
+
 class PremiumNotesGenerator:
 
     def __init__(self, api_key: str):
@@ -1255,7 +1273,15 @@ class PremiumNotesGenerator:
     def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok, **cfg)
+        wymaga_obliczen = _czy_wymaga_obliczen(temat)
+        zakaz_obliczen = "" if wymaga_obliczen else """
+KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
+- NIE dodawaj obliczen liczbowych w przykladach
+- NIE dodawaj pytan obliczeniowych w quizie  
+- Uzywaj przykladow opisowych z zycia/natury
+- Wzory matematyczne sa ZAKAZANE dla tego tematu
+"""
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, **cfg)
         max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
