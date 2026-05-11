@@ -946,8 +946,11 @@ Wzory fizyczne MUSZA miec jednostki np. [J], [m/s], [N]
 ZAKAZ: "jest kluczowy", "jest fundamentem", "odgrywa role", "stanowi podstawe", "warto wiedziec", "nalezy pamietac"
 ZAKAZ: suchych definicji bez intuicji i bez przykladu
 NAKAZ: pisz jak NAUCZYCIEL ktory siedzi obok ucznia i go PROWADZI
-NAKAZ: kazda sekcja = wprowadzenie + wzor + PRZYKLAD KROK PO KROKU + komentarz
-NAKAZ: kazdy przyklad musi miec KONKRETNE LICZBY, ponumerowane kroki i komentarz przy kazdym kroku
+NAKAZ: kazda sekcja = wprowadzenie + (wzor jezeli temat tego wymaga) + PRZYKLAD + komentarz
+NAKAZ: DOBIERZ typ przykladu do tematu:
+  - MATEMATYKA/FIZYKA/CHEMIA obliczeniowa = konkretne liczby krok po kroku
+  - BIOLOGIA/HISTORIA/GEOGRAFIA opisowa (np. fotosynteza, ewolucja, bitwy) = przyklad opisowy z zycia/natury, BEZ obliczen matematycznych
+  - BEZWZGLEDNY ZAKAZ: nie dodawaj obliczen matematycznych do tematow biologicznych/historycznych
 NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 
 === STRUKTURA JSON ===
@@ -955,7 +958,7 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "tytul": "Tytul (max 45 znakow)",
   "podtytul": "Podtytul (max 75 znakow)",
   "kluczowe_pojecia": [
-    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad liczbowy."}}
+    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad (liczbowy dla mat/fiz, opisowy dla bio/hist)."}}
   ],
   "sekcje": [
     {{
@@ -975,7 +978,7 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}}],
   "quiz": [
     {{
-      "pytanie": "[E] Pytanie OBLICZENIOWE z konkretnymi liczbami.",
+      "pytanie": "[E] Pytanie egzaminacyjne (obliczeniowe dla mat/fiz, opisowe dla bio/hist).",
       "opcje": ["A) wynik","B) wynik","C) wynik","D) wynik"],
       "odpowiedz": "B",
       "wyjasnienie": "Krok 1: ... Krok 2: ... Odpowiedz: B bo...",
