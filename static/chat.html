@@ -1811,7 +1811,7 @@ function toggleSpeech() {
 
 window.addEventListener('load', () => {
   document.getElementById('sendBtn').disabled = false;
-  document.getElementById('msgInput').focus();
+  if(!('ontouchstart' in window)) document.getElementById('msgInput').focus();
 });
 </script>
 <script>/* mjs */
