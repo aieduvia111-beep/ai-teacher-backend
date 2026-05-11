@@ -2035,5 +2035,37 @@ window.showError = function(msg) {
 window.animateCounter = animateCounter;
 </script>
 
+
+<script>
+// Fix klawiatura Android - scroll do ostatniej wiadomosci
+const msgInput = document.getElementById('msgInput');
+if(msgInput){
+  let lastScrollY = 0;
+  
+  // Gdy klawiatura sie otwiera - zapamietaj pozycje
+  msgInput.addEventListener('focus', ()=>{
+    lastScrollY = document.getElementById('msgsArea')?.scrollTop || 0;
+  });
+  
+  // Gdy klawiatura sie zamyka - wróc do ostatniej wiadomosci
+  msgInput.addEventListener('blur', ()=>{
+    setTimeout(()=>{
+      const msgs = document.getElementById('msgsArea');
+      if(msgs) msgs.scrollTop = msgs.scrollHeight;
+    }, 300);
+  });
+  
+  // Visual Viewport API - lepsze wykrywanie klawiatury
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', ()=>{
+      const msgs = document.getElementById('msgsArea');
+      if(msgs && document.activeElement === msgInput){
+        setTimeout(()=>msgs.scrollTop = msgs.scrollHeight, 100);
+      }
+    });
+  }
+}
+</script>
+
 </body>
 </html>
