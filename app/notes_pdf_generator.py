@@ -13,11 +13,22 @@ _ensure("matplotlib")
 _ensure("Pillow", "PIL")
 
 import os, io, re, json, math
+
+def _convert_latex_delimiters(txt):
+    """Zamien \\( \\) i \\[ \\] na $ dla matplotlib"""
+    if not txt: return txt
+    import re
+    txt = re.sub(r'\\\\\((.+?)\\\\\)', r'$\1$', txt, flags=re.DOTALL)
+    txt = re.sub(r'\\\\\[(.+?)\\\\\]', r'$$\1$$', txt, flags=re.DOTALL)
+    return txt
+
+
 from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
 
 def _txt_png(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
+    tekst = _convert_latex_delimiters(str(tekst))
              bold=False, align='left'):
     """Renderuje tekst jako PNG przez matplotlib - gwarantuje polskie znaki."""
     import io as _io_tp; from PIL import Image as _PIL_tp
@@ -322,6 +333,7 @@ def formula_to_rl_image(formula: str, width_pt: float = 475) -> RLImage | None:
         return RLImage(io.BytesIO(png), width=width_pt, height=50)
 
 def _render_text_png(tekst, width_pt, height_pt=28, fontsize=9, color=TXT_MAIN, bg=BG_PAGE, bold=False):
+    tekst = _convert_latex_delimiters(str(tekst))
     from PIL import Image as _PILT; import io as _iot; import re as _re_rt
     DPI = 200
     W_IN = max(0.5, width_pt / 72)
