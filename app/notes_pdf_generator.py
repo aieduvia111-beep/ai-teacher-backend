@@ -28,8 +28,8 @@ import matplotlib
 matplotlib.use('Agg')
 
 def _txt_png(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
-    tekst = _convert_latex_delimiters(str(tekst))
              bold=False, align='left'):
+    tekst = _convert_latex_delimiters(str(tekst))
     """Renderuje tekst jako PNG przez matplotlib - gwarantuje polskie znaki."""
     import io as _io_tp; from PIL import Image as _PIL_tp
     w_in = max(0.3, w_pt / 72.0)
