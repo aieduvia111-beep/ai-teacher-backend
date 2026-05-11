@@ -1016,6 +1016,11 @@ document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style
 
 // STATE
 let history = [], attachments = [], isThinking = false;
+  // Scroll do ostatniej wiadomosci po zakonczeniu AI
+  setTimeout(()=>{
+    const msgs = document.getElementById('msgsArea');
+    if(msgs) msgs.scrollTo({top: msgs.scrollHeight, behavior: 'smooth'});
+  }, 100);
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
 function renderLatex(el) {
@@ -1346,6 +1351,11 @@ async function sendMessage() {
   }
 
   isThinking = false;
+  // Scroll do ostatniej wiadomosci po zakonczeniu AI
+  setTimeout(()=>{
+    const msgs = document.getElementById('msgsArea');
+    if(msgs) msgs.scrollTo({top: msgs.scrollHeight, behavior: 'smooth'});
+  }, 100);
   document.getElementById('sendBtn').disabled = false;
   toggleExplainLevels();
   input.focus();
