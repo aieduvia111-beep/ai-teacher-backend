@@ -236,15 +236,6 @@ def _canvas_draw_text(c, tekst, x, y, width_pt, fontsize=10, color='#1A1A2E',
     c.drawImage(ImageReader(buf2), x, y - h_pt * 0.75, width=w_pt, height=h_pt,
                 mask='auto')
 
-def _convert_delimiters(txt: str) -> str:
-    """Zamien \( \) i \[ \] na $ dla matplotlib"""
-    import re
-    # \( ... \) -> $ ... $
-    txt = re.sub(r'\\\((.+?)\\\)', r'$\1$', txt, flags=re.DOTALL)
-    # \[ ... \] -> $$ ... $$
-    txt = re.sub(r'\\\[(.+?)\\\]', r'$$\1$$', txt, flags=re.DOTALL)
-    return txt
-
 def _sanitize_latex(f: str) -> str:
     import re; B = chr(92)
     for cmd in ['bigg|','Bigg|','big|','Big|']:
@@ -281,7 +272,6 @@ def render_formula_png(formula: str, width_pt: float = 475) -> bytes | None:
     if not formula or not formula.strip():
         return None
     f = formula.strip()
-    f = _convert_delimiters(f)
     if not f.startswith('$'):
         f = '$' + f + '$'
     f = _sanitize_latex(f)
@@ -326,8 +316,7 @@ def _render_text_png(tekst, width_pt, height_pt=28, fontsize=9, color=TXT_MAIN, 
     DPI = 200
     W_IN = max(0.5, width_pt / 72)
     fw = "bold" if bold else "normal"
-    tekst = _convert_delimiters(tekst)
-    if '$' in tekst or '\\' in tekst:
+    if '$' in tekst:
         tekst = _re_rt.sub(r'\$[^$]+\$', lambda m: _sanitize_latex(m.group(0)), tekst)
     def _wrap(txt):
         cpl = max(20, int(W_IN * 72 / (fontsize * 0.60)))
@@ -376,8 +365,7 @@ def render_mixed_line(tekst, styl, W, fontsize=10.5, color=TXT_MAIN, bg=BG_PAGE)
     if stripped.startswith('$') and stripped.endswith('$') and stripped.count('$') == 2:
         img = formula_to_rl_image(stripped, width_pt=W*0.72)
         if img: return img
-    tekst = _convert_delimiters(tekst)
-    if '$' in tekst or '\\' in tekst:
+    if '$' in tekst:
         from PIL import Image as _PILml; import io as _ioml
         png = _render_text_png(tekst.strip(), W, 30, fontsize=fontsize, color=color, bg=bg)
         if png:
