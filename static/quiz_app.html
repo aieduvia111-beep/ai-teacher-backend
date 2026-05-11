@@ -949,7 +949,7 @@ function startTimer(){
     t--;num.textContent=t;
     bar.style.width=(t/30*100)+'%';
     if(t<=10)bar.classList.add('urgent');
-    if(t<=0){clearInterval(_timerIv);if(!answered){answered=true;streak=0;wrongIndexes.push(currentQ);setTimeout(()=>nextQuestion(),1200);}}
+    if(t<=0){clearInterval(_timerIv);if(!answered){answered=true;streak=0;wrongIndexes.push(currentQ);setTimeout(()=>{if(typeof nextQuestion==="function")nextQuestion();},1200);}}
   },1000);
 }
 function stopTimer(){clearInterval(_timerIv);}
