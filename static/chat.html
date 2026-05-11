@@ -1016,13 +1016,7 @@ document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style
 
 // STATE
 let history = [], attachments = [], isThinking = false;
-  // Schowaj klawiature i scrolluj do odpowiedzi
-  const inp = document.getElementById('msgInput');
-  if(inp) inp.blur(); // zamknij klawiature
-  setTimeout(()=>{
-    const msgs = document.getElementById('msgsArea');
-    if(msgs) msgs.scrollTo({top: msgs.scrollHeight, behavior: 'smooth'});
-  }, 150);
+
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
 function renderLatex(el) {
@@ -1353,13 +1347,16 @@ async function sendMessage() {
   }
 
   isThinking = false;
-  // Schowaj klawiature i scrolluj do odpowiedzi
-  const inp = document.getElementById('msgInput');
-  if(inp) inp.blur(); // zamknij klawiature
+  // Schowaj klawiature na mobile i scrolluj
+  if('ontouchstart' in window){
+    const inp = document.getElementById('msgInput');
+    if(inp) inp.blur();
+  }
   setTimeout(()=>{
     const msgs = document.getElementById('msgsArea');
     if(msgs) msgs.scrollTo({top: msgs.scrollHeight, behavior: 'smooth'});
-  }, 150);
+  }, 200);
+
   document.getElementById('sendBtn').disabled = false;
   toggleExplainLevels();
   input.focus ? (('ontouchstart' in window) ? null : null) : null;
