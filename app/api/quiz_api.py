@@ -53,17 +53,28 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
     diff_pl = diff_map.get(difficulty, "sredni")
     instrukcje_blok = _build_instrukcje_blok(wlasne_instrukcje)
+    diff_instructions = {
+        "latwy": "Pytania PROSTE - definicje, podstawowe fakty, oczywiste odpowiedzi. Dla ucznia ktory pierwszy raz slyszy o temacie.",
+        "sredni": "Pytania SREDNIE - wymagaja zrozumienia, nie tylko pamieci. Odpowiedzi mylace ale logiczne. Dla ucznia ktory zna podstawy.",
+        "trudny": "Pytania TRUDNE - wymagaja glebokiej wiedzy, obliczen lub analizy. Odpowiedzi bardzo podobne do siebie. Typowe pytania egzaminacyjne/maturalne. Zadne pytanie nie moze byc oczywiste."
+    }
+    diff_instruction = diff_instructions.get(diff_pl, diff_instructions["sredni"])
+
     prompt = (
         f"Wygeneruj quiz z {num_questions} pytaniami wielokrotnego wyboru.\n"
-        f"Temat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl}\n"
+        f"Temat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl.upper()}\n"
+        f"INSTRUKCJA TRUDNOSCI: {diff_instruction}\n"
         f"{instrukcje_blok}\n"
+        "ZASADY:\n"
+        "- Pytania musza byc konkretne i merytoryczne - NIE ogolne\n"
+        "- Odpowiedzi mylace - 3 bledne musza byc podobne do poprawnej\n"
+        "- Urozmaicaj poprawna odpowiedz: 0,1,2,3 roznorodnie\n"
+        "- Wyjasnienie musi tlumaczyc DLACZEGO ta odpowiedz jest poprawna\n"
         "Odpowiedz TYLKO w formacie JSON (bez markdown):\n"
         '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
         '    {{\n      "question": "Tresc pytania?",\n'
         '      "options": ["A", "B", "C", "D"],\n'
         '      "correct": 2,\n'
-        "WAZNE: correct to INDEX (0-3) poprawnej odpowiedzi. Urozmaicaj - kazde pytanie ma inny correct. NIE dawaj zawsze correct=0!"
-
         '      "explanation": "Krotkie wyjasnienie"\n'
         '    }}\n  ]\n}}'
     )
