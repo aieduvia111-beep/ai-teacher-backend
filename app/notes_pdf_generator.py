@@ -1294,6 +1294,8 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                 " WAZNE: Uzytkownik podal wlasne instrukcje - sa one nadrzedne wobec domyslnego stylu."
                 " Musisz je bezwzglednie uwzglednic w tresci notatki."
             )
+        # Dynamiczne max_tokens zalezy od trybu
+        max_tok = {2: 1800, 3: 2500, 4: 3500, 5: 4500}.get(num_sections, 2500)
         r = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
