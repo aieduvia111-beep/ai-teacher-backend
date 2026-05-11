@@ -931,6 +931,11 @@ PROMPT = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
 Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
 TEMAT: {temat}
 
+KRYTYCZNE: Najpierw okresl TYP TEMATU:
+- Jesli temat to BIOLOGIA (fotosynteza, ewolucja, komórka, DNA, ekologia, fizjologia) -> ZERO obliczen matematycznych w prikladach i quizie
+- Jesli temat to HISTORIA/GEOGRAFIA opisowa -> ZERO obliczen matematycznych
+- Jesli temat to MATEMATYKA/FIZYKA/CHEMIA -> obliczenia obowiazkowe
+
 {wlasne_blok}
 
 Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
