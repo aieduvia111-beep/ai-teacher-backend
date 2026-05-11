@@ -1048,6 +1048,7 @@ function beginQuiz(qs,retry){
 
 function renderQuestion(){
   answered=false;
+  startTimer();
   let q=questions[currentQ],total=questions.length;
   document.getElementById('questionNr').textContent='Pytanie '+(currentQ+1);
   setMath(document.getElementById('questionText'),q.question);
