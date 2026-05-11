@@ -93,4 +93,17 @@ def send_daily_reminder():
 scheduler = BackgroundScheduler(timezone=pytz.timezone('Europe/Warsaw'))
 scheduler.add_job(send_daily_reminder, CronTrigger(hour=18, minute=0))
 scheduler.start()
+
+# KEEP ALIVE - ping co 10 minut aby Render nie zasypial
+import httpx
+async def keepalive_ping():
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get('https://ai-teacher-backend-1.onrender.com/health', timeout=10)
+            print("Keep-alive OK")
+    except Exception as e:
+        print(f"Keep-alive error: {e}")
+
+scheduler.add_job(keepalive_ping, 'interval', minutes=10)
+
 print("✅ Scheduler powiadomień uruchomiony - codziennie o 18:00")
