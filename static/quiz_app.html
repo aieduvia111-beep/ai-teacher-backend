@@ -390,6 +390,13 @@ button:active{transform:scale(.95)!important;}
 .edu-error.show{display:flex;align-items:center;gap:10px;}
 .edu-error svg{flex-shrink:0;}
 
+
+.timer-wrap{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.timer-num{font-family:var(--h);font-size:.85em;font-weight:800;color:var(--muted2);min-width:28px;text-align:center;}
+.timer-bar-wrap{flex:1;height:5px;background:var(--s2);border-radius:100px;overflow:hidden;}
+.timer-bar{height:100%;width:100%;border-radius:100px;background:var(--green);transition:width 1s linear,background .3s;}
+.timer-bar.urgent{background:var(--red);}
+
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -763,6 +770,7 @@ function getPlanBadgeHTML(plan) {
             <span class="quiz-title" id="quizTitle">Quiz</span>
             <span class="xp-badge">⚡ <span id="xpTotal">0</span> XP</span>
           </div>
+          <div class="timer-wrap"><div class="timer-num" id="timerNum">30</div><div class="timer-bar-wrap"><div class="timer-bar" id="timerBar"></div></div></div>
           <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
           <div class="progress-text"><span id="progressTxt">Pytanie 1 / 10</span><span id="streakTxt"></span></div>
         </div>
@@ -928,6 +936,24 @@ function renderSidebarStats(){
 }
 
 // ═══ QUIZ LOGIC (oryginalna — bez zmian) ═══
+
+let _timerIv=null;
+function startTimer(){
+  clearInterval(_timerIv);
+  let t=30;
+  const bar=document.getElementById('timerBar');
+  const num=document.getElementById('timerNum');
+  if(!bar||!num)return;
+  bar.style.width='100%';bar.classList.remove('urgent');num.textContent=30;
+  _timerIv=setInterval(()=>{
+    t--;num.textContent=t;
+    bar.style.width=(t/30*100)+'%';
+    if(t<=10)bar.classList.add('urgent');
+    if(t<=0){clearInterval(_timerIv);if(!answered)pickAnswer(-1);}
+  },1000);
+}
+function stopTimer(){clearInterval(_timerIv);}
+
 let quiz=null,questions=[],currentQ=0,answers=[],xp=0,streak=0,maxStreak=0,answered=false,isRetry=false,wrongIndexes=[];
 let VALS={level:'liceum',diff:'medium'};
 let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
