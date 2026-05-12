@@ -329,6 +329,11 @@ button:active{transform:scale(.95)!important;}
 .edu-error.show{display:flex;align-items:center;gap:10px;}
 .edu-error svg{flex-shrink:0;}
 
+
+@media(hover:none),(pointer:coarse){
+  .cursor,.cursor-ring{display:none!important;}
+}
+
 </style>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -950,10 +955,7 @@ async function generatePlan(){
   document.getElementById('genBtn').disabled=true;
   startProgress();
   var topicStr=topics.join(', ');
-  if(!currentUser){
-    setTimeout(function(){generatePlan();},500);
-    return;
-  }
+
   try{
     var base='https://ai-teacher-backend-1.onrender.com';
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
