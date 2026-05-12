@@ -1284,6 +1284,9 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
             parsed = self._robust_json_parse(raw_content.strip())
         else:
             parsed = raw_content
+        # Upewnij sie ze parsed jest dict
+        if not isinstance(parsed, dict):
+            raise ValueError(f"GPT nie zwrocil JSON: {str(parsed)[:100]}")
         # Przytnij do wymaganej liczby elementow
         try:
             n_pojecia = int(str(cfg['n_pojecia']).split('-')[-1])
