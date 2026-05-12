@@ -104,6 +104,6 @@ async def keepalive_ping():
     except Exception as e:
         print(f"Keep-alive error: {e}")
 
-scheduler.add_job(keepalive_ping, 'interval', minutes=10)
+scheduler.add_job(keepalive_ping, 'interval', minutes=5)
 
 print("✅ Scheduler powiadomień uruchomiony - codziennie o 18:00")
