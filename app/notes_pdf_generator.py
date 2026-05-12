@@ -1375,9 +1375,20 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
 
             # Przykład — nowy premium styl
             przyklad = s.get('przyklad', '')
-            if przyklad and przyklad.strip():
+            # przyklad moze byc dict lub string
+            if isinstance(przyklad, dict):
+                # Nowa struktura - zamien na string
+                parts = []
+                if przyklad.get('zadanie'): parts.append('Zadanie: ' + str(przyklad['zadanie']))
+                if przyklad.get('rozwiazanie'):
+                    for krok in przyklad['rozwiazanie']:
+                        parts.append(str(krok))
+                if przyklad.get('odpowiedz'): parts.append('Odp: ' + str(przyklad['odpowiedz']))
+                if przyklad.get('komentarz'): parts.append('💡 ' + str(przyklad['komentarz']))
+                przyklad = '\n'.join(parts)
+            if przyklad and str(przyklad).strip():
                 story.append(Spacer(1, 8))
-                linie = przyklad.strip().replace('\\n', '\n').split('\n')
+                linie = str(przyklad).strip().replace('\\n', '\n').split('\n')
                 rows = []
                 # Header przykładu
                 rows.append([Paragraph(
