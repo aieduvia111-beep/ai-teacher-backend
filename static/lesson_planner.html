@@ -1037,8 +1037,13 @@ function markDone(planId,dayIdx){
   var today=new Date().toISOString().split('T')[0];
   S.activity[today]=(S.activity[today]||0)+plan.minutes;
   save();
-  // Odśwież widok planu
-  renderPlanResult(plan,plan.subject,plan.minutes,true);
+  // Tylko zaktualizuj ten przycisk - bez przeladowania calej strony
+  var btn=document.querySelector('[onclick=\'markDone('+planId+','+dayIdx+')\']');
+  if(btn){
+    btn.outerHTML='<span style=\'color:var(--green);font-size:.72em;font-family:var(--h);font-weight:700;margin-left:auto;flex-shrink:0;\'>✓ Zrobione</span>';
+    var card=document.querySelector('.day-card:nth-child('+(dayIdx+1)+')');
+    if(card)card.classList.add('day-done');
+  }
 }
 
 // ── MOBILE ────────────────────────────────────────
