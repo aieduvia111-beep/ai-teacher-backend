@@ -927,62 +927,87 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         return None
 
 
-PROMPT = """Jestes ekspertem edukacyjnym. Stworz PROFESJONALNA notatke premium.
-Poziom: {klasa} | Temat: {temat}
+PROMPT = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
+Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
+TEMAT: {temat}
+
+KRYTYCZNE: Najpierw okresl TYP TEMATU:
+- Jesli temat to BIOLOGIA (fotosynteza, ewolucja, komórka, DNA, ekologia, fizjologia) -> ZERO obliczen matematycznych w prikladach i quizie
+- Jesli temat to HISTORIA/GEOGRAFIA opisowa -> ZERO obliczen matematycznych
+- Jesli temat to MATEMATYKA/FIZYKA/CHEMIA -> obliczenia obowiazkowe
+
 {wlasne_blok}
 
-ZASADY:
-- Pisz jak nauczyciel siedzacy obok ucznia - konkretnie, z przyklkladami
-- Wzory TYLKO w $...$ (matplotlib mathtext)
-- Kazda sekcja: wprowadzenie + wzor/schemat + PRZYKLAD + komentarz
-{dobierz_przyklad}
-- Oznaczaj trudnosc: [P] podstawowy [E] egzaminacyjny [A] ambitny
+Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
 
-Zwroc TYLKO czysty JSON:
+=== WZORY MATEMATYCZNE ===
+Format matplotlib mathtext. ZAWSZE otaczaj wzory $ ... $
+Przyklady: "$\\frac{{a}}{{b}} + \\frac{{c}}{{d}} = \\frac{{{{ad+bc}}}}{{{{bd}}}}$"
+           "$\\int_a^b f(x)\\,dx = F(b)-F(a)$"
+           "$\\Delta x \\rightarrow 0$"
+Wzory fizyczne MUSZA miec jednostki np. [J], [m/s], [N]
+
+=== STYL PISANIA — ABSOLUTNY NAKAZ ===
+ZAKAZ: "jest kluczowy", "jest fundamentem", "odgrywa role", "stanowi podstawe", "warto wiedziec", "nalezy pamietac"
+ZAKAZ: suchych definicji bez intuicji i bez przykladu
+NAKAZ: pisz jak NAUCZYCIEL ktory siedzi obok ucznia i go PROWADZI
+NAKAZ: kazda sekcja = wprowadzenie + (wzor jezeli temat tego wymaga) + PRZYKLAD + komentarz
+NAKAZ: DOBIERZ typ przykladu do tematu:
+  - MATEMATYKA/FIZYKA/CHEMIA obliczeniowa = konkretne liczby krok po kroku
+  - BIOLOGIA/HISTORIA/GEOGRAFIA opisowa (np. fotosynteza, ewolucja, bitwy) = przyklad opisowy z zycia/natury, BEZ obliczen matematycznych
+  - BEZWZGLEDNY ZAKAZ: nie dodawaj obliczen matematycznych do tematow biologicznych/historycznych
+NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
+
+=== STRUKTURA JSON ===
 {{
-  "tytul": "max 45 znakow",
-  "podtytul": "max 75 znakow",
+  "tytul": "Tytul (max 45 znakow)",
+  "podtytul": "Podtytul (max 75 znakow)",
   "kluczowe_pojecia": [
-    {{"pojecie": "Nazwa", "definicja": "Precyzyjna definicja + przyklad."}}
+    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad (liczbowy dla mat/fiz, opisowy dla bio/hist)."}}
   ],
   "sekcje": [
     {{
-      "naglowek": "Tytul sekcji",
-      "tresc": "3-4 zdania wprowadzenia.",
-      "wzor": "$wzor$",
-      "przyklad": {{
-        "zadanie": "Tresc zadania z liczbami",
-        "rozwiazanie": ["Krok 1: ...", "Krok 2: ..."],
-        "odpowiedz": "Odpowiedz koncowa",
-        "komentarz": "Dlaczego to wazne"
-      }}
+      "tytul": "Tytul sekcji (konkretny)",
+      "tresc": "3-4 zdania wprowadzenia stylem nauczyciela.",
+      "wzory": ["$wzor_z_pelnym_LaTeX$"],
+      "przyklad": "OBOWIAZKOWY format:\\nZadanie: [tresc]\\nKrok 1: [co i dlaczego] -> [wynik]\\nKrok 2: [co i dlaczego] -> [wynik]\\nOdpowiedz: [wynik]\\nKomentarz: [co uczy]",
+      "ciekawostka": "Zaskakujacy fakt LUB typowy blad. Pusty string jesli nie ma."
     }}
   ],
   "bledy_uczniow": [
-    {{"blad": "Opis bledu", "dlaczego": "Wyjasnienie", "trick": "Jak zapamietac"}}
+    {{"blad": "Konkretny blad z przykladem liczbowym","dlaczego": "Mechanizm bledu","jak_zapamietac": "Trick lub mnemonik"}}
   ],
-  "timeline": [{{"rok": "rok", "wydarzenie": "opis"}}],
-  "schemat_myslowy": {{"centrum": "{temat}", "galecie": ["galaz1", "galaz2"]}},
+  "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania.",
+  "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
+  "timeline": [{{"rok": "Rok","opis": "Co odkryto, max 85 znakow"}}],
+  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}}],
   "quiz": [
     {{
-      "pytanie": "[E] Tresc pytania?",
-      "opcje": ["A) ...", "B) ...", "C) ...", "D) ..."],
-      "odpowiedz": 1,
-      "wyjasnienie": "Dlaczego B jest poprawne"
+      "pytanie": "[E] Pytanie egzaminacyjne (obliczeniowe dla mat/fiz, opisowe dla bio/hist).",
+      "opcje": ["A) wynik","B) wynik","C) wynik","D) wynik"],
+      "odpowiedz": "B",
+      "wyjasnienie": "Krok 1: ... Krok 2: ... Odpowiedz: B bo...",
+      "poziom": "egzaminacyjny"
     }}
   ],
-  "do_zapamietania": ["[P] Fakt 1", "[E] Fakt 2"],
-  "podsumowanie": ["Punkt 1", "Punkt 2"],
-  "dlaczego_wazne": "2-3 zdania dlaczego warto to umiec"
+  "podsumowanie": "3 zdania: co umiesz, jakie wzory, gdzie zastosujesz.",
+  "do_zapamietania": [
+    "[P] Wzor lub fakt z przykladem",
+    "[E] Warunek stosowania",
+    "[E] Najczestszy blad: POKAZ blad i poprawke",
+    "[A] Nieintuicyjny fakt",
+    "[P] Trick na szybkie liczenie"
+  ]
 }}
 
-Wymagania dla tego trybu:
-- kluczowe_pojecia: DOKLADNIE {n_pojecia}
-- sekcje: BEZWZGLEDNIE DOKLADNIE {n_sekcje} sekcji - ani wiecej ani mniej!
-- bledy_uczniow: DOKLADNIE {n_bledy}
-- quiz: DOKLADNIE {n_quiz} pytan
-- do_zapamietania: DOKLADNIE {n_zapamietaj} faktow
-"""
+=== WYMAGANIA ===
+- kluczowe_pojecia: {n_pojecia}, KAZDE z intuicja + przykladem
+- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem krok-po-kroku
+- bledy_uczniow: DOKLADNIE {n_bledy}, KAZDY z przykladem
+- quiz: DOKLADNIE {n_quiz} pytania
+- do_zapamietania: DOKLADNIE {n_zapamietaj}
+- Caly tekst PO POLSKU
+- KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
 
 
 def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
@@ -1000,7 +1025,7 @@ def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
 
 # Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
 SIZE_CONFIG = {
-    2: dict(n_pojecia='2', n_sekcje=1, n_bledy=1, n_quiz=2, n_zapamietaj=2),   # Szybka ~4 str
+    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4),   # Szybka ~4 str
     3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=2, n_quiz=4, n_zapamietaj=5),   # Normalna ~8 str
     4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6),   # Dokladna ~11 str
     5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7),   # Mega ~15 str
@@ -1256,9 +1281,8 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
 - Uzywaj przykladow opisowych z zycia/natury
 - Wzory matematyczne sa ZAKAZANE dla tego tematu
 """
-        dobierz = "- Przyklad obliczeniowy krok po kroku z liczbami" if wymaga_obliczen else "- Przyklad opisowy z zycia/natury bez obliczen matematycznych"
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, dobierz_przyklad=dobierz, **cfg)
-        max_tok = {2: 3500, 3: 4500, 4: 5500, 5: 7000}.get(num_sections, 4500)
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, **cfg)
+        max_tok = {2: 1200, 3: 2500, 4: 3800, 5: 5500}.get(num_sections, 2500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
@@ -1279,24 +1303,7 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
             ],
             temperature=0.7, max_tokens=max_tok,
         )
-        raw_content = r.choices[0].message.content
-        if isinstance(raw_content, str):
-            parsed = self._robust_json_parse(raw_content.strip())
-        else:
-            parsed = raw_content
-        # Upewnij sie ze parsed jest dict
-        if not isinstance(parsed, dict):
-            raise ValueError(f"GPT nie zwrocil JSON: {str(parsed)[:100]}")
-        # Przytnij do wymaganej liczby elementow
-        try:
-            n_pojecia = int(str(cfg['n_pojecia']).split('-')[-1])
-            if 'sekcje' in parsed: parsed['sekcje'] = parsed['sekcje'][:cfg['n_sekcje']]
-            if 'kluczowe_pojecia' in parsed: parsed['kluczowe_pojecia'] = parsed['kluczowe_pojecia'][:n_pojecia]
-            if 'quiz' in parsed: parsed['quiz'] = parsed['quiz'][:cfg['n_quiz']]
-            if 'bledy_uczniow' in parsed: parsed['bledy_uczniow'] = parsed['bledy_uczniow'][:cfg['n_bledy']]
-            if 'do_zapamietania' in parsed: parsed['do_zapamietania'] = parsed['do_zapamietania'][:cfg['n_zapamietaj']]
-        except: pass
-        return parsed
+        return self._robust_json_parse(r.choices[0].message.content.strip())
 
     def _build_content_pages(self, data: dict) -> bytes:
         S = self.styles; W = PW - 80; story = []
@@ -1335,12 +1342,12 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
         for i, s in enumerate(data.get('sekcje', [])):
             acc = SECTION_ACCENTS[i % len(SECTION_ACCENTS)]
             story.append(Spacer(1, 22))
-            story.append(SectionHeader(i + 1, s.get('naglowek', s.get('tytul', '')), accent=acc, width=W))
+            story.append(SectionHeader(i + 1, s.get('tytul',''), accent=acc, width=W))
             story.append(Spacer(1, 16))
 
             # Treść
             if s.get('tresc'):
-                for linia in s.get('tresc', '').replace('\\n', '\n').split('\n'):
+                for linia in s['tresc'].replace('\\n', '\n').split('\n'):
                     if not linia.strip(): continue
                     # Zawsze przez _render_text_png dla spójności fontu
                     from PIL import Image as _PILtr; import io as _iotr
@@ -1378,20 +1385,9 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
 
             # Przykład — nowy premium styl
             przyklad = s.get('przyklad', '')
-            # przyklad moze byc dict lub string
-            if isinstance(przyklad, dict):
-                # Nowa struktura - zamien na string
-                parts = []
-                if przyklad.get('zadanie'): parts.append('Zadanie: ' + str(przyklad['zadanie']))
-                if przyklad.get('rozwiazanie'):
-                    for krok in przyklad['rozwiazanie']:
-                        parts.append(str(krok))
-                if przyklad.get('odpowiedz'): parts.append('Odp: ' + str(przyklad['odpowiedz']))
-                if przyklad.get('komentarz'): parts.append('💡 ' + str(przyklad['komentarz']))
-                przyklad = '\n'.join(parts)
-            if przyklad and str(przyklad).strip():
+            if przyklad and przyklad.strip():
                 story.append(Spacer(1, 8))
-                linie = str(przyklad).strip().replace('\\n', '\n').split('\n')
+                linie = przyklad.strip().replace('\\n', '\n').split('\n')
                 rows = []
                 # Header przykładu
                 rows.append([Paragraph(
@@ -1491,15 +1487,12 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                     return Paragraph(st(tekst), ParagraphStyle("fb", fontName=FN,
                         fontSize=10, textColor=colors.HexColor(col)))
 
-                if isinstance(bl, str):
-                    bl = {'blad': bl, 'dlaczego': '', 'jak_zapamietac': ''}
                 blad_txt = f"  X  BLAD #{idx_b+1}: {bl.get('blad','')}"
                 rows_b.append([_bl_png(blad_txt, '#ff6b6b')])
                 if bl.get('dlaczego'):
-                    rows_b.append([_bl_png("  Dlaczego: " + str(bl['dlaczego']), '#ffaa88')])
-                if bl.get('jak_zapamietac') or bl.get('trick'):
-                    trick = bl.get('jak_zapamietac') or bl.get('trick','')
-                    rows_b.append([_bl_png("  Trick: " + str(trick), ACC_CYAN)])
+                    rows_b.append([_bl_png("  Dlaczego: " + bl['dlaczego'], '#ffaa88')])
+                if bl.get('jak_zapamietac'):
+                    rows_b.append([_bl_png("  Trick: " + bl['jak_zapamietac'], ACC_CYAN)])
                 t_b = Table(rows_b, colWidths=[W])
                 t_b.setStyle(TableStyle([
                     ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_RED)),
@@ -1639,7 +1632,6 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                 return RLImage(_ioQZ.BytesIO(png), width=w, height=im.size[1]/110*72)
 
             for i, q in enumerate(quiz):
-                if isinstance(q, str): q = {'pytanie': q, 'opcje': [], 'odpowiedz': 0, 'wyjasnienie': ''}
                 pytanie = q.get('pytanie', '')
                 opcje = q.get('opcje', [])
                 odp = q.get('odpowiedz', 'A')
