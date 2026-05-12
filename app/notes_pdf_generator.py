@@ -236,6 +236,15 @@ def _canvas_draw_text(c, tekst, x, y, width_pt, fontsize=10, color='#1A1A2E',
     c.drawImage(ImageReader(buf2), x, y - h_pt * 0.75, width=w_pt, height=h_pt,
                 mask='auto')
 
+def _convert_delimiters(txt: str) -> str:
+    """Zamien \( \) i \[ \] na $ dla matplotlib"""
+    import re
+    # \( ... \) -> $ ... $
+    txt = re.sub(r'\\\((.+?)\\\)', r'$\1$', txt, flags=re.DOTALL)
+    # \[ ... \] -> $$ ... $$
+    txt = re.sub(r'\\\[(.+?)\\\]', r'$$\1$$', txt, flags=re.DOTALL)
+    return txt
+
 def _sanitize_latex(f: str) -> str:
     import re; B = chr(92)
     for cmd in ['bigg|','Bigg|','big|','Big|']:
@@ -272,6 +281,7 @@ def render_formula_png(formula: str, width_pt: float = 475) -> bytes | None:
     if not formula or not formula.strip():
         return None
     f = formula.strip()
+    f = _convert_delimiters(f)
     if not f.startswith('$'):
         f = '$' + f + '$'
     f = _sanitize_latex(f)
@@ -316,7 +326,8 @@ def _render_text_png(tekst, width_pt, height_pt=28, fontsize=9, color=TXT_MAIN, 
     DPI = 200
     W_IN = max(0.5, width_pt / 72)
     fw = "bold" if bold else "normal"
-    if '$' in tekst:
+    tekst = _convert_delimiters(tekst)
+    if '$' in tekst or '\\' in tekst:
         tekst = _re_rt.sub(r'\$[^$]+\$', lambda m: _sanitize_latex(m.group(0)), tekst)
     def _wrap(txt):
         cpl = max(20, int(W_IN * 72 / (fontsize * 0.60)))
@@ -365,7 +376,8 @@ def render_mixed_line(tekst, styl, W, fontsize=10.5, color=TXT_MAIN, bg=BG_PAGE)
     if stripped.startswith('$') and stripped.endswith('$') and stripped.count('$') == 2:
         img = formula_to_rl_image(stripped, width_pt=W*0.72)
         if img: return img
-    if '$' in tekst:
+    tekst = _convert_delimiters(tekst)
+    if '$' in tekst or '\\' in tekst:
         from PIL import Image as _PILml; import io as _ioml
         png = _render_text_png(tekst.strip(), W, 30, fontsize=fontsize, color=color, bg=bg)
         if png:
@@ -702,13 +714,31 @@ class ConceptCard(Flowable):
         _canvas_draw_text(c, p, 10, H - 10, W - 20,
                           fontsize=9, color='white', bold=True)
 
-        # Definicja - CIEMNY na jasnym tle - przez matplotlib
-        import re as _re2
-        defn = _re2.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), self.definicja)
-        defn = defn.replace('\\','').replace('\\int','int').replace('\\sum','sum')
-        defn = defn.replace('\\to','->').replace('\\rightarrow','->').replace('\\cdot','*')
-        _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16,
-                          fontsize=8, color='#2D3436', bg=bg)
+        # Definicja - renderuj przez matplotlib żeby wzory LaTeX działały
+        import re as _re2, io as _io2
+        defn_raw = self.definicja[:220]
+        # Czy zawiera LaTeX?
+        if '$' in defn_raw:
+            try:
+                png = _render_text_png(defn_raw, W - 16, fontsize=8, color='#2D3436', bg=bg)
+                if png:
+                    from PIL import Image as _PIL2
+                    pil = _PIL2.open(_io2.BytesIO(png))
+                    iw, ih = pil.size
+                    scale = (W - 16) / (iw / 200 * 72)
+                    h_pt = min((ih / 200 * 72) * scale, H - 32)
+                    c.drawImage(ImageReader(_io2.BytesIO(png)), 8, 4, width=W-16, height=h_pt)
+                else:
+                    raise Exception("no png")
+            except:
+                # fallback - zwykły tekst bez wzorów
+                defn = _re2.sub(r'\$([^$]*)\$', lambda m: m.group(1), defn_raw)
+                defn = defn.replace('\\frac{','(').replace('}{',')/(').replace('}',')')
+                defn = defn.replace('\\cdot','·').replace('\\times','×').replace('\\','').replace('  ',' ')
+                _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16, fontsize=8, color='#2D3436', bg=bg)
+        else:
+            _canvas_draw_text(c, defn_raw[:180], 8, H - 32, W - 16,
+                              fontsize=8, color='#2D3436', bg=bg)
 
 
 
@@ -838,12 +868,17 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Body
     ax_b = fig.add_axes([0.04, 0.02, 0.92, 0.68])
     ax_b.set_facecolor(BG_CARD); ax_b.axis('off')
-    # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
+    # Konwertuj LaTeX na czytelny tekst w kartach
     import re as _re_def
-    defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
-    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
-    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
+    defn_clean = _re_def.sub(r'\\\$', lambda m: m.group(1), definicja)
+    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
+    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
+    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
+    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
+    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
+    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
+    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
+    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
@@ -1054,9 +1089,14 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
     import re as _re_def
     defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
-    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
-    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
+    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
+    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
+    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
+    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
+    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
+    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
+    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
+    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
@@ -1447,12 +1487,27 @@ class PremiumNotesGenerator:
                             _pc = _PILc.open(_ioc.BytesIO(png))
                             return RLImage(_ioc.BytesIO(png), width=col_w-8,
                                           height=_pc.size[1]/150*72)
-                    # Zwykły tekst - zawsze Paragraph z DejaVu (polskie znaki!)
-                    return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
+                    # Zwykły tekst - przez matplotlib żeby polskie znaki działały
+                    txt = _l2u(s)
+                    png = _render_text_png(txt, col_w - 8, 28, fontsize=10,
+                                          color=TXT_MAIN, bg=BG_CARD2)
+                    if png:
+                        from PIL import Image as _PILc2; import io as _ioc2
+                        _pc2 = _PILc2.open(_ioc2.BytesIO(png))
+                        return RLImage(_ioc2.BytesIO(png), width=col_w-8,
+                                      height=_pc2.size[1]/150*72)
+                    return Paragraph(st(txt), ParagraphStyle("tc", fontName=FN,
                         fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
                 def _nagl_cell(n, cw):
                     txt = _l2u(n)
+                    png = _render_text_png(txt, cw - 8, 28, fontsize=10,
+                                          color='#FFFFFF', bg=ACC_PURPLE)
+                    if png:
+                        from PIL import Image as _PILn; import io as _ion
+                        _pn = _PILn.open(_ion.BytesIO(png))
+                        return RLImage(_ion.BytesIO(png), width=cw-8,
+                                      height=_pn.size[1]/150*72)
                     return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
                 nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
                 t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
