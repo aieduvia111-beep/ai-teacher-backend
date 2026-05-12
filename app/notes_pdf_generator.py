@@ -1235,7 +1235,9 @@ class PremiumNotesGenerator:
     def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok, **cfg)
+        rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
+        rozmiar_info = f"\nROZMIAR NOTATKI: {rozmiar_map.get(num_sections, 'NORMALNA')} - dostosuj ilosc i szczegolowos tresci."
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+rozmiar_info, **cfg)
         max_tok = {2: 1200, 3: 2500, 4: 3500, 5: 4500}.get(num_sections, 2500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
