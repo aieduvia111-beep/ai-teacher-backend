@@ -813,7 +813,7 @@ var stepTimer=null;
 })();
 
 // ── WIDOKI ────────────────────────────────────────
-function openPlan(planId){
+window.openPlan=function openPlan(planId){
   var plan=S.plans.find(function(p){return p.id===planId;});
   if(!plan)return;
   // Przejdz do widoku formularza i pokaz wynik
@@ -827,13 +827,13 @@ function openPlan(planId){
 }
 
 
-function showDash(){
+window.showDash=function showDash(){
   document.getElementById('viewDash').classList.add('active');
   document.getElementById('viewForm').classList.remove('active');
   window.scrollTo(0,0);
   renderDash();renderCal();renderHeatmap();
 }
-function showForm(){
+window.showForm=function showForm(){
   document.getElementById('viewDash').classList.remove('active');
   document.getElementById('viewForm').classList.add('active');
   document.getElementById('formFields').style.display='block';
@@ -933,7 +933,7 @@ function renderHeatmap(){
 }
 
 // ── GENERATE PLAN ─────────────────────────────────
-async function generatePlan(){
+async window.generatePlan=function generatePlan(){
   const _lim = await checkLimit('lesson');
   if(!_lim.allowed) return;
   useLimit('lesson');
@@ -1035,7 +1035,7 @@ function finishProgress(){
 }
 
 // ── MARK DONE ─────────────────────────────────────
-function markDone(planId,dayIdx){
+window.markDone=function markDone(planId,dayIdx){
   var plan=S.plans.find(function(p){return p.id===planId;});
   if(!plan||!plan.days[dayIdx])return;
   plan.days[dayIdx].done=true;
