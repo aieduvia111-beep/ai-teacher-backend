@@ -793,6 +793,11 @@ function save(){
   }
 }
 var stepTimer=null;
+// Fallback - odblokuj przycisk po 3 sekundach jesli Firebase nie odpowiedzialo
+setTimeout(function(){
+  var btn=document.getElementById('genBtn');
+  if(btn&&btn.disabled)btn.disabled=false;
+},3000);
 
 // ── INIT ──────────────────────────────────────────
 (function(){
