@@ -13,23 +13,12 @@ _ensure("matplotlib")
 _ensure("Pillow", "PIL")
 
 import os, io, re, json, math
-
-def _convert_latex_delimiters(txt):
-    """Zamien \\( \\) i \\[ \\] na $ dla matplotlib"""
-    if not txt: return txt
-    import re
-    txt = re.sub(r'\\\\\((.+?)\\\\\)', r'$\1$', txt, flags=re.DOTALL)
-    txt = re.sub(r'\\\\\[(.+?)\\\\\]', r'$$\1$$', txt, flags=re.DOTALL)
-    return txt
-
-
 from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
 
 def _txt_png(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
              bold=False, align='left'):
-    tekst = _convert_latex_delimiters(str(tekst))
     """Renderuje tekst jako PNG przez matplotlib - gwarantuje polskie znaki."""
     import io as _io_tp; from PIL import Image as _PIL_tp
     w_in = max(0.3, w_pt / 72.0)
@@ -247,15 +236,6 @@ def _canvas_draw_text(c, tekst, x, y, width_pt, fontsize=10, color='#1A1A2E',
     c.drawImage(ImageReader(buf2), x, y - h_pt * 0.75, width=w_pt, height=h_pt,
                 mask='auto')
 
-def _convert_delimiters(txt: str) -> str:
-    """Zamien \( \) i \[ \] na $ dla matplotlib"""
-    import re
-    # \( ... \) -> $ ... $
-    txt = re.sub(r'\\\((.+?)\\\)', r'$\1$', txt, flags=re.DOTALL)
-    # \[ ... \] -> $$ ... $$
-    txt = re.sub(r'\\\[(.+?)\\\]', r'$$\1$$', txt, flags=re.DOTALL)
-    return txt
-
 def _sanitize_latex(f: str) -> str:
     import re; B = chr(92)
     for cmd in ['bigg|','Bigg|','big|','Big|']:
@@ -292,7 +272,6 @@ def render_formula_png(formula: str, width_pt: float = 475) -> bytes | None:
     if not formula or not formula.strip():
         return None
     f = formula.strip()
-    f = _convert_delimiters(f)
     if not f.startswith('$'):
         f = '$' + f + '$'
     f = _sanitize_latex(f)
@@ -333,13 +312,11 @@ def formula_to_rl_image(formula: str, width_pt: float = 475) -> RLImage | None:
         return RLImage(io.BytesIO(png), width=width_pt, height=50)
 
 def _render_text_png(tekst, width_pt, height_pt=28, fontsize=9, color=TXT_MAIN, bg=BG_PAGE, bold=False):
-    tekst = _convert_latex_delimiters(str(tekst))
     from PIL import Image as _PILT; import io as _iot; import re as _re_rt
     DPI = 200
     W_IN = max(0.5, width_pt / 72)
     fw = "bold" if bold else "normal"
-    tekst = _convert_delimiters(tekst)
-    if '$' in tekst or '\\' in tekst:
+    if '$' in tekst:
         tekst = _re_rt.sub(r'\$[^$]+\$', lambda m: _sanitize_latex(m.group(0)), tekst)
     def _wrap(txt):
         cpl = max(20, int(W_IN * 72 / (fontsize * 0.60)))
@@ -388,8 +365,7 @@ def render_mixed_line(tekst, styl, W, fontsize=10.5, color=TXT_MAIN, bg=BG_PAGE)
     if stripped.startswith('$') and stripped.endswith('$') and stripped.count('$') == 2:
         img = formula_to_rl_image(stripped, width_pt=W*0.72)
         if img: return img
-    tekst = _convert_delimiters(tekst)
-    if '$' in tekst or '\\' in tekst:
+    if '$' in tekst:
         from PIL import Image as _PILml; import io as _ioml
         png = _render_text_png(tekst.strip(), W, 30, fontsize=fontsize, color=color, bg=bg)
         if png:
@@ -726,31 +702,13 @@ class ConceptCard(Flowable):
         _canvas_draw_text(c, p, 10, H - 10, W - 20,
                           fontsize=9, color='white', bold=True)
 
-        # Definicja - renderuj przez matplotlib żeby wzory LaTeX działały
-        import re as _re2, io as _io2
-        defn_raw = self.definicja[:220]
-        # Czy zawiera LaTeX?
-        if '$' in defn_raw:
-            try:
-                png = _render_text_png(defn_raw, W - 16, fontsize=8, color='#2D3436', bg=bg)
-                if png:
-                    from PIL import Image as _PIL2
-                    pil = _PIL2.open(_io2.BytesIO(png))
-                    iw, ih = pil.size
-                    scale = (W - 16) / (iw / 200 * 72)
-                    h_pt = min((ih / 200 * 72) * scale, H - 32)
-                    c.drawImage(ImageReader(_io2.BytesIO(png)), 8, 4, width=W-16, height=h_pt)
-                else:
-                    raise Exception("no png")
-            except:
-                # fallback - zwykły tekst bez wzorów
-                defn = _re2.sub(r'\$([^$]*)\$', lambda m: m.group(1), defn_raw)
-                defn = defn.replace('\\frac{','(').replace('}{',')/(').replace('}',')')
-                defn = defn.replace('\\cdot','·').replace('\\times','×').replace('\\','').replace('  ',' ')
-                _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16, fontsize=8, color='#2D3436', bg=bg)
-        else:
-            _canvas_draw_text(c, defn_raw[:180], 8, H - 32, W - 16,
-                              fontsize=8, color='#2D3436', bg=bg)
+        # Definicja - CIEMNY na jasnym tle - przez matplotlib
+        import re as _re2
+        defn = _re2.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), self.definicja)
+        defn = defn.replace('\\','').replace('\\int','int').replace('\\sum','sum')
+        defn = defn.replace('\\to','->').replace('\\rightarrow','->').replace('\\cdot','*')
+        _canvas_draw_text(c, defn[:180], 8, H - 32, W - 16,
+                          fontsize=8, color='#2D3436', bg=bg)
 
 
 
@@ -880,17 +838,12 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Body
     ax_b = fig.add_axes([0.04, 0.02, 0.92, 0.68])
     ax_b.set_facecolor(BG_CARD); ax_b.axis('off')
-    # Konwertuj LaTeX na czytelny tekst w kartach
+    # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
     import re as _re_def
-    defn_clean = _re_def.sub(r'\\\$', lambda m: m.group(1), definicja)
-    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
-    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
-    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
-    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
-    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
-    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
-    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
-    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
+    defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
+    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
+    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
+    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
@@ -931,11 +884,6 @@ PROMPT = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
 Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
 TEMAT: {temat}
 
-KRYTYCZNE: Najpierw okresl TYP TEMATU:
-- Jesli temat to BIOLOGIA (fotosynteza, ewolucja, komórka, DNA, ekologia, fizjologia) -> ZERO obliczen matematycznych w prikladach i quizie
-- Jesli temat to HISTORIA/GEOGRAFIA opisowa -> ZERO obliczen matematycznych
-- Jesli temat to MATEMATYKA/FIZYKA/CHEMIA -> obliczenia obowiazkowe
-
 {wlasne_blok}
 
 Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
@@ -951,11 +899,8 @@ Wzory fizyczne MUSZA miec jednostki np. [J], [m/s], [N]
 ZAKAZ: "jest kluczowy", "jest fundamentem", "odgrywa role", "stanowi podstawe", "warto wiedziec", "nalezy pamietac"
 ZAKAZ: suchych definicji bez intuicji i bez przykladu
 NAKAZ: pisz jak NAUCZYCIEL ktory siedzi obok ucznia i go PROWADZI
-NAKAZ: kazda sekcja = wprowadzenie + (wzor jezeli temat tego wymaga) + PRZYKLAD + komentarz
-NAKAZ: DOBIERZ typ przykladu do tematu:
-  - MATEMATYKA/FIZYKA/CHEMIA obliczeniowa = konkretne liczby krok po kroku
-  - BIOLOGIA/HISTORIA/GEOGRAFIA opisowa (np. fotosynteza, ewolucja, bitwy) = przyklad opisowy z zycia/natury, BEZ obliczen matematycznych
-  - BEZWZGLEDNY ZAKAZ: nie dodawaj obliczen matematycznych do tematow biologicznych/historycznych
+NAKAZ: kazda sekcja = wprowadzenie + wzor + PRZYKLAD KROK PO KROKU + komentarz
+NAKAZ: kazdy przyklad musi miec KONKRETNE LICZBY, ponumerowane kroki i komentarz przy kazdym kroku
 NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 
 === STRUKTURA JSON ===
@@ -963,7 +908,7 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "tytul": "Tytul (max 45 znakow)",
   "podtytul": "Podtytul (max 75 znakow)",
   "kluczowe_pojecia": [
-    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad (liczbowy dla mat/fiz, opisowy dla bio/hist)."}}
+    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad liczbowy."}}
   ],
   "sekcje": [
     {{
@@ -983,7 +928,7 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}}],
   "quiz": [
     {{
-      "pytanie": "[E] Pytanie egzaminacyjne (obliczeniowe dla mat/fiz, opisowe dla bio/hist).",
+      "pytanie": "[E] Pytanie OBLICZENIOWE z konkretnymi liczbami.",
       "opcje": ["A) wynik","B) wynik","C) wynik","D) wynik"],
       "odpowiedz": "B",
       "wyjasnienie": "Krok 1: ... Krok 2: ... Odpowiedz: B bo...",
@@ -1025,10 +970,10 @@ def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
 
 # Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
 SIZE_CONFIG = {
-    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4),   # Szybka ~4 str
-    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=2, n_quiz=4, n_zapamietaj=5),   # Normalna ~8 str
-    4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6),   # Dokladna ~11 str
-    5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7),   # Mega ~15 str
+    2: dict(n_pojecia='2',   n_sekcje=2, n_bledy=1, n_quiz=2, n_zapamietaj=3),   # Szybka
+    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5),   # Normalna (default)
+    4: dict(n_pojecia='4-5', n_sekcje=4, n_bledy=3, n_quiz=4, n_zapamietaj=5),   # Dokładna
+    5: dict(n_pojecia='5-6', n_sekcje=5, n_bledy=3, n_quiz=6, n_zapamietaj=6),   # Mega
 }
 
 # ============================================================
@@ -1109,14 +1054,9 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
     import re as _re_def
     defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
-    defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
-    defn_clean = defn_clean.replace('\\rightarrow', '→').replace('\\to', '→')
-    defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
-    defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
-    defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
-    defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
-    defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
+    defn_clean = defn_clean.replace('\\','').replace('\\frac','').replace('\\int','calka')
+    defn_clean = defn_clean.replace('\\rightarrow','->').replace('\\to','->').replace('\\cdot','*')
+    defn_clean = defn_clean.replace('\\infty','nieskonczonosc').replace('\\pi','pi')
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
@@ -1152,24 +1092,6 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         except: pass
         return None
 
-
-
-# Slowa kluczowe tematow bez obliczen
-_BIO_HIST_TOPICS = [
-    "fotosynteza","ewolucja","komórka","dna","ekologia","fizjologia","genetyka",
-    "bakterie","wirusy","grzyby","rośliny","zwierzęta","biologia","metabolizm",
-    "oddychanie","enzymy","hormony","neurony","histologia","anatomia",
-    "rewolucja","historia","wojna","bitwa","imperium","dynastia","kultura",
-    "geografia","klimat","kontynent","ocean","rzeka","góry","kraj","mapa"
-]
-
-def _czy_wymaga_obliczen(temat: str) -> bool:
-    """Zwraca True jezeli temat wymaga obliczen matematycznych."""
-    t = temat.lower()
-    for slowo in _BIO_HIST_TOPICS:
-        if slowo in t:
-            return False
-    return True
 
 class PremiumNotesGenerator:
 
@@ -1273,16 +1195,8 @@ class PremiumNotesGenerator:
     def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
-        wymaga_obliczen = _czy_wymaga_obliczen(temat)
-        zakaz_obliczen = "" if wymaga_obliczen else """
-KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
-- NIE dodawaj obliczen liczbowych w przykladach
-- NIE dodawaj pytan obliczeniowych w quizie  
-- Uzywaj przykladow opisowych z zycia/natury
-- Wzory matematyczne sa ZAKAZANE dla tego tematu
-"""
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, **cfg)
-        max_tok = {2: 2500, 3: 3500, 4: 5000, 5: 6500}.get(num_sections, 3500)
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok, **cfg)
+        max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
@@ -1294,7 +1208,6 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                 " WAZNE: Uzytkownik podal wlasne instrukcje - sa one nadrzedne wobec domyslnego stylu."
                 " Musisz je bezwzglednie uwzglednic w tresci notatki."
             )
-
         r = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -1534,27 +1447,12 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                             _pc = _PILc.open(_ioc.BytesIO(png))
                             return RLImage(_ioc.BytesIO(png), width=col_w-8,
                                           height=_pc.size[1]/150*72)
-                    # Zwykły tekst - przez matplotlib żeby polskie znaki działały
-                    txt = _l2u(s)
-                    png = _render_text_png(txt, col_w - 8, 28, fontsize=10,
-                                          color=TXT_MAIN, bg=BG_CARD2)
-                    if png:
-                        from PIL import Image as _PILc2; import io as _ioc2
-                        _pc2 = _PILc2.open(_ioc2.BytesIO(png))
-                        return RLImage(_ioc2.BytesIO(png), width=col_w-8,
-                                      height=_pc2.size[1]/150*72)
-                    return Paragraph(st(txt), ParagraphStyle("tc", fontName=FN,
+                    # Zwykły tekst - zawsze Paragraph z DejaVu (polskie znaki!)
+                    return Paragraph(st(_l2u(s)), ParagraphStyle("tc", fontName=FN,
                         fontSize=10, textColor=colors.HexColor('#1A1A2E'), alignment=1))
                 safe_w = [[_cell(c) for c in row] for row in wiersze]
                 def _nagl_cell(n, cw):
                     txt = _l2u(n)
-                    png = _render_text_png(txt, cw - 8, 28, fontsize=10,
-                                          color='#FFFFFF', bg=ACC_PURPLE)
-                    if png:
-                        from PIL import Image as _PILn; import io as _ion
-                        _pn = _PILn.open(_ion.BytesIO(png))
-                        return RLImage(_ion.BytesIO(png), width=cw-8,
-                                      height=_pn.size[1]/150*72)
                     return Paragraph(st(txt), ParagraphStyle("th", fontName=FB, fontSize=10, textColor=C_W, alignment=1))
                 nagl_cells = [_nagl_cell(n, col_w) for n in nagl]
                 t = Table([nagl_cells] + safe_w, colWidths=[col_w]*len(nagl), repeatRows=1)
