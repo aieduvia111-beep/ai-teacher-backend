@@ -794,7 +794,6 @@ function save(){
 }
 var stepTimer=null;
 
-
 // ── INIT ──────────────────────────────────────────
 (function(){
   var today=new Date().toDateString(),yesterday=new Date(Date.now()-86400000).toDateString();
@@ -951,16 +950,6 @@ async function generatePlan(){
   document.getElementById('genBtn').disabled=true;
   startProgress();
   var topicStr=topics.join(', ');
-  // Poczekaj na Firebase jesli jeszcze nie zalogowany
-  if(!currentUser){
-    var waited=0;
-    var waitFB=setInterval(function(){
-      waited+=200;
-      if(currentUser){clearInterval(waitFB);generatePlan();}
-      else if(waited>5000){clearInterval(waitFB);window.location.href='login.html';}
-    },200);
-    return;
-  }
   try{
     var base='https://ai-teacher-backend-1.onrender.com';
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
