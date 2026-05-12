@@ -1335,12 +1335,12 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
         for i, s in enumerate(data.get('sekcje', [])):
             acc = SECTION_ACCENTS[i % len(SECTION_ACCENTS)]
             story.append(Spacer(1, 22))
-            story.append(SectionHeader(i + 1, s.get('tytul',''), accent=acc, width=W))
+            story.append(SectionHeader(i + 1, s.get('naglowek', s.get('tytul', '')), accent=acc, width=W))
             story.append(Spacer(1, 16))
 
             # Treść
             if s.get('tresc'):
-                for linia in s['tresc'].replace('\\n', '\n').split('\n'):
+                for linia in s.get('tresc', '').replace('\\n', '\n').split('\n'):
                     if not linia.strip(): continue
                     # Zawsze przez _render_text_png dla spójności fontu
                     from PIL import Image as _PILtr; import io as _iotr
