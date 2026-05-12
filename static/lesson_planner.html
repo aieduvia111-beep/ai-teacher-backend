@@ -816,7 +816,7 @@ var stepTimer=null;
 
 // ── WIDOKI ────────────────────────────────────────
 window.openPlan=function openPlan(planId){
-  var plan=S.plans.find(function(p){return p.id==planId;});
+  var plan=S.plans.find(function(p){return String(p.id)===String(planId);});
   if(!plan)return;
   // Przejdz do widoku formularza i pokaz wynik
   document.getElementById('viewDash').classList.remove('active');
@@ -950,7 +950,7 @@ window.generatePlan=async function generatePlan(){
   var examDate=document.getElementById('fDate').value;
   var minutes=document.getElementById('fMin').value;
   var extra=document.getElementById('fExtra').value;
-  var td=Math.max(1,Math.ceil((new Date(examDate)-new Date())/86400000));
+  var td=Math.min(60,Math.max(1,Math.ceil((new Date(examDate)-new Date())/86400000)));
   document.getElementById('formFields').style.display='none';
   document.getElementById('loadingView').style.display='block';
   document.getElementById('planResult').style.display='none';
@@ -1046,7 +1046,7 @@ function finishProgress(){
 
 // ── MARK DONE ─────────────────────────────────────
 window.markDone=function markDone(planId,dayIdx){
-  var plan=S.plans.find(function(p){return p.id==planId;});
+  var plan=S.plans.find(function(p){return String(p.id)===String(planId);});
   if(!plan||!plan.days[dayIdx])return;
   plan.days[dayIdx].done=true;
   S.xp+=20;
