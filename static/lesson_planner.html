@@ -816,7 +816,7 @@ var stepTimer=null;
 
 // ── WIDOKI ────────────────────────────────────────
 window.openPlan=function openPlan(planId){
-  var plan=S.plans.find(function(p){return p.id===planId;});
+  var plan=S.plans.find(function(p){return p.id==planId;});
   if(!plan)return;
   // Przejdz do widoku formularza i pokaz wynik
   document.getElementById('viewDash').classList.remove('active');
@@ -1046,7 +1046,7 @@ function finishProgress(){
 
 // ── MARK DONE ─────────────────────────────────────
 window.markDone=function markDone(planId,dayIdx){
-  var plan=S.plans.find(function(p){return p.id===planId;});
+  var plan=S.plans.find(function(p){return p.id==planId;});
   if(!plan||!plan.days[dayIdx])return;
   plan.days[dayIdx].done=true;
   S.xp+=20;
