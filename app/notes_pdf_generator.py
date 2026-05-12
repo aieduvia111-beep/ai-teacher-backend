@@ -1491,12 +1491,15 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                     return Paragraph(st(tekst), ParagraphStyle("fb", fontName=FN,
                         fontSize=10, textColor=colors.HexColor(col)))
 
+                if isinstance(bl, str):
+                    bl = {'blad': bl, 'dlaczego': '', 'jak_zapamietac': ''}
                 blad_txt = f"  X  BLAD #{idx_b+1}: {bl.get('blad','')}"
                 rows_b.append([_bl_png(blad_txt, '#ff6b6b')])
                 if bl.get('dlaczego'):
-                    rows_b.append([_bl_png("  Dlaczego: " + bl['dlaczego'], '#ffaa88')])
-                if bl.get('jak_zapamietac'):
-                    rows_b.append([_bl_png("  Trick: " + bl['jak_zapamietac'], ACC_CYAN)])
+                    rows_b.append([_bl_png("  Dlaczego: " + str(bl['dlaczego']), '#ffaa88')])
+                if bl.get('jak_zapamietac') or bl.get('trick'):
+                    trick = bl.get('jak_zapamietac') or bl.get('trick','')
+                    rows_b.append([_bl_png("  Trick: " + str(trick), ACC_CYAN)])
                 t_b = Table(rows_b, colWidths=[W])
                 t_b.setStyle(TableStyle([
                     ('BACKGROUND',(0,0),(-1,-1), colors.HexColor(BG_RED)),
@@ -1636,6 +1639,7 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
                 return RLImage(_ioQZ.BytesIO(png), width=w, height=im.size[1]/110*72)
 
             for i, q in enumerate(quiz):
+                if isinstance(q, str): q = {'pytanie': q, 'opcje': [], 'odpowiedz': 0, 'wyjasnienie': ''}
                 pytanie = q.get('pytanie', '')
                 opcje = q.get('opcje', [])
                 odp = q.get('odpowiedz', 'A')
