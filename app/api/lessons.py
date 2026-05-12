@@ -23,34 +23,47 @@ def create_lesson_plan(request: CreateLessonPlanRequest):
         safe_days = min(max(int(request.total_days or 7), 1), 60)
         safe_min = min(max(int(request.minutes_per_day or 30), 10), 240)
 
-        prompt = f"""Wygeneruj szczegolowy plan nauki dla ucznia liceum.
-Temat: {request.topic}
-Przedmiot: {request.subject}
-Poziom: {request.level}
-Liczba dni: {safe_days}
-Minut dziennie: {safe_min}
-Dodatkowe info: {request.additional_info or "brak"}
+        prompt = f"""Jestes doswiadczonym nauczycielem tworzacym profesjonalny plan nauki.
+Stworz szczegolowy plan nauki na {safe_days} dni dla ucznia.
 
-WAZNE: Kazdy dzien musi miec INNY konkretny temat zwiazany z {request.topic}.
-Nie powtarzaj tresci. Ukladaj od podstaw do zaawansowanych.
+DANE:
+- Temat: {request.topic}
+- Przedmiot: {request.subject}  
+- Poziom: {request.level}
+- Czas dziennie: {safe_min} minut
+- Dodatkowe info: {request.additional_info or "brak"}
+
+ZASADY (KRYTYCZNE):
+1. Kazdy dzien = INNY, KONKRETNY podtemat z dziedziny {request.topic}
+2. Ukladaj progresywnie: dzien 1 = podstawy, ostatni dzien = zaawansowane/powtorka
+3. Kazdy krok musi miec KONKRETNA tresc - co dokladnie czytac/robic
+4. NIE pisz ogolnikow jak "nauka materialu" - pisz np. "Przeczytaj rozdzial o fotosyntezie - reakcja jasna i ciemna"
+5. Steps musza byc rozne: teoria, cwiczenia, powtorka, quiz, mapa mysli etc.
+
+Przyklady dobrych steps:
+- "Przeczytaj i zrob notatki: definicja i rodzaje {request.topic}"
+- "Rozwiaz 5 zadan z {request.topic} - poziom podstawowy"  
+- "Zrob mape mysli laczaca wszystkie pojecia z tego tygodnia"
+- "Sprawdz sie - odpowiedz na 10 pytan z {request.topic}"
 
 Zwroc TYLKO JSON bez markdown:
 {{
   "title": "Plan nauki: {request.topic}",
-  "description": "Plan nauki przedmiotu {request.subject} na poziomie {request.level}",
+  "description": "Profesjonalny {safe_days}-dniowy plan nauki - {request.subject}, {request.level}",
   "total_days": {safe_days},
   "minutes_per_day": {safe_min},
   "level": "{request.level}",
   "days": [
     {{
       "day": 1,
-      "title": "Dzien 1: [konkretny temat]",
-      "goal": "Co osiagniesz dzisiaj - konkretnie",
+      "title": "Dzien 1: [bardzo konkretny podtemat]",
+      "goal": "Dzisiaj opanujesz: [konkretnie co]",
       "steps": [
-        {{"type": "reading", "title": "Przeczytaj", "content": "Konkretny material do przestudiowania", "duration": {safe_min // 2}}},
-        {{"type": "practice", "title": "Cwiczenia", "content": "Konkretne zadania do wykonania", "duration": {safe_min // 2}}}
+        {{"type": "reading", "title": "[Konkretny tytul]", "content": "[Co dokladnie robic - minimum 15 slow]", "duration": {safe_min // 3}}},
+        {{"type": "practice", "title": "[Konkretny tytul]", "content": "[Co dokladnie robic - minimum 15 slow]", "duration": {safe_min // 3}}},
+        {{"type": "review", "title": "Powtorka", "content": "Sprawdz czy opanowales material dnia - zrob krotki quiz lub wytlumacz temat wlasnym slowami", "duration": {safe_min // 3}}}
       ],
-      "review_topics": []
+      "review_topics": ["[temat do powtorzenia pozniej]"]
     }}
   ],
   "review_schedule": []
