@@ -1037,7 +1037,7 @@ function renderPlanResult(plan,subject,minutes,isExisting){
         var weekTotal = Math.min(7, plan.days.length - idx);
         var isFirst = week === 0;
         html += '<div class="week-acc">'
-          + '<div class="week-header" onclick="this.parentElement.classList.toggle('wk-open')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">'
+          + '<div class="week-header" onclick="this.parentElement.classList.toggle(\'wk-open\')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">'
           + '<svg class="week-arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>'
           + '<span>Tydzień '+(week+1)+'</span>'
           + '<span style="font-size:.75em;opacity:.6;margin-left:4px;">'
