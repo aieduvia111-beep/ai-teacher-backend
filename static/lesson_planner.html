@@ -1046,22 +1046,27 @@ function finishProgress(){
 
 // ── MARK DONE ─────────────────────────────────────
 window.markDone=function markDone(planId,dayIdx){
+  // Znajdz plan
   var plan=S.plans.find(function(p){return String(p.id)===String(planId);});
-  if(!plan||!plan.days[dayIdx])return;
+  if(!plan){console.log('Plan nie znaleziony',planId,S.plans.map(function(p){return p.id;}));return;}
+  if(!plan.days[dayIdx]){console.log('Dzien nie znaleziony',dayIdx);return;}
   plan.days[dayIdx].done=true;
   S.xp+=20;
   var today=new Date().toISOString().split('T')[0];
   S.activity[today]=(S.activity[today]||0)+plan.minutes;
   save();
-  // Znajdz przycisk po id i zamien
-  var btnId='done-btn-'+planId+'-'+dayIdx;
-  var btn=document.getElementById(btnId);
+  // Zmien przycisk na "Zrobione"
+  var btn=document.querySelector('[onclick="markDone('+planId+','+dayIdx+')"]');
   if(btn){
-    btn.outerHTML='<span id="done-lbl-'+planId+'-'+dayIdx+'" style="color:var(--green);font-size:.72em;font-family:var(--h);font-weight:700;margin-left:auto;flex-shrink:0;">✓ Zrobione</span>';
+    btn.style.background='rgba(34,211,160,.2)';
+    btn.style.borderColor='rgba(34,211,160,.5)';
+    btn.style.color='var(--green)';
+    btn.innerHTML='✓ Zrobione';
+    btn.disabled=true;
+    btn.onclick=null;
   }
   // Zaktualizuj karte
-  var cardId='day-card-'+planId+'-'+dayIdx;
-  var card=document.getElementById(cardId);
+  var card=document.getElementById('day-card-'+planId+'-'+dayIdx);
   if(card)card.classList.add('day-done');
 }
 
