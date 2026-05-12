@@ -17,7 +17,7 @@ class Settings:
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:Eduvia2026!@db.rhbstanhiyicrjtrerld.supabase.co:5432/postgres")
+    DATABASE_URL: str = os.getenv("SUPABASE_URL", os.getenv("DATABASE_URL", "postgresql://postgres:Eduvia2026!@db.rhbstanhiyicrjtrerld.supabase.co:5432/postgres"))
     
     # App
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
