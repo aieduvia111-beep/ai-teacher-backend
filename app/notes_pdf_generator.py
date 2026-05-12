@@ -1282,7 +1282,7 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
 - Wzory matematyczne sa ZAKAZANE dla tego tematu
 """
         prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, **cfg)
-        max_tok = {2: 1200, 3: 2500, 4: 3800, 5: 5500}.get(num_sections, 2500)
+        max_tok = {2: 1800, 3: 2800, 4: 4000, 5: 5500}.get(num_sections, 2800)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
