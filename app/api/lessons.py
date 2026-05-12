@@ -77,7 +77,7 @@ Zwroc TYLKO JSON bez markdown:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=min(16000, max(4000, safe_days * 350)),
+            max_tokens=min(16000, max(4000, safe_days * 400)),
             temperature=0.7
         )
         raw = resp.choices[0].message.content.strip()
