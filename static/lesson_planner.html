@@ -784,9 +784,10 @@ function save(){
   localStorage.setItem('ai_activity',JSON.stringify(S.activity));
   localStorage.setItem('ai_lastActive',S.lastActive);
   // Zapisz do Firestore
-  if(currentUser && db){
+  const uid = localStorage.getItem('eduvia_uid');
+  if(uid && db){
     try{
-      setDoc(doc(db,'lesson_plans',currentUser.uid),{
+      setDoc(doc(db,'lesson_plans',uid),{
         plans: S.plans,
         xp: S.xp,
         streak: S.streak,
