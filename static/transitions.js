@@ -76,7 +76,7 @@ window.showToast=function(msg,type,duration){
 var offlineEl=document.createElement('div');
 offlineEl.className='edu-offline';
 offlineEl.innerHTML='<div class="edu-offline-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" width="32" height="32"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></div><div class="edu-offline-title">Brak połączenia</div><div class="edu-offline-sub">Sprawdź połączenie z internetem i spróbuj ponownie.</div><button class="edu-offline-btn" onclick="location.reload()">Spróbuj ponownie</button>';
-document.body.appendChild(offlineEl);
+if(document.body){document.body.appendChild(offlineEl);}else{document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(offlineEl);});}
 
 window.addEventListener('offline',function(){offlineEl.classList.add('show');});
 window.addEventListener('online',function(){offlineEl.classList.remove('show');showToast('Połączono z internetem','success');});
