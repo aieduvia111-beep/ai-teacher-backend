@@ -1088,6 +1088,16 @@ function finishProgress(){
 }
 
 // ── MARK DONE ─────────────────────────────────────
+
+window.toggleWeek=function(header){
+  var acc=header.parentElement;
+  if(acc.classList.contains('wk-open')){
+    acc.classList.remove('wk-open');
+  } else {
+    acc.classList.add('wk-open');
+  }
+};
+
 window.markDone=function markDone(planId,dayIdx){
   // Znajdz plan
   var plan=S.plans.find(function(p){return String(p.id)===String(planId);});
