@@ -338,6 +338,14 @@ button:active{transform:scale(.95)!important;}
 .week-header{font-family:var(--h);font-size:.78em;font-weight:800;color:var(--accent2);padding:12px 0 6px;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border);margin-bottom:8px;margin-top:12px;}
 .week-header:first-child{margin-top:0;}
 
+
+.week-acc .week-days{display:none;}
+.week-acc.open .week-days{display:block;}
+.week-acc.open .week-arr{transform:rotate(180deg);}
+.week-arr{transition:transform .2s;flex-shrink:0;}
+.week-header{display:flex;align-items:center;gap:6px;font-family:var(--h);font-size:.78em;font-weight:800;color:var(--accent2);padding:10px 12px;letter-spacing:.04em;background:rgba(124,106,255,.05);border:1px solid rgba(124,106,255,.12);border-radius:10px;margin-bottom:6px;margin-top:10px;user-select:none;}
+.week-header:first-child{margin-top:0;}
+
 </style>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1015,17 +1023,32 @@ function renderPlanResult(plan,subject,minutes,isExisting){
   // Grupuj po tygodniach jesli wiecej niz 7 dni
   var useWeeks = plan.days.length > 7;
   var currentWeek = -1;
+  var weekOpened = false;
   
   plan.days.forEach(function(d,idx){
     if(useWeeks){
       var week = Math.floor(idx/7);
       if(week !== currentWeek){
+        if(currentWeek >= 0) html += '</div>'; // zamknij poprzedni week-days
         currentWeek = week;
         var wStart = new Date(d.date);
         var wEnd = new Date(plan.days[Math.min(idx+6, plan.days.length-1)].date);
-        html += '<div class="week-header">Tydzień '+(week+1)+' <span style="font-size:.75em;opacity:.6;">'+
-          wStart.toLocaleDateString('pl-PL',{day:'numeric',month:'short'})+' – '+
-          wEnd.toLocaleDateString('pl-PL',{day:'numeric',month:'short'})+'</span></div>';
+        var weekDone = plan.days.slice(idx, idx+7).filter(function(x){return x.done;}).length;
+        var weekTotal = Math.min(7, plan.days.length - idx);
+        var isFirst = week === 0;
+        html += '<div class="week-acc">'
+          + '<div class="week-header" onclick="this.parentElement.classList.toggle('open')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">'
+          + '<svg class="week-arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>'
+          + '<span>Tydzień '+(week+1)+'</span>'
+          + '<span style="font-size:.75em;opacity:.6;margin-left:4px;">'
+          + wStart.toLocaleDateString("pl-PL",{day:"numeric",month:"short"})+' – '
+          + wEnd.toLocaleDateString("pl-PL",{day:"numeric",month:"short"})
+          + '</span>'
+          + '<span style="margin-left:auto;font-size:.75em;color:'+(weekDone===weekTotal?'var(--green)':'var(--muted2)')+';">'
+          + weekDone+'/'+weekTotal+' dni</span>'
+          + '</div>'
+          + '<div class="week-days">';
+        if(isFirst) html = html.replace('<div class="week-acc">', '<div class="week-acc open">');
       }
     }
     var dt=new Date(d.date);
@@ -1040,6 +1063,7 @@ function renderPlanResult(plan,subject,minutes,isExisting){
     (Array.isArray(d.tasks)?d.tasks:[d.tasks]).forEach(function(t){html+='<div class="task-item"><div class="task-dot" style="'+(isDone?'background:var(--green)':'')+'"></div><div style="'+(isDone?'opacity:.5;text-decoration:line-through':'')+'">'+String(t)+'</div></div>';});
     html+='</div></div>';
   });
+  if(useWeeks) html += '</div></div>'; // zamknij ostatni week-days i week-acc
   html+='<div class="result-btns"><button class="btn-sec" onclick="showForm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nowy plan</button><button class="btn-sec" onclick="showDash()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="15 18 9 12 15 6"/></svg>Dashboard</button><button class="btn-acc" onclick="window.print()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Drukuj</button></div>';
   var rv=document.getElementById('planResult');rv.innerHTML=html;rv.style.display='block';
 }
