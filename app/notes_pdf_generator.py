@@ -1279,7 +1279,19 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
             ],
             temperature=0.7, max_tokens=max_tok,
         )
-        return self._robust_json_parse(r.choices[0].message.content.strip())
+        parsed = self._robust_json_parse(r.choices[0].message.content.strip())
+        # Przytnij do wymaganej liczby elementow
+        if 'sekcje' in parsed:
+            parsed['sekcje'] = parsed['sekcje'][:cfg['n_sekcje']]
+        if 'kluczowe_pojecia' in parsed:
+            parsed['kluczowe_pojecia'] = parsed['kluczowe_pojecia'][:int(str(cfg['n_pojecia']).split('-')[-1])]
+        if 'quiz' in parsed:
+            parsed['quiz'] = parsed['quiz'][:cfg['n_quiz']]
+        if 'bledy_uczniow' in parsed:
+            parsed['bledy_uczniow'] = parsed['bledy_uczniow'][:cfg['n_bledy']]
+        if 'do_zapamietania' in parsed:
+            parsed['do_zapamietania'] = parsed['do_zapamietania'][:cfg['n_zapamietaj']]
+        return parsed
 
     def _build_content_pages(self, data: dict) -> bytes:
         S = self.styles; W = PW - 80; story = []
