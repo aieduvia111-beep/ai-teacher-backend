@@ -334,6 +334,10 @@ button:active{transform:scale(.95)!important;}
   .cursor,.cursor-ring{display:none!important;}
 }
 
+
+.week-header{font-family:var(--h);font-size:.78em;font-weight:800;color:var(--accent2);padding:12px 0 6px;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--border);margin-bottom:8px;margin-top:12px;}
+.week-header:first-child{margin-top:0;}
+
 </style>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1008,7 +1012,22 @@ function renderPlanResult(plan,subject,minutes,isExisting){
   var labels={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Język polski',angielski:'Angielski',geografia:'Geografia',informatyka:'Informatyka',inne:'Inne'};
   var html='<div class="plan-header"><div class="plan-title-txt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Plan gotowy</div>';
   html+='<div class="badge-row"><span class="badge badge-green">'+plan.days.length+' dni</span><span class="badge badge-accent">'+(labels[subject]||subject)+'</span><span class="badge badge-gold">'+minutes+' min/dzień</span></div></div>';
+  // Grupuj po tygodniach jesli wiecej niz 7 dni
+  var useWeeks = plan.days.length > 7;
+  var currentWeek = -1;
+  
   plan.days.forEach(function(d,idx){
+    if(useWeeks){
+      var week = Math.floor(idx/7);
+      if(week !== currentWeek){
+        currentWeek = week;
+        var wStart = new Date(d.date);
+        var wEnd = new Date(plan.days[Math.min(idx+6, plan.days.length-1)].date);
+        html += '<div class="week-header">Tydzień '+(week+1)+' <span style="font-size:.75em;opacity:.6;">'+
+          wStart.toLocaleDateString('pl-PL',{day:'numeric',month:'short'})+' – '+
+          wEnd.toLocaleDateString('pl-PL',{day:'numeric',month:'short'})+'</span></div>';
+      }
+    }
     var dt=new Date(d.date);
     var dateStr=isNaN(dt)?d.date:dt.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
     var isDone=d.done||false;
@@ -1068,9 +1087,16 @@ window.markDone=function markDone(planId,dayIdx){
   // Zaktualizuj karte
   var card=document.getElementById('day-card-'+planId+'-'+dayIdx);
   if(card)card.classList.add('day-done');
-  // Przekreslij zadania
-  var tasks=card?card.querySelectorAll('.task-item div:last-child'):[];
-  tasks.forEach(function(t){t.style.textDecoration='line-through';t.style.opacity='0.5';});
+  // Przekreslij zadania i zmien kolor kropki
+  if(card){
+    card.querySelectorAll('.task-item div:last-child').forEach(function(t){
+      t.style.textDecoration='line-through';
+      t.style.opacity='0.5';
+    });
+    card.querySelectorAll('.task-dot').forEach(function(d){
+      d.style.background='var(--green)';
+    });
+  }
 }
 
 // ── MOBILE ────────────────────────────────────────
