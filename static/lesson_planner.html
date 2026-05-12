@@ -933,7 +933,7 @@ function renderHeatmap(){
 }
 
 // ── GENERATE PLAN ─────────────────────────────────
-async window.generatePlan=function generatePlan(){
+window.generatePlan=async function generatePlan(){
   const _lim = await checkLimit('lesson');
   if(!_lim.allowed) return;
   useLimit('lesson');
