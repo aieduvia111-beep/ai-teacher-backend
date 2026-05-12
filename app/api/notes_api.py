@@ -86,5 +86,7 @@ async def generate_notes_pdf(req: NotesRequest):
 
     except Exception as e:
         import traceback
+        print(f"NOTES ERROR: {traceback.format_exc()}")
+        import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
