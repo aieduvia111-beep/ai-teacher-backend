@@ -340,8 +340,8 @@ button:active{transform:scale(.95)!important;}
 
 
 .week-acc .week-days{display:none;}
-.week-acc.open .week-days{display:block;}
-.week-acc.open .week-arr{transform:rotate(180deg);}
+.week-acc.wk-open .week-days{display:block;}
+.week-acc.wk-open .week-arr{transform:rotate(180deg);}
 .week-arr{transition:transform .2s;flex-shrink:0;}
 .week-header{display:flex;align-items:center;gap:6px;font-family:var(--h);font-size:.78em;font-weight:800;color:var(--accent2);padding:10px 12px;letter-spacing:.04em;background:rgba(124,106,255,.05);border:1px solid rgba(124,106,255,.12);border-radius:10px;margin-bottom:6px;margin-top:10px;user-select:none;}
 .week-header:first-child{margin-top:0;}
@@ -1037,7 +1037,7 @@ function renderPlanResult(plan,subject,minutes,isExisting){
         var weekTotal = Math.min(7, plan.days.length - idx);
         var isFirst = week === 0;
         html += '<div class="week-acc">'
-          + '<div class="week-header" onclick="this.parentElement.classList.toggle('open')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">'
+          + '<div class="week-header" onclick="this.parentElement.classList.toggle('wk-open')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">'
           + '<svg class="week-arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>'
           + '<span>Tydzień '+(week+1)+'</span>'
           + '<span style="font-size:.75em;opacity:.6;margin-left:4px;">'
@@ -1048,7 +1048,7 @@ function renderPlanResult(plan,subject,minutes,isExisting){
           + weekDone+'/'+weekTotal+' dni</span>'
           + '</div>'
           + '<div class="week-days">';
-        if(isFirst) html = html.replace('<div class="week-acc">', '<div class="week-acc open">');
+        if(isFirst) html = html.replace('<div class="week-acc">', '<div class="week-acc wk-open">');
       }
     }
     var dt=new Date(d.date);
