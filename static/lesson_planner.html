@@ -1001,7 +1001,7 @@ function renderPlanResult(plan,subject,minutes,isExisting){
     var doneBtn=isDone
       ?'<span style="margin-left:auto;color:var(--green);font-size:.75em;font-family:var(--h);font-weight:700;display:flex;align-items:center;gap:4px;"><svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2.5\' width=\'11\' height=\'11\'><polyline points=\'20 6 9 17 4 12\'/></svg>Zrobione</span>'
       :'<button onclick=\'markDone('+plan.id+','+idx+')\'  style=\'margin-left:auto;padding:4px 10px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.25);border-radius:7px;color:var(--green);font-size:.72em;font-family:var(--h);font-weight:700;cursor:pointer;flex-shrink:0;\'>Zrobione ✓</button>';
-    html+='<div class="day-card'+(isDone?' day-done':'')+'"><div class="day-header-row"><div class="day-num-badge" style="'+(isDone?'background:rgba(34,211,160,.15);border-color:rgba(34,211,160,.3);color:var(--green)':'')+'">'+d.num+'</div><div class="day-date-txt">'+dateStr+(isToday?' <span style=\'color:var(--accent2);font-size:.85em\'>· Dziś</span>':'')+' </div>'+doneBtn+'</div><div class="day-tasks">';
+    html+='<div id="day-card-'+plan.id+'-'+idx+'" class="day-card'+(isDone?' day-done':'')+'">';<div class="day-header-row"><div class="day-num-badge" style="'+(isDone?'background:rgba(34,211,160,.15);border-color:rgba(34,211,160,.3);color:var(--green)':'')+'">'+d.num+'</div><div class="day-date-txt">'+dateStr+(isToday?' <span style=\'color:var(--accent2);font-size:.85em\'>· Dziś</span>':'')+' </div>'+doneBtn+'</div><div class="day-tasks">';
     (Array.isArray(d.tasks)?d.tasks:[d.tasks]).forEach(function(t){html+='<div class="task-item"><div class="task-dot" style="'+(isDone?'background:var(--green)':'')+'"></div><div style="'+(isDone?'opacity:.5;text-decoration:line-through':'')+'">'+String(t)+'</div></div>';});
     html+='</div></div>';
   });
@@ -1037,13 +1037,16 @@ function markDone(planId,dayIdx){
   var today=new Date().toISOString().split('T')[0];
   S.activity[today]=(S.activity[today]||0)+plan.minutes;
   save();
-  // Tylko zaktualizuj ten przycisk - bez przeladowania calej strony
-  var btn=document.querySelector('[onclick=\'markDone('+planId+','+dayIdx+')\']');
+  // Znajdz przycisk po id i zamien
+  var btnId='done-btn-'+planId+'-'+dayIdx;
+  var btn=document.getElementById(btnId);
   if(btn){
-    btn.outerHTML='<span style=\'color:var(--green);font-size:.72em;font-family:var(--h);font-weight:700;margin-left:auto;flex-shrink:0;\'>✓ Zrobione</span>';
-    var card=document.querySelector('.day-card:nth-child('+(dayIdx+1)+')');
-    if(card)card.classList.add('day-done');
+    btn.outerHTML='<span id="done-lbl-'+planId+'-'+dayIdx+'" style="color:var(--green);font-size:.72em;font-family:var(--h);font-weight:700;margin-left:auto;flex-shrink:0;">✓ Zrobione</span>';
   }
+  // Zaktualizuj karte
+  var cardId='day-card-'+planId+'-'+dayIdx;
+  var card=document.getElementById(cardId);
+  if(card)card.classList.add('day-done');
 }
 
 // ── MOBILE ────────────────────────────────────────
