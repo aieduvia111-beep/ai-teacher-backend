@@ -333,7 +333,7 @@ button:active{transform:scale(.95)!important;}
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import{getFirestore,doc,getDoc,updateDoc,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,updateDoc,arrayUnion,increment,collection,getDocs,deleteDoc}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
 let currentUser=null;
@@ -778,6 +778,19 @@ function save(){
   localStorage.setItem('ai_streak',S.streak);
   localStorage.setItem('ai_activity',JSON.stringify(S.activity));
   localStorage.setItem('ai_lastActive',S.lastActive);
+  // Zapisz do Firestore
+  if(currentUser && db){
+    try{
+      setDoc(doc(db,'lesson_plans',currentUser.uid),{
+        plans: S.plans,
+        xp: S.xp,
+        streak: S.streak,
+        activity: S.activity,
+        lastActive: S.lastActive,
+        updatedAt: new Date().toISOString()
+      }).catch(e=>console.log('Firestore save err:',e));
+    }catch(e){}
+  }
 }
 var stepTimer=null;
 
