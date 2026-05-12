@@ -1279,18 +1279,20 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
             ],
             temperature=0.7, max_tokens=max_tok,
         )
-        parsed = self._robust_json_parse(r.choices[0].message.content.strip())
+        raw_content = r.choices[0].message.content
+        if isinstance(raw_content, str):
+            parsed = self._robust_json_parse(raw_content.strip())
+        else:
+            parsed = raw_content
         # Przytnij do wymaganej liczby elementow
-        if 'sekcje' in parsed:
-            parsed['sekcje'] = parsed['sekcje'][:cfg['n_sekcje']]
-        if 'kluczowe_pojecia' in parsed:
-            parsed['kluczowe_pojecia'] = parsed['kluczowe_pojecia'][:int(str(cfg['n_pojecia']).split('-')[-1])]
-        if 'quiz' in parsed:
-            parsed['quiz'] = parsed['quiz'][:cfg['n_quiz']]
-        if 'bledy_uczniow' in parsed:
-            parsed['bledy_uczniow'] = parsed['bledy_uczniow'][:cfg['n_bledy']]
-        if 'do_zapamietania' in parsed:
-            parsed['do_zapamietania'] = parsed['do_zapamietania'][:cfg['n_zapamietaj']]
+        try:
+            n_pojecia = int(str(cfg['n_pojecia']).split('-')[-1])
+            if 'sekcje' in parsed: parsed['sekcje'] = parsed['sekcje'][:cfg['n_sekcje']]
+            if 'kluczowe_pojecia' in parsed: parsed['kluczowe_pojecia'] = parsed['kluczowe_pojecia'][:n_pojecia]
+            if 'quiz' in parsed: parsed['quiz'] = parsed['quiz'][:cfg['n_quiz']]
+            if 'bledy_uczniow' in parsed: parsed['bledy_uczniow'] = parsed['bledy_uczniow'][:cfg['n_bledy']]
+            if 'do_zapamietania' in parsed: parsed['do_zapamietania'] = parsed['do_zapamietania'][:cfg['n_zapamietaj']]
+        except: pass
         return parsed
 
     def _build_content_pages(self, data: dict) -> bytes:
