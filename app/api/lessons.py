@@ -39,6 +39,11 @@ ZASADY (KRYTYCZNE):
 3. Kazdy krok musi miec KONKRETNA tresc - co dokladnie czytac/robic
 4. NIE pisz ogolnikow jak "nauka materialu" - pisz np. "Przeczytaj rozdzial o fotosyntezie - reakcja jasna i ciemna"
 5. Steps musza byc rozne: teoria, cwiczenia, powtorka, quiz, mapa mysli etc.
+6. REALISTYCZNY CZAS: masz {safe_min} minut dziennie - dopasuj ilosc i dlugosc krokow do tego czasu
+   - 15 min = 1-2 krotkie kroki (np. przeczytaj 1 strone + zrob notatke)
+   - 30 min = 2-3 kroki sredniej dlugosci
+   - 60 min = 3-4 pelne kroki z cwiczeniami
+   - NIE planuj wiecej niz mozna zrobic w {safe_min} minutach!
 
 Przyklady dobrych steps:
 - "Przeczytaj i zrob notatki: definicja i rodzaje {request.topic}"

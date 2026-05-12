@@ -1088,14 +1088,15 @@ window.markDone=function markDone(planId,dayIdx){
   var card=document.getElementById('day-card-'+planId+'-'+dayIdx);
   if(card)card.classList.add('day-done');
   // Przekreslij zadania i zmien kolor kropki
-  if(card){
-    card.querySelectorAll('.task-item div:last-child').forEach(function(t){
-      t.style.textDecoration='line-through';
-      t.style.opacity='0.5';
+  var cardEl=document.getElementById('day-card-'+planId+'-'+dayIdx);
+  if(cardEl){
+    cardEl.querySelectorAll('.task-item').forEach(function(item){
+      item.style.opacity='0.5';
+      item.style.textDecoration='line-through';
+      var dot=item.querySelector('.task-dot');
+      if(dot)dot.style.background='var(--green)';
     });
-    card.querySelectorAll('.task-dot').forEach(function(d){
-      d.style.background='var(--green)';
-    });
+    cardEl.classList.add('day-done');
   }
 }
 
