@@ -987,7 +987,15 @@ function buildDays(plan,totalDays){
   if(plan&&plan.days&&Array.isArray(plan.days)){
     return plan.days.map(function(d,i){
       var dt=new Date(today);dt.setDate(dt.getDate()+i);
-      return{num:d.day||i+1,date:dt.toISOString().split('T')[0],tasks:Array.isArray(d.tasks)?d.tasks:[d.tasks||'Nauka materiału'],done:false};
+      var dayTasks = [];
+      if(Array.isArray(d.steps) && d.steps.length>0){
+        dayTasks = d.steps.map(function(s){return s.title+': '+s.content;});
+      } else if(Array.isArray(d.tasks)){
+        dayTasks = d.tasks;
+      } else {
+        dayTasks = [d.title||'Nauka materiału'];
+      }
+      return{num:d.day||i+1,date:dt.toISOString().split('T')[0],title:d.title||'',tasks:dayTasks,done:false};
     });
   }
   return Array.from({length:totalDays},function(_,i){
