@@ -978,7 +978,7 @@ Zwroc TYLKO czysty JSON:
 
 Wymagania dla tego trybu:
 - kluczowe_pojecia: DOKLADNIE {n_pojecia}
-- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem
+- sekcje: BEZWZGLEDNIE DOKLADNIE {n_sekcje} sekcji - ani wiecej ani mniej!
 - bledy_uczniow: DOKLADNIE {n_bledy}
 - quiz: DOKLADNIE {n_quiz} pytan
 - do_zapamietania: DOKLADNIE {n_zapamietaj} faktow
