@@ -1025,7 +1025,7 @@ def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
 
 # Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
 SIZE_CONFIG = {
-    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4),   # Szybka ~4 str
+    2: dict(n_pojecia='2-3', n_sekcje=1, n_bledy=1, n_quiz=2, n_zapamietaj=3),   # Szybka ~4 str
     3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=2, n_quiz=4, n_zapamietaj=5),   # Normalna ~8 str
     4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6),   # Dokladna ~11 str
     5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7),   # Mega ~15 str
