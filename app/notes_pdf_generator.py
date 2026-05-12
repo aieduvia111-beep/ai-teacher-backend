@@ -1236,7 +1236,7 @@ class PremiumNotesGenerator:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
         prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok, **cfg)
-        max_tok = {2: 2500, 3: 4000, 4: 5000, 5: 6500}.get(num_sections, 4000)
+        max_tok = {2: 1500, 3: 3000, 4: 4500, 5: 6000}.get(num_sections, 3000)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
