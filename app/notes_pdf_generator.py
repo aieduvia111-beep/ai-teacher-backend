@@ -927,87 +927,62 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         return None
 
 
-PROMPT = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
-Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
-TEMAT: {temat}
-
-KRYTYCZNE: Najpierw okresl TYP TEMATU:
-- Jesli temat to BIOLOGIA (fotosynteza, ewolucja, komórka, DNA, ekologia, fizjologia) -> ZERO obliczen matematycznych w prikladach i quizie
-- Jesli temat to HISTORIA/GEOGRAFIA opisowa -> ZERO obliczen matematycznych
-- Jesli temat to MATEMATYKA/FIZYKA/CHEMIA -> obliczenia obowiazkowe
-
+PROMPT = """Jestes ekspertem edukacyjnym. Stworz PROFESJONALNA notatke premium.
+Poziom: {klasa} | Temat: {temat}
 {wlasne_blok}
 
-Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
+ZASADY:
+- Pisz jak nauczyciel siedzacy obok ucznia - konkretnie, z przyklkladami
+- Wzory TYLKO w $...$ (matplotlib mathtext)
+- Kazda sekcja: wprowadzenie + wzor/schemat + PRZYKLAD + komentarz
+{dobierz_przyklad}
+- Oznaczaj trudnosc: [P] podstawowy [E] egzaminacyjny [A] ambitny
 
-=== WZORY MATEMATYCZNE ===
-Format matplotlib mathtext. ZAWSZE otaczaj wzory $ ... $
-Przyklady: "$\\frac{{a}}{{b}} + \\frac{{c}}{{d}} = \\frac{{{{ad+bc}}}}{{{{bd}}}}$"
-           "$\\int_a^b f(x)\\,dx = F(b)-F(a)$"
-           "$\\Delta x \\rightarrow 0$"
-Wzory fizyczne MUSZA miec jednostki np. [J], [m/s], [N]
-
-=== STYL PISANIA — ABSOLUTNY NAKAZ ===
-ZAKAZ: "jest kluczowy", "jest fundamentem", "odgrywa role", "stanowi podstawe", "warto wiedziec", "nalezy pamietac"
-ZAKAZ: suchych definicji bez intuicji i bez przykladu
-NAKAZ: pisz jak NAUCZYCIEL ktory siedzi obok ucznia i go PROWADZI
-NAKAZ: kazda sekcja = wprowadzenie + (wzor jezeli temat tego wymaga) + PRZYKLAD + komentarz
-NAKAZ: DOBIERZ typ przykladu do tematu:
-  - MATEMATYKA/FIZYKA/CHEMIA obliczeniowa = konkretne liczby krok po kroku
-  - BIOLOGIA/HISTORIA/GEOGRAFIA opisowa (np. fotosynteza, ewolucja, bitwy) = przyklad opisowy z zycia/natury, BEZ obliczen matematycznych
-  - BEZWZGLEDNY ZAKAZ: nie dodawaj obliczen matematycznych do tematow biologicznych/historycznych
-NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
-
-=== STRUKTURA JSON ===
+Zwroc TYLKO czysty JSON:
 {{
-  "tytul": "Tytul (max 45 znakow)",
-  "podtytul": "Podtytul (max 75 znakow)",
+  "tytul": "max 45 znakow",
+  "podtytul": "max 75 znakow",
   "kluczowe_pojecia": [
-    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + przyklad (liczbowy dla mat/fiz, opisowy dla bio/hist)."}}
+    {{"pojecie": "Nazwa", "definicja": "Precyzyjna definicja + przyklad."}}
   ],
   "sekcje": [
     {{
-      "tytul": "Tytul sekcji (konkretny)",
-      "tresc": "3-4 zdania wprowadzenia stylem nauczyciela.",
-      "wzory": ["$wzor_z_pelnym_LaTeX$"],
-      "przyklad": "OBOWIAZKOWY format:\\nZadanie: [tresc]\\nKrok 1: [co i dlaczego] -> [wynik]\\nKrok 2: [co i dlaczego] -> [wynik]\\nOdpowiedz: [wynik]\\nKomentarz: [co uczy]",
-      "ciekawostka": "Zaskakujacy fakt LUB typowy blad. Pusty string jesli nie ma."
+      "naglowek": "Tytul sekcji",
+      "tresc": "3-4 zdania wprowadzenia.",
+      "wzor": "$wzor$",
+      "przyklad": {{
+        "zadanie": "Tresc zadania z liczbami",
+        "rozwiazanie": ["Krok 1: ...", "Krok 2: ..."],
+        "odpowiedz": "Odpowiedz koncowa",
+        "komentarz": "Dlaczego to wazne"
+      }}
     }}
   ],
   "bledy_uczniow": [
-    {{"blad": "Konkretny blad z przykladem liczbowym","dlaczego": "Mechanizm bledu","jak_zapamietac": "Trick lub mnemonik"}}
+    {{"blad": "Opis bledu", "dlaczego": "Wyjasnienie", "trick": "Jak zapamietac"}}
   ],
-  "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania.",
-  "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
-  "timeline": [{{"rok": "Rok","opis": "Co odkryto, max 85 znakow"}}],
-  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}}],
+  "timeline": [{{"rok": "rok", "wydarzenie": "opis"}}],
+  "schemat_myslowy": {{"centrum": "{temat}", "galecie": ["galaz1", "galaz2"]}},
   "quiz": [
     {{
-      "pytanie": "[E] Pytanie egzaminacyjne (obliczeniowe dla mat/fiz, opisowe dla bio/hist).",
-      "opcje": ["A) wynik","B) wynik","C) wynik","D) wynik"],
-      "odpowiedz": "B",
-      "wyjasnienie": "Krok 1: ... Krok 2: ... Odpowiedz: B bo...",
-      "poziom": "egzaminacyjny"
+      "pytanie": "[E] Tresc pytania?",
+      "opcje": ["A) ...", "B) ...", "C) ...", "D) ..."],
+      "odpowiedz": 1,
+      "wyjasnienie": "Dlaczego B jest poprawne"
     }}
   ],
-  "podsumowanie": "3 zdania: co umiesz, jakie wzory, gdzie zastosujesz.",
-  "do_zapamietania": [
-    "[P] Wzor lub fakt z przykladem",
-    "[E] Warunek stosowania",
-    "[E] Najczestszy blad: POKAZ blad i poprawke",
-    "[A] Nieintuicyjny fakt",
-    "[P] Trick na szybkie liczenie"
-  ]
+  "do_zapamietania": ["[P] Fakt 1", "[E] Fakt 2"],
+  "podsumowanie": ["Punkt 1", "Punkt 2"],
+  "dlaczego_wazne": "2-3 zdania dlaczego warto to umiec"
 }}
 
-=== WYMAGANIA ===
-- kluczowe_pojecia: {n_pojecia}, KAZDE z intuicja + przykladem
-- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem krok-po-kroku
-- bledy_uczniow: DOKLADNIE {n_bledy}, KAZDY z przykladem
-- quiz: DOKLADNIE {n_quiz} pytania
-- do_zapamietania: DOKLADNIE {n_zapamietaj}
-- Caly tekst PO POLSKU
-- KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
+Wymagania dla tego trybu:
+- kluczowe_pojecia: DOKLADNIE {n_pojecia}
+- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem
+- bledy_uczniow: DOKLADNIE {n_bledy}
+- quiz: DOKLADNIE {n_quiz} pytan
+- do_zapamietania: DOKLADNIE {n_zapamietaj} faktow
+"""
 
 
 def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
@@ -1281,7 +1256,8 @@ KRYTYCZNY ZAKAZ DLA TEGO TEMATU: Ten temat NIE wymaga obliczen matematycznych.
 - Uzywaj przykladow opisowych z zycia/natury
 - Wzory matematyczne sa ZAKAZANE dla tego tematu
 """
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, **cfg)
+        dobierz = "- Przyklad obliczeniowy krok po kroku z liczbami" if wymaga_obliczen else "- Przyklad opisowy z zycia/natury bez obliczen matematycznych"
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen, dobierz_przyklad=dobierz, **cfg)
         max_tok = {2: 3500, 3: 4500, 4: 5500, 5: 7000}.get(num_sections, 4500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
