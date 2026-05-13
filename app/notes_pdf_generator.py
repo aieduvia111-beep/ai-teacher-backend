@@ -960,7 +960,7 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania.",
   "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
   "timeline": [{{"rok": "Rok","opis": "Co odkryto, max 85 znakow"}}],
-  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}}],
+  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}},{{"poziom": 1,"tekst": "Galaz 1"}},{{"poziom": 2,"tekst": "Podpojecie"}},{{"poziom": 1,"tekst": "Galaz 2"}},{{"poziom": 1,"tekst": "Galaz 3"}}],
   "quiz": [
     {{
       "pytanie": "[E] Pytanie OBLICZENIOWE z konkretnymi liczbami.",
