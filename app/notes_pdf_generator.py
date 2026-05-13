@@ -1295,7 +1295,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 f" Dostosuj CALA notatke do tych wskazowek."
             )
         r = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o" if wlasne_instrukcje and wlasne_instrukcje.strip() else "gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt}
