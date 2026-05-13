@@ -932,12 +932,12 @@ function animCount(id,target){
 let level='liceum', pages=4, numSections=3, photos=[], stepTimer=null;
 
 const PAGES_INFO = {
-  2: '<strong>Szybka notatka</strong> — kluczowe pojęcia, 2 sekcje z przykładami, quiz (2 pytania)',
-  4: '<strong>Uczeń</strong> — poziom liceum, konkretne przykłady, wzory z wyjaśnieniem',
-  6: '<strong>Student</strong> — pełna teoria, trudniejsze przykłady egzaminacyjne, więcej przykładów, tabela porównawcza, quiz (4 pytania)',
-  8: '<strong>Ekspert</strong> — maksymalna szczegółowość, najtrudniejsze zadania — 5 sekcji, pogłębione przykłady, pełny quiz (6 pytań), kompletne podsumowanie',
+  2: '<strong>Dla dziecka</strong> — prosto jak dla 10-latka, analogie z życia, bez trudnych słów',
+  3: '<strong>Uczeń</strong> — poziom liceum, konkretne przykłady, wzory z wyjaśnieniem',
+  4: '<strong>Student</strong> — pełna teoria, trudniejsze przykłady egzaminacyjne, wyprowadzenia',
+  5: '<strong>Ekspert</strong> — maksymalna szczegółowość, najtrudniejsze zadania, pełne wyprowadzenia',
 };
-const PAGES_TIME = {2:'~1 min', 4:'~2 min', 6:'~3 min', 8:'~4 min'};
+const PAGES_TIME = {2:'~1 min', 3:'~2 min', 4:'~3 min', 5:'~4 min'};
 
 function setPages(btn){
   document.querySelectorAll('.pages-btn').forEach(b=>b.classList.remove('active'));
