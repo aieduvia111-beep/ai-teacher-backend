@@ -1290,8 +1290,9 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         )
         if wlasne_instrukcje and wlasne_instrukcje.strip():
             system_msg += (
-                " WAZNE: Uzytkownik podal wlasne instrukcje - sa one nadrzedne wobec domyslnego stylu."
-                " Musisz je bezwzglednie uwzglednic w tresci notatki."
+                f" KRYTYCZNE INSTRUKCJE UZYTKOWNIKA (NAJWYZSZY PRIORYTET - MUSISZ WYKONAC):"
+                f" {wlasne_instrukcje.strip()}"
+                f" Dostosuj CALA notatke do tych wskazowek."
             )
         r = self.client.chat.completions.create(
             model="gpt-4o-mini",
