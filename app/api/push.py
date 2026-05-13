@@ -99,7 +99,7 @@ import httpx
 async def keepalive_ping():
     try:
         async with httpx.AsyncClient() as client:
-            await client.get('https://ai-teacher-backend-1.onrender.com/health', timeout=10)
+            await client.get('https://eduvia-backend-2.onrender.com/health', timeout=10)
             print("Keep-alive OK")
     except Exception as e:
         print(f"Keep-alive error: {e}")
