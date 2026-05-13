@@ -1278,6 +1278,8 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
 - geografia ze skala/procentami -> mozesz uzyc obliczen
 - jesli watpisz -> pisz opisowo bez obliczen
 """
+        styl_info = f"\nSTYL: {cfg.get('styl', '')}"
+        cfg_clean = {k:v for k,v in cfg.items() if k != 'styl'}
         prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg_clean)
         max_tok = {2: 1400, 3: 2500, 4: 3500, 5: 5000}.get(num_sections, 3500)
         system_msg = (
