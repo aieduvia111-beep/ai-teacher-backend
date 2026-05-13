@@ -1016,12 +1016,23 @@ _BIO_HIST_TOPICS = [
 ]
 
 def _czy_wymaga_obliczen(temat: str) -> bool:
-    """Zwraca True jezeli temat wymaga obliczen matematycznych."""
+    """Identyczna logika jak w sprawdzianach."""
     t = temat.lower()
-    for slowo in _BIO_HIST_TOPICS:
-        if slowo in t:
-            return False
-    return True
+    SLOWA_OBLICZENIOWE = [
+        'matematyka','fizyka','chemia','algebra','geometria','statystyka',
+        'calka','pochodna','rownanie','logarytm','ulamek','funkcja',
+        'predkosc','energia','sila','cisnienie','stezenie','bilans'
+    ]
+    SLOWA_BEZ_OBLICZEN = [
+        'biologia','historia','geografia','psychologia','filozofia',
+        'sztuka','muzyka','religia','literatura','gramatyka',
+        'grzyby','rosliny','zwierzeta','ekologia','ewolucja',
+        'komorka','fotosynteza','bakterie','wirusy','genetyka',
+        'anatomia','fizjologia','ekosystem','bitwa','epoka','autor'
+    ]
+    if any(s in t for s in SLOWA_BEZ_OBLICZEN): return False
+    if any(s in t for s in SLOWA_OBLICZENIOWE): return True
+    return False
 
 SIZE_CONFIG = {
     2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='POZIOM: DZIECKO (10-latek). Pisz jak bajkarz - krotkie zdania, duzo porownań do codziennych rzeczy (zabawa, jedzenie, sport). Slowa naukowe zastepuj prostymi opisami. Przyklady z zycia dziecka. Pytania w quizie opisowe bez obliczen. NIE generuj timeline ani mapy myslowej.'),
