@@ -1004,6 +1004,25 @@ def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
 
 
 # Konfig rozmiaru notatki — mapowanie num_sections -> parametry prompta
+
+# Tematy BEZ obliczen matematycznych
+_BIO_HIST_TOPICS = [
+    "fotosynteza","ewolucja","komórka","komurka","dna","ekologia","fizjologia","genetyka",
+    "bakterie","wirusy","grzyby","rośliny","rosliny","zwierzęta","zwierzeta","biologia",
+    "metabolizm","oddychanie","enzymy","hormony","neurony","histologia","anatomia",
+    "rewolucja","historia","wojna","bitwa","imperium","dynastia","kultura","literatura",
+    "geografia","klimat","kontynent","ocean","rzeka","góry","gory","kraj","mapa",
+    "socjologia","psychologia","filozofia","etyka","religia","sztuka","muzyka"
+]
+
+def _czy_wymaga_obliczen(temat: str) -> bool:
+    """Zwraca True jezeli temat wymaga obliczen matematycznych."""
+    t = temat.lower()
+    for slowo in _BIO_HIST_TOPICS:
+        if slowo in t:
+            return False
+    return True
+
 SIZE_CONFIG = {
     2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='Tlumacz BARDZO PROSTO jak dla 10-latka. Uzyj analogii z zycia codziennego. Unikaj trudnych slow.'),   # Dla dziecka
     3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5, styl='Tlumacz normalnie dla ucznia liceum. Konkretne przyklady, wzory z wyjasnieniem.'),   # Uczen
@@ -1237,9 +1256,16 @@ class PremiumNotesGenerator:
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
         rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
         rozmiar_info = f"\nROZMIAR NOTATKI: {rozmiar_map.get(num_sections, 'NORMALNA')} - dostosuj ilosc i szczegolowos tresci."
+        wymaga_obliczen = _czy_wymaga_obliczen(temat)
+        zakaz_obliczen = "" if wymaga_obliczen else """
+KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
+- NIE dodawaj obliczen liczbowych w przykladach ani w quizie
+- Uzyj przykladow opisowych z zycia/natury
+- Wzory matematyczne sa ZAKAZANE dla tego tematu
+"""
         styl_info = f"\nSTYL TLUMACZENIA: {cfg.get('styl', '')}"
         cfg_clean = {k:v for k,v in cfg.items() if k != 'styl'}
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+rozmiar_info+styl_info, **cfg_clean)
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg_clean)
         max_tok = {2: 2000, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
