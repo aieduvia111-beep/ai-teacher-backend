@@ -797,7 +797,7 @@ function save(){
   localStorage.setItem('ai_lastActive',S.lastActive);
   // Zapisz do Firestore
   const uid = localStorage.getItem('eduvia_uid');
-  const _db = window.db || db;
+  const _db = window.db;
   if(uid && _db){
     try{
       setDoc(doc(_db,'lesson_plans',uid),{
