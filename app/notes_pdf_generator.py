@@ -1575,31 +1575,7 @@ KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
                 story.append(Spacer(1, 4))
 
         # ── SCHEMAT MYŚLOWY ──────────────────────────────────
-        sch = data.get('schemat_myslowy', [])
-        if sch:
-            story.append(Spacer(1, 20))
-            story.append(SectionLabel("MAPA MYŚLOWA", ACC_PURPLE, W))
-            story.append(Spacer(1, 10))
-            for item in sch:
-                tekst_sch = item.get('tekst', '')
-                poziom_sch = item.get('poziom', 0)
-                if '$' in tekst_sch:
-                    png_sch = _render_text_png(tekst_sch, W - poziom_sch*28 - 20, 24,
-                                               fontsize=9.5,
-                                               color=[ACC_PURPLE, ACC_CYAN, TXT_MUTED][min(poziom_sch,2)],
-                                               bg=[BG_ACCENT, BG_GREEN, BG_PAGE][min(poziom_sch,2)])
-                    if png_sch:
-                        from PIL import Image as _PILsch; import io as _iosch
-                        _psch = _PILsch.open(_iosch.BytesIO(png_sch))
-                        story.append(RLImage(_iosch.BytesIO(png_sch),
-                                             width=W-poziom_sch*28-20,
-                                             height=_psch.size[1]/130*72))
-                    else:
-                        story.append(MindMapItem(poziom_sch, tekst_sch, W))
-                else:
-                    story.append(MindMapItem(poziom_sch, tekst_sch, W))
-                story.append(Spacer(1, 4))
-
+        # Mapa myslowa usunieta
         # ── QUIZ ─────────────────────────────────────────────
         quiz = data.get('quiz', [])
         if quiz:
