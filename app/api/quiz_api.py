@@ -79,7 +79,7 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
         '    }}\n  ]\n}}'
     )
     resp = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=4000, temperature=0.7
     )
