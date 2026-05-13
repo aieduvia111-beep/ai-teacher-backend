@@ -1605,7 +1605,7 @@ KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
         if quiz:
             story.append(Spacer(1, 30))
             story.append(SectionLabel("QUIZ SPRAWDZAJĄCY", ACC_RED, W))
-            story.append(Spacer(1, 12))
+            story.append(Spacer(1, 6))
 
             def _qpng(tekst, w, h, fs, col, bg, bold=False):
                 png = smart_png(tekst, w, h, fontsize=fs, color=col, bg=bg, bold=bold)
@@ -1623,8 +1623,8 @@ KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
 
                 # Pytanie
                 from PIL import Image as _PILpyt; import io as _iopyt
-                _png_pyt = _render_text_png(f"Pytanie {i+1}: {pytanie}", W-4, 30,
-                                            fontsize=12, color=TXT_WHITE, bg=bg_quiz, bold=True)
+                _png_pyt = _render_text_png(f"Pytanie {i+1}: {pytanie}", W-4, 26,
+                                            fontsize=11, color=TXT_WHITE, bg=bg_quiz, bold=True)
                 if _png_pyt:
                     _pil_pyt = _PILpyt.open(_iopyt.BytesIO(_png_pyt))
                     story.append(RLImage(_iopyt.BytesIO(_png_pyt), width=W-4,
@@ -1642,8 +1642,8 @@ KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
                     col_op = ACC_CYAN if is_correct else '#2D3436'
                     op_clean = _l2u(str(op))
                     from PIL import Image as _PILop; import io as _ioop
-                    _png_op = _render_text_png('  ' + op_clean, W-4, 26,
-                                               fontsize=11, color=col_op, bg=bg_op,
+                    _png_op = _render_text_png('  ' + op_clean, W-4, 22,
+                                               fontsize=10, color=col_op, bg=bg_op,
                                                bold=is_correct)
                     if _png_op:
                         _pil_op = _PILop.open(_ioop.BytesIO(_png_op))
@@ -1652,10 +1652,10 @@ KRYTYCZNY ZAKAZ: Ten temat NIE wymaga obliczen matematycznych.
                         t_op = Table([[t_op_img]], colWidths=[W])
                         t_op.setStyle(TableStyle([
                             ('BACKGROUND', (0,0),(-1,-1), colors.HexColor(bg_op)),
-                            ('TOPPADDING', (0,0),(-1,-1), 4),
-                            ('BOTTOMPADDING',(0,0),(-1,-1), 4),
+                            ('TOPPADDING', (0,0),(-1,-1), 2),
+                            ('BOTTOMPADDING',(0,0),(-1,-1), 2),
                             ('LEFTPADDING', (0,0),(-1,-1), 0),
-                            ('RIGHTPADDING',(0,0),(-1,-1), 4),
+                            ('RIGHTPADDING',(0,0),(-1,-1), 2),
                             ('LINEBEFORE',  (0,0),(0,-1), 3,
                              colors.HexColor(ACC_CYAN if is_correct else '#DFE6E9')),
                         ]))
