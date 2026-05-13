@@ -1024,7 +1024,7 @@ def _czy_wymaga_obliczen(temat: str) -> bool:
     return True
 
 SIZE_CONFIG = {
-    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='Tlumacz BARDZO PROSTO jak dla 10-latka. Uzyj analogii z zycia codziennego. Unikaj trudnych slow.'),   # Dla dziecka
+    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='Tlumacz BARDZO PROSTO jak dla 10-latka. Uzyj analogii z zycia codziennego. Unikaj trudnych slow. NIE generuj timeline ani mapy myslowej.'),   # Dla dziecka
     3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5, styl='Tlumacz normalnie dla ucznia liceum. Konkretne przyklady, wzory z wyjasnieniem.'),   # Uczen
     4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6, styl='Tlumacz dla studenta. Pelna teoria, wyprowadzenia, trudniejsze przyklady egzaminacyjne.'),   # Student
     5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7, styl='Tlumacz na poziomie eksperta. Maksymalna szczegolowos, pelne wyprowadzenia, najtrudniejsze zadania.')   # Ekspert
