@@ -1024,10 +1024,10 @@ def _czy_wymaga_obliczen(temat: str) -> bool:
     return True
 
 SIZE_CONFIG = {
-    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='Tlumacz BARDZO PROSTO jak dla 10-latka. Uzyj analogii z zycia codziennego. Unikaj trudnych slow. NIE generuj timeline ani mapy myslowej.'),   # Dla dziecka
-    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5, styl='Tlumacz normalnie dla ucznia liceum. Konkretne przyklady, wzory z wyjasnieniem.'),   # Uczen
-    4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6, styl='Tlumacz dla studenta. Pelna teoria, wyprowadzenia, trudniejsze przyklady egzaminacyjne.'),   # Student
-    5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7, styl='Tlumacz na poziomie eksperta. Maksymalna szczegolowos, pelne wyprowadzenia, najtrudniejsze zadania.')   # Ekspert
+    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='POZIOM: DZIECKO (10-latek). Pisz jak bajkarz - krotkie zdania, duzo porownań do codziennych rzeczy (zabawa, jedzenie, sport). Slowa naukowe zastepuj prostymi opisami. Przyklady z zycia dziecka. Pytania w quizie opisowe bez obliczen. NIE generuj timeline ani mapy myslowej.'),
+    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5, styl='POZIOM: LICEUM. Pisz jak dobry nauczyciel - konkretnie i na temat. Uzyj terminologii naukowej z wyjasnieniem. Przyklady z egzaminow maturalnych. Quiz z typowymi zadaniami maturalnymi.'),
+    4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6, styl='POZIOM: STUDIA. Pisz akademicko - pelna terminologia, wyprowadzenia krok po kroku, dowody twierdzen. Przyklady z egzaminow uczelnianych. Quiz z trudnymi zadaniami problemowymi.'),
+    5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7, styl='POZIOM: EKSPERT. Pisz na poziomie naukowym - pelna formalizacja matematyczna, powiazania z innymi dziedzinami, niuanse i wyjatki od regul, najnowsze badania. Quiz z najtrudniejszymi zadaniami olimpijskimi.')
 }
 
 # ============================================================
