@@ -270,6 +270,10 @@ def _sanitize_latex(f: str) -> str:
     f = f.replace('&', ' ').replace(B+B, ' ')
     for cmd in ['overrightarrow','overleftarrow','widehat','widetilde','overline','underline']:
         f = re.sub(re.escape(B+cmd)+r'\{([^}]*)\}', r'\1', f)
+    # Dodaj spacje wokol strzalek
+    f = f.replace('\\to', ' \\to ')
+    f = f.replace('\\rightarrow', ' \\rightarrow ')
+    f = re.sub(r'  +', ' ', f)
     f = f.replace('$$', '$')
     f = re.sub(r'  +', ' ', f)
     return f.strip()
