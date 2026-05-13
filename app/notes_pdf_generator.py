@@ -1341,16 +1341,22 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
             if s.get('tresc'):
                 for linia in s['tresc'].replace('\\n', '\n').split('\n'):
                     if not linia.strip(): continue
-                    # Zawsze przez _render_text_png dla spójności fontu
+                    linia_s = linia.strip()
+                    # Jesli linia zawiera wzor LaTeX - renderuj jako formule
+                    if '$' in linia_s:
+                        img_wzor = formula_to_rl_image(linia_s, width_pt=W * 0.9)
+                        if img_wzor:
+                            story.append(img_wzor)
+                            continue
                     from PIL import Image as _PILtr; import io as _iotr
-                    _png_tr = _render_text_png(linia.strip(), W, 28,
+                    _png_tr = _render_text_png(linia_s, W, 28,
                                                fontsize=10.5, color=TXT_SUB, bg=BG_PAGE)
                     if _png_tr:
                         _pil_tr = _PILtr.open(_iotr.BytesIO(_png_tr))
                         story.append(RLImage(_iotr.BytesIO(_png_tr), width=W,
                                              height=_pil_tr.size[1]/150*72))
                     else:
-                        story.append(Paragraph(st(linia.strip()), S['body']))
+                        story.append(Paragraph(st(linia_s), S['body']))
                 story.append(Spacer(1, 10))
 
             # Wzory — każdy w osobnym "boksie"
