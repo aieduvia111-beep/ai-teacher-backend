@@ -925,7 +925,7 @@ async function fetchWariant(temat,numQ,wariant){
 
   const finalInstr=auto+(wlasneInstr||'');
   const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
-  const res=await fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/exam/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
   if(!ct.includes('application/pdf')){const d=await res.json();throw new Error(d.error||'Nieznany błąd');}

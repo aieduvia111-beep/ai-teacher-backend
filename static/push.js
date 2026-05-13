@@ -35,7 +35,7 @@ async function subscribePush(reg) {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_KEY)
     });
-    await fetch('https://ai-teacher-backend-1.onrender.com/api/push/subscribe', {
+    await fetch('https://eduvia-backend-2.onrender.com/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription: sub, uid: localStorage.getItem('eduvia_uid') })

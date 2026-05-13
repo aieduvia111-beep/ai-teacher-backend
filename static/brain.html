@@ -495,7 +495,7 @@ onAuthStateChanged(auth, async (user) => {
 </script>
 <script>
 function go(u) { window.location.href = u; }
-const BACKEND = 'https://ai-teacher-backend-1.onrender.com';
+const BACKEND = 'https://eduvia-backend-2.onrender.com';
 
 async function loadBrain() {
   document.getElementById('brainLoading').style.display = 'flex';
@@ -695,7 +695,7 @@ function examHole(subject, topic, btn) {
   }
   wlasneInstrukcje += 'SPRAWDZIAN MA MIEC DOKLADNIE ' + liczba + ' PYTAN ZAMKNIETYCH A-D. NIE dodawaj czesci B, zadań otwartych ani obliczeniowych. TYLKO ' + liczba + ' pytan zamknietych, nic wiecej.';
 
-  fetch('https://ai-teacher-backend-1.onrender.com/api/v1/exam/generate', {
+  fetch('https://eduvia-backend-2.onrender.com/api/v1/exam/generate', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
