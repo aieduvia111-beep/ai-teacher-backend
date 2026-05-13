@@ -1517,7 +1517,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                                      ('\\alpha','α'),('\\beta','β'),('\\gamma','γ'),
                                      ('\\Delta','Δ'),('\\delta','δ'),('\\sigma','σ'),
                                      ('\\leq','≤'),('\\geq','≥'),('\\neq','≠'),
-                                     ('\\rightarrow','→'),('\\to','→'),('\\cdot','·'),('→','\\rightarrow')]:
+                                     ('\\rightarrow','\\to'),('\\cdot','·'),('→','\\to')]:
                         s = s.replace(src, dst)
                     s = _r2.sub(r'[\\{}_^]','',s).replace('$','').strip()
                     return s
