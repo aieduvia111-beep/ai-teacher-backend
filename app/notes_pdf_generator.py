@@ -1298,7 +1298,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
             "KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape). "
-            "Zero backticks, zero markdown, zero komentarzy."
+            "Zero backticks, zero markdown, zero komentarzy. WZORY LaTeX: ZAKAZ \\rightarrow (uzyj \\to), ZAKAZ \\text{} (pisz symbole wprost), ZAKAZ polskich liter w $...$."
         )
         if wlasne_instrukcje and wlasne_instrukcje.strip():
             system_msg += (
