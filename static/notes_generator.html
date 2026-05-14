@@ -1025,19 +1025,7 @@ async function generate(){
     showErr(msg);
   }
 }
-  }catch(e){}
-}
 
-function shareNote(){
-  var url=document.getElementById('dlLink').href;
-  if(navigator.share){
-    navigator.share({title:'Moja notatka z Eduvia AI',text:'Wygenerowałem notatkę AI!',url:window.location.href})
-    .catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(window.location.href)
-    .then(()=>alert('Link skopiowany!'))
-    .catch(()=>alert('Udostępnij: '+window.location.href));
-  }
 }
 
 
