@@ -793,18 +793,7 @@ function getPlanBadgeHTML(plan) {
         <h3>Notatka gotowa! 🎉</h3>
         <p>Profesjonalny PDF z wzorami LaTeX, quizem i podsumowaniem</p>
         
-        <!-- Ocena notatki -->
-        <div id="ratingBox" style="margin:12px 0;">
-          <div style="font-size:.8em;color:var(--muted2);margin-bottom:6px;">Jak oceniasz tę notatkę?</div>
-          <div style="display:flex;gap:8px;justify-content:center;" id="stars">
-            <span onclick="rateNote(1)" style="font-size:1.6em;cursor:pointer;transition:.2s;" class="star">☆</span>
-            <span onclick="rateNote(2)" style="font-size:1.6em;cursor:pointer;transition:.2s;" class="star">☆</span>
-            <span onclick="rateNote(3)" style="font-size:1.6em;cursor:pointer;transition:.2s;" class="star">☆</span>
-            <span onclick="rateNote(4)" style="font-size:1.6em;cursor:pointer;transition:.2s;" class="star">☆</span>
-            <span onclick="rateNote(5)" style="font-size:1.6em;cursor:pointer;transition:.2s;" class="star">☆</span>
-          </div>
-          <div id="ratingThanks" style="display:none;font-size:.8em;color:var(--green);margin-top:6px;">Dziękujemy za ocenę! ⭐</div>
-        </div>
+        
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
           <a id="dlLink" class="dl-btn" href="#" download>
@@ -1022,7 +1011,7 @@ async function generate(){
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
       localStorage.setItem('eduvia_xp',xp+50);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();document.querySelectorAll('.star').forEach(s=>s.textContent='☆');document.getElementById('ratingThanks').style.display='none';},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();},600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
     clearInterval(stepTimer);
