@@ -1025,13 +1025,6 @@ async function generate(){
     showErr(msg);
   }
 }
-function rateNote(n){
-  document.querySelectorAll('.star').forEach((s,i)=>{s.textContent=i<n?'⭐':'☆';});
-  document.getElementById('ratingThanks').style.display='block';
-  // Zapisz ocene lokalnie
-  try{
-    var notes=JSON.parse(localStorage.getItem('ai_notes')||'[]');
-    if(notes.length>0){notes[notes.length-1].rating=n;localStorage.setItem('ai_notes',JSON.stringify(notes));}
   }catch(e){}
 }
 
