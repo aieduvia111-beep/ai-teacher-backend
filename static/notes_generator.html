@@ -1008,7 +1008,12 @@ async function generate(){
     clearInterval(stepTimer);
     ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');
     document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';
-    showErr(e.message);
+    // Przyjazny komunikat bledu
+    var msg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę.';
+    if(e.message && e.message.includes('Failed to fetch')) msg = 'Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
+    if(e.message && e.message.includes('timeout')) msg = 'Generowanie trwa zbyt długo. Spróbuj z krótszym tematem.';
+    if(e.message && e.message.includes('limit')) msg = 'Przekroczyłeś dzienny limit notatek. Wróć jutro!';
+    showErr(msg);
   }
 }
 function reset(){
