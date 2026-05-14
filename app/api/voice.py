@@ -82,13 +82,31 @@ async def get_ai_response(data: dict):
         text = data.get("text", "")
         history = data.get("history", [])
         subject = data.get("subject", "")
+        level = data.get("level", "")
 
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
 
+        level_map = {
+            "podstawowka_56": "klasa 5-6 podstawówki (11-12 lat) - bardzo proste słowa, krótkie zdania, dużo przykładów z życia",
+            "podstawowka_78": "klasa 7-8 podstawówki (13-14 lat) - proste wyjaśnienia, podstawowe wzory",
+            "liceum": "liceum/technikum - pełna terminologia, zadania maturalne",
+            "matura": "matura - skupiaj się na typowych zadaniach maturalnych, schematach i czasach",
+            "studia": "poziom akademicki - pełna formalizacja, wyprowadzenia, dowody"
+        }
+        lang_map = {
+            "angielski": "SPEAK ONLY IN ENGLISH. Do not use Polish at all. Help student practice English.",
+            "niemiecki": "SPRICH NUR AUF DEUTSCH. Benutze kein Polnisch. Hilf dem Schüler Deutsch zu üben.",
+            "hiszpanski": "HABLA SOLO EN ESPAÑOL. No uses polaco. Ayuda al estudiante a practicar español."
+        }
+
         system = SYSTEM_PROMPT
-        if subject:
-            system += f"\n\nUCZEN WYBRAŁ PRZEDMIOT: {subject.upper()}. Skup sie na {subject}."
+        if subject and subject in lang_map:
+            system += f"\n\nLANGUAGE MODE: {lang_map[subject]}"
+        elif subject:
+            system += f"\n\nFOCUS: Student wants to learn {subject.upper()}. Stay on topic."
+        if level and level in level_map:
+            system += f"\n\nSTUDENT LEVEL: {level_map[level]}. Adjust ALL explanations to this level."
 
         messages = [{"role": "system", "content": system}]
 

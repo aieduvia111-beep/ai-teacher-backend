@@ -705,20 +705,34 @@ function getPlanBadgeHTML(plan) {
         <div class="pf"><div class="pf-dot"></div>Pokaż zadanie kamerą — AI rozwiąże krok po kroku</div>
         <div class="pf"><div class="pf-dot"></div>Naturalny głos AI, odpowiedź w 2-3 sekundy</div>
       </div>
-      <div style="margin:16px 0;">
-        <div style="font-size:.78em;color:#888;margin-bottom:8px;text-align:left;">Czego chcesz się dziś uczyć? (opcjonalne)</div>
-        <select id="subjectSelect" style="width:100%;padding:10px 12px;background:#1a1825;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9em;cursor:pointer;">
-          <option value="">Dowolny przedmiot</option>
-          <option value="matematyka">Matematyka</option>
-          <option value="fizyka">Fizyka</option>
-          <option value="chemia">Chemia</option>
-          <option value="biologia">Biologia</option>
-          <option value="historia">Historia</option>
-          <option value="angielski">Angielski</option>
-          <option value="niemiecki">Niemiecki</option>
-          <option value="polski">Język polski</option>
-          <option value="informatyka">Informatyka</option>
-        </select>
+      <div style="margin:16px 0;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <div style="font-size:.78em;color:#888;margin-bottom:6px;text-align:left;">Przedmiot (opcjonalne)</div>
+          <select id="subjectSelect" style="width:100%;padding:10px 12px;background:#1a1825;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9em;cursor:pointer;">
+            <option value="">Dowolny przedmiot</option>
+            <option value="matematyka">Matematyka</option>
+            <option value="fizyka">Fizyka</option>
+            <option value="chemia">Chemia</option>
+            <option value="biologia">Biologia</option>
+            <option value="historia">Historia</option>
+            <option value="angielski">Angielski — mów do mnie po angielsku</option>
+            <option value="niemiecki">Niemiecki — mów do mnie po niemiecku</option>
+            <option value="hiszpanski">Hiszpański — mów do mnie po hiszpańsku</option>
+            <option value="polski">Język polski</option>
+            <option value="informatyka">Informatyka</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.78em;color:#888;margin-bottom:6px;text-align:left;">Twój poziom</div>
+          <select id="levelSelect" style="width:100%;padding:10px 12px;background:#1a1825;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9em;cursor:pointer;">
+            <option value="">Nie wiem / dowolny</option>
+            <option value="podstawowka_56">Podstawówka kl. 5-6</option>
+            <option value="podstawowka_78">Podstawówka kl. 7-8</option>
+            <option value="liceum">Liceum / Technikum</option>
+            <option value="matura">Przygotowanie do matury</option>
+            <option value="studia">Studia</option>
+          </select>
+        </div>
       </div>
       <button class="start-btn" onclick="initSes()">Rozpocznij rozmowę →</button>
     </div>
@@ -751,6 +765,7 @@ function getKey(){ return 'backend'; }
 // INIT
 async function initSes(){
   window._voiceSubject = document.getElementById('subjectSelect')?.value || '';
+  window._voiceLevel = document.getElementById('levelSelect')?.value || '';
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
@@ -846,7 +861,7 @@ async function process(){
     if(!userTxt||userTxt.length<2){isProc=false;setOrb('idle');setHint('Nie rozpoznano');return;}
     addUserMsg(userTxt); hist.push({role:'user',content:userTxt}); setHint('Myślę...');
     const aiId='ai-'+Date.now(); addAiPlaceholder(aiId);
-    const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8),subject:window._voiceSubject||''})});
+    const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8),subject:window._voiceSubject||'',level:window._voiceLevel||''})});
     if(!cr.ok){const e=await cr.json().catch(()=>({}));throw new Error(e.detail||cr.status);}
     const crData=await cr.json();
     const aiTxt=crData.text||'';
