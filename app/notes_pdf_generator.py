@@ -276,6 +276,10 @@ def _sanitize_latex(f: str) -> str:
     import re as _re2
     f = _re2.sub(r'\\text\{([^}]*)\}', r'\1', f)
     f = f.replace('\\rightarrow', '\\to')
+    # Usun ext{...} ktore pozostaje po blednym parsowaniu 	ext{}
+    import re as _re3
+    f = _re3.sub(r'ext\{([^}]*)\}', r'\1', f)
+    f = _re3.sub(r'text\{([^}]*)\}', r'\1', f)
     # Usun polskie znaki z wzorow - psuja rendering
     pl_map = {'ą':'a','ę':'e','ó':'o','ś':'s','ł':'l','ż':'z','ź':'z','ć':'c','ń':'n',
                'Ą':'A','Ę':'E','Ó':'O','Ś':'S','Ł':'L','Ż':'Z','Ź':'Z','Ć':'C','Ń':'N'}
