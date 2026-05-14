@@ -134,8 +134,8 @@ async def get_ai_response(data: dict):
         # TTS od razu po tekście
         def call_tts():
             return client.audio.speech.create(
-                model="tts-1",
-                voice="fable",    # fable = najcieplejszy głos, naturalny, nie brzmi jak AI
+                model="tts-1-hd",
+                voice="nova",    # fable = najcieplejszy głos, naturalny, nie brzmi jak AI
                 input=ai_text,
                 speed=1.1
             )
