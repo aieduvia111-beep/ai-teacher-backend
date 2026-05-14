@@ -276,6 +276,11 @@ def _sanitize_latex(f: str) -> str:
     import re as _re2
     f = _re2.sub(r'\\text\{([^}]*)\}', r'\1', f)
     f = f.replace('\\rightarrow', '\\to')
+    # Usun polskie znaki z wzorow - psuja rendering
+    pl_map = {'ą':'a','ę':'e','ó':'o','ś':'s','ł':'l','ż':'z','ź':'z','ć':'c','ń':'n',
+               'Ą':'A','Ę':'E','Ó':'O','Ś':'S','Ł':'L','Ż':'Z','Ź':'Z','Ć':'C','Ń':'N'}
+    for pl, en in pl_map.items():
+        f = f.replace(pl, en)
     f = re.sub(r'  +', ' ', f)
     f = f.replace('$$', '$')
     f = re.sub(r'  +', ' ', f)
