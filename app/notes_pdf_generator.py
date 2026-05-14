@@ -275,6 +275,7 @@ def _sanitize_latex(f: str) -> str:
     f = f.replace('\\rightarrow', ' \\rightarrow ')
     import re as _re2
     f = _re2.sub(r'\\text\{([^}]*)\}', r'\1', f)
+    f = f.replace('\\rightarrow', '\\to')
     f = re.sub(r'  +', ' ', f)
     f = f.replace('$$', '$')
     f = re.sub(r'  +', ' ', f)
