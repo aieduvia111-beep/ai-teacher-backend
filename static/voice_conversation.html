@@ -698,43 +698,14 @@ function getPlanBadgeHTML(plan) {
     <div class="perm-card">
       <div class="perm-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg></div>
       <h2>Eduvia Voice AI</h2>
-      <p>Rozmawiaj z AI jak z korepetytorem — zadaj pytanie głosem, pokaż zadanie kamerą i otrzymaj odpowiedź w kilka sekund.</p>
+      <p>Twój osobisty korepetytor AI — dostępny zawsze, odpowiada w sekundy. Rozwiązuje zadania głosowo lub ze zdjęcia. Uczy każdego przedmiotu w każdym języku.</p>
       <div class="perm-feats">
-        <div class="pf"><div class="pf-dot"></div>Matematyka, fizyka, chemia, biologia i więcej</div>
-        <div class="pf"><div class="pf-dot"></div>Nauka języków — angielski, niemiecki, hiszpański</div>
-        <div class="pf"><div class="pf-dot"></div>Pokaż zadanie kamerą — AI rozwiąże krok po kroku</div>
-        <div class="pf"><div class="pf-dot"></div>Naturalny głos AI, odpowiedź w 2-3 sekundy</div>
+        <div class="pf"><div class="pf-dot"></div>Matematyka, fizyka, chemia, biologia, historia</div>
+        <div class="pf"><div class="pf-dot"></div>Angielski, niemiecki, hiszpański i każdy inny język</div>
+        <div class="pf"><div class="pf-dot"></div>Pokaż zadanie kamerą — rozwiąże krok po kroku</div>
+        <div class="pf"><div class="pf-dot"></div>Odpowiedź głosem w 2-3 sekundy</div>
       </div>
-      <div style="margin:16px 0;display:flex;flex-direction:column;gap:10px;">
-        <div>
-          <div style="font-size:.78em;color:#888;margin-bottom:6px;text-align:left;">Przedmiot (opcjonalne)</div>
-          <select id="subjectSelect" style="width:100%;padding:10px 12px;background:#1a1825;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9em;cursor:pointer;">
-            <option value="">Dowolny przedmiot</option>
-            <option value="matematyka">Matematyka</option>
-            <option value="fizyka">Fizyka</option>
-            <option value="chemia">Chemia</option>
-            <option value="biologia">Biologia</option>
-            <option value="historia">Historia</option>
-            <option value="angielski">Angielski — mów do mnie po angielsku</option>
-            <option value="niemiecki">Niemiecki — mów do mnie po niemiecku</option>
-            <option value="hiszpanski">Hiszpański — mów do mnie po hiszpańsku</option>
-            <option value="polski">Język polski</option>
-            <option value="informatyka">Informatyka</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:.78em;color:#888;margin-bottom:6px;text-align:left;">Twój poziom</div>
-          <select id="levelSelect" style="width:100%;padding:10px 12px;background:#1a1825;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9em;cursor:pointer;">
-            <option value="">Nie wiem / dowolny</option>
-            <option value="podstawowka_56">Podstawówka kl. 5-6</option>
-            <option value="podstawowka_78">Podstawówka kl. 7-8</option>
-            <option value="liceum">Liceum / Technikum</option>
-            <option value="matura">Przygotowanie do matury</option>
-            <option value="studia">Studia</option>
-          </select>
-        </div>
-      </div>
-      <button class="start-btn" onclick="initSes()">Rozpocznij rozmowę →</button>
+      <button class="start-btn" onclick="initSes()">Połącz z AI →</button>
     </div>
   </div>
 
@@ -764,8 +735,6 @@ function getKey(){ return 'backend'; }
 
 // INIT
 async function initSes(){
-  window._voiceSubject = document.getElementById('subjectSelect')?.value || '';
-  window._voiceLevel = document.getElementById('levelSelect')?.value || '';
   g('perm').classList.add('hidden');
   sessionActive=true;
   setOrb('idle');
@@ -861,7 +830,7 @@ async function process(){
     if(!userTxt||userTxt.length<2){isProc=false;setOrb('idle');setHint('Nie rozpoznano');return;}
     addUserMsg(userTxt); hist.push({role:'user',content:userTxt}); setHint('Myślę...');
     const aiId='ai-'+Date.now(); addAiPlaceholder(aiId);
-    const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8),subject:window._voiceSubject||'',level:window._voiceLevel||''})});
+    const cr=await fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:userTxt,history:hist.slice(-8)})});
     if(!cr.ok){const e=await cr.json().catch(()=>({}));throw new Error(e.detail||cr.status);}
     const crData=await cr.json();
     const aiTxt=crData.text||'';
