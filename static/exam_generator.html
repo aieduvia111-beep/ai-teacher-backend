@@ -983,7 +983,15 @@ async function generate(){
     clearInterval(stepTimer);
     ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');
     document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';document.getElementById('genBtn').disabled=false;
-    showErr(e.message);
+
+    var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
+    if(e.message){
+      if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
+      else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
+      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+    }
+    showErr(_errMsg);
   }
 }
 function reset(){

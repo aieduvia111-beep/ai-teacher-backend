@@ -1010,7 +1010,13 @@ async function startQuiz(){
     fetch(BASE+'/api/v1/quiz/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
     .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
     .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
-    .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
+    .catch(function(e){showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
+    if(e.message){
+      if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
+      else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
+      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+    };err.textContent=_errMsg;err.style.display='block';});
     return;
   }
   if(!topic){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
@@ -1018,7 +1024,13 @@ async function startQuiz(){
   fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
   .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
   .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
-  .catch(function(e){showPage('pageSetup');err.textContent='Błąd: '+e.message;err.style.display='block';});
+  .catch(function(e){showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
+    if(e.message){
+      if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
+      else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
+      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+    };err.textContent=_errMsg;err.style.display='block';});
 }
 
 function shuffleQuestions(qs){
