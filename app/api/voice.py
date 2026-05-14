@@ -81,13 +81,16 @@ async def get_ai_response(data: dict):
     try:
         text = data.get("text", "")
         history = data.get("history", [])
+        subject = data.get("subject", "")
 
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
 
-        print(f"[RESPOND] Tekst ucznia: '{text}'")
+        system = SYSTEM_PROMPT
+        if subject:
+            system += f"\n\nUCZEN WYBRAŁ PRZEDMIOT: {subject.upper()}. Skup sie na {subject}."
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": system}]
 
         for msg in history[-8:]:
             if isinstance(msg, dict) and "role" in msg and "content" in msg:
