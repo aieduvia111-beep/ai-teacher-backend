@@ -1293,7 +1293,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         styl_info = f"\nSTYL: {cfg.get('styl', '')}"
         cfg_clean = {k:v for k,v in cfg.items() if k != 'styl'}
         prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg_clean)
-        max_tok = {2: 1800, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
+        max_tok = {2: 2800, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
