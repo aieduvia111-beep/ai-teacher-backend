@@ -811,10 +811,7 @@ function getPlanBadgeHTML(plan) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Pobierz PDF
           </a>
-          <button class="dl-btn" onclick="shareNote()" style="background:rgba(34,211,160,.1);border-color:rgba(34,211,160,.3);color:var(--green);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Udostępnij
-          </button>
+
         </div>
         <button class="reset-btn" onclick="reset()" style="margin-top:8px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1025,7 +1022,7 @@ async function generate(){
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
       localStorage.setItem('eduvia_xp',xp+50);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();launchConfetti();document.querySelectorAll('.star').forEach(s=>s.textContent='☆');document.getElementById('ratingThanks').style.display='none';},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();document.querySelectorAll('.star').forEach(s=>s.textContent='☆');document.getElementById('ratingThanks').style.display='none';},600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
     clearInterval(stepTimer);
@@ -1061,17 +1058,7 @@ function shareNote(){
   }
 }
 
-function launchConfetti(){
-  var colors=['#7C6AFF','#22D3A0','#F59E0B','#EF4444','#3B82F6'];
-  for(var i=0;i<80;i++){
-    setTimeout((function(i){return function(){
-      var el=document.createElement('div');
-      el.style.cssText='position:fixed;top:-10px;left:'+Math.random()*100+'vw;width:8px;height:8px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:50%;z-index:9999;pointer-events:none;animation:fall '+(1+Math.random()*2)+'s ease-in forwards;';
-      document.body.appendChild(el);
-      setTimeout(()=>el.remove(),3000);
-    }})(i), i*30);
-  }
-}
+
 
 function reset(){
   document.getElementById('successView').style.display='none';document.getElementById('formView').style.display='block';
