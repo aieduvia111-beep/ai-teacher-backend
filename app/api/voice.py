@@ -126,11 +126,18 @@ async def get_ai_response(data: dict):
             messages.append({"role": "user", "content": text})
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor()
-        def call_gpt():
+        def call_llm():
+            if GROQ_AVAILABLE:
+                return groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages,
+                    max_tokens=160,
+                    temperature=0.7
+                )
             return openai_client.chat.completions.create(
                 model="gpt-4o", messages=messages, max_tokens=160, temperature=0.7
             )
-        response = await loop.run_in_executor(executor, call_gpt)
+        response = await loop.run_in_executor(executor, call_llm)
         ai_text = response.choices[0].message.content.strip()
         print(f"[GPT] '{ai_text[:80]}'")
         audio_bytes = await elevenlabs_tts(ai_text)
