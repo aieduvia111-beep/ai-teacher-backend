@@ -1254,8 +1254,7 @@ function boardFlush(){
     if(bc) bc.scrollTop = bc.scrollHeight;
   }
   // Prędkość: normalna litera ~35ms, spacja ~80ms, nowa linia ~150ms
-  const delay = ch==='
-' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
+  const delay = ch==='\n' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
   setTimeout(boardFlush, delay);
 }
 
