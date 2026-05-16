@@ -1394,11 +1394,7 @@ function handleRealtimeMsg(msg){
 
   // Text delta
   if(t === 'response.audio_transcript.delta'){
-    const delta = msg.delta || '';
-    // Remove tags
-    const clean = delta.replace(/\[WHITEBOARD:[^\]]*\]/g,'').replace(/\[CORRECTION:[^\]]*\]/g,'');
-    if(clean) boardWrite(clean);
-    currentAiText += delta;
+    currentAiText += (msg.delta || '');
     return;
   }
 
