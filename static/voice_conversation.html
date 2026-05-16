@@ -960,9 +960,9 @@ function getPlanBadgeHTML(plan) {
 <div class="err-toast" id="errToast"><span id="errMsg"></span></div>
 
 <script>
-// ═══════════════════════════════════════════════
+//
 // GLOBALS
-// ═══════════════════════════════════════════════
+//
 const IS_MOB = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 const BACKEND_URL = 'https://eduvia-backend-2.onrender.com';
 const WS_URL = BACKEND_URL.replace('https://','wss://').replace('http://','ws://') + '/api/v1/realtime/ws';
@@ -982,9 +982,9 @@ let allAudioChunks = []; // zbieramy chunki z Realtime
 function g(id){ return document.getElementById(id); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ═══════════════════════════════════════════════
+//
 // AVATAR 3D — Three.js kosmita niebieski
-// ═══════════════════════════════════════════════
+//
 let avatarScene, avatarCamera, avatarRenderer, avatarMixer;
 let headMesh, eyeL, eyeR, mouth;
 let mouthOpenTarget = 0, mouthOpenCurrent = 0;
@@ -1017,7 +1017,7 @@ function initAvatar() {
   top.position.set(0, 3, 1);
   avatarScene.add(top);
 
-  // ── GŁOWA kosmity ──
+  //
   const headGeo = new THREE.SphereGeometry(0.85, 64, 64);
   // Lekko wydłużona
   headGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.15, 0.88));
@@ -1045,7 +1045,7 @@ function initAvatar() {
   glowMesh.position.y = 0.1;
   avatarScene.add(glowMesh);
 
-  // ── OCZY — duże jak kosmita ──
+  //
   const eyeGeo = new THREE.SphereGeometry(0.22, 32, 32);
   eyeGeo.applyMatrix4(new THREE.Matrix4().makeScale(1.4, 0.8, 0.5));
   const eyeMat = new THREE.MeshStandardMaterial({
@@ -1073,7 +1073,7 @@ function initAvatar() {
   pupilR.position.set(0, 0, 0.18);
   eyeR.add(pupilR);
 
-  // ── USTA — elipsa ──
+  //
   const mouthGeo = new THREE.SphereGeometry(0.18, 32, 16, 0, Math.PI*2, 0, Math.PI*0.5);
   const mouthMat = new THREE.MeshStandardMaterial({
     color: 0x000033,
@@ -1087,7 +1087,7 @@ function initAvatar() {
   mouth.scale.set(1.8, 0.1, 1);
   headMesh.add(mouth);
 
-  // ── ANTENY ──
+  //
   const antGeo = new THREE.CylinderGeometry(0.025, 0.012, 0.55, 8);
   const antMat = new THREE.MeshStandardMaterial({ color: 0x2244aa, metalness: 0.9, roughness: 0.2 });
   const antL = new THREE.Mesh(antGeo, antMat);
@@ -1109,14 +1109,14 @@ function initAvatar() {
   tipR.position.set(0, 0.3, 0);
   antR.add(tipR);
 
-  // ── SZYJA ──
+  //
   const neckGeo = new THREE.CylinderGeometry(0.22, 0.28, 0.4, 16);
   const neckMat = new THREE.MeshStandardMaterial({ color: 0x162055, roughness: 0.5, metalness: 0.4 });
   const neck = new THREE.Mesh(neckGeo, neckMat);
   neck.position.y = -0.62;
   headMesh.add(neck);
 
-  // ── CZĄSTECZKI wokół ──
+  //
   const particleCount = 80;
   const pGeo = new THREE.BufferGeometry();
   const pPos = new Float32Array(particleCount * 3);
@@ -1218,13 +1218,13 @@ function stopLipSync(){
 function setAvatarState(s){
   avatarState = s;
   const el = g('voState');
-  const lbls = {idle:'GOTOWY', listening:'SŁUCHAM', speaking:'ODPOWIADA', thinking:'MYŚLĘ...'};
+  const lbls = {idle:'GOTOWY', listening:'SLUCHAM', speaking:'ODPOWIADA', thinking:'MYSLE...'};
   if(el){ el.textContent = lbls[s]||'GOTOWY'; el.className='vo-state '+(s!=='idle'?s:''); }
 }
 
-// ═══════════════════════════════════════════════
+//
 // TABLICA — pisanie jak człowiek
-// ═══════════════════════════════════════════════
+//
 let boardQueue = [], boardTyping = false, boardFull = '';
 
 function boardClear(){
@@ -1266,13 +1266,13 @@ function boardAddCorrection(wrong, correct){
   if(!corr) return;
   const div = document.createElement('div');
   div.className = 'board-corr';
-  div.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" width="12" height="12"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span class="wrong">'+esc(wrong)+'</span> → <span class="right">'+esc(correct)+'</span>';
+  div.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" width="12" height="12"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span class="wrong">'+esc(wrong)+'</span> -&gt; <span class="right">'+esc(correct)+'</span>';
   corr.appendChild(div);
 }
 
-// ═══════════════════════════════════════════════
+//
 // SESSION START
-// ═══════════════════════════════════════════════
+//
 async function startSession(){
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Łączenie...'; }
@@ -1287,7 +1287,7 @@ async function startSession(){
       audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true, sampleRate:24000 }
     });
   } catch(e){
-    showErr('Brak dostępu do mikrofonu');
+    showErr('Brak dostepu do mikrofonu');
     endSes(); return;
   }
 
@@ -1305,7 +1305,7 @@ function connectRealtime(){
   try{
     rtWs = new WebSocket(WS_URL);
     rtWs.binaryType = 'arraybuffer';
-  } catch(e){ showErr('Błąd WebSocket: '+e.message); endSes(); return; }
+  } catch(e){ showErr('Blad WebSocket: '+e.message); endSes(); return; }
 
   rtWs.onopen = () => {
     console.log('[RT] Połączono');
@@ -1320,7 +1320,7 @@ function connectRealtime(){
     }));
     g('micBtn').classList.remove('disabled');
     setAvatarState('idle');
-    boardWrite('Cześć! Jestem gotowy. Powiedz czego chcesz się dziś nauczyć.');
+    boardWrite('Czesc! Jestem gotowy. Powiedz czego chcesz sie dzis nauczyc.');
   };
 
   rtWs.onmessage = (event) => {
@@ -1332,12 +1332,12 @@ function connectRealtime(){
 
   rtWs.onerror = (e) => {
     console.error('[RT] Błąd:', e);
-    showErr('Błąd połączenia — sprawdź internet');
+    showErr('Blad polaczenia');
   };
 
   rtWs.onclose = () => {
     console.log('[RT] Rozłączono');
-    if(sessionActive){ showErr('Połączenie przerwane'); endSes(); }
+    if(sessionActive){ showErr('Polaczenie przerwane'); endSes(); }
   };
 }
 
@@ -1450,7 +1450,7 @@ function playPCM16Chunks(chunks, sampleRate){
   let offset = 0;
   for(const c of chunks){ pcm.set(c, offset); offset+=c.length; }
 
-  // PCM16 little-endian → Float32
+  // PCM16 to Float32
   const samples = pcm.length/2;
   const float32 = new Float32Array(samples);
   const view = new DataView(pcm.buffer);
@@ -1482,9 +1482,9 @@ function playPCM16Chunks(chunks, sampleRate){
   source.start();
 }
 
-// ═══════════════════════════════════════════════
+//
 // NAGRYWANIE (stary system jako fallback)
-// ═══════════════════════════════════════════════
+//
 // Realtime używa Server VAD — mikrofon strumieniowany bezpośrednio
 let micProcessor = null;
 
@@ -1500,7 +1500,7 @@ function startMicStream(){
   micProcessor.onaudioprocess = (e) => {
     if(!sessionActive || !rtWs || rtWs.readyState !== 1) return;
     const float32 = e.inputBuffer.getChannelData(0);
-    // Float32 → PCM16
+    // Float32 to PCM16
     const pcm16 = new Int16Array(float32.length);
     for(let i=0;i<float32.length;i++){
       pcm16[i] = Math.max(-32768, Math.min(32767, float32[i]*32768));
@@ -1529,9 +1529,9 @@ function stopRec(){
   setAvatarState('thinking');
 }
 
-// ═══════════════════════════════════════════════
+//
 // KAMERA
-// ═══════════════════════════════════════════════
+//
 async function startCam(){
   const cfgs = [
     {video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false},
@@ -1572,7 +1572,7 @@ function handleSnapClick(){ const n=Date.now(); if(n-_lsn<2000)return; _lsn=n; s
 
 async function snapSend(){
   const vid = g('camVideo2');
-  if(!vid||!vid.srcObject){ showErr('Kamera niedostępna'); return; }
+  if(!vid||!vid.srcObject){ showErr('Kamera niedostepna'); return; }
   const fl = g('snapFlash'); if(fl){ fl.classList.add('go'); setTimeout(()=>fl.classList.remove('go'),200); }
   const c = document.createElement('canvas');
   const w=vid.videoWidth||640, h=vid.videoHeight||480, sc=Math.min(1,640/w);
@@ -1584,18 +1584,18 @@ async function snapSend(){
 
   // Wyślij przez REST (Realtime nie obsługuje obrazów bezpośrednio)
   boardClear();
-  boardWrite('Analizuję zdjęcie...');
+  boardWrite('Analizuje zdjecie...');
   try{
     const r = await fetch(BACKEND_URL+'/api/v1/voice/respond',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ text:'Rozwiąż to zadanie krok po kroku.', image:b64, history:[] })
+      body: JSON.stringify({ text:'Rozwiaz to zadanie krok po kroku.', image:b64, history:[] })
     });
     const data = await r.json();
     const txt = data.text||'';
     boardClear();
     boardWrite(txt);
     if(data.audio) playBase64Audio(data.audio);
-  } catch(e){ boardWrite('Błąd analizy: '+e.message); }
+  } catch(e){ boardWrite('Blad analizy: '+e.message); }
 }
 
 async function playBase64Audio(b64){
@@ -1617,9 +1617,9 @@ async function playBase64Audio(b64){
   await audio.play().catch(()=>{});
 }
 
-// ═══════════════════════════════════════════════
+//
 // END SESSION
-// ═══════════════════════════════════════════════
+//
 function endSes(){
   sessionActive = false;
   if(rtWs){ try{rtWs.close();}catch(e){} rtWs=null; }
@@ -1644,9 +1644,9 @@ function endSes(){
 
 }
 
-// ═══════════════════════════════════════════════
+//
 // FORMULARZ + NAV
-// ═══════════════════════════════════════════════
+//
 function setLang(btn){
   document.querySelectorAll('[data-lang]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
