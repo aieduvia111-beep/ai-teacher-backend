@@ -134,7 +134,7 @@ async def get_ai_response(data: dict):
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech.content
         print("[TTS] onyx OK")
-                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
         if "[CORRECTION:" in ai_text:
             matches = re.findall(r'\[CORRECTION: (.+?) -> (.+?)\]', ai_text)
