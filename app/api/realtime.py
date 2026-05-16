@@ -10,35 +10,20 @@ router = APIRouter(prefix="/api/v1/realtime", tags=["realtime"])
 OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"
 
 SYSTEM_PROMPT = """You are Eduvia AI - a smart, warm Polish tutor for students.
-
-RULES:
-- Always reply in Polish unless student writes in English
-- Keep answers SHORT: 2-3 sentences max (this is voice)
-- Be warm and natural like a real teacher
-- End with a short follow-up question
-
-WHITEBOARD:
-- When explaining formulas, steps or key terms, add at END:
-  [WHITEBOARD:{"items":["Wzor: ..","Krok 1: ..","Krok 2: .."]}]
-- Max 4 items, max 6 words each
-- Only when genuinely helpful
-
-CORRECTIONS:
-- If student makes grammar mistake: [CORRECTION: zle -> dobrze]
-- Max one correction per response
+Always reply in Polish. Keep answers SHORT: 2-3 sentences max.
+Be warm and natural. End with a short follow-up question.
+When explaining formulas or steps add: [WHITEBOARD:{"items":["punkt1","punkt2"]}]
+If student makes grammar mistake add: [CORRECTION: zle -> dobrze]
 """
-
 
 @router.websocket("/ws")
 async def realtime_ws(ws: WebSocket):
     await ws.accept()
     print("[RT] Klient polaczony")
-
     headers = {
         "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
         "OpenAI-Beta": "realtime=v1",
     }
-
     try:
         async with websockets.connect(
             OPENAI_REALTIME_URL,
@@ -49,8 +34,6 @@ async def realtime_ws(ws: WebSocket):
             max_size=10 * 1024 * 1024
         ) as openai_ws:
             print("[RT] Polaczono z OpenAI")
-
-            # Konfiguracja sesji
             await openai_ws.send(json.dumps({
                 "type": "session.update",
                 "session": {
@@ -76,39 +59,21 @@ async def realtime_ws(ws: WebSocket):
                     while True:
                         data = await ws.receive_text()
                         msg = json.loads(data)
-
                         if msg.get("type") == "context.update":
                             ctx = msg.get("context", {})
-                            level = ctx.get("level", "")
-                            subject = ctx.get("subject", "")
-                            topic = ctx.get("topic", "")
-                            level_map = {
-                                "podstawowka": "szkola podstawowa - bardzo proste slowa",
-                                "liceum": "liceum - normalna terminologia",
-                                "matura": "poziom maturalny",
-                                "studia": "studia - pelna formalizacja"
-                            }
+                            level_map = {"podstawowka":"szkola podstawowa","liceum":"liceum","matura":"matura","studia":"studia"}
                             extra = ""
-                            if level:
-                                extra += f"\nPOZIOM: {level_map.get(level, level)}"
-                            if subject:
-                                extra += f"\nPRZEDMIOT: {subject}"
-                            if topic:
-                                extra += f"\nTEMAT SESJI: {topic} - zacznij od tego tematu."
-
+                            if ctx.get("level"): extra += f"\nPOZIOM: {level_map.get(ctx['level'], ctx['level'])}"
+                            if ctx.get("subject"): extra += f"\nPRZEDMIOT: {ctx['subject']}"
+                            if ctx.get("topic"): extra += f"\nTEMAT: {ctx['topic']}"
                             if extra:
-                                await openai_ws.send(json.dumps({
-                                    "type": "session.update",
-                                    "session": {"instructions": SYSTEM_PROMPT + extra}
-                                }))
+                                await openai_ws.send(json.dumps({"type":"session.update","session":{"instructions":SYSTEM_PROMPT+extra}}))
                             continue
-
                         await openai_ws.send(data)
-
                 except WebSocketDisconnect:
                     print("[RT] Browser rozlaczony")
                 except Exception as e:
-                    print(f"[RT] from_browser error: {e}")
+                    print(f"[RT] from_browser: {e}")
 
             async def from_openai():
                 try:
@@ -116,27 +81,21 @@ async def realtime_ws(ws: WebSocket):
                         try:
                             await ws.send_text(message if isinstance(message, str) else message.decode())
                         except Exception as e:
-                            print(f"[RT] send error: {e}")
+                            print(f"[RT] send: {e}")
                             break
                 except Exception as e:
-                    print(f"[RT] from_openai error: {e}")
+                    print(f"[RT] from_openai: {e}")
 
             await asyncio.gather(from_browser(), from_openai())
 
-    except WebSocketDisconnect:
-        print("[RT] Rozlaczono przed OpenAI")
     except Exception as e:
         print(f"[RT] Blad: {e}")
         try:
-            await ws.send_text(json.dumps({
-                "type": "error",
-                "error": {"message": str(e)}
-            }))
+            await ws.send_text(json.dumps({"type":"error","error":{"message":str(e)}}))
         except:
             pass
     finally:
         print("[RT] Sesja zakonczona")
-
 
 @router.get("/health")
 async def health():
