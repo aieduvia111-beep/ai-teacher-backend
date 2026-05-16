@@ -45,9 +45,9 @@ async def realtime_ws(ws: WebSocket):
                     "input_audio_transcription": {"model": "whisper-1"},
                     "turn_detection": {
                         "type": "server_vad",
-                        "threshold": 0.4,
+                        "threshold": 0.3,
                         "prefix_padding_ms": 200,
-                        "silence_duration_ms": 500
+                        "silence_duration_ms": 400
                     },
                     "temperature": 0.7,
                     "max_response_output_tokens": 200
