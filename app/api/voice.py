@@ -127,8 +127,6 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
             if GROQ_AVAILABLE:
-                resp = groq_client.audio.speech.create(model="playai-tts", voice="Charon-PlayAI", input=clean_text, response_format="mp3")
-                return resp.content
             speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.05)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
