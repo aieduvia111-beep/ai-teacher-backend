@@ -1334,13 +1334,7 @@ function connectRealtime(){
   rtWs.onopen = () => {
     console.log('[RT] Connected');
     setTimeout(startMicStream, 200);
-    // Force commit co 3s aby AI reagowalo
-    setInterval(()=>{
-      if(sessionActive && rtWs && rtWs.readyState === 1){
-        rtWs.send(JSON.stringify({type:'input_audio_buffer.commit'}));
-        rtWs.send(JSON.stringify({type:'response.create'}));
-      }
-    }, 3000);
+
     // Send context
     const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
     const langEl = document.querySelector('[data-lang].active');
@@ -1581,19 +1575,27 @@ function startMicStream(){
   if(!micStream || !rtWs || rtWs.readyState !== 1) return;
   if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx=null; micProcessor=null; }
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+  // Uzyj domyslnego sampleRate mikrofonu
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if(audioCtx.state === 'suspended') audioCtx.resume();
+  const nativeSR = audioCtx.sampleRate;
+  console.log('[MIC] Sample rate:', nativeSR);
   const source = audioCtx.createMediaStreamSource(micStream);
-  micProcessor = audioCtx.createScriptProcessor(2048, 1, 1);
+  micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
 
   micProcessor.onaudioprocess = (e) => {
     if(!sessionActive || !rtWs || rtWs.readyState !== 1) return;
-    const b64 = float32ToBase64PCM16(e.inputBuffer.getChannelData(0));
-    rtWs.send(JSON.stringify({ type:'input_audio_buffer.append', audio: b64 }));
-    // Commit co 2s aby VAD reagowal
-    if(++_micChunkCount % 12 === 0 && rtWs.readyState === 1){
-      // nie commituj recznie - server VAD sam decyduje
+    let float32 = e.inputBuffer.getChannelData(0);
+    // Resample do 24000 jesli potrzeba
+    if(nativeSR !== 24000){
+      const ratio = nativeSR / 24000;
+      const newLen = Math.round(float32.length / ratio);
+      const resampled = new Float32Array(newLen);
+      for(let i=0;i<newLen;i++) resampled[i] = float32[Math.round(i*ratio)];
+      float32 = resampled;
     }
+    const b64 = float32ToBase64PCM16(float32);
+    rtWs.send(JSON.stringify({ type:'input_audio_buffer.append', audio: b64 }));
   };
 
   source.connect(micProcessor);
