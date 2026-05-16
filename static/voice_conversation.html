@@ -1326,437 +1326,223 @@ async function startSession(){
 }
 
 function connectRealtime(){
-  try{
-    rtWs = new WebSocket(WS_URL);
-    rtWs.binaryType = 'arraybuffer';
-  } catch(e){ showErr('Blad WebSocket: '+e.message); endSes(); return; }
-
-  rtWs.onopen = () => {
-    console.log('[RT] Connected');
-    setTimeout(startMicStream, 200);
-
-    // Send context
-    const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
-    const langEl = document.querySelector('[data-lang].active');
-    const lang = langEl ? langEl.dataset.lang : 'polski';
-    rtWs.send(JSON.stringify({
-      type: 'context.update',
-      context: { level: selLevel, subject: selSubject, topic, lang }
-    }));
-    g('micBtn').classList.remove('disabled');
-    setAvatarState('idle');
-    boardWrite('Czesc! Powiedz czego chcesz sie uczyc');
-  };
-
-  rtWs.onmessage = (event) => {
-    try{
-      const msg = JSON.parse(event.data);
-      handleRealtimeMsg(msg);
-    } catch(e){ console.warn('[RT] parse err', e); }
-  };
-
-  rtWs.onerror = (e) => {
-    console.error('[RT] Error:', e);
-    showErr('Blad polaczenia');
-  };
-
-  rtWs.onclose = () => {
-    console.log('[RT] Disconnected');
-    if(sessionActive){
-      showErr('Polaczenie przerwane - reconnecting...');
-      // Probuj ponownie po 2s zamiast zamykac sesje
-      setTimeout(()=>{ if(sessionActive) connectRealtime(); }, 2000);
-    }
-  };
+  // Uzywamy Whisper+GPT-4o+TTS zamiast Realtime WS
+  console.log('[VOICE] Tryb: Whisper+GPT-4o+TTS nova');
+  g('micBtn').classList.remove('disabled');
+  setAvatarState('idle');
+  boardWrite('Czesc! Powiedz czego chcesz sie uczyc');
+  sessionHistory = [];
 }
 
-// Handle OpenAI Realtime messages
-let currentAiText = '';
-let currentAudioChunks = [];
-let audioPlaying = false;
-let audioCtxRT = null;
+// Historia rozmowy
+let sessionHistory = [];
 
-function handleRealtimeMsg(msg){
-  const t = msg.type;
+// Nagrywanie - push-to-talk (hold) lub auto VAD
+let mediaRec = null, recChunks = [], isRecording = false;
+let vadTimer = null, vadStream = null, vadCtx = null, vadAn = null;
 
-  if(t === 'session.created' || t === 'session.updated'){
-    console.log('[RT] Sesja gotowa');
-    return;
-  }
-
-  // AI starts speaking
-  if(t === 'response.created'){
-    setAvatarState('thinking');
-    currentAiText = '';
-    currentAudioChunks = [];
-    boardClear();
-    return;
-  }
-
-  // Text delta
-  if(t === 'response.audio_transcript.delta'){
-    currentAiText += (msg.delta || '');
-    return;
-  }
-
-  // Full text - parse corrections
-  if(t === 'response.audio_transcript.done'){
-    const full = msg.transcript || currentAiText;
-    // Parsuj WHITEBOARD
-    const wbMatches = [...full.matchAll(/\[WHITEBOARD:({[^}]+})\]/g)];
-    if(wbMatches.length > 0){
-      boardClear();
-      wbMatches.forEach(m => {
-        try{
-          const data = JSON.parse(m[1]);
-          if(data.items) data.items.forEach(item => boardWrite(item + '\n'));
-        }catch(e){}
-      });
-    }
-    // Korekty
-    const corrMatches = [...full.matchAll(/\[CORRECTION: ([^\]]+?) \u2192 ([^\]]+?)\]/g)];
-    corrMatches.forEach(m => boardAddCorrection(m[1], m[2]));
-    return;
-  }
-
-  // Audio delta
-  if(t === 'response.audio.delta'){
-    const b64 = msg.delta;
-    if(!b64) return;
-    // Odtwarzaj natychmiast kazdy chunk
-    const bytes = atob(b64);
-    const arr = new Uint8Array(bytes.length);
-    for(let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
-    playPCM16Chunk(arr, 24000);
-    if(avatarState !== 'speaking') setAvatarState('speaking');
-    mouthOpenTarget = 0.4 + Math.random()*0.5;
-    return;
-  }
-
-  if(t === 'response.audio.done'){
-    currentAudioChunks = [];
-    return;
-  }
-
-  // AI done
-  if(t === 'response.done'){
-    setAvatarState('idle');
-    stopLipSync();
-    mouthOpenTarget = 0;
-    return;
-  }
-
-  // User speaking
-  if(t === 'input_audio_buffer.speech_started'){
-    setAvatarState('listening');
-    boardClear();
-    return;
-  }
-  if(t === 'input_audio_buffer.speech_stopped'){
-    setAvatarState('thinking');
-    return;
-  }
-
-  // Error
-  if(t === 'error'){
-    showErr(msg.error?.message || 'Error AI');
-    setAvatarState('idle');
-  }
-}
-
-// Odtwarzanie PCM16 przez Web Audio
-// Streaming audio - kolejka
-let audioScheduleTime = 0;
-let _micChunkCount = 0;
-let audioCtxStream = null;
-
-function playPCM16Chunk(chunk, sampleRate){
-  if(!chunk || chunk.length < 2) return;
-  if(!audioCtxStream || audioCtxStream.state === 'closed'){
-    audioCtxStream = new (window.AudioContext || window.webkitAudioContext)({sampleRate});
-    audioScheduleTime = audioCtxStream.currentTime + 0.05;
-  }
-  if(audioCtxStream.state === 'suspended') audioCtxStream.resume();
-
-  const samples = chunk.length / 2;
-  const float32 = new Float32Array(samples);
-  const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-  for(let i=0;i<samples;i++){
-    float32[i] = view.getInt16(i*2, true) / 32768;
-  }
-
-  const buf = audioCtxStream.createBuffer(1, samples, sampleRate);
-  buf.copyToChannel(float32, 0);
-  const src = audioCtxStream.createBufferSource();
-  src.buffer = buf;
-  src.connect(audioCtxStream.destination);
-
-  const now = audioCtxStream.currentTime;
-  if(audioScheduleTime < now) audioScheduleTime = now + 0.02;
-  src.start(audioScheduleTime);
-  audioScheduleTime += buf.duration;
-
-  src.onended = () => {
-    if(audioScheduleTime <= audioCtxStream.currentTime + 0.05){
-      setAvatarState('idle');
-      stopLipSync();
-      mouthOpenTarget = 0;
-    }
-  };
-}
-
-function playPCM16Chunks(chunks, sampleRate){
-  if(!chunks.length) return;
-
-  if(!audioCtxRT || audioCtxRT.state === 'closed'){
-    audioCtxRT = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-  }
-  if(audioCtxRT.state === 'suspended') audioCtxRT.resume();
-
-  // Merge chunks
-  let totalLen = chunks.reduce((s,c)=>s+c.length, 0);
-  const pcm = new Uint8Array(totalLen);
-  let offset = 0;
-  for(const c of chunks){ pcm.set(c, offset); offset+=c.length; }
-
-  // PCM16 to Float32
-  const samples = pcm.length/2;
-  const float32 = new Float32Array(samples);
-  const view = new DataView(pcm.buffer);
-  for(let i=0;i<samples;i++){
-    const s = view.getInt16(i*2, true);
-    float32[i] = s/32768;
-  }
-
-  const buf = audioCtxRT.createBuffer(1, samples, sampleRate);
-  buf.copyToChannel(float32, 0);
-
-  const source = audioCtxRT.createBufferSource();
-  source.buffer = buf;
-
-  // Analyser do lip-sync
-  const analyser = audioCtxRT.createAnalyser();
-  analyser.fftSize = 512;
-  source.connect(analyser);
-  analyser.connect(audioCtxRT.destination);
-
-  source.onended = () => {
-    setAvatarState('idle');
-    stopLipSync();
-    mouthOpenTarget = 0;
-  };
-
-  startLipSync(analyser);
-  setAvatarState('speaking');
-  source.start();
-}
-
-//
-// NAGRYWANIE (stary system jako fallback)
-//
-// Realtime Server VAD
-let micProcessor = null;
-
-function float32ToBase64PCM16(float32){
-  const pcm16 = new Int16Array(float32.length);
-  for(let i=0;i<float32.length;i++){
-    pcm16[i] = Math.max(-32768, Math.min(32767, float32[i]*32768));
-  }
-  const bytes = new Uint8Array(pcm16.buffer);
-  let bin = '';
-  const chunk = 8192;
-  for(let i=0;i<bytes.length;i+=chunk){
-    bin += String.fromCharCode(...bytes.subarray(i,i+chunk));
-  }
-  return btoa(bin);
-}
-
-function startMicStream(){
-  if(!micStream || !rtWs || rtWs.readyState !== 1) return;
-  if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx=null; micProcessor=null; }
-
-  // Uzyj domyslnego sampleRate mikrofonu
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if(audioCtx.state === 'suspended') audioCtx.resume();
-  const nativeSR = audioCtx.sampleRate;
-  console.log('[MIC] Sample rate:', nativeSR);
-  const source = audioCtx.createMediaStreamSource(micStream);
-  micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
-
-  micProcessor.onaudioprocess = (e) => {
-    if(!sessionActive || !rtWs || rtWs.readyState !== 1) return;
-    let float32 = e.inputBuffer.getChannelData(0);
-    // Resample do 24000 jesli potrzeba
-    if(nativeSR !== 24000){
-      const ratio = nativeSR / 24000;
-      const newLen = Math.round(float32.length / ratio);
-      const resampled = new Float32Array(newLen);
-      for(let i=0;i<newLen;i++) resampled[i] = float32[Math.round(i*ratio)];
-      float32 = resampled;
-    }
-    const b64 = float32ToBase64PCM16(float32);
-    rtWs.send(JSON.stringify({ type:'input_audio_buffer.append', audio: b64 }));
-  };
-
-  source.connect(micProcessor);
-  micProcessor.connect(audioCtx.destination);
-  console.log('[RT] Mic OK');
-}
-
-// Stare funkcje nagrywania (dla przycisku jako backup)
 function startRec(){
-  if(!micStream || isRec) return;
-  if(!audioCtx) startMicStream();
-  isRec = true;
+  if(!micStream || isRecording) return;
+  isRecording = true;
+  recChunks = [];
+  const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  try{ mediaRec = new MediaRecorder(micStream, mime?{mimeType:mime}:{}); }
+  catch(e){ mediaRec = new MediaRecorder(micStream); }
+  mediaRec.ondataavailable = e => { if(e.data.size>0) recChunks.push(e.data); };
+  mediaRec.onstop = processAudio;
+  mediaRec.start(100);
   g('micBtn').classList.add('listening');
   setAvatarState('listening');
 }
+
 function stopRec(){
-  if(!isRec) return;
-  isRec = false;
+  if(!isRecording || !mediaRec) return;
+  isRecording = false;
+  if(mediaRec.state !== 'inactive') mediaRec.stop();
   g('micBtn').classList.remove('listening');
   setAvatarState('thinking');
 }
 
-//
-// KAMERA
-//
-async function startCam(){
-  const cfgs = [
-    {video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false},
-    {video:{facingMode:'user'},audio:false},
-    {video:true,audio:false}
-  ];
-  for(const cfg of cfgs){
-    try{
-      if(camStream) camStream.getTracks().forEach(t=>t.stop());
-      const vs = await navigator.mediaDevices.getUserMedia(cfg);
-      camStream = vs;
-      const v = g('camVideo2');
-      if(v){ v.srcObject=vs; v.play().catch(()=>{}); }
-      facing = cfg.video?.facingMode || 'environment';
-      const wrap = g('voCamWrap');
-      if(wrap) wrap.style.display = 'block';
-      return;
-    } catch(e){ continue; }
-  }
-}
+async function processAudio(){
+  if(!recChunks.length) return;
+  const blob = new Blob(recChunks, {type: recChunks[0]?.type||'audio/webm'});
+  recChunks = [];
+  if(blob.size < 3000){ setAvatarState('idle'); return; }
 
-async function flipCam(){
-  if(!camStream) return;
-  facing = facing==='user'?'environment':'user';
-  camStream.getTracks().forEach(t=>t.stop());
-  try{
-    const ns = await navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false});
-    camStream = ns;
-    const v = g('camVideo2');
-    if(v){ v.srcObject=ns; v.play().catch(()=>{}); }
-  } catch(e){ console.warn(e); }
-}
-
-// Zdj?cie
-let _lsn = 0;
-function handleSnapTouch(e){ e.preventDefault(); const n=Date.now(); if(n-_lsn<2000)return; _lsn=n; snapSend(); }
-function handleSnapClick(){ const n=Date.now(); if(n-_lsn<2000)return; _lsn=n; snapSend(); }
-
-async function snapSend(){
-  const vid = g('camVideo2');
-  if(!vid||!vid.srcObject){ showErr('Kamera niedostepna'); return; }
-  const fl = g('snapFlash'); if(fl){ fl.classList.add('go'); setTimeout(()=>fl.classList.remove('go'),200); }
-  const c = document.createElement('canvas');
-  const w=vid.videoWidth||640, h=vid.videoHeight||480, sc=Math.min(1,640/w);
-  c.width=Math.round(w*sc); c.height=Math.round(h*sc);
-  const ctx=c.getContext('2d');
-  if(facing==='user'){ ctx.translate(c.width,0); ctx.scale(-1,1); }
-  ctx.drawImage(vid,0,0,c.width,c.height);
-  const b64 = await new Promise(r=>setTimeout(()=>r(c.toDataURL('image/jpeg',.75).split(',')[1]),0));
-
-  // Send via REST
   boardClear();
-  boardWrite('Analizuje zdjecie...');
+
   try{
-    const r = await fetch(BACKEND_URL+'/api/v1/voice/respond',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ text:'Rozwiaz to zadanie krok po kroku.', image:b64, history:[] })
+    // 1. Whisper - transkrypcja
+    const b64 = await new Promise((res,rej)=>{
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
     });
-    const data = await r.json();
-    const txt = data.text||'';
+
+    const srResp = await fetch(BACKEND_URL+'/api/v1/voice/transcribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({audio: b64})
+    });
+    if(!srResp.ok) throw new Error('Transcribe '+srResp.status);
+    const srData = await srResp.json();
+    const userText = (srData.text||'').trim();
+    if(!userText || userText.length < 2){ setAvatarState('idle'); return; }
+
+    console.log('[USER]', userText);
+
+    // Dodaj do historii
+    sessionHistory.push({role:'user', content: userText});
+
+    // 2. GPT-4o - odpowiedz
+    const topic = document.getElementById('sessionTopic')?.value?.trim()||'';
+    const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
+    const systemPrompt = 'Jestes Eduvia AI - nauczycielem. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'.'
+      +' Odpowiadaj krotko (2-4 zdania), naturalnie, po polsku.'
+      +' Jak wyjasniasz cos waznego (wzory, kroki, definicje) dodaj na koncu: [TABLICA: punkt1 | punkt2 | punkt3]'
+      +' Jak uczen sie myli gramatycznie napisz: [KOREKTA: zle -> dobrze]';
+
+    const aiResp = await fetch(BACKEND_URL+'/api/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system: systemPrompt,
+        messages: sessionHistory.slice(-8),
+        model: 'gpt-4o'
+      })
+    }).catch(()=>null);
+
+    let aiText = '';
+    if(aiResp && aiResp.ok){
+      const aiData = await aiResp.json();
+      aiText = aiData.content || aiData.text || aiData.choices?.[0]?.message?.content || '';
+    } else {
+      // Fallback na voice/respond
+      const vResp = await fetch(BACKEND_URL+'/api/v1/voice/respond',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text: userText, history: sessionHistory.slice(-6), system: systemPrompt})
+      });
+      const vData = await vResp.json();
+      aiText = vData.text || '';
+      // Jesli backend zwraca audio od razu - uzyj go
+      if(vData.audio){
+        sessionHistory.push({role:'assistant', content: aiText});
+        parseAndShowBoard(aiText);
+        await playBase64Audio(vData.audio);
+        setAvatarState('idle');
+        return;
+      }
+    }
+
+    if(!aiText){ setAvatarState('idle'); return; }
+    sessionHistory.push({role:'assistant', content: aiText});
+
+    // 3. Parsuj tablice i korekty
+    parseAndShowBoard(aiText);
+
+    // 4. TTS - nova
+    const cleanText = aiText.replace(/\[TABLICA:[^\]]*\]/g,'').replace(/\[KOREKTA:[^\]]*\]/g,'').trim();
+    const ttsResp = await fetch(BACKEND_URL+'/api/v1/voice/tts',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text: cleanText, voice:'nova'})
+    }).catch(()=>null);
+
+    if(ttsResp && ttsResp.ok){
+      const ttsData = await ttsResp.json();
+      if(ttsData.audio) await playBase64Audio(ttsData.audio);
+    }
+
+  } catch(err){
+    console.error('[VOICE]', err);
+    showErr('Blad: '+err.message);
+  }
+  setAvatarState('idle');
+}
+
+function parseAndShowBoard(text){
+  // Tablica
+  const tbMatch = text.match(/\[TABLICA: ([^\]]+)\]/);
+  if(tbMatch){
     boardClear();
-    boardWrite(txt);
-    if(data.audio) playBase64Audio(data.audio);
-  } catch(e){ boardWrite('Blad analizy: '+e.message); }
+    tbMatch[1].split('|').forEach(item => boardWrite(item.trim()));
+  }
+  // Korekty
+  const corrMatches = [...text.matchAll(/\[KOREKTA: ([^-]+) -> ([^\]]+)\]/g)];
+  corrMatches.forEach(m => boardAddCorrection(m[1].trim(), m[2].trim()));
 }
 
 async function playBase64Audio(b64){
   setAvatarState('speaking');
-  const bytes=atob(b64); const arr=new Uint8Array(bytes.length);
-  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
-  const blob=new Blob([arr],{type:'audio/mpeg'});
-  const url=URL.createObjectURL(blob);
-  const audio=new Audio(url);
+  try{
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], {type:'audio/mpeg'});
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
 
-  if(!audioCtxRT) audioCtxRT=new(window.AudioContext||window.webkitAudioContext)();
-  if(audioCtxRT.state==='suspended') audioCtxRT.resume();
-  const src=audioCtxRT.createMediaElementSource(audio);
-  const an=audioCtxRT.createAnalyser(); an.fftSize=512;
-  src.connect(an); an.connect(audioCtxRT.destination);
-  startLipSync(an);
+    if(!audioCtxRT) audioCtxRT = new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtxRT.state==='suspended') audioCtxRT.resume();
+    const src = audioCtxRT.createMediaElementSource(audio);
+    const an = audioCtxRT.createAnalyser(); an.fftSize=512;
+    src.connect(an); an.connect(audioCtxRT.destination);
+    startLipSync(an);
 
-  audio.onended=()=>{ URL.revokeObjectURL(url); setAvatarState('idle'); stopLipSync(); };
-  await audio.play().catch(()=>{});
-}
-
-//
-// END SESSION
-//
-function endSes(){
-  sessionActive = false;
-  if(rtWs){ try{rtWs.close();}catch(e){} rtWs=null; }
-  if(micProcessor){ micProcessor.disconnect(); micProcessor=null; }
-  if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx=null; }
-  if(audioCtxRT){ audioCtxRT.close().catch(()=>{}); audioCtxRT=null; }
-  micStream?.getTracks().forEach(t=>t.stop()); micStream=null;
-  camStream?.getTracks().forEach(t=>t.stop()); camStream=null;
+    await new Promise(res=>{
+      audio.onended = ()=>{ URL.revokeObjectURL(url); res(); };
+      audio.onerror = ()=>{ URL.revokeObjectURL(url); res(); };
+      audio.play().catch(()=>res());
+    });
+  } catch(e){ console.warn('[AUDIO]', e); }
   stopLipSync();
-
-  g('voSes').classList.remove('on');
-  g('voDot').classList.remove('on');
-  g('micBtn').classList.add('disabled');
   setAvatarState('idle');
-  boardClear();
+}
 
-  const btn = g('startBtn');
-  if(btn){
-    btn.disabled=false;
-    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>Polacz z AI i zacznij lekcje';
+// VAD - auto detect mowy
+let vadActive = false;
+function startVAD(){
+  if(!micStream || vadActive) return;
+  vadActive = true;
+  vadCtx = new(window.AudioContext||window.webkitAudioContext)();
+  vadAn = vadCtx.createAnalyser(); vadAn.fftSize=512;
+  const src = vadCtx.createMediaStreamSource(micStream);
+  src.connect(vadAn);
+  const buf = new Uint8Array(vadAn.frequencyBinCount);
+  let silenceStart = null, speaking = false;
+
+  function check(){
+    if(!vadActive) return;
+    vadAn.getByteFrequencyData(buf);
+    let sum=0; for(let i=2;i<20;i++) sum+=buf[i];
+    const level = sum/18/255;
+
+    if(level > 0.05){
+      if(!speaking && !isRecording){
+        speaking=true; silenceStart=null;
+        startRec();
+      }
+    } else {
+      if(speaking){
+        if(!silenceStart) silenceStart=Date.now();
+        if(Date.now()-silenceStart > 800){
+          speaking=false;
+          if(isRecording) stopRec();
+        }
+      }
+    }
+    requestAnimationFrame(check);
   }
-
+  check();
 }
 
-//
-// FORMULARZ + NAV
-//
-function setLang(btn){
-  document.querySelectorAll('[data-lang]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  selLang = btn.dataset.lang;
-}
-function setLevel(btn){
-  document.querySelectorAll('.sel-btn[data-val]').forEach(b=>{if(b.closest('.grid-2'))b.classList.remove('active');});
-  btn.classList.add('active');
-  selLevel = btn.dataset.val;
-}
-function setSubjectFromSelect(sel){ selSubject = sel.value; }
-
-function showErr(msg){
-  const et=g('errToast'); if(!et)return;
-  g('errMsg').textContent=msg; et.classList.add('show');
-  clearTimeout(errTmr); errTmr=setTimeout(()=>et.classList.remove('show'),5000);
+function stopVAD(){
+  vadActive=false;
+  if(vadCtx){ vadCtx.close().catch(()=>{}); vadCtx=null; }
 }
 
-function go(url){ window.location.href=url; }
-function mOpen(){ g('mDrawer')?.classList.add('open'); g('mOverlay')?.classList.add('open'); }
-function mClose(){ g('mDrawer')?.classList.remove('open'); g('mOverlay')?.classList.remove('open'); }
 
 // Keyboard spacja
 let spHeld=false;
