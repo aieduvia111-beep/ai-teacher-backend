@@ -1256,8 +1256,7 @@ function boardFlush(){
     if(bc) bc.scrollTop = bc.scrollHeight;
   }
   // Speed: char ~35ms
-  const delay = ch==='
-' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
+  const delay = ch==='\n' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
   setTimeout(boardFlush, delay);
 }
 
