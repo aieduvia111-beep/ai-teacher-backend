@@ -96,6 +96,13 @@ except Exception as e:
     print(f"❌ voice: {e}")
 
 try:
+    from .api.realtime import router as realtime_router
+    app.include_router(realtime_router)
+    print("✅ realtime OK")
+except Exception as e:
+    print(f"❌ realtime: {e}")
+
+try:
     from .api.users import router as users_router
     app.include_router(users_router)
     print("✅ users OK")
