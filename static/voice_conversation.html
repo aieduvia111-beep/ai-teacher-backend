@@ -505,7 +505,7 @@ function showLimitPopup(feature, limit) {
 
   const names = {
     chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
-    notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki'
+    notes: 'Notatek AI', exam: 'Sprawdzianow AI', voice: 'Voice AI', lesson: 'Planu nauki'
   };
   const name = names[feature] || feature;
 
@@ -530,10 +530,10 @@ function showLimitPopup(feature, limit) {
         Limit ${name} wyczerpany
       </div>
       <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
-        Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
+        Wykorzystales ${limit} darmowych uzyc dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz sie bez limitow!
       </p>
       <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
-        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>
+        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro - 29 zl/mies</div>
         <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Nieograniczony Chat, Vision, Quiz
@@ -544,7 +544,7 @@ function showLimitPopup(feature, limit) {
         </div>
         <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Voice AI i Plan nauki bez limitów
+          Voice AI i Plan nauki bez limitow
         </div>
       </div>
       <button onclick="window.location.href='pricing.html'" style="
@@ -553,14 +553,14 @@ function showLimitPopup(feature, limit) {
         font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;
         box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;
       " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
-        Kup Pro — bez limitów →
+        Kup Pro - bez limitow ->
       </button>
       <button onclick="document.getElementById('limitPopup').remove()" style="
         width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);
         border-radius:12px;color:#55556a;font-family:'DM Sans',sans-serif;
         font-size:.82em;cursor:pointer;transition:all .2s;
       " onmouseover="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#8888a0'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.color='#55556a'">
-        Może później
+        Moze pozniej
       </button>
     </div>
   `;
@@ -575,7 +575,7 @@ function getPlanBadgeHTML(plan) {
   if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
   return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
 }
-// Załaduj badge od razu z localStorage (przed Firebase)
+// Zaladuj badge od razu z localStorage (przed Firebase)
 (function(){
   var plan = localStorage.getItem("eduvia_plan") || "free";
   function initBadges(){ document.querySelectorAll(".plan-badge-slot").forEach(function(el){ el.innerHTML = getPlanBadgeHTML(plan); }); }
