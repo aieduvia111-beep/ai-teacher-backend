@@ -1074,7 +1074,7 @@ function initAvatar(){
   const antL=makeAnt(-0.4,-0.35), antR=makeAnt(0.4,0.35);
   head.add(antL.group); head.add(antR.group);
 
-  head.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,0.4,16),new THREE.MeshPhysicalMaterial({color:0x0d1a6e,roughness:0.3,metalness:0.7})),{position:new THREE.Vector3(0,-0.78,0)}));
+  const _neck=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,0.4,16),new THREE.MeshPhysicalMaterial({color:0x0d1a6e,roughness:0.3,metalness:0.7}));_neck.position.set(0,-0.78,0);head.add(_neck);
 
   const rings=[];
   [[1.5,0x4466ff,0.4],[1.85,0x00ddff,0.25],[2.2,0x7c6aff,0.15]].forEach(([r,col,op],i)=>{
