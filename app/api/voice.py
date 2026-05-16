@@ -131,7 +131,7 @@ async def get_ai_response(data: dict):
             speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.05)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
-        audio_bytes = speech.content
+        audio_bytes = speech
         print("[TTS] onyx OK")
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
