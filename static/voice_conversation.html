@@ -1334,6 +1334,13 @@ function connectRealtime(){
   rtWs.onopen = () => {
     console.log('[RT] Connected');
     setTimeout(startMicStream, 200);
+    // Force commit co 3s aby AI reagowalo
+    setInterval(()=>{
+      if(sessionActive && rtWs && rtWs.readyState === 1){
+        rtWs.send(JSON.stringify({type:'input_audio_buffer.commit'}));
+        rtWs.send(JSON.stringify({type:'response.create'}));
+      }
+    }, 3000);
     // Send context
     const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
     const langEl = document.querySelector('[data-lang].active');
@@ -1344,7 +1351,7 @@ function connectRealtime(){
     }));
     g('micBtn').classList.remove('disabled');
     setAvatarState('idle');
-    boardWrite('Czesc! Jestem gotowy\nPowiedz czego chcesz sie uczyc');
+    boardWrite('Czesc! Powiedz czego chcesz sie uczyc');
   };
 
   rtWs.onmessage = (event) => {
@@ -1466,6 +1473,7 @@ function handleRealtimeMsg(msg){
 // Odtwarzanie PCM16 przez Web Audio
 // Streaming audio - kolejka
 let audioScheduleTime = 0;
+let _micChunkCount = 0;
 let audioCtxStream = null;
 
 function playPCM16Chunk(chunk, sampleRate){
@@ -1582,6 +1590,10 @@ function startMicStream(){
     if(!sessionActive || !rtWs || rtWs.readyState !== 1) return;
     const b64 = float32ToBase64PCM16(e.inputBuffer.getChannelData(0));
     rtWs.send(JSON.stringify({ type:'input_audio_buffer.append', audio: b64 }));
+    // Commit co 2s aby VAD reagowal
+    if(++_micChunkCount % 12 === 0 && rtWs.readyState === 1){
+      // nie commituj recznie - server VAD sam decyduje
+    }
   };
 
   source.connect(micProcessor);
