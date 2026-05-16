@@ -1395,65 +1395,35 @@ async function processAudio(){
     // Dodaj do historii
     sessionHistory.push({role:'user', content: userText});
 
-    // 2. GPT-4o - odpowiedz
+    // 2. GPT-4o + TTS przez /respond (zwraca text + audio)
     const topic = document.getElementById('sessionTopic')?.value?.trim()||'';
     const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
     const systemPrompt = 'Jestes Eduvia AI - nauczycielem. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'.'
-      +' Odpowiadaj krotko (2-4 zdania), naturalnie, po polsku.'
-      +' Jak wyjasniasz cos waznego (wzory, kroki, definicje) dodaj na koncu: [TABLICA: punkt1 | punkt2 | punkt3]'
-      +' Jak uczen sie myli gramatycznie napisz: [KOREKTA: zle -> dobrze]';
+      +' Odpowiadaj krotko - max 3 zdania, naturalnie, po polsku.'
+      +' Jak wyjasniasz wzory lub kroki dodaj na koncu: [TABLICA: punkt1 | punkt2 | punkt3]'
+      +' Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
 
-    const aiResp = await fetch(BACKEND_URL+'/api/v1/chat/completions',{
+    const vResp = await fetch(BACKEND_URL+'/api/v1/voice/respond',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        system: systemPrompt,
-        messages: sessionHistory.slice(-8),
-        model: 'gpt-4o'
+        text: userText,
+        history: sessionHistory.slice(-6),
+        system: systemPrompt
       })
-    }).catch(()=>null);
-
-    let aiText = '';
-    if(aiResp && aiResp.ok){
-      const aiData = await aiResp.json();
-      aiText = aiData.content || aiData.text || aiData.choices?.[0]?.message?.content || '';
-    } else {
-      // Fallback na voice/respond
-      const vResp = await fetch(BACKEND_URL+'/api/v1/voice/respond',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({text: userText, history: sessionHistory.slice(-6), system: systemPrompt})
-      });
-      const vData = await vResp.json();
-      aiText = vData.text || '';
-      // Jesli backend zwraca audio od razu - uzyj go
-      if(vData.audio){
-        sessionHistory.push({role:'assistant', content: aiText});
-        parseAndShowBoard(aiText);
-        await playBase64Audio(vData.audio);
-        setAvatarState('idle');
-        return;
-      }
-    }
-
+    });
+    if(!vResp.ok) throw new Error('respond '+vResp.status);
+    const vData = await vResp.json();
+    const aiText = vData.text || '';
     if(!aiText){ setAvatarState('idle'); return; }
+
     sessionHistory.push({role:'assistant', content: aiText});
 
-    // 3. Parsuj tablice i korekty
+    // 3. Tablica i korekty
     parseAndShowBoard(aiText);
 
-    // 4. TTS - nova
-    const cleanText = aiText.replace(/\[TABLICA:[^\]]*\]/g,'').replace(/\[KOREKTA:[^\]]*\]/g,'').trim();
-    const ttsResp = await fetch(BACKEND_URL+'/api/v1/voice/tts',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text: cleanText, voice:'nova'})
-    }).catch(()=>null);
-
-    if(ttsResp && ttsResp.ok){
-      const ttsData = await ttsResp.json();
-      if(ttsData.audio) await playBase64Audio(ttsData.audio);
-    }
+    // 4. Odtwarzaj audio
+    if(vData.audio) await playBase64Audio(vData.audio);
 
   } catch(err){
     console.error('[VOICE]', err);
