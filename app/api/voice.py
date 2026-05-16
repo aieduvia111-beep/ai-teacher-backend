@@ -148,15 +148,14 @@ async def get_ai_response(data: dict):
         response = await loop.run_in_executor(executor, call_llm)
         ai_text = response.choices[0].message.content.strip()
         print(f"[GPT] '{ai_text[:80]}'")
-        audio_bytes = await elevenlabs_tts(ai_text)
-        if not audio_bytes:
-            print("[TTS] Fallback OpenAI nova")
-            clean_text = re.sub(r'\[CORRECTION:[^\]]*\]', '', ai_text).strip()
-            def call_tts():
-                return openai_client.audio.speech.create(model="tts-1-hd", voice="onyx", input=clean_text, speed=1.1)
-            speech = await loop.run_in_executor(executor, call_tts)
-            audio_bytes = speech.content
-        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+        clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
+        clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
+        def call_tts():
+            return openai_client.audio.speech.create(model="tts-1-hd", voice="onyx", input=clean_text, speed=1.05)
+        speech = await loop.run_in_executor(executor, call_tts)
+        audio_bytes = speech.content
+        print("[TTS] onyx OK")
+                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
         if "[CORRECTION:" in ai_text:
             matches = re.findall(r'\[CORRECTION: (.+?) -> (.+?)\]', ai_text)
