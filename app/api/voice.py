@@ -126,7 +126,8 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
-            return openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.1).content
+            speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.1)
+            return speech.content
             speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.05)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
