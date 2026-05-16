@@ -139,7 +139,7 @@ async def get_ai_response(data: dict):
         # Najpierw GPT (potrzebujemy tekstu żeby zrobić TTS)
         def call_gpt():
             return client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=160,
                 temperature=0.7
@@ -152,7 +152,7 @@ async def get_ai_response(data: dict):
         # TTS od razu po tekście
         def call_tts():
             return client.audio.speech.create(
-                model="tts-1-hd",
+                model="tts-1",
                 voice="nova",    # fable = najcieplejszy głos, naturalny, nie brzmi jak AI
                 input=ai_text,
                 speed=1.1
