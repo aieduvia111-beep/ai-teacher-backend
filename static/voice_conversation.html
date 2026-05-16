@@ -1336,7 +1336,11 @@ function connectRealtime(){
 
   rtWs.onclose = () => {
     console.log('[RT] Disconnected');
-    if(sessionActive){ showErr('Polaczenie przerwane'); endSes(); }
+    if(sessionActive){
+      showErr('Polaczenie przerwane - reconnecting...');
+      // Probuj ponownie po 2s zamiast zamykac sesje
+      setTimeout(()=>{ if(sessionActive) connectRealtime(); }, 2000);
+    }
   };
 }
 
