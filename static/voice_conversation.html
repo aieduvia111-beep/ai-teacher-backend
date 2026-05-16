@@ -1380,7 +1380,18 @@ function handleRealtimeMsg(msg){
   // Full text - parse corrections
   if(t === 'response.audio_transcript.done'){
     const full = msg.transcript || currentAiText;
-    // Extract corrections
+    // Parsuj WHITEBOARD
+    const wbMatches = [...full.matchAll(/\[WHITEBOARD:({[^}]+})\]/g)];
+    if(wbMatches.length > 0){
+      boardClear();
+      wbMatches.forEach(m => {
+        try{
+          const data = JSON.parse(m[1]);
+          if(data.items) data.items.forEach(item => boardWrite(item + '\n'));
+        }catch(e){}
+      });
+    }
+    // Korekty
     const corrMatches = [...full.matchAll(/\[CORRECTION: ([^\]]+?) \u2192 ([^\]]+?)\]/g)];
     corrMatches.forEach(m => boardAddCorrection(m[1], m[2]));
     return;
