@@ -853,7 +853,11 @@ function getPlanBadgeHTML(plan) {
 .board-content{flex:1;padding:4px 16px 8px;overflow-y:auto;position:relative;z-index:2;}
 .board-content::-webkit-scrollbar{width:2px;}
 .board-content::-webkit-scrollbar-thumb{background:rgba(124,106,255,.3);border-radius:2px;}
-.board-text{font-family:'Caveat',cursive;font-size:1.25em;font-weight:500;color:rgba(220,215,255,.92);line-height:1.65;min-height:32px;word-break:break-word;}
+.board-text{font-family:'Caveat',cursive;font-size:1.3em;font-weight:500;color:rgba(230,225,255,.95);line-height:1.8;min-height:32px;word-break:break-word;}
+.board-item{display:block;padding:2px 0;border-bottom:1px solid rgba(124,106,255,.08);animation:boardItemIn .3s ease;}
+.board-item:last-child{border-bottom:none;}
+.board-item-bullet{color:var(--accent2);margin-right:6px;}
+@keyframes boardItemIn{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:none;}}
 .board-cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent2);margin-left:2px;vertical-align:middle;animation:curBlink .8s step-end infinite;}
 @keyframes curBlink{0%,100%{opacity:1;}50%{opacity:0;}}
 .board-corrections{padding:0 16px 8px;display:flex;flex-direction:column;gap:4px;}
@@ -1319,7 +1323,7 @@ function connectRealtime(){
     }));
     g('micBtn').classList.remove('disabled');
     setAvatarState('idle');
-    boardWrite('Czesc! Jestem gotowy. Powiedz czego chcesz sie dzis nauczyc.');
+    boardWrite('Czesc! Jestem gotowy\nPowiedz czego chcesz sie uczyc');
   };
 
   rtWs.onmessage = (event) => {
