@@ -1485,30 +1485,41 @@ function playPCM16Chunks(chunks, sampleRate){
 // Realtime używa Server VAD — mikrofon strumieniowany bezpośrednio
 let micProcessor = null;
 
+function float32ToB64PCM(f32){
+  const pcm = new Int16Array(f32.length);
+  for(let i=0;i<f32.length;i++) pcm[i]=Math.max(-32768,Math.min(32767,f32[i]*32768));
+  const bytes = new Uint8Array(pcm.buffer);
+  let bin=''; const chunk=8192;
+  for(let i=0;i<bytes.length;i+=chunk) bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  return btoa(bin);
+}
+
 function startMicStream(){
-  if(!micStream || !rtWs || rtWs.readyState !== 1) return;
-  if(audioCtx) return;
+  if(!micStream||!rtWs||rtWs.readyState!==1) return;
+  if(audioCtx){audioCtx.close().catch(()=>{});audioCtx=null;}
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-  const source = audioCtx.createMediaStreamSource(micStream);
-  const bufferSize = 4096;
-  micProcessor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const sr=audioCtx.sampleRate;
+  console.log('[MIC] SR:',sr);
+  const source=audioCtx.createMediaStreamSource(micStream);
+  micProcessor=audioCtx.createScriptProcessor(4096,1,1);
 
-  micProcessor.onaudioprocess = (e) => {
-    if(!sessionActive || !rtWs || rtWs.readyState !== 1) return;
-    const float32 = e.inputBuffer.getChannelData(0);
-    // Float32 → PCM16
-    const pcm16 = new Int16Array(float32.length);
-    for(let i=0;i<float32.length;i++){
-      pcm16[i] = Math.max(-32768, Math.min(32767, float32[i]*32768));
+  micProcessor.onaudioprocess=(e)=>{
+    if(!sessionActive||!rtWs||rtWs.readyState!==1) return;
+    let f32=e.inputBuffer.getChannelData(0);
+    if(sr!==24000){
+      const ratio=sr/24000;
+      const out=new Float32Array(Math.round(f32.length/ratio));
+      for(let i=0;i<out.length;i++) out[i]=f32[Math.min(Math.round(i*ratio),f32.length-1)];
+      f32=out;
     }
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
-    rtWs.send(JSON.stringify({ type:'input_audio_buffer.append', audio: b64 }));
+    rtWs.send(JSON.stringify({type:'input_audio_buffer.append',audio:float32ToB64PCM(f32)}));
   };
 
   source.connect(micProcessor);
   micProcessor.connect(audioCtx.destination);
-  console.log('[RT] Strumień mikrofonu aktywny');
+  console.log('[MIC] OK - streaming do OpenAI');
 }
 
 // Stare funkcje nagrywania (dla przycisku jako backup)
