@@ -1001,231 +1001,139 @@ let headMesh, eyeL, eyeR, mouth;
 let mouthOpenTarget = 0, mouthOpenCurrent = 0;
 let avatarState = 'idle'; // idle | listening | speaking
 
-function initAvatar() {
-  const canvas = g('avatarCanvas');
-  const container = g('voAvatar');
-  const W = container.clientWidth, H = container.clientHeight;
+function initAvatar(){
+  const canvas = document.getElementById('avatarCanvas');
+  if(!canvas||!window.THREE) return;
+  const container = canvas.parentElement;
+  const W=container.clientWidth, H=container.clientHeight;
 
-  avatarScene = new THREE.Scene();
-  avatarCamera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
-  avatarCamera.position.set(0, 0.3, 3.5);
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(42,W/H,0.1,100);
+  cam.position.set(0,0.2,4.5);
 
-  avatarRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  avatarRenderer.setSize(W, H);
-  avatarRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  avatarRenderer.setClearColor(0x000000, 0);
+  const ren=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  ren.setSize(W,H); ren.setPixelRatio(Math.min(devicePixelRatio,2));
+  ren.setClearColor(0x000000,0);
 
-  // O\u015bwietlenie
-  const ambient = new THREE.AmbientLight(0x334466, 1.2);
-  avatarScene.add(ambient);
-  const rimL = new THREE.PointLight(0x4466ff, 2.5, 10);
-  rimL.position.set(-2, 1, 2);
-  avatarScene.add(rimL);
-  const rimR = new THREE.PointLight(0x22d3a0, 1.8, 10);
-  rimR.position.set(2, 0.5, 2);
-  avatarScene.add(rimR);
-  const top = new THREE.PointLight(0x7c6aff, 1.5, 8);
-  top.position.set(0, 3, 1);
-  avatarScene.add(top);
+  const amb=new THREE.AmbientLight(0x0a1040,2); scene.add(amb);
+  const rimL=new THREE.PointLight(0x4488ff,4,12); rimL.position.set(-3,2,3); scene.add(rimL);
+  const rimR=new THREE.PointLight(0x00ffcc,3,10); rimR.position.set(3,1,2); scene.add(rimR);
+  const topL=new THREE.PointLight(0x7c6aff,3,8); topL.position.set(0,5,1); scene.add(topL);
+  const front=new THREE.PointLight(0x00ddff,1.5,6); front.position.set(0,0,4); scene.add(front);
 
-  // \u2500\u2500 G\u0141OWA kosmity \u2500\u2500
-  const headGeo = new THREE.SphereGeometry(0.85, 64, 64);
-  // Lekko wyd\u0142u\u017cona
-  headGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.15, 0.88));
-  const headMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2a6c,
-    roughness: 0.3,
-    metalness: 0.5,
-    emissive: 0x0a0a3a,
-    emissiveIntensity: 0.3
-  });
-  headMesh = new THREE.Mesh(headGeo, headMat);
-  headMesh.position.y = 0.1;
-  avatarScene.add(headMesh);
-
-  // Po\u015bwiata wok\u00f3\u0142 g\u0142owy
-  const glowGeo = new THREE.SphereGeometry(1.05, 32, 32);
-  glowGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.15, 0.88));
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: 0x3355ff,
-    transparent: true,
-    opacity: 0.06,
-    side: THREE.BackSide
-  });
-  const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-  glowMesh.position.y = 0.1;
-  avatarScene.add(glowMesh);
-
-  // \u2500\u2500 OCZY \u2014 du\u017ce jak kosmita \u2500\u2500
-  const eyeGeo = new THREE.SphereGeometry(0.22, 32, 32);
-  eyeGeo.applyMatrix4(new THREE.Matrix4().makeScale(1.4, 0.8, 0.5));
-  const eyeMat = new THREE.MeshStandardMaterial({
-    color: 0x00ddff,
-    emissive: 0x0099cc,
-    emissiveIntensity: 1.2,
-    roughness: 0.1,
-    metalness: 0.8
-  });
-  eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.3, 0.28, 0.72);
-  headMesh.add(eyeL);
-
-  eyeR = new THREE.Mesh(eyeGeo.clone(), eyeMat.clone());
-  eyeR.position.set(0.3, 0.28, 0.72);
-  headMesh.add(eyeR);
-
-  // \u0179renica
-  const pupilGeo = new THREE.SphereGeometry(0.1, 16, 16);
-  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000022 });
-  const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
-  pupilL.position.set(0, 0, 0.18);
-  eyeL.add(pupilL);
-  const pupilR = new THREE.Mesh(pupilGeo, pupilMat);
-  pupilR.position.set(0, 0, 0.18);
-  eyeR.add(pupilR);
-
-  // \u2500\u2500 USTA \u2014 elipsa \u2500\u2500
-  const mouthGeo = new THREE.SphereGeometry(0.18, 32, 16, 0, Math.PI*2, 0, Math.PI*0.5);
-  const mouthMat = new THREE.MeshStandardMaterial({
-    color: 0x000033,
-    emissive: 0x0033aa,
-    emissiveIntensity: 0.5,
-    roughness: 0.8
-  });
-  mouth = new THREE.Mesh(mouthGeo, mouthMat);
-  mouth.position.set(0, -0.28, 0.8);
-  mouth.rotation.x = Math.PI;
-  mouth.scale.set(1.8, 0.1, 1);
-  headMesh.add(mouth);
-
-  // \u2500\u2500 ANTENY \u2500\u2500
-  const antGeo = new THREE.CylinderGeometry(0.025, 0.012, 0.55, 8);
-  const antMat = new THREE.MeshStandardMaterial({ color: 0x2244aa, metalness: 0.9, roughness: 0.2 });
-  const antL = new THREE.Mesh(antGeo, antMat);
-  antL.position.set(-0.38, 0.95, 0.1);
-  antL.rotation.z = -0.3;
-  headMesh.add(antL);
-  const antR = new THREE.Mesh(antGeo, antMat);
-  antR.position.set(0.38, 0.95, 0.1);
-  antR.rotation.z = 0.3;
-  headMesh.add(antR);
-
-  // Kulki na antenkach
-  const tipGeo = new THREE.SphereGeometry(0.055, 16, 16);
-  const tipMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ccaa, emissiveIntensity: 1.5 });
-  const tipL = new THREE.Mesh(tipGeo, tipMat);
-  tipL.position.set(0, 0.3, 0);
-  antL.add(tipL);
-  const tipR = new THREE.Mesh(tipGeo.clone(), tipMat.clone());
-  tipR.position.set(0, 0.3, 0);
-  antR.add(tipR);
-
-  // \u2500\u2500 SZYJA \u2500\u2500
-  const neckGeo = new THREE.CylinderGeometry(0.22, 0.28, 0.4, 16);
-  const neckMat = new THREE.MeshStandardMaterial({ color: 0x162055, roughness: 0.5, metalness: 0.4 });
-  const neck = new THREE.Mesh(neckGeo, neckMat);
-  neck.position.y = -0.62;
-  headMesh.add(neck);
-
-  // \u2500\u2500 CZ\u0104STECZKI wok\u00f3\u0142 \u2500\u2500
-  const particleCount = 80;
-  const pGeo = new THREE.BufferGeometry();
-  const pPos = new Float32Array(particleCount * 3);
-  for(let i=0; i<particleCount; i++){
-    const r = 1.4 + Math.random()*0.8;
-    const theta = Math.random()*Math.PI*2;
-    const phi = Math.random()*Math.PI;
-    pPos[i*3] = r*Math.sin(phi)*Math.cos(theta);
-    pPos[i*3+1] = r*Math.cos(phi)*0.7 + 0.1;
-    pPos[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+  const headGeo=new THREE.SphereGeometry(1,128,128);
+  const pos=headGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+    const n=Math.sin(x*3)*0.04+Math.cos(y*4)*0.03+Math.sin(z*2)*0.02;
+    pos.setXYZ(i,x*(1+n),y*1.2+n*0.5,z*0.85);
   }
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
-  const pMat = new THREE.PointsMaterial({ color:0x4466ff, size:0.035, transparent:true, opacity:0.6 });
-  const particles = new THREE.Points(pGeo, pMat);
-  avatarScene.add(particles);
+  headGeo.computeVertexNormals();
+  const headMat=new THREE.MeshPhysicalMaterial({color:0x0a1560,roughness:0.15,metalness:0.8,clearcoat:1,clearcoatRoughness:0.1,emissive:0x0a0a40,emissiveIntensity:0.4});
+  const head=new THREE.Mesh(headGeo,headMat);
+  head.position.y=0.2; scene.add(head);
 
-  // Animacja
-  let t = 0;
+  head.add(new THREE.Mesh(
+    Object.assign(new THREE.SphereGeometry(1.18,32,32),{applyMatrix4:function(m){THREE.SphereGeometry.prototype.applyMatrix4.call(this,m);return this;}}),
+    new THREE.MeshBasicMaterial({color:0x3366ff,transparent:true,opacity:0.04,side:THREE.BackSide})
+  ));
+
+  const makeEye=(x)=>{
+    const g=new THREE.Group();
+    const shape=new THREE.Shape(); shape.ellipse(0,0,0.28,0.16,0,Math.PI*2);
+    const eyeMat=new THREE.MeshBasicMaterial({color:0x00eeff,side:THREE.DoubleSide});
+    const base=new THREE.Mesh(new THREE.ShapeGeometry(shape),eyeMat); g.add(base);
+    const iris=new THREE.Mesh(new THREE.CircleGeometry(0.1,32),new THREE.MeshBasicMaterial({color:0x001133}));
+    iris.position.z=0.01; g.add(iris);
+    const ref=new THREE.Mesh(new THREE.CircleGeometry(0.04,16),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.8}));
+    ref.position.set(-0.05,0.05,0.02); g.add(ref);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.28,0.34,64),new THREE.MeshBasicMaterial({color:0x00ccff,transparent:true,opacity:0.5,side:THREE.DoubleSide}));
+    ring.position.z=-0.01; g.add(ring);
+    g.position.set(x,0.35,0.88); g.rotation.y=x*-0.15;
+    return {group:g,mat:eyeMat,ring:ring.material};
+  };
+  const eyeL=makeEye(-0.35), eyeR=makeEye(0.35);
+  head.add(eyeL.group); head.add(eyeR.group);
+
+  const mouthMat=new THREE.MeshStandardMaterial({color:0x001166,emissive:new THREE.Color(0x0033cc),emissiveIntensity:0.5,roughness:0.5});
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,8,32,Math.PI),mouthMat);
+  mouth.position.set(0,-0.38,0.88); mouth.rotation.z=Math.PI; mouth.scale.set(1,0.1,1);
+  head.add(mouth);
+
+  const makeAnt=(x,rz)=>{
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.01,0.6,8),new THREE.MeshStandardMaterial({color:0x1133aa,metalness:0.9,roughness:0.1})));
+    const tipMat=new THREE.MeshBasicMaterial({color:0x00ffcc});
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(0.06,16,16),tipMat);
+    tip.position.y=0.33; g.add(tip);
+    const glow=new THREE.Mesh(new THREE.SphereGeometry(0.1,16,16),new THREE.MeshBasicMaterial({color:0x00ffcc,transparent:true,opacity:0.2}));
+    glow.position.y=0.33; g.add(glow);
+    g.position.set(x,1.1,0.1); g.rotation.z=rz;
+    return {group:g,tip:tipMat};
+  };
+  const antL=makeAnt(-0.4,-0.35), antR=makeAnt(0.4,0.35);
+  head.add(antL.group); head.add(antR.group);
+
+  head.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,0.4,16),new THREE.MeshPhysicalMaterial({color:0x0d1a6e,roughness:0.3,metalness:0.7})),{position:new THREE.Vector3(0,-0.78,0)}));
+
+  const rings=[];
+  [[1.5,0x4466ff,0.4],[1.85,0x00ddff,0.25],[2.2,0x7c6aff,0.15]].forEach(([r,col,op],i)=>{
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(r,0.008,4,128),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op}));
+    ring.rotation.x=Math.PI/2+i*0.3; ring.rotation.z=i*0.5;
+    scene.add(ring); rings.push(ring);
+  });
+
+  const pN=150,pGeo=new THREE.BufferGeometry();
+  const pPos=new Float32Array(pN*3),pCol=new Float32Array(pN*3);
+  for(let i=0;i<pN;i++){
+    const r=1.8+Math.random()*1.4,th=Math.random()*Math.PI*2,ph=Math.random()*Math.PI;
+    pPos[i*3]=r*Math.sin(ph)*Math.cos(th); pPos[i*3+1]=r*Math.cos(ph)*0.7+0.2; pPos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+    const cv=Math.random(); pCol[i*3]=cv>0.5?0:0.1; pCol[i*3+1]=cv>0.5?0.8:0.6; pCol[i*3+2]=1;
+  }
+  pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+  pGeo.setAttribute('color',new THREE.BufferAttribute(pCol,3));
+  const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({size:0.05,vertexColors:true,transparent:true,opacity:0.75}));
+  scene.add(particles);
+
+  let t=0,mouthT=0,mouthC=0;
+  const EYE={idle:0x00eeff,listening:0x00ff88,thinking:0x8866ff,speaking:0x00eeff};
+
   function animate(){
-    requestAnimationFrame(animate);
-    t += 0.016;
+    requestAnimationFrame(animate); t+=0.016;
+    const s=avatarState||'idle';
 
-    // Idle: delikatne ko\u0142ysanie g\u0142owy
-    if(avatarState === 'idle'){
-      headMesh.rotation.y = Math.sin(t*0.4)*0.06;
-      headMesh.rotation.x = Math.sin(t*0.3)*0.03;
-      headMesh.position.y = 0.1 + Math.sin(t*0.5)*0.025;
-    } else if(avatarState === 'listening'){
-      headMesh.rotation.y = Math.sin(t*0.8)*0.04;
-      headMesh.position.y = 0.1 + Math.sin(t*1.2)*0.015;
-    } else if(avatarState === 'speaking'){
-      headMesh.rotation.y = Math.sin(t*0.6)*0.08;
-      headMesh.position.y = 0.1 + Math.sin(t*0.7)*0.02;
-    }
+    if(s==='idle'){ head.rotation.y=Math.sin(t*0.4)*0.08; head.rotation.x=Math.sin(t*0.3)*0.04; head.position.y=0.2+Math.sin(t*0.5)*0.03; }
+    else if(s==='listening'){ head.rotation.y=Math.sin(t*1.2)*0.05; head.rotation.x=0.06; head.position.y=0.2+Math.sin(t*1.5)*0.02; }
+    else if(s==='thinking'){ head.rotation.y+=0.01; head.position.y=0.2+Math.sin(t*2)*0.015; }
+    else if(s==='speaking'){ head.rotation.y=Math.sin(t*0.8)*0.12; head.position.y=0.2+Math.sin(t*0.9)*0.03; }
 
-    // Mruganie oczu
-    if(Math.floor(t*10) % 50 === 0){
-      eyeL.scale.y = 0.1;
-      eyeR.scale.y = 0.1;
-    } else {
-      eyeL.scale.y += (1 - eyeL.scale.y) * 0.3;
-      eyeR.scale.y += (1 - eyeR.scale.y) * 0.3;
-    }
+    if(Math.floor(t*60)%180===0){ eyeL.group.scale.y=0.05; eyeR.group.scale.y=0.05; }
+    else { eyeL.group.scale.y+=(1-eyeL.group.scale.y)*0.35; eyeR.group.scale.y+=(1-eyeR.group.scale.y)*0.35; }
 
-    // Usta \u2014 lip sync
-    mouthOpenCurrent += (mouthOpenTarget - mouthOpenCurrent) * 0.25;
-    if(avatarState==="speaking"){const raw=Math.pow(Math.max(0,Math.sin(t*4.5*Math.PI)),2.5);mouthOpenTarget=raw*0.7;}else{mouthOpenTarget*=0.85;}
-    mouthOpenCurrent+=(mouthOpenTarget-mouthOpenCurrent)*0.18;
-    mouth.scale.set(1.8, 0.06+mouthOpenCurrent*1.4, 1);
-    // Emissive oczu pulsuje gdy m\u00f3wi
-    if(avatarState === 'speaking'){
-      const ei = 1.0 + Math.sin(t*8)*0.5;
-      eyeL.material.emissiveIntensity = ei;
-      eyeR.material.emissiveIntensity = ei;
-    } else {
-      eyeL.material.emissiveIntensity += (1.2 - eyeL.material.emissiveIntensity)*0.05;
-      eyeR.material.emissiveIntensity += (1.2 - eyeR.material.emissiveIntensity)*0.05;
-    }
+    if(s==='speaking'){ const raw=Math.pow(Math.max(0,Math.sin(t*4.5*Math.PI)),2.5); mouthT=raw*0.7; } else { mouthT*=0.85; }
+    mouthC+=(mouthT-mouthC)*0.18;
+    mouth.scale.set(1,0.06+mouthC*1.4,1);
+    mouthMat.emissiveIntensity=0.2+mouthC*0.8;
 
-    // Cz\u0105steczki obr\u00f3t
-    particles.rotation.y = t * 0.08;
+    const ec=EYE[s]||0x00eeff;
+    eyeL.mat.color.setHex(ec); eyeR.mat.color.setHex(ec);
 
-    // Anteny pulsuj\u0105
-    if(antL.children[0]) antL.children[0].material.emissiveIntensity = 1.2 + Math.sin(t*3)*0.8;
-    if(antR.children[0]) antR.children[0].material.emissiveIntensity = 1.2 + Math.sin(t*3+1)*0.8;
+    const ac=s==='listening'?0x00ff88:s==='speaking'?0x00ffff:0x00ffcc;
+    antL.tip.color.setHex(ac); antR.tip.color.setHex(ac);
+    if(s==='speaking'){ antL.group.rotation.z=-0.35+Math.sin(t*4)*0.03; antR.group.rotation.z=0.35+Math.sin(t*4+1)*0.03; }
 
-    avatarRenderer.render(avatarScene, avatarCamera);
+    rings.forEach((r,i)=>{ r.rotation.z+=0.004+i*0.001; r.rotation.x+=0.002; });
+    particles.rotation.y=t*0.07;
+    ren.render(scene,cam);
   }
   animate();
 
-  // Resize
-  window.addEventListener('resize', ()=>{
-    const W2 = container.clientWidth, H2 = container.clientHeight;
-    avatarCamera.aspect = W2/H2;
-    avatarCamera.updateProjectionMatrix();
-    avatarRenderer.setSize(W2, H2);
+  window.addEventListener('resize',()=>{
+    const W2=container.clientWidth,H2=container.clientHeight;
+    cam.aspect=W2/H2; cam.updateProjectionMatrix(); ren.setSize(W2,H2);
   });
 }
 
-// Lip sync z poziomu audio
-let lipSyncInterval = null;
-function startLipSync(analyser){
-  stopLipSync();
-  if(!analyser) return;
-  const buf = new Uint8Array(analyser.frequencyBinCount);
-  lipSyncInterval = setInterval(()=>{
-    analyser.getByteFrequencyData(buf);
-    // Energia w pa\u015bmie g\u0142osu (300-3000Hz przy 44100Hz, fftSize=512 = ~128 bin\u00f3w)
-    let sum = 0;
-    for(let i=3; i<30; i++) sum += buf[i];
-    const avg = sum/27/255;
-    mouthOpenTarget = Math.min(1, avg * 3.5);
-  }, 30);
-}
-function stopLipSync(){
-  if(lipSyncInterval){ clearInterval(lipSyncInterval); lipSyncInterval=null; }
-  mouthOpenTarget = 0;
-}
 function setAvatarState(s){
   avatarState = s;
   const el = g('voState');
