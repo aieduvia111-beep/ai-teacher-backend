@@ -1401,24 +1401,17 @@ function handleRealtimeMsg(msg){
   if(t === 'response.audio.delta'){
     const b64 = msg.delta;
     if(!b64) return;
-    // Zbierz chunki PCM16
+    // Odtwarzaj natychmiast kazdy chunk
     const bytes = atob(b64);
     const arr = new Uint8Array(bytes.length);
     for(let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
-    currentAudioChunks.push(arr);
-
-    // Set speaking state
-    if(avatarState !== 'speaking'){
-      setAvatarState('speaking');
-      startLipSync(null); // no analyser
-    }
+    playPCM16Chunk(arr, 24000);
+    if(avatarState !== 'speaking') setAvatarState('speaking');
     mouthOpenTarget = 0.4 + Math.random()*0.5;
     return;
   }
 
-  // Audio ready
   if(t === 'response.audio.done'){
-    playPCM16Chunks(currentAudioChunks, 24000);
     currentAudioChunks = [];
     return;
   }
@@ -1450,6 +1443,45 @@ function handleRealtimeMsg(msg){
 }
 
 // Odtwarzanie PCM16 przez Web Audio
+// Streaming audio - kolejka
+let audioScheduleTime = 0;
+let audioCtxStream = null;
+
+function playPCM16Chunk(chunk, sampleRate){
+  if(!chunk || chunk.length < 2) return;
+  if(!audioCtxStream || audioCtxStream.state === 'closed'){
+    audioCtxStream = new (window.AudioContext || window.webkitAudioContext)({sampleRate});
+    audioScheduleTime = audioCtxStream.currentTime + 0.05;
+  }
+  if(audioCtxStream.state === 'suspended') audioCtxStream.resume();
+
+  const samples = chunk.length / 2;
+  const float32 = new Float32Array(samples);
+  const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  for(let i=0;i<samples;i++){
+    float32[i] = view.getInt16(i*2, true) / 32768;
+  }
+
+  const buf = audioCtxStream.createBuffer(1, samples, sampleRate);
+  buf.copyToChannel(float32, 0);
+  const src = audioCtxStream.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtxStream.destination);
+
+  const now = audioCtxStream.currentTime;
+  if(audioScheduleTime < now) audioScheduleTime = now + 0.02;
+  src.start(audioScheduleTime);
+  audioScheduleTime += buf.duration;
+
+  src.onended = () => {
+    if(audioScheduleTime <= audioCtxStream.currentTime + 0.05){
+      setAvatarState('idle');
+      stopLipSync();
+      mouthOpenTarget = 0;
+    }
+  };
+}
+
 function playPCM16Chunks(chunks, sampleRate){
   if(!chunks.length) return;
 
