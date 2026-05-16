@@ -1489,7 +1489,7 @@ let micProcessor = null;
 
 function startMicStream(){
   if(!micStream || !rtWs || rtWs.readyState !== 1) return;
-  if(audioCtx) return;
+  if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx=null; }
 
   audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
   const source = audioCtx.createMediaStreamSource(micStream);
