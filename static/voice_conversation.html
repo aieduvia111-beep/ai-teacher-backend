@@ -1174,9 +1174,9 @@ function initAvatar() {
 
     // Usta \u2014 lip sync
     mouthOpenCurrent += (mouthOpenTarget - mouthOpenCurrent) * 0.25;
-    const mouthScale = 0.1 + mouthOpenCurrent * 0.9;
-    mouth.scale.set(1.8, mouthScale, 1);
-
+    if(avatarState==="speaking"){const raw=Math.pow(Math.max(0,Math.sin(t*4.5*Math.PI)),2.5);mouthOpenTarget=raw*0.7;}else{mouthOpenTarget*=0.85;}
+    mouthOpenCurrent+=(mouthOpenTarget-mouthOpenCurrent)*0.18;
+    mouth.scale.set(1.8, 0.06+mouthOpenCurrent*1.4, 1);
     // Emissive oczu pulsuje gdy m\u00f3wi
     if(avatarState === 'speaking'){
       const ei = 1.0 + Math.sin(t*8)*0.5;
