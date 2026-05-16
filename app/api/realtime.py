@@ -1,7 +1,6 @@
-"""REALTIME VOICE — WebSocket proxy do OpenAI Realtime API"""
+"""REALTIME VOICE - WebSocket proxy do OpenAI Realtime API"""
 import asyncio
 import json
-import base64
 import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ..config import settings
@@ -10,42 +9,30 @@ router = APIRouter(prefix="/api/v1/realtime", tags=["realtime"])
 
 OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"
 
-SYSTEM_PROMPT = """You are Eduvia AI — a smart, warm tutor for students.
+SYSTEM_PROMPT = """You are Eduvia AI - a smart, warm Polish tutor for students.
 
-LANGUAGE RULE — CRITICAL:
-- Detect the language the student speaks and ALWAYS reply in that same language
-- If student speaks Polish → reply in Polish
-- If student speaks English or is PRACTICING English → reply in English only
-
-TEACHING STYLE:
-- Keep answers SHORT: 2-4 sentences max (this is voice)
-- Be warm and natural like a real teacher, not robotic
-- Use simple words and real-life examples
-- End with a short follow-up question to keep conversation going
-- If student shows something on camera → describe and help solve it step by step
+RULES:
+- Always reply in Polish unless student writes in English
+- Keep answers SHORT: 2-3 sentences max (this is voice)
+- Be warm and natural like a real teacher
+- End with a short follow-up question
 
 WHITEBOARD:
-- When you explain something that needs steps, formulas or key points → add at the END of your response a JSON block like this:
-  [WHITEBOARD:{"items":["Wzór: a² + b² = c²","Krok 1: podstaw wartości","Krok 2: oblicz"]}]
-- Only add WHITEBOARD block when it genuinely helps (formulas, steps, key vocabulary)
-- Keep whiteboard items SHORT — max 6 words each, max 5 items
-- Do NOT add whiteboard for simple conversational answers
+- When explaining formulas, steps or key terms, add at END:
+  [WHITEBOARD:{"items":["Wzor: ..","Krok 1: ..","Krok 2: .."]}]
+- Max 4 items, max 6 words each
+- Only when genuinely helpful
 
 CORRECTIONS:
-- When student makes a grammar mistake, correct naturally in your reply
-- At the END of response add: [CORRECTION: wrong → correct]
+- If student makes grammar mistake: [CORRECTION: zle -> dobrze]
 - Max one correction per response
 """
 
 
 @router.websocket("/ws")
 async def realtime_ws(ws: WebSocket):
-    """
-    WebSocket proxy:
-    Browser <──WS──> FastAPI <──WS──> OpenAI Realtime
-    """
     await ws.accept()
-    print("[REALTIME] Klient połączony")
+    print("[RT] Klient polaczony")
 
     headers = {
         "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -53,11 +40,18 @@ async def realtime_ws(ws: WebSocket):
     }
 
     try:
-        async with websockets.connect(OPENAI_REALTIME_URL, additional_headers=headers) as openai_ws:
-            print("[REALTIME] Połączono z OpenAI Realtime")
+        async with websockets.connect(
+            OPENAI_REALTIME_URL,
+            additional_headers=headers,
+            ping_interval=20,
+            ping_timeout=30,
+            close_timeout=10,
+            max_size=10 * 1024 * 1024
+        ) as openai_ws:
+            print("[RT] Polaczono z OpenAI")
 
-            # Skonfiguruj sesję OpenAI
-            session_config = {
+            # Konfiguracja sesji
+            await openai_ws.send(json.dumps({
                 "type": "session.update",
                 "session": {
                     "modalities": ["text", "audio"],
@@ -68,101 +62,71 @@ async def realtime_ws(ws: WebSocket):
                     "input_audio_transcription": {"model": "whisper-1"},
                     "turn_detection": {
                         "type": "server_vad",
-                        "threshold": 0.5,
-                        "prefix_padding_ms": 300,
-                        "silence_duration_ms": 600
+                        "threshold": 0.4,
+                        "prefix_padding_ms": 200,
+                        "silence_duration_ms": 500
                     },
                     "temperature": 0.7,
-                    "max_response_output_tokens": 300
+                    "max_response_output_tokens": 200
                 }
-            }
-            await openai_ws.send(json.dumps(session_config))
+            }))
 
-            async def browser_to_openai():
-                """Przekazuje wiadomości od przeglądarki do OpenAI"""
+            async def from_browser():
                 try:
                     while True:
                         data = await ws.receive_text()
                         msg = json.loads(data)
 
-                        # Obsługa aktualizacji kontekstu (poziom, przedmiot, temat)
                         if msg.get("type") == "context.update":
                             ctx = msg.get("context", {})
                             level = ctx.get("level", "")
                             subject = ctx.get("subject", "")
                             topic = ctx.get("topic", "")
-
+                            level_map = {
+                                "podstawowka": "szkola podstawowa - bardzo proste slowa",
+                                "liceum": "liceum - normalna terminologia",
+                                "matura": "poziom maturalny",
+                                "studia": "studia - pelna formalizacja"
+                            }
                             extra = ""
                             if level:
-                                level_map = {
-                                    "podstawowka": "szkoła podstawowa — bardzo proste słowa, krótkie zdania",
-                                    "liceum": "liceum/technikum — pełna terminologia",
-                                    "matura": "poziom maturalny — zadania maturalne i schematy",
-                                    "studia": "studia — pełna formalizacja, dowody"
-                                }
-                                extra += f"\nSTUDENT LEVEL: {level_map.get(level, level)}"
+                                extra += f"\nPOZIOM: {level_map.get(level, level)}"
                             if subject:
-                                extra += f"\nFOCUS SUBJECT: {subject}"
+                                extra += f"\nPRZEDMIOT: {subject}"
                             if topic:
-                                extra += f"\nSESSION TOPIC: {topic} — start the conversation about this topic."
+                                extra += f"\nTEMAT SESJI: {topic} - zacznij od tego tematu."
 
                             if extra:
-                                update = {
+                                await openai_ws.send(json.dumps({
                                     "type": "session.update",
-                                    "session": {
-                                        "instructions": SYSTEM_PROMPT + extra
-                                    }
-                                }
-                                await openai_ws.send(json.dumps(update))
+                                    "session": {"instructions": SYSTEM_PROMPT + extra}
+                                }))
                             continue
 
-                        # Wszystko inne (audio, text) przekaż dalej
                         await openai_ws.send(data)
 
                 except WebSocketDisconnect:
-                    print("[REALTIME] Przeglądarka rozłączona")
+                    print("[RT] Browser rozlaczony")
                 except Exception as e:
-                    print(f"[REALTIME] browser_to_openai error: {e}")
+                    print(f"[RT] from_browser error: {e}")
 
-            async def openai_to_browser():
-                """Przekazuje odpowiedzi OpenAI do przeglądarki"""
+            async def from_openai():
                 try:
                     async for message in openai_ws:
                         try:
-                            msg = json.loads(message)
-                            msg_type = msg.get("type", "")
-
-                            # Parsuj WHITEBOARD i CORRECTION z delta tekstów
-                            if msg_type == "response.text.delta":
-                                delta = msg.get("delta", "")
-                                # Wykryj whiteboard w strumieniu
-                                if "[WHITEBOARD:" in delta:
-                                    await ws.send_text(json.dumps({
-                                        "type": "whiteboard.update",
-                                        "raw": delta
-                                    }))
-                                    continue
-
-                            # Przekaż do przeglądarki
-                            await ws.send_text(message)
-
+                            await ws.send_text(message if isinstance(message, str) else message.decode())
                         except Exception as e:
-                            print(f"[REALTIME] parse error: {e}")
-                            await ws.send_text(message)
-
+                            print(f"[RT] send error: {e}")
+                            break
                 except Exception as e:
-                    print(f"[REALTIME] openai_to_browser error: {e}")
+                    print(f"[RT] from_openai error: {e}")
 
-            # Uruchom obie pętle równolegle
-            await asyncio.gather(
-                browser_to_openai(),
-                openai_to_browser()
-            )
+            await asyncio.gather(from_browser(), from_openai())
 
     except WebSocketDisconnect:
-        print("[REALTIME] Klient rozłączył się przed połączeniem z OpenAI")
+        print("[RT] Rozlaczono przed OpenAI")
     except Exception as e:
-        print(f"[REALTIME] Błąd: {e}")
+        print(f"[RT] Blad: {e}")
         try:
             await ws.send_text(json.dumps({
                 "type": "error",
@@ -171,9 +135,9 @@ async def realtime_ws(ws: WebSocket):
         except:
             pass
     finally:
-        print("[REALTIME] Sesja zakończona")
+        print("[RT] Sesja zakonczona")
 
 
 @router.get("/health")
-async def realtime_health():
+async def health():
     return {"status": "ok", "service": "realtime", "model": "gpt-4o-realtime-preview"}
