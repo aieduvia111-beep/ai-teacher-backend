@@ -983,7 +983,7 @@ function g(id){ return document.getElementById(id); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 //
-// AVATAR 3D — Three.js kosmita niebieski
+// AVATAR 3D - Three.js
 //
 let avatarScene, avatarCamera, avatarRenderer, avatarMixer;
 let headMesh, eyeL, eyeR, mouth;
@@ -1004,7 +1004,7 @@ function initAvatar() {
   avatarRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   avatarRenderer.setClearColor(0x000000, 0);
 
-  // Oświetlenie
+  // Oswietlenie
   const ambient = new THREE.AmbientLight(0x334466, 1.2);
   avatarScene.add(ambient);
   const rimL = new THREE.PointLight(0x4466ff, 2.5, 10);
@@ -1019,7 +1019,7 @@ function initAvatar() {
 
   //
   const headGeo = new THREE.SphereGeometry(0.85, 64, 64);
-  // Lekko wydłużona
+  // Lekko wydluzona
   headGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.15, 0.88));
   const headMat = new THREE.MeshStandardMaterial({
     color: 0x1a2a6c,
@@ -1032,7 +1032,7 @@ function initAvatar() {
   headMesh.position.y = 0.1;
   avatarScene.add(headMesh);
 
-  // Poświata wokół głowy
+  // Poswiate wokol glowy
   const glowGeo = new THREE.SphereGeometry(1.05, 32, 32);
   glowGeo.applyMatrix4(new THREE.Matrix4().makeScale(1, 1.15, 0.88));
   const glowMat = new THREE.MeshBasicMaterial({
@@ -1063,7 +1063,7 @@ function initAvatar() {
   eyeR.position.set(0.3, 0.28, 0.72);
   headMesh.add(eyeR);
 
-  // Źrenica
+  // Zrenica
   const pupilGeo = new THREE.SphereGeometry(0.1, 16, 16);
   const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000022 });
   const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
@@ -1139,7 +1139,7 @@ function initAvatar() {
     requestAnimationFrame(animate);
     t += 0.016;
 
-    // Idle: delikatne kołysanie głowy
+    // Idle: kolysanie
     if(avatarState === 'idle'){
       headMesh.rotation.y = Math.sin(t*0.4)*0.06;
       headMesh.rotation.x = Math.sin(t*0.3)*0.03;
@@ -1161,12 +1161,12 @@ function initAvatar() {
       eyeR.scale.y += (1 - eyeR.scale.y) * 0.3;
     }
 
-    // Usta — lip sync
+    // Usta - lip sync
     mouthOpenCurrent += (mouthOpenTarget - mouthOpenCurrent) * 0.25;
     const mouthScale = 0.1 + mouthOpenCurrent * 0.9;
     mouth.scale.set(1.8, mouthScale, 1);
 
-    // Emissive oczu pulsuje gdy mówi
+    // Emissive gdy mowi
     if(avatarState === 'speaking'){
       const ei = 1.0 + Math.sin(t*8)*0.5;
       eyeL.material.emissiveIntensity = ei;
@@ -1176,10 +1176,10 @@ function initAvatar() {
       eyeR.material.emissiveIntensity += (1.2 - eyeR.material.emissiveIntensity)*0.05;
     }
 
-    // Cząsteczki obrót
+    // Czasteczki obrot
     particles.rotation.y = t * 0.08;
 
-    // Anteny pulsują
+    // Anteny pulsuja
     if(antL.children[0]) antL.children[0].material.emissiveIntensity = 1.2 + Math.sin(t*3)*0.8;
     if(antR.children[0]) antR.children[0].material.emissiveIntensity = 1.2 + Math.sin(t*3+1)*0.8;
 
@@ -1204,7 +1204,7 @@ function startLipSync(analyser){
   const buf = new Uint8Array(analyser.frequencyBinCount);
   lipSyncInterval = setInterval(()=>{
     analyser.getByteFrequencyData(buf);
-    // Energia w paśmie głosu (300-3000Hz przy 44100Hz, fftSize=512 = ~128 binów)
+    // Energy in voice band
     let sum = 0;
     for(let i=3; i<30; i++) sum += buf[i];
     const avg = sum/27/255;
@@ -1223,7 +1223,7 @@ function setAvatarState(s){
 }
 
 //
-// TABLICA — pisanie jak człowiek
+// TABLICA
 //
 let boardQueue = [], boardTyping = false, boardFull = '';
 
@@ -1255,7 +1255,7 @@ function boardFlush(){
     const bc = g('boardContent');
     if(bc) bc.scrollTop = bc.scrollHeight;
   }
-  // Prędkość: normalna litera ~35ms, spacja ~80ms, nowa linia ~150ms
+  // Speed: char ~35ms
   const delay = ch==='
 ' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
   setTimeout(boardFlush, delay);
@@ -1297,7 +1297,7 @@ async function startSession(){
   // Kamera na mobile
   if(IS_MOB) startCam();
 
-  // Połącz z Realtime WebSocket
+  // Connect Realtime WS
   connectRealtime();
 }
 
@@ -1308,9 +1308,9 @@ function connectRealtime(){
   } catch(e){ showErr('Blad WebSocket: '+e.message); endSes(); return; }
 
   rtWs.onopen = () => {
-    console.log('[RT] Połączono');
+    console.log('[RT] Connected');
     setTimeout(startMicStream, 200);
-    // Wyślij kontekst ucznia
+    // Send context
     const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
     const langEl = document.querySelector('[data-lang].active');
     const lang = langEl ? langEl.dataset.lang : 'polski';
@@ -1331,17 +1331,17 @@ function connectRealtime(){
   };
 
   rtWs.onerror = (e) => {
-    console.error('[RT] Błąd:', e);
+    console.error('[RT] Error:', e);
     showErr('Blad polaczenia');
   };
 
   rtWs.onclose = () => {
-    console.log('[RT] Rozłączono');
+    console.log('[RT] Disconnected');
     if(sessionActive){ showErr('Polaczenie przerwane'); endSes(); }
   };
 }
 
-// Obsługa wiadomości z OpenAI Realtime
+// Handle OpenAI Realtime messages
 let currentAiText = '';
 let currentAudioChunks = [];
 let audioPlaying = false;
@@ -1355,7 +1355,7 @@ function handleRealtimeMsg(msg){
     return;
   }
 
-  // AI zaczyna mówić
+  // AI starts speaking
   if(t === 'response.created'){
     setAvatarState('thinking');
     currentAiText = '';
@@ -1364,26 +1364,26 @@ function handleRealtimeMsg(msg){
     return;
   }
 
-  // Tekst delta — pisanie na tablicy
+  // Text delta
   if(t === 'response.audio_transcript.delta'){
     const delta = msg.delta || '';
-    // Usuń tagi [WHITEBOARD:...] i [CORRECTION:...] z tablicy
+    // Remove tags
     const clean = delta.replace(/\[WHITEBOARD:[^\]]*\]/g,'').replace(/\[CORRECTION:[^\]]*\]/g,'');
     if(clean) boardWrite(clean);
     currentAiText += delta;
     return;
   }
 
-  // Pełny tekst — parsuj korekty
+  // Full text - parse corrections
   if(t === 'response.audio_transcript.done'){
     const full = msg.transcript || currentAiText;
-    // Wyciągnij korekcje
+    // Extract corrections
     const corrMatches = [...full.matchAll(/\[CORRECTION: ([^\]]+?) \u2192 ([^\]]+?)\]/g)];
     corrMatches.forEach(m => boardAddCorrection(m[1], m[2]));
     return;
   }
 
-  // Audio delta — dekoduj i odtwarzaj
+  // Audio delta
   if(t === 'response.audio.delta'){
     const b64 = msg.delta;
     if(!b64) return;
@@ -1393,23 +1393,23 @@ function handleRealtimeMsg(msg){
     for(let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
     currentAudioChunks.push(arr);
 
-    // Ustaw stan mówienia
+    // Set speaking state
     if(avatarState !== 'speaking'){
       setAvatarState('speaking');
-      startLipSync(null); // bez analysera, używamy timera
+      startLipSync(null); // no analyser
     }
     mouthOpenTarget = 0.4 + Math.random()*0.5;
     return;
   }
 
-  // Audio gotowe — odtwórz
+  // Audio ready
   if(t === 'response.audio.done'){
     playPCM16Chunks(currentAudioChunks, 24000);
     currentAudioChunks = [];
     return;
   }
 
-  // AI skończyło
+  // AI done
   if(t === 'response.done'){
     setAvatarState('idle');
     stopLipSync();
@@ -1417,7 +1417,7 @@ function handleRealtimeMsg(msg){
     return;
   }
 
-  // User mówi
+  // User speaking
   if(t === 'input_audio_buffer.speech_started'){
     setAvatarState('listening');
     boardClear();
@@ -1430,7 +1430,7 @@ function handleRealtimeMsg(msg){
 
   // Error
   if(t === 'error'){
-    showErr(msg.error?.message || 'Błąd AI');
+    showErr(msg.error?.message || 'Error AI');
     setAvatarState('idle');
   }
 }
@@ -1444,7 +1444,7 @@ function playPCM16Chunks(chunks, sampleRate){
   }
   if(audioCtxRT.state === 'suspended') audioCtxRT.resume();
 
-  // Złącz wszystkie chunki
+  // Merge chunks
   let totalLen = chunks.reduce((s,c)=>s+c.length, 0);
   const pcm = new Uint8Array(totalLen);
   let offset = 0;
@@ -1485,7 +1485,7 @@ function playPCM16Chunks(chunks, sampleRate){
 //
 // NAGRYWANIE (stary system jako fallback)
 //
-// Realtime używa Server VAD — mikrofon strumieniowany bezpośrednio
+// Realtime Server VAD
 let micProcessor = null;
 
 function startMicStream(){
@@ -1511,7 +1511,7 @@ function startMicStream(){
 
   source.connect(micProcessor);
   micProcessor.connect(audioCtx.destination);
-  console.log('[RT] Strumień mikrofonu aktywny');
+  console.log('[RT] Mic stream active');
 }
 
 // Stare funkcje nagrywania (dla przycisku jako backup)
@@ -1565,7 +1565,7 @@ async function flipCam(){
   } catch(e){ console.warn(e); }
 }
 
-// Zdjęcie
+// Zdj?cie
 let _lsn = 0;
 function handleSnapTouch(e){ e.preventDefault(); const n=Date.now(); if(n-_lsn<2000)return; _lsn=n; snapSend(); }
 function handleSnapClick(){ const n=Date.now(); if(n-_lsn<2000)return; _lsn=n; snapSend(); }
@@ -1582,7 +1582,7 @@ async function snapSend(){
   ctx.drawImage(vid,0,0,c.width,c.height);
   const b64 = await new Promise(r=>setTimeout(()=>r(c.toDataURL('image/jpeg',.75).split(',')[1]),0));
 
-  // Wyślij przez REST (Realtime nie obsługuje obrazów bezpośrednio)
+  // Send via REST
   boardClear();
   boardWrite('Analizuje zdjecie...');
   try{
@@ -1694,7 +1694,7 @@ if(!IS_MOB)(function(){
 function animateCounter(el,target,duration){ if(!el)return; const step=target/(duration/16); let cur=0; el.classList.add('count-anim'); const t=setInterval(()=>{ cur=Math.min(cur+step,target); el.textContent=Math.floor(cur).toLocaleString('pl-PL'); if(cur>=target)clearInterval(t); },16); }
 window.animateCounter=animateCounter;
 
-// Uruchom mic stream po połączeniu WS
+// Start mic after WS connect
 </script>
 
 </body>
