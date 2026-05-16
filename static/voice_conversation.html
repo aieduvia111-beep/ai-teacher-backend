@@ -1543,4 +1543,64 @@ window.animateCounter=animateCounter;
 </script>
 
 </body>
-</html>
+</html
+async function startCam(){
+  const cfgs=[{video:{facingMode:'environment'},audio:false},{video:{facingMode:'user'},audio:false},{video:true,audio:false}];
+  for(const cfg of cfgs){
+    try{
+      if(camStream) camStream.getTracks().forEach(t=>t.stop());
+      const vs=await navigator.mediaDevices.getUserMedia(cfg);
+      camStream=vs;
+      const v=g('camVideo2');
+      if(v){v.srcObject=vs;v.play().catch(()=>{});}
+      facing=cfg.video?.facingMode||'environment';
+      const wrap=g('voCamWrap');
+      if(wrap) wrap.style.display='block';
+      return;
+    }catch(e){continue;}
+  }
+}
+
+async function flipCam(){
+  if(!camStream) return;
+  facing=facing==='user'?'environment':'user';
+  camStream.getTracks().forEach(t=>t.stop());
+  try{
+    const ns=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false});
+    camStream=ns;
+    const v=g('camVideo2');
+    if(v){v.srcObject=ns;v.play().catch(()=>{});}
+  }catch(e){console.warn(e);}
+}
+
+let _lsn=0;
+function handleSnapTouch(e){e.preventDefault();const n=Date.now();if(n-_lsn<2000)return;_lsn=n;snapSend();}
+function handleSnapClick(){const n=Date.now();if(n-_lsn<2000)return;_lsn=n;snapSend();}
+
+async function snapSend(){
+  const vid=g('camVideo2');
+  if(!vid||!vid.srcObject){showErr('Kamera niedostepna');return;}
+  const fl=g('snapFlash');if(fl){fl.classList.add('go');setTimeout(()=>fl.classList.remove('go'),200);}
+  const cv=document.createElement('canvas');
+  const w=vid.videoWidth||640,h=vid.videoHeight||480,sc=Math.min(1,640/w);
+  cv.width=Math.round(w*sc);cv.height=Math.round(h*sc);
+  const ctx=cv.getContext('2d');
+  if(facing==='user'){ctx.translate(cv.width,0);ctx.scale(-1,1);}
+  ctx.drawImage(vid,0,0,cv.width,cv.height);
+  const b64=await new Promise(r=>setTimeout(()=>r(cv.toDataURL('image/jpeg',.75).split(',')[1]),0));
+  boardClear();
+  boardWrite('Analizuje zdjecie...');
+  try{
+    const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku.',image:b64,history:[]})
+    });
+    const d=await r.json();
+    const txt=d.text||'';
+    boardClear();
+    parseAndShowBoard(txt);
+    if(d.audio) await playBase64Audio(d.audio);
+  }catch(e){boardWrite('Blad: '+e.message);}
+}
+
+>
