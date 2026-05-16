@@ -18,3 +18,4 @@ Pillow==10.2.0
 httpx==0.26.0
 websockets==12.0
 aiofiles==23.2.1
+groq
