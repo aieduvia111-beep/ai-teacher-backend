@@ -74,31 +74,6 @@ async def transcribe_audio(data: dict):
         print(f"[STT ERROR] {e}")
         return {"success": False, "text": "", "error": str(e)}
 
-async def elevenlabs_tts(text: str) -> bytes | None:
-    try:
-        api_key = getattr(settings, 'ELEVENLABS_API_KEY', '')
-        if not api_key:
-            return None
-        clean = re.sub(r'\[CORRECTION:[^\]]*\]', '', text).strip()
-        clean = re.sub(r'\[TABLICA:[^\]]*\]', '', clean).strip()
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB",
-                headers={"xi-api-key": api_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
-                json={
-                    "text": clean,
-                    "model_id": "eleven_turbo_v2_5",
-                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.3, "use_speaker_boost": True}
-                }
-            )
-            if resp.status_code == 200:
-                print(f"[TTS] ElevenLabs OK, {len(resp.content)} bajtow")
-                return resp.content
-            print(f"[TTS] ElevenLabs blad: {resp.status_code}")
-            return None
-    except Exception as e:
-        print(f"[TTS] ElevenLabs error: {e}")
-        return None
 
 @router.post("/respond")
 async def get_ai_response(data: dict):
