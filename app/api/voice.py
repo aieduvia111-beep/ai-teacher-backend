@@ -1,187 +1,158 @@
-"""VOICE CONVERSATION API"""
+"""VOICE CONVERSATION API - Groq STT + GPT-4o + ElevenLabs TTS"""
 from fastapi import APIRouter
 from openai import OpenAI
 import base64
 import re
 import tempfile
 import os
+import asyncio
+import concurrent.futures
+import httpx
 from ..config import settings
 
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-# Jeden tryb — ogólny nauczyciel który sam wykrywa język
-SYSTEM_PROMPT = """You are Eduvia AI — a smart friendly tutor for students.
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-LANGUAGE RULE — CRITICAL, ALWAYS FOLLOW:
-- Read the student's message and detect what language it is written in
-- ALWAYS reply in that EXACT same language — no exceptions
-- English message → English reply
-- Polish message → Polish reply
-- German message → German reply
-- If the student is PRACTICING English (e.g. says "where are you from?") → reply in English to help them practice. NEVER translate their English practice to Polish.
+try:
+    from groq import Groq
+    groq_client = Groq(api_key=settings.GROQ_API_KEY)
+    GROQ_AVAILABLE = True
+    print("[VOICE] Groq STT aktywny")
+except Exception as e:
+    groq_client = None
+    GROQ_AVAILABLE = False
+    print(f"[VOICE] Groq fallback OpenAI: {e}")
 
-TEACHING STYLE:
-- You can teach ANY subject: math, physics, chemistry, biology, history, languages, coding
-- Keep answers SHORT: 2-4 sentences max (this is voice, not text)
-- Be warm and natural like a real teacher, not robotic
-- Use simple words and real-life examples
-- End with a follow-up question to keep the conversation going
-- If student shows something on camera → describe what you see and help solve it step by step
-
-LANGUAGE CORRECTION:
-- When student makes a grammar mistake, correct them naturally in your reply
-- Say the correct form in your sentence, e.g. "Nice! So you WENT to school..."  
-- Additionally, at the END of your response add a tag: [CORRECTION: wrong → correct]
-- Example: student says "I goed to school" → reply ends with: [CORRECTION: I goed → I went]
-- Only add the tag when there is a clear grammar/vocabulary mistake
-- Maximum ONE correction tag per response
+SYSTEM_PROMPT = """You are Eduvia AI - a smart friendly tutor for students.
+LANGUAGE RULE: Always reply in the same language as the student.
+Polish -> Polish, English -> English.
+Keep answers SHORT: 2-4 sentences max (this is voice).
+Be warm and natural like a real teacher.
+End with a short follow-up question.
+Grammar mistake -> at END add: [CORRECTION: wrong -> correct]
 """
-
 
 @router.post("/transcribe")
 async def transcribe_audio(data: dict):
-    """Zamienia głos na tekst przez Whisper — auto wykrycie języka"""
     try:
         audio_b64 = data.get("audio", "")
-
         if not audio_b64:
             return {"success": False, "text": "", "error": "Brak audio"}
-
         audio_bytes = base64.b64decode(audio_b64)
-        print(f"[TRANSCRIBE] Rozmiar audio: {len(audio_bytes)} bajtów")
-
+        print(f"[STT] {len(audio_bytes)} bajtow")
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
             f.write(audio_bytes)
             tmp_path = f.name
-
-        with open(tmp_path, "rb") as f:
-            # BEZ podawania języka = Whisper sam wykrywa
-            transcription = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f
-                # language=... — celowo pominięte, Whisper sam wykryje
-            )
-
-        os.unlink(tmp_path)
-
-        text = transcription.text.strip()
-        print(f"[TRANSCRIBE] Wykryto: '{text}'")
-
+        try:
+            if GROQ_AVAILABLE:
+                with open(tmp_path, "rb") as f:
+                    result = groq_client.audio.transcriptions.create(
+                        model="whisper-large-v3-turbo",
+                        file=f,
+                        response_format="text"
+                    )
+                text = result.strip() if isinstance(result, str) else result.text.strip()
+                print(f"[STT] Groq: '{text}'")
+            else:
+                with open(tmp_path, "rb") as f:
+                    result = openai_client.audio.transcriptions.create(model="whisper-1", file=f)
+                text = result.text.strip()
+                print(f"[STT] OpenAI: '{text}'")
+        finally:
+            os.unlink(tmp_path)
         return {"success": True, "text": text}
-
     except Exception as e:
-        print(f"[TRANSCRIBE ERROR] {e}")
+        print(f"[STT ERROR] {e}")
         return {"success": False, "text": "", "error": str(e)}
 
+async def elevenlabs_tts(text: str) -> bytes | None:
+    try:
+        api_key = getattr(settings, 'ELEVENLABS_API_KEY', '')
+        if not api_key:
+            return None
+        clean = re.sub(r'\[CORRECTION:[^\]]*\]', '', text).strip()
+        clean = re.sub(r'\[TABLICA:[^\]]*\]', '', clean).strip()
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB",
+                headers={"xi-api-key": api_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+                json={
+                    "text": clean,
+                    "model_id": "eleven_turbo_v2_5",
+                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.3, "use_speaker_boost": True}
+                }
+            )
+            if resp.status_code == 200:
+                print(f"[TTS] ElevenLabs OK, {len(resp.content)} bajtow")
+                return resp.content
+            print(f"[TTS] ElevenLabs blad: {resp.status_code}")
+            return None
+    except Exception as e:
+        print(f"[TTS] ElevenLabs error: {e}")
+        return None
 
 @router.post("/respond")
 async def get_ai_response(data: dict):
-    """AI odpowiada — wykrywa język automatycznie i odpowiada w tym samym"""
     try:
         text = data.get("text", "")
         history = data.get("history", [])
-        subject = data.get("subject", "")
         level = data.get("level", "")
-
+        subject = data.get("subject", "")
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
-
         level_map = {
-            "podstawowka_56": "klasa 5-6 podstawówki (11-12 lat) - bardzo proste słowa, krótkie zdania, dużo przykładów z życia",
-            "podstawowka_78": "klasa 7-8 podstawówki (13-14 lat) - proste wyjaśnienia, podstawowe wzory",
-            "liceum": "liceum/technikum - pełna terminologia, zadania maturalne",
-            "matura": "matura - skupiaj się na typowych zadaniach maturalnych, schematach i czasach",
-            "studia": "poziom akademicki - pełna formalizacja, wyprowadzenia, dowody"
+            "podstawowka": "szkola podstawowa - bardzo proste slowa",
+            "liceum": "liceum - pelna terminologia",
+            "matura": "matura - schematy maturalne",
+            "studia": "studia - pelna formalizacja"
         }
-        lang_map = {
-            "angielski": "SPEAK ONLY IN ENGLISH. Do not use Polish at all. Help student practice English.",
-            "niemiecki": "SPRICH NUR AUF DEUTSCH. Benutze kein Polnisch. Hilf dem Schüler Deutsch zu üben.",
-            "hiszpanski": "HABLA SOLO EN ESPAÑOL. No uses polaco. Ayuda al estudiante a practicar español."
-        }
-
         system = SYSTEM_PROMPT
-        if subject and subject in lang_map:
-            system += f"\n\nLANGUAGE MODE: {lang_map[subject]}"
-        elif subject:
-            system += f"\n\nFOCUS: Student wants to learn {subject.upper()}. Stay on topic."
         if level and level in level_map:
-            system += f"\n\nSTUDENT LEVEL: {level_map[level]}. Adjust ALL explanations to this level."
-
+            system += f"\nPOZIOM: {level_map[level]}"
+        if subject:
+            system += f"\nPRZEDMIOT: {subject}"
         messages = [{"role": "system", "content": system}]
-
         for msg in history[-8:]:
-            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+            if isinstance(msg, dict) and msg.get("role") in ("user","assistant"):
                 messages.append({"role": msg["role"], "content": msg["content"]})
-
-        # Jeśli frontend przysłał zdjęcie z kamerki — GPT-4o je widzi
         image_b64 = data.get("image")
         if image_b64:
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_b64}",
-                        "detail": "high"
-                    }},
-                    {"type": "text", "text": text}
-                ]
-            })
-            print("[RESPOND] Wysłano z obrazem z kamerki")
+            messages.append({"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}", "detail": "high"}},
+                {"type": "text", "text": text}
+            ]})
         else:
             messages.append({"role": "user", "content": text})
-
-        # GPT-4o i TTS uruchamiamy równolegle żeby było szybciej
-        import asyncio, concurrent.futures
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor()
-
-        # Najpierw GPT (potrzebujemy tekstu żeby zrobić TTS)
         def call_gpt():
-            return client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                max_tokens=160,
-                temperature=0.7
+            return openai_client.chat.completions.create(
+                model="gpt-4o", messages=messages, max_tokens=160, temperature=0.7
             )
-
         response = await loop.run_in_executor(executor, call_gpt)
         ai_text = response.choices[0].message.content.strip()
-        print(f"[RESPOND] GPT: '{ai_text[:80]}'")
-
-        # TTS od razu po tekście
-        def call_tts():
-            return client.audio.speech.create(
-                model="tts-1",
-                voice="nova",    # fable = najcieplejszy głos, naturalny, nie brzmi jak AI
-                input=ai_text,
-                speed=1.1
-            )
-
-        speech = await loop.run_in_executor(executor, call_tts)
-        audio_b64 = base64.b64encode(speech.content).decode("utf-8")
-        print(f"[RESPOND] TTS gotowy, {len(speech.content)} bajtów")
-
-        # Korekty językowe (format [CORRECTION: wrong → correct])
+        print(f"[GPT] '{ai_text[:80]}'")
+        audio_bytes = await elevenlabs_tts(ai_text)
+        if not audio_bytes:
+            print("[TTS] Fallback OpenAI nova")
+            clean_text = re.sub(r'\[CORRECTION:[^\]]*\]', '', ai_text).strip()
+            def call_tts():
+                return openai_client.audio.speech.create(model="tts-1", voice="nova", input=clean_text, speed=1.1)
+            speech = await loop.run_in_executor(executor, call_tts)
+            audio_bytes = speech.content
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
         if "[CORRECTION:" in ai_text:
-            matches = re.findall(r'\[CORRECTION: (.+?) → (.+?)\]', ai_text)
+            matches = re.findall(r'\[CORRECTION: (.+?) -> (.+?)\]', ai_text)
             for wrong, correct in matches:
                 corrections.append({"wrong": wrong, "correct": correct})
-            ai_text = re.sub(r'\[CORRECTION: .+? → .+?\]', '', ai_text).strip()
-
-        return {
-            "success": True,
-            "text": ai_text,
-            "audio": audio_b64,
-            "corrections": corrections
-        }
-
+            ai_text = re.sub(r'\[CORRECTION: .+? -> .+?\]', '', ai_text).strip()
+        return {"success": True, "text": ai_text, "audio": audio_b64, "corrections": corrections}
     except Exception as e:
         print(f"[RESPOND ERROR] {e}")
         return {"success": False, "text": "", "audio": None, "error": str(e)}
 
-
 @router.get("/health")
 async def voice_health():
-    return {"status": "ok", "service": "voice"}
+    return {"status": "ok", "stt": "groq" if GROQ_AVAILABLE else "openai", "tts": "elevenlabs", "llm": "gpt-4o"}
