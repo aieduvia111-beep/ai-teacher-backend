@@ -153,7 +153,7 @@ async def get_ai_response(data: dict):
             print("[TTS] Fallback OpenAI nova")
             clean_text = re.sub(r'\[CORRECTION:[^\]]*\]', '', ai_text).strip()
             def call_tts():
-                return openai_client.audio.speech.create(model="tts-1", voice="nova", input=clean_text, speed=1.1)
+                return openai_client.audio.speech.create(model="tts-1-hd", voice="onyx", input=clean_text, speed=1.1)
             speech = await loop.run_in_executor(executor, call_tts)
             audio_bytes = speech.content
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
