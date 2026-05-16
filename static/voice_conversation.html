@@ -1229,10 +1229,9 @@ function setAvatarState(s){
 //
 // TABLICA
 //
-let boardQueue = [], boardTyping = false, boardFull = '';
+let boardQueue = [], boardTyping = false;
 
 function boardClear(){
-  boardFull = '';
   boardQueue = [];
   boardTyping = false;
   const el = g('boardText');
@@ -1241,28 +1240,50 @@ function boardClear(){
   if(corr) corr.innerHTML = '';
 }
 
-function boardWrite(text){
-  // Dodaj do kolejki literka po literce
-  for(const ch of text) boardQueue.push(ch);
-  if(!boardTyping) boardFlush();
-}
-
-function boardFlush(){
-  if(!boardQueue.length){ boardTyping=false; return; }
-  boardTyping = true;
-  const ch = boardQueue.shift();
-  boardFull += ch;
+function boardAddItem(text){
+  if(!text || !text.trim()) return;
   const el = g('boardText');
-  if(el){
-    el.innerHTML = esc(boardFull) + '<span class="board-cursor"></span>';
-    // Auto-scroll
+  if(!el) return;
+  const oldCur = el.querySelector('.board-cursor');
+  if(oldCur) oldCur.remove();
+  const item = document.createElement('span');
+  item.className = 'board-item';
+  item.innerHTML = '<span class="board-item-bullet">&#8250;</span><span class="board-item-text"></span><span class="board-cursor"></span>';
+  el.appendChild(item);
+  const textEl = item.querySelector('.board-item-text');
+  const cur = item.querySelector('.board-cursor');
+  let i = 0;
+  const chars = text.trim();
+  function typeChar(){
+    if(i >= chars.length){
+      if(cur) cur.remove();
+      const bc = g('boardContent');
+      if(bc) bc.scrollTop = bc.scrollHeight;
+      return;
+    }
+    textEl.textContent += chars[i++];
     const bc = g('boardContent');
     if(bc) bc.scrollTop = bc.scrollHeight;
+    setTimeout(typeChar, 25 + Math.random()*20);
   }
-  // Speed: char ~35ms
-  const delay = ch==='\n' ? 120 : ch===' ' ? 55 : 28 + Math.random()*20;
-  setTimeout(boardFlush, delay);
+  typeChar();
 }
+
+function boardWrite(text){
+  text.split('\n').forEach(line => {
+    if(line.trim()) boardQueue.push(line.trim());
+  });
+  if(!boardTyping) boardFlushQueue();
+}
+
+function boardFlushQueue(){
+  if(!boardQueue.length){ boardTyping = false; return; }
+  boardTyping = true;
+  const item = boardQueue.shift();
+  boardAddItem(item);
+  setTimeout(boardFlushQueue, item.length * 30 + 400);
+}
+
 
 function boardAddCorrection(wrong, correct){
   const corr = g('boardCorr');
