@@ -1072,7 +1072,7 @@ function initAvatar(){
     if(s==='speaking'){_mT=mouthOpenTarget>0?mouthOpenTarget:Math.pow(Math.max(0,Math.sin(_t*4.5*Math.PI)),2.5)*0.75;}else{_mT=0;mouthOpenTarget=0;}
     mouthOpenCurrent+=(_mT-mouthOpenCurrent)*0.25;
     _mC=mouthOpenCurrent;
-    mouth.scale.set(1,0.06+_mC*1.6,1);mouthMat.emissiveIntensity=0.5+_mC*1.2;
+    mouth.scale.set(1,0.06+_mC*0.7,1);mouthMat.emissiveIntensity=0.5+_mC*1.2;
     mouthGlow.material.opacity=0.2+_mC*0.6;mouthGlow.scale.setScalar(1+_mC*1.5);
     const ec=EYE_COL[s]||0x00ccff;eyeL.baseMat.color.setHex(ec);eyeR.baseMat.color.setHex(ec);
     const ep=s==='speaking'?0.3+Math.sin(_t*8)*0.15:0.4;eyeL.outerRingMat.opacity=ep;eyeR.outerRingMat.opacity=ep;
