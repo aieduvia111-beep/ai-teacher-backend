@@ -150,16 +150,16 @@ async def get_ai_response(data: dict):
             messages.append({"role": "user", "content": text})
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor()
-        # Jedno wywolanie - LLaMA szybki
+        # GPT-4o dla zdjec, Groq LLaMA dla glosu
         def call_llm():
+            if image_b64:
+                return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=300,temperature=0.7)
             if GROQ_AVAILABLE:
-                return groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages,
-                    max_tokens=300,
-                    temperature=0.7
-                )
-            return openai_client.chat.completions.create(
+                return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=150,temperature=0.7)
+            return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=150,temperature=0.7)
+
+
+
                 model="gpt-4o-mini", messages=messages, max_tokens=300, temperature=0.7
             )
         response = await loop.run_in_executor(executor, call_llm)
