@@ -1238,7 +1238,40 @@ async function startSession(){
   hist = [{role:'system', content: ctx}];
 
   boardClear();
-  boardWrite('Gotowy! Przytrzymaj mikrofon i mow.');
+  const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
+  if(_topic){
+    boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
+    // AI sam zaczyna gdy jest temat
+    setTimeout(async()=>{
+      const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic})
+      });
+      if(!cr.ok) return;
+      const reader=cr.body.getReader();
+      const decoder=new TextDecoder();
+      let buf='';
+      while(true){
+        const {done,value}=await reader.read();
+        if(done) break;
+        buf+=decoder.decode(value,{stream:true});
+        const lines=buf.split('\n');buf=lines.pop();
+        for(const ln of lines){
+          if(!ln.trim()) continue;
+          try{
+            const msg=JSON.parse(ln);
+            if(msg.type==='meta'){
+              if(msg.tablica){boardClear();msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*600));}
+            }
+            if(msg.type==='audio'&&msg.audio){setAvatarState('speaking');await playAudio(msg.audio);}
+          }catch(e){}
+        }
+      }
+      setAvatarState('idle');
+    }, 800);
+  } else {
+    boardWrite('Gotowy! Przytrzymaj mikrofon i mow.');
+  }
 }
 
 // NAGRYWANIE \u2014 push-to-talk
