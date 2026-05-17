@@ -61,7 +61,7 @@ If student says "nie rozumiem", repeats mistakes, or seems lost:
 - Break into smaller steps
 - Try completely different approach
 
-TABLICA - write ONLY when truly useful:
+TABLICA - write OFTEN, whenever explaining anything:
 Format: [TABLICA: item1 | item2 | item3]
 
 GOOD tablica examples:
