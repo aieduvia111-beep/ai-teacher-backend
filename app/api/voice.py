@@ -182,10 +182,12 @@ async def respond_stream(data: dict):
     ex=concurrent.futures.ThreadPoolExecutor()
     
     def call_llm():
-        if GROQ_AVAILABLE:
-            return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=250,temperature=0.7)
+        try:
+            if GROQ_AVAILABLE:
+                return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=250,temperature=0.7)
+        except Exception as ge:
+            print(f"[GROQ] fallback: {ge}")
         return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=250,temperature=0.7)
-    
     resp = await loop.run_in_executor(ex, call_llm)
     ai_text = resp.choices[0].message.content.strip()
     
