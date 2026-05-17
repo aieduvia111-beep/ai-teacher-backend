@@ -1309,8 +1309,10 @@ async function process(){
   if(isProc) return;
   isProc = true;
 
-  const lim = await checkLimit('voice');
-  if(!lim.allowed){ isProc=false; setAvatarState('idle'); return; }
+  try{
+    const lim = await checkLimit('voice');
+    if(lim && !lim.allowed){ isProc=false; setAvatarState('idle'); return; }
+  }catch(e){ console.warn('DB down, continuing without limit check'); }
 
   const mt = audioChunks[0]?.type || 'audio/webm';
   const blob = new Blob(audioChunks, {type:mt});
