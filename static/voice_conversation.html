@@ -1165,10 +1165,10 @@ function boardAddSection(text, type, onDone){
   function typeChar(){
     if(i>=chars.length){
       if(cur) cur.remove();
-      // Renderuj LaTeX jesli jest wzor
       if(chars.includes('$')) boardRenderKatex(section);
       const bc=g('boardContent');
       if(bc) bc.scrollTop=bc.scrollHeight;
+      if(typeof onDone==='function') onDone();
       return;
     }
     textEl.textContent+=chars[i++];
