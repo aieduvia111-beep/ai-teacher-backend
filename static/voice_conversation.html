@@ -911,6 +911,7 @@ function getPlanBadgeHTML(plan) {
     </div>
     <span class="vo-state" id="voState">GOTOWY</span>
     <button class="vo-end" onclick="endSes()">&#x2715; Zakończ</button>
+    <button onclick="downloadPDF()" style="padding:6px 14px;background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.3);border-radius:100px;color:#22d3a0;font-size:.72em;font-weight:700;cursor:pointer;font-family:var(--h);letter-spacing:.04em;">&#128196; PDF</button>
   </div>
 
   <!-- AVATAR (Three.js canvas) -->
@@ -1514,6 +1515,53 @@ function openCamera(){
     };
   }
   inp.click();
+}
+
+function downloadPDF(){
+  const boardEl = g('boardText');
+  if(!boardEl || !boardEl.textContent.trim()){ alert('Tablica jest pusta!'); return; }
+  
+  const date = new Date().toLocaleDateString('pl-PL');
+  const subject = selSubject||'Ogolny';
+  const level = selLevel||'';
+  const topic = document.getElementById('sessionTopic')?.value?.trim()||'';
+  
+  // Pobierz wszystkie sekcje
+  const items = [];
+  boardEl.querySelectorAll('.board-section').forEach(el=>{
+    const txt = el.textContent.trim();
+    if(txt) items.push(txt);
+  });
+  
+  let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Notatki Eduvia</title>';
+  html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">';
+  html += '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>';
+  html += '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:false}]})"><\/script>';
+  html += '<style>body{font-family:Georgia,serif;max-width:780px;margin:40px auto;padding:24px;color:#111;background:#fff;}';
+  html += 'h1{color:#2d1b8e;border-bottom:3px solid #7c6aff;padding-bottom:10px;font-size:1.6em;}';
+  html += '.meta{color:#555;font-size:.9em;margin:8px 0 24px;}';
+  html += '.item{background:#f8f7ff;border-left:4px solid #7c6aff;padding:10px 16px;margin:8px 0;border-radius:0 8px 8px 0;font-size:1.05em;line-height:1.7;}';
+  html += '.sep{height:1px;background:#e0dbff;margin:16px 0;}';
+  html += '.footer{margin-top:40px;color:#aaa;font-size:.8em;text-align:center;border-top:1px solid #eee;padding-top:12px;}';
+  html += '@media print{body{margin:20px;}}</style></head><body>';
+  html += '<h1>&#128196; Notatki z lekcji &mdash; Eduvia AI</h1>';
+  html += '<div class="meta"><b>Przedmiot:</b> '+subject+' &nbsp;|&nbsp; <b>Poziom:</b> '+level+' &nbsp;|&nbsp; <b>Data:</b> '+date+(topic?' &nbsp;|&nbsp; <b>Temat:</b> '+topic:'')+'</div>';
+  
+  items.forEach(txt=>{
+    html += '<div class="item">'+txt+'</div>';
+  });
+  
+  html += '<div class="footer">Wygenerowane przez Eduvia AI &bull; '+date+'</div></body></html>';
+  
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'eduvia-notatki-'+date.replace(/\./g,'-')+'.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function endSes(){
