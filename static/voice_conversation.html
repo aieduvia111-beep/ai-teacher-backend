@@ -398,6 +398,8 @@ button:active{transform:scale(.95)!important;}
 .input-wrap select{margin-bottom:0;}
 .field{margin-bottom:16px;}
 
+.board-sep{display:block;height:1px;background:rgba(124,106,255,.2);margin:8px 0;}
+.board-timestamp{display:block;font-family:var(--h);font-size:.58em;color:rgba(255,255,255,.25);letter-spacing:.08em;margin:4px 0 2px;text-transform:uppercase;}
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1101,6 +1103,22 @@ let boardQueue = [], boardTyping = false, boardFull = '';
 
 function boardClear(){
   boardQueue=[];boardTyping=false;
+  const el=g('boardText'); if(el) el.innerHTML='';
+}
+function boardSeparator(){
+  const el=g('boardText'); if(!el) return;
+  const ts=document.createElement('span');
+  ts.className='board-timestamp';
+  const now=new Date();
+  ts.textContent=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  el.appendChild(ts);
+  const sep=document.createElement('span');
+  sep.className='board-sep';
+  el.appendChild(sep);
+  const bc=g('boardContent'); if(bc) bc.scrollTop=bc.scrollHeight;
+}
+function boardClear_UNUSED(){
+  boardQueue=[];boardTyping=false;
   const el=g('boardText');
   if(el) el.innerHTML='<span class="board-cursor"></span>';
   const corr=g('boardCorr');
@@ -1237,7 +1255,7 @@ async function startSession(){
   const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
   hist = [{role:'system', content: ctx}];
 
-  boardClear();
+  boardSeparator();
   const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
   if(_topic){
     boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
@@ -1261,7 +1279,7 @@ async function startSession(){
           try{
             const msg=JSON.parse(ln);
             if(msg.type==='meta'){
-              if(msg.tablica){boardClear();msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*600));}
+              if(msg.tablica){boardSeparator();msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*600));}
             }
             if(msg.type==='audio'&&msg.audio){setAvatarState('speaking');await playAudio(msg.audio);}
           }catch(e){}
@@ -1384,7 +1402,7 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.tablica){
-              boardClear();
+              boardSeparator();
               msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
                 let tp=null;
                 if(/^(bl|err)/i.test(p)) tp='error';
@@ -1477,7 +1495,7 @@ function openCamera(){
       const reader=new FileReader();
       reader.onload=async(ev)=>{
         const b64=ev.target.result.split(',')[1];
-        boardClear();
+        boardSeparator();
         boardAddSection('Analizuje zdjecie...');
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{
@@ -1485,7 +1503,7 @@ function openCamera(){
             body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku po polsku.',image:b64,history:[]})
           });
           const d=await r.json();
-          boardClear();
+          boardSeparator();
           const tb=d.text&&d.text.match(/\[TABLICA: ([^\]]+)\]/);
           if(tb){tb[1].split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*550));}
           if(d.audio) await playAudio(d.audio);
@@ -1510,7 +1528,7 @@ function endSes(){
   g('voDot').classList.remove('on');
   g('micBtn').classList.add('disabled');
   g('micBtn').classList.remove('listening');
-  boardClear();
+  boardSeparator();
   setAvatarState('idle');
 
   const v = g('camVideo2'); if(v){ v.srcObject=null; v.style.display='none'; }
