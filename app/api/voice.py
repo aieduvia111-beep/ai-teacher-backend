@@ -192,3 +192,57 @@ async def get_ai_response(data: dict):
 @router.get("/health")
 async def voice_health():
     return {"status": "ok", "stt": "groq" if GROQ_AVAILABLE else "openai", "tts": "elevenlabs", "llm": "gpt-4o"}
+
+from fastapi.responses import StreamingResponse as _SR
+import json as _js, re as _re2
+
+@router.post("/respond/stream")
+async def respond_stream(data: dict):
+    text = data.get("text","")
+    history = data.get("history",[])
+    if not text:
+        return {"error":"brak tekstu"}
+    
+    messages=[{"role":"system","content":SYSTEM_PROMPT}]
+    for msg in history[-6:]:
+        if isinstance(msg,dict) and msg.get("role") in ("user","assistant"):
+            messages.append({"role":msg["role"],"content":msg["content"]})
+    messages.append({"role":"user","content":text})
+    
+    loop=asyncio.get_event_loop()
+    ex=concurrent.futures.ThreadPoolExecutor()
+    
+    def call_llm():
+        if GROQ_AVAILABLE:
+            return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=150,temperature=0.7)
+        return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=150,temperature=0.7)
+    
+    resp = await loop.run_in_executor(ex, call_llm)
+    ai_text = resp.choices[0].message.content.strip()
+    
+    tablica = None
+    tm = _re2.search(r'\[TABLICA: ([^\]]+)\]', ai_text)
+    if tm: tablica = tm.group(1)
+    clean = _re2.sub(r'\[TABLICA:[^\]]*\]','',ai_text)
+    clean = _re2.sub(r'\[CORRECTION:[^\]]*\]','',clean).strip()
+    
+    corrections=[]
+    for m in _re2.finditer(r'\[CORRECTION: ([^-]+) -> ([^\]]+)\]',ai_text):
+        corrections.append({"wrong":m.group(1).strip(),"correct":m.group(2).strip()})
+    
+    sentences=[s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
+    if not sentences: sentences=[clean]
+    
+    async def generate():
+        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections})+"\n"
+        for i,s in enumerate(sentences):
+            if len(s)<3: continue
+            try:
+                def tts(sx=s):
+                    return openai_client.audio.speech.create(model="tts-1",voice="onyx",input=sx,speed=1.1).content
+                audio=await loop.run_in_executor(ex,tts)
+                yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
+            except Exception as e:
+                print(f"[TTS stream] {e}")
+    
+    return _SR(generate(), media_type="application/x-ndjson")
