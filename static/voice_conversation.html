@@ -1320,6 +1320,12 @@ async function process(){
     if(!aiTxt){ isProc=false; setAvatarState('idle'); return; }
     hist.push({role:'assistant', content: aiTxt});
 
+    // Ludzkie dzwięki - 40% szans
+    if(Math.random()<0.4){
+      const sounds=['Hmm...','No dobra...','Chwileczke...','Rozumiem...'];
+      const s=sounds[Math.floor(Math.random()*sounds.length)];
+      fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s,history:[]})}).then(r=>r.json()).then(d=>{if(d.audio)playAudioBase64(d.audio);}).catch(()=>{});
+    }
     // Tablica - parsuj [TABLICA: ...]
     const tbMatch = aiTxt.match(/\[TABLICA: ([^\]]+)\]/);
     if(tbMatch){
