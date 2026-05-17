@@ -950,7 +950,7 @@ function getPlanBadgeHTML(plan) {
 
   <!-- BOTTOM BAR -->
   <div class="vo-bar">
-    <button class="vb vb-cam" ontouchstart="handleSnapTouch(event)" onclick="handleSnapClick()" title="Zdjęcie zadania">
+    <button class="vb vb-cam" onclick="openCamera()" title="Zdjęcie zadania">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
     </button>
     <button class="vb vb-mic disabled" id="micBtn" onmousedown="startRec()" onmouseup="stopRec()" ontouchstart="handleTS(event)" ontouchend="handleTE(event)">
