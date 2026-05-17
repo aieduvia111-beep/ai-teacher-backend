@@ -112,6 +112,9 @@ async def get_ai_response(data: dict):
             system += f"\nPOZIOM: {level_map[level]}"
         if subject:
             system += f"\nPRZEDMIOT: {subject}"
+        topic = data.get("topic", "")
+        if topic:
+            system += f"\nTEMAT SESJI: {topic}"
         messages = [{"role": "system", "content": system}]
         for msg in history[-8:]:
             if isinstance(msg, dict) and msg.get("role") in ("user","assistant"):
