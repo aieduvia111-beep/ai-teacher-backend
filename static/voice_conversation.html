@@ -1391,6 +1391,23 @@ async function process(){
 }
 
 // ODTWARZANIE AUDIO (TTS nova z backendu)
+let _lipSyncInterval = null;
+function startLipSync(analyser){
+  stopLipSync();
+  if(!analyser) return;
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  _lipSyncInterval = setInterval(()=>{
+    analyser.getByteFrequencyData(buf);
+    let sum=0;
+    for(let i=2;i<20;i++) sum+=buf[i];
+    mouthOpenTarget = Math.min(1, (sum/18/255)*4);
+  }, 30);
+}
+function stopLipSync(){
+  if(_lipSyncInterval){ clearInterval(_lipSyncInterval); _lipSyncInterval=null; }
+  mouthOpenTarget = 0;
+}
+
 async function playAudio(b64){
   if(!sessionActive) return;
   setAvatarState('speaking');
