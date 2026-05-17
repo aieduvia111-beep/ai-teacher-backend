@@ -1230,7 +1230,7 @@ async function startSession(){
 
   try{
     micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+      audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true, sampleRate:16000 }
     });
   } catch(e){
     showErr('Brak dostepu do mikrofonu');
@@ -1253,6 +1253,30 @@ async function startSession(){
 }
 
 // NAGRYWANIE \u2014 push-to-talk
+// Ludzkie dzwi\u0119ki AI
+const _hmm = ['hmm','mhm','aha','rozumiem','no tak','okej'];
+let _hmmCtx = null;
+function playHmm(){
+  try{
+    if(!_hmmCtx) _hmmCtx = new(window.AudioContext||window.webkitAudioContext)();
+    const ctx = _hmmCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    // Losowy dzwiek "hmm" - niska czestotliwosc z modulacja
+    const freq = 100+Math.random()*60;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(freq*0.85, ctx.currentTime+0.15);
+    osc.frequency.linearRampToValueAtTime(freq*0.9, ctx.currentTime+0.3);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime+0.05);
+    gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime+0.2);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime+0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+0.35);
+  }catch(e){}
+}
+
 function startRec(){
   if(!micStream || isRec || isProc) return;
   // Przerwij TTS jesli gra
@@ -1277,6 +1301,7 @@ function stopRec(){
   if(mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   g('micBtn').classList.remove('listening');
   setAvatarState('thinking');
+  if(Math.random()>0.5) setTimeout(playHmm, 300);
 }
 
 // PRZETWARZANIE
@@ -1322,7 +1347,7 @@ async function process(){
     if(!aiTxt){ isProc=false; setAvatarState('idle'); return; }
     hist.push({role:'assistant', content: aiTxt});
 
-    // Ludzkie dzwięki - 40% szans
+    // Ludzkie dzwi\u0119ki - 40% szans
     if(Math.random()<0.4){
       const sounds=['Hmm...','No dobra...','Chwileczke...','Rozumiem...'];
       const s=sounds[Math.floor(Math.random()*sounds.length)];
