@@ -1026,7 +1026,7 @@ function initAvatar(){
   };
   const eyeL=makeEye(-0.34),eyeR=makeEye(0.34);head.add(eyeL.group);head.add(eyeR.group);
   const mouthMat=new THREE.MeshStandardMaterial({color:0x000d55,emissive:new THREE.Color(0x0033dd),emissiveIntensity:0.8,roughness:0.4,metalness:0.2});
-  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.06,16,64,Math.PI),mouthMat);
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,8,32,Math.PI*0.6),mouthMat);
   mouth.position.set(0,-0.36,0.82);mouth.rotation.z=Math.PI;mouth.scale.set(1,0.08,1);head.add(mouth);
   const mouthGlow=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),new THREE.MeshBasicMaterial({color:0x0044ff,transparent:true,opacity:0.5}));
   mouthGlow.position.set(0,-0.36,0.82);head.add(mouthGlow);
