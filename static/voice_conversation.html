@@ -1335,47 +1335,51 @@ async function process(){
 
     // 2. GPT-4o
     hist.push({role:'user', content: userTxt});
-    const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond', {
+    // Streaming TTS
+    const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({text: userTxt, history: hist.slice(-8)})
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
-    const crData = await cr.json();
-    const aiTxt = crData.text || '';
-    if(!aiTxt){ isProc=false; setAvatarState('idle'); return; }
-    hist.push({role:'assistant', content: aiTxt});
-
-    // Ludzkie dzwi\u0119ki - 40% szans
-    if(Math.random()<0.4){
-      const sounds=['Hmm...','No dobra...','Chwileczke...','Rozumiem...'];
-      const s=sounds[Math.floor(Math.random()*sounds.length)];
-      fetch(BACKEND_URL+'/api/v1/voice/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s,history:[]})}).then(r=>r.json()).then(d=>{if(d.audio)playAudioBase64(d.audio);}).catch(()=>{});
+    const reader = cr.body.getReader();
+    const decoder = new TextDecoder();
+    let _buf = '';
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      _buf += decoder.decode(value, {stream:true});
+      const _lines = _buf.split('\n');
+      _buf = _lines.pop();
+      for(const _ln of _lines){
+        if(!_ln.trim()) continue;
+        try{
+          const msg = JSON.parse(_ln);
+          if(msg.type==='meta'){
+            const aiTxt=msg.text||'';
+            hist.push({role:'assistant',content:aiTxt});
+            if(msg.tablica){
+              boardClear();
+              msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
+                let tp=null;
+                if(/^(bl|err)/i.test(p)) tp='error';
+                else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
+                setTimeout(()=>boardWriteSection(p,tp),i*550);
+              });
+            }
+            if(msg.corrections&&msg.corrections.length>0){
+              msg.corrections.forEach((corr,i)=>{
+                setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
+              });
+            }
+          }
+          if(msg.type==='audio'&&msg.audio){
+            setAvatarState('speaking');
+            await playAudio(msg.audio);
+          }
+        }catch(e){}
+      }
     }
-    // Tablica - parsuj [TABLICA: ...]
-    const tbMatch = aiTxt.match(/\[TABLICA: ([^\]]+)\]/);
-    if(tbMatch){
-      boardClear();
-      const parts = tbMatch[1].split('|').map(s=>s.trim()).filter(Boolean);
-      parts.forEach((part,i)=>{
-        let type = null;
-        if(part.toLowerCase().startsWith('bl\u0105d:') || part.toLowerCase().startsWith('error:')) type='error';
-        else if(part.toLowerCase().startsWith('poprawnie:') || part.toLowerCase().startsWith('correct:')) type='correct';
-        boardWriteSection(part, type);
-      });
-    }
-    // Korekta
-    const corrMatch = aiTxt.match(/\[CORRECTION: ([^-]+) -> ([^\]]+)\]/);
-    if(corrMatch){
-      boardAddSection('\u2717 '+corrMatch[1].trim(), 'error');
-      boardAddSection('\u2713 '+corrMatch[2].trim(), 'correct');
-    }
-
-    // 3. TTS \u2014 nova (audio wraca z /respond)
     useLimit('voice');
-    if(crData.audio){
-      ttsAbort = new AbortController();
-      await playAudio(crData.audio);
-    }
 
   } catch(err){
     showErr(err.message||'Blad');
