@@ -1275,10 +1275,12 @@ function playHmm(){
 }
 
 function startRec(){
-  if(!micStream || isRec || isProc) return;
-  // Przerwij TTS jesli gra
-  if(curAudio){ curAudio.pause(); curAudio=null; isSpeak=false; }
+  if(!micStream || isRec) return;
+  // Przerwij AI gdy zaczniesz mowic - interruption
+  if(curAudio){ curAudio.pause(); curAudio=null; isSpeak=false; stopLipSync && stopLipSync(); }
   if(ttsAbort){ ttsAbort.abort(); ttsAbort=null; }
+  isProc = false; // Reset - pozwol na nowe pytanie
+  setAvatarState('listening');
 
   isRec = true;
   audioChunks = [];
