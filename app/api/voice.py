@@ -167,7 +167,7 @@ async def get_ai_response(data: dict):
 
         def call_board_llm():
             # GPT-4o - lepsza jakosc dla tablicy
-            board_messages = messages[:-1] + [{"role":"user","content": text + "\nOdpowiedz TYLKO tagiem [TABLICA:] jesli wytlumaczyc cos waznego. Format: [TABLICA: punkt1 | punkt2 | Wzor: $$wzor$$]. Jesli nie trzeba tablicy - odpowiedz pustym stringiem."}]
+            board_messages = messages[:-1] + [{"role":"user","content": text + "\nNa podstawie odpowiedzi nauczyciela napisz co powinno byc na tablicy. Format: [TABLICA: punkt1 | punkt2 | Wzor: $$wzor$$]. Pisz na tablicy gdy: 1) jest wzor lub definicja 2) sa kroki rozwiazania 3) jest zadanie dla ucznia - napisz je na tablicy 4) jest przyklad. Jesli nic waznego - pusty string."}]
             return openai_client.chat.completions.create(
                 model="gpt-4o", messages=board_messages, max_tokens=400, temperature=0.3
             )
