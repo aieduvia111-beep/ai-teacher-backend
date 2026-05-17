@@ -851,7 +851,7 @@ function getPlanBadgeHTML(plan) {
 .board-header svg{width:12px;height:12px;stroke:var(--accent2);}
 .board-header span{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent2);}
 .board-lines{position:absolute;inset:0;pointer-events:none;opacity:.06;}
-.board-content{flex:1;padding:4px 16px 8px;overflow-y:auto;position:relative;z-index:2;}
+.board-content{flex:1;padding:4px 16px 8px;overflow-y:scroll;-webkit-overflow-scrolling:touch;touch-action:pan-y;position:relative;z-index:2;}
 .board-content::-webkit-scrollbar{width:2px;}
 .board-content::-webkit-scrollbar-thumb{background:rgba(124,106,255,.3);border-radius:2px;}
 .board-text{font-family:'Caveat',cursive;font-size:1.3em;font-weight:500;color:rgba(235,230,255,.95);line-height:1.8;min-height:40px;word-break:break-word;}
