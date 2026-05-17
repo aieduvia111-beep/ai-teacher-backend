@@ -1120,7 +1120,7 @@ function boardRenderKatex(el){
   }
 }
 
-function boardAddSection(text, type){
+function boardAddSection(text, type, onDone){
   if(!text||!text.trim()) return;
   const el=g('boardText');
   if(!el) return;
@@ -1187,12 +1187,12 @@ function boardTypingQueue(items){
 function boardNextSection(){
   if(!boardQueue.length){boardTyping=false;return;}
   const item=boardQueue.shift();
-  boardAddSection(item.text, item.type);
-  // Auto scroll po dodaniu sekcji
-  const bc=g('boardContent');
-  if(bc) setTimeout(()=>bc.scrollTop=bc.scrollHeight, 100);
-  // Delay przed nastepna sekcja
-  setTimeout(boardNextSection, item.text.length*18+400);
+  // Czekaj az sekcja skonczy sie pisac, potem nastepna
+  boardAddSection(item.text, item.type, ()=>{
+    const bc=g('boardContent');
+    if(bc) bc.scrollTop=bc.scrollHeight;
+    setTimeout(boardNextSection, 300);
+  });
 }
 
 
