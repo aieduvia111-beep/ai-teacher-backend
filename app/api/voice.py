@@ -178,6 +178,10 @@ async def get_ai_response(data: dict):
             loop.run_in_executor(executor, call_board_llm)
         )
         voice_text = voice_resp.choices[0].message.content.strip()
+        # Usun TABLICA z tekstu glosowego - nie czytamy tablicy
+        import re as _re
+        voice_text = _re.sub(r'\[TABLICA:[^\]]*\]', '', voice_text).strip()
+        voice_text = _re.sub(r'\[CORRECTION:[^\]]*\]', '', voice_text).strip()
         board_text = board_resp.choices[0].message.content.strip()
         # Połącz - glos z LLaMA + tablica z GPT-4o
         ai_text = voice_text
