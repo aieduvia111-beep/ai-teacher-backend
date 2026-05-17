@@ -48,7 +48,15 @@ BLEDY UCZNIA:
 - Gdy uczen sie myli -> popraw naturalnie w odpowiedzi
 - Dodaj: [CORRECTION: blad -> poprawnie]
 
-PAMIETAJ: Jestes jak najlepszy nauczyciel - cierpliwy, mądry, tłumaczysz prosto."""
+PAMIETAJ: Jestes jak najlepszy nauczyciel - cierpliwy, mądry, tłumaczysz prosto.
+
+ZADANIA DLA UCZNIA:
+- Po wytłumaczeniu tematu ZAWSZE daj uczniowi zadanie do rozwiązania
+- Np. "Teraz spróbuj sam: oblicz..."
+- Gdy uczen wyśle zdjecie -> sprawdź czy rozwiązanie jest poprawne
+- Jesli bledne -> powiedz co jest nie tak i daj wskazówkę
+- Jesli poprawne -> pochwal i daj trudniejsze zadanie
+- Przykłady z życia: zakupy, sport, gotowanie, gry - cokolwiek co jest bliskie uczniowi"""
 
 @router.post("/transcribe")
 async def transcribe_audio(data: dict):
