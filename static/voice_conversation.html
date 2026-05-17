@@ -1301,7 +1301,8 @@ function stopRec(){
   if(mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   g('micBtn').classList.remove('listening');
   setAvatarState('thinking');
-  if(Math.random()>0.5) setTimeout(playHmm, 300);
+  const _sounds=['hmm','mhm','oh'];
+  if(Math.random()>0.4) setTimeout(()=>playHumanSound(_sounds[Math.floor(Math.random()*_sounds.length)]),200+Math.random()*400);
 }
 
 // PRZETWARZANIE
