@@ -150,7 +150,7 @@ async def get_ai_response(data: dict):
             # GPT-4o - lepsza jakosc dla tablicy
             board_messages = messages[:-1] + [{"role":"user","content": text + "\nOdpowiedz TYLKO tagiem [TABLICA:] jesli wytlumaczyc cos waznego. Format: [TABLICA: punkt1 | punkt2 | Wzor: $$wzor$$]. Jesli nie trzeba tablicy - odpowiedz pustym stringiem."}]
             return openai_client.chat.completions.create(
-                model="gpt-4o", messages=board_messages, max_tokens=150, temperature=0.3
+                model="gpt-4o", messages=board_messages, max_tokens=400, temperature=0.3
             )
 
         # Uruchom rownolegle
