@@ -1460,6 +1460,7 @@ function showErr(msg){
   clearTimeout(errTmr); errTmr=setTimeout(()=>et.classList.remove('show'),5000);
 }
 
+setInterval(()=>fetch(BACKEND_URL+'/api/v1/voice/health').catch(()=>{}),50000);
 function go(url){ window.location.href=url; }
 function mOpen(){ g('mDrawer')?.classList.add('open'); g('mOverlay')?.classList.add('open'); }
 function mClose(){ g('mDrawer')?.classList.remove('open'); g('mOverlay')?.classList.remove('open'); }
