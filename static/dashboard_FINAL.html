@@ -1109,5 +1109,10 @@ window.showError = function(msg) {
 window.animateCounter = animateCounter;
 </script>
 
+<script>
+// Ping co 50s aby serwer nie zasypial
+const PING_URL = 'https://eduvia-backend-2.onrender.com/api/v1/voice/health';
+setInterval(()=>fetch(PING_URL).catch(()=>{}), 50000);
+</script>
 </body>
 </html>
