@@ -78,7 +78,7 @@ BAD tablica (NEVER write):
 - Full AI sentences about yourself
 - Encyclopedic definitions
 
-Math formulas use LaTeX: $$formula$$
+Math formulas ONLY use: $$formula$$ - NEVER use \( \) or \[ \] - ONLY double dollar signs $$
 
 CORRECTIONS: [CORRECTION: wrong -> correct]
 
