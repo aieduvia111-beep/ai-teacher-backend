@@ -1157,7 +1157,7 @@ function boardAddSection(text, type){
     if(bc) bc.scrollTop=bc.scrollHeight;
     // Szybkosci: normalna=25ms, spacja=40ms
     const ch=chars[i-1];
-    setTimeout(typeChar, ch===' '?90:55+Math.random()*30);
+    setTimeout(typeChar, ch===' '?200:80+Math.random()*40);
   }
   typeChar();
 }
