@@ -1199,8 +1199,11 @@ function boardNextSection(){
   if(!boardQueue.length){boardTyping=false;return;}
   const item=boardQueue.shift();
   boardAddSection(item.text, item.type);
-  // Delay przed nastepna sekcja - zalezny od dlugosci tekstu
-  setTimeout(boardNextSection, item.text.length*22+500);
+  // Auto scroll po dodaniu sekcji
+  const bc=g('boardContent');
+  if(bc) setTimeout(()=>bc.scrollTop=bc.scrollHeight, 100);
+  // Delay przed nastepna sekcja
+  setTimeout(boardNextSection, item.text.length*18+400);
 }
 
 
