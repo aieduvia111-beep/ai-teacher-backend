@@ -398,8 +398,6 @@ button:active{transform:scale(.95)!important;}
 .input-wrap select{margin-bottom:0;}
 .field{margin-bottom:16px;}
 
-.board-sep{display:block;height:1px;background:rgba(124,106,255,.2);margin:8px 0;}
-.board-timestamp{display:block;font-family:var(--h);font-size:.58em;color:rgba(255,255,255,.25);letter-spacing:.08em;margin:4px 0 2px;text-transform:uppercase;}
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -911,7 +909,6 @@ function getPlanBadgeHTML(plan) {
     </div>
     <span class="vo-state" id="voState">GOTOWY</span>
     <button class="vo-end" onclick="endSes()">&#x2715; Zakończ</button>
-    <button onclick="downloadPDF()" style="padding:6px 14px;background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.3);border-radius:100px;color:#22d3a0;font-size:.72em;font-weight:700;cursor:pointer;font-family:var(--h);letter-spacing:.04em;">&#128196; PDF</button>
   </div>
 
   <!-- AVATAR (Three.js canvas) -->
@@ -1104,22 +1101,6 @@ let boardQueue = [], boardTyping = false, boardFull = '';
 
 function boardClear(){
   boardQueue=[];boardTyping=false;
-  const el=g('boardText'); if(el) el.innerHTML='';
-}
-function boardSeparator(){
-  const el=g('boardText'); if(!el) return;
-  const ts=document.createElement('span');
-  ts.className='board-timestamp';
-  const now=new Date();
-  ts.textContent=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  el.appendChild(ts);
-  const sep=document.createElement('span');
-  sep.className='board-sep';
-  el.appendChild(sep);
-  const bc=g('boardContent'); if(bc) bc.scrollTop=bc.scrollHeight;
-}
-function boardClear_UNUSED(){
-  boardQueue=[];boardTyping=false;
   const el=g('boardText');
   if(el) el.innerHTML='<span class="board-cursor"></span>';
   const corr=g('boardCorr');
@@ -1131,7 +1112,7 @@ function boardRenderKatex(el){
     try{
       renderMathInElement(el,{
         delimiters:[
-          {left:'\$\$',right:'\$\$',display:false}
+          {left:'$$',right:'$$',display:false}
         ],
         throwOnError:false
       });
@@ -1165,10 +1146,10 @@ function boardAddSection(text, type, onDone){
   function typeChar(){
     if(i>=chars.length){
       if(cur) cur.remove();
+      // Renderuj LaTeX jesli jest wzor
       if(chars.includes('$')) boardRenderKatex(section);
       const bc=g('boardContent');
       if(bc) bc.scrollTop=bc.scrollHeight;
-      if(typeof onDone==='function') onDone();
       return;
     }
     textEl.textContent+=chars[i++];
@@ -1256,7 +1237,7 @@ async function startSession(){
   const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
   hist = [{role:'system', content: ctx}];
 
-  boardSeparator();
+  boardClear();
   const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
   if(_topic){
     boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
@@ -1280,7 +1261,7 @@ async function startSession(){
           try{
             const msg=JSON.parse(ln);
             if(msg.type==='meta'){
-              if(msg.tablica){boardSeparator();msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*600));}
+              if(msg.tablica){boardClear();msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*600));}
             }
             if(msg.type==='audio'&&msg.audio){setAvatarState('speaking');await playAudio(msg.audio);}
           }catch(e){}
@@ -1403,7 +1384,7 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.tablica){
-              boardSeparator();
+              boardClear();
               msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
                 let tp=null;
                 if(/^(bl|err)/i.test(p)) tp='error';
@@ -1496,7 +1477,7 @@ function openCamera(){
       const reader=new FileReader();
       reader.onload=async(ev)=>{
         const b64=ev.target.result.split(',')[1];
-        boardSeparator();
+        boardClear();
         boardAddSection('Analizuje zdjecie...');
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{
@@ -1504,7 +1485,7 @@ function openCamera(){
             body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku po polsku.',image:b64,history:[]})
           });
           const d=await r.json();
-          boardSeparator();
+          boardClear();
           const tb=d.text&&d.text.match(/\[TABLICA: ([^\]]+)\]/);
           if(tb){tb[1].split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*550));}
           if(d.audio) await playAudio(d.audio);
@@ -1515,53 +1496,6 @@ function openCamera(){
     };
   }
   inp.click();
-}
-
-function downloadPDF(){
-  const boardEl = g('boardText');
-  if(!boardEl || !boardEl.textContent.trim()){ alert('Tablica jest pusta!'); return; }
-  
-  const date = new Date().toLocaleDateString('pl-PL');
-  const subject = selSubject||'Ogolny';
-  const level = selLevel||'';
-  const topic = document.getElementById('sessionTopic')?.value?.trim()||'';
-  
-  // Pobierz wszystkie sekcje
-  const items = [];
-  boardEl.querySelectorAll('.board-section').forEach(el=>{
-    const txt = el.textContent.trim();
-    if(txt) items.push(txt);
-  });
-  
-  let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Notatki Eduvia</title>';
-  html += '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">';
-  html += '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>';
-  html += '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:String.fromCharCode(36,36),right:String.fromCharCode(36,36),display:false}]})"><\/script>';
-  html += '<style>body{font-family:Georgia,serif;max-width:780px;margin:40px auto;padding:24px;color:#111;background:#fff;}';
-  html += 'h1{color:#2d1b8e;border-bottom:3px solid #7c6aff;padding-bottom:10px;font-size:1.6em;}';
-  html += '.meta{color:#555;font-size:.9em;margin:8px 0 24px;}';
-  html += '.item{background:#f8f7ff;border-left:4px solid #7c6aff;padding:10px 16px;margin:8px 0;border-radius:0 8px 8px 0;font-size:1.05em;line-height:1.7;}';
-  html += '.sep{height:1px;background:#e0dbff;margin:16px 0;}';
-  html += '.footer{margin-top:40px;color:#aaa;font-size:.8em;text-align:center;border-top:1px solid #eee;padding-top:12px;}';
-  html += '@media print{body{margin:20px;}}</style></head><body>';
-  html += '<h1>&#128196; Notatki z lekcji &mdash; Eduvia AI</h1>';
-  html += '<div class="meta"><b>Przedmiot:</b> '+subject+' &nbsp;|&nbsp; <b>Poziom:</b> '+level+' &nbsp;|&nbsp; <b>Data:</b> '+date+(topic?' &nbsp;|&nbsp; <b>Temat:</b> '+topic:'')+'</div>';
-  
-  items.forEach(txt=>{
-    html += '<div class="item">'+txt+'</div>';
-  });
-  
-  html += '<div class="footer">Wygenerowane przez Eduvia AI &bull; '+date+'</div></body></html>';
-  
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'eduvia-notatki-'+date.replace(/\./g,'-')+'.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function endSes(){
@@ -1576,7 +1510,7 @@ function endSes(){
   g('voDot').classList.remove('on');
   g('micBtn').classList.add('disabled');
   g('micBtn').classList.remove('listening');
-  boardSeparator();
+  boardClear();
   setAvatarState('idle');
 
   const v = g('camVideo2'); if(v){ v.srcObject=null; v.style.display='none'; }
