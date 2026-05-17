@@ -1421,6 +1421,40 @@ async function playAudio(b64){
   stopLipSync(); mouthOpenTarget = 0;
 }
 
+function openCamera(){
+  let inp=document.getElementById('_camInput');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file';inp.accept='image/*';inp.capture='environment';
+    inp.id='_camInput';inp.style.display='none';
+    document.body.appendChild(inp);
+    inp.onchange=async(e)=>{
+      const file=e.target.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=async(ev)=>{
+        const b64=ev.target.result.split(',')[1];
+        boardClear();
+        boardAddSection('Analizuje zdjecie...');
+        try{
+          const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku po polsku.',image:b64,history:[]})
+          });
+          const d=await r.json();
+          boardClear();
+          const tb=d.text&&d.text.match(/\[TABLICA: ([^\]]+)\]/);
+          if(tb){tb[1].split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*550));}
+          if(d.audio) await playAudio(d.audio);
+        }catch(e){boardAddSection('Blad: '+e.message);}
+      };
+      reader.readAsDataURL(file);
+      inp.value='';
+    };
+  }
+  inp.click();
+}
+
 function endSes(){
   sessionActive = false;
   if(curAudio){ curAudio.pause(); curAudio=null; }
