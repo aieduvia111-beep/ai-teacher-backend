@@ -87,7 +87,15 @@ VISION (image uploaded):
 - Explain step by step
 - Simplify
 - Generate useful tablica notes
-- Ask quiz question at end"""
+- Ask quiz question at end
+
+ZADANIA I OBLICZENIA - krok po kroku na tablicy:
+Gdy uczen pyta o zadanie lub obliczenia:
+- Mow krotko glosem: "Dobra, rozwiazujemy krok po kroku."
+- NA TABLICY pisz kazdy krok osobno:
+  [TABLICA: Krok 1: $$wzor$$ | Krok 2: podstaw wartosci | Krok 3: oblicz | Wynik: X]
+- Kazdy krok to konkretna liczba lub wzor, nie opis
+- Nigdy nie skracaj obliczen - uczen musi widziec KAZDY krok"""
 
 @router.post("/transcribe")
 async def transcribe_audio(data: dict):
