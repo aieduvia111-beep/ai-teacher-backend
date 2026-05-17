@@ -1025,11 +1025,11 @@ function initAvatar(){
     return{group:g,baseMat,outerRingMat:outerRing.material};
   };
   const eyeL=makeEye(-0.34),eyeR=makeEye(0.34);head.add(eyeL.group);head.add(eyeR.group);
-  const mouthMat=new THREE.MeshStandardMaterial({color:0x000d55,emissive:new THREE.Color(0x0033dd),emissiveIntensity:0.8,roughness:0.4,metalness:0.2});
-  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.04,8,32,Math.PI*0.6),mouthMat);
-  mouth.position.set(0,-0.36,0.82);mouth.rotation.z=Math.PI;mouth.scale.set(1,0.08,1);head.add(mouth);
-  const mouthGlow=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),new THREE.MeshBasicMaterial({color:0x0044ff,transparent:true,opacity:0.5}));
-  mouthGlow.position.set(0,-0.36,0.82);head.add(mouthGlow);
+  const mouthMat=new THREE.MeshStandardMaterial({color:0x001840,emissive:0x0033aa,emissiveIntensity:1.5,roughness:0.1,metalness:0.9});
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.028,8,64,Math.PI),mouthMat);
+  mouth.position.set(0,-0.38,0.87);mouth.rotation.z=Math.PI;mouth.scale.set(1,0.15,1);head.add(mouth);
+  const mouthGlowMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.32,0.01),new THREE.MeshBasicMaterial({color:0x0044cc,transparent:true,opacity:0.3,side:THREE.DoubleSide}));
+  mouthGlowMesh.position.set(0,-0.38,0.875);head.add(mouthGlowMesh);
   const browMat=new THREE.MeshBasicMaterial({color:0x0088ff,transparent:true,opacity:0.7});
   [-0.34,0.34].forEach(x=>{const b=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.015,4,32,Math.PI*0.5),browMat);b.position.set(x,0.56,0.86);b.rotation.z=x>0?-0.25:0.25;head.add(b);});
   const stemMat=new THREE.MeshStandardMaterial({color:0x0a2288,metalness:0.95,roughness:0.05});
@@ -1072,8 +1072,8 @@ function initAvatar(){
     if(s==='speaking'){_mT=mouthOpenTarget>0?mouthOpenTarget:Math.pow(Math.max(0,Math.sin(_t*4.5*Math.PI)),2.5)*0.75;}else{_mT=0;mouthOpenTarget=0;}
     mouthOpenCurrent+=(_mT-mouthOpenCurrent)*0.25;
     _mC=mouthOpenCurrent;
-    mouth.scale.set(1,0.06+_mC*0.35,1);mouthMat.emissiveIntensity=0.5+_mC*1.2;
-    mouthGlow.material.opacity=0.2+_mC*0.6;mouthGlow.scale.setScalar(1+_mC*1.5);
+    mouth.scale.set(1,0.15+_mC*1.2,1);
+    mouthGlowMesh.material.opacity=0.3+_mC*0.7;
     const ec=EYE_COL[s]||0x00ccff;eyeL.baseMat.color.setHex(ec);eyeR.baseMat.color.setHex(ec);
     const ep=s==='speaking'?0.3+Math.sin(_t*8)*0.15:0.4;eyeL.outerRingMat.opacity=ep;eyeR.outerRingMat.opacity=ep;
     const ac=s==='listening'?0x00ff88:s==='speaking'?0x00ffff:0x00ffee;antL.tipMat.color.setHex(ac);antR.tipMat.color.setHex(ac);
