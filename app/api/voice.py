@@ -140,11 +140,6 @@ async def get_ai_response(data: dict):
             if GROQ_AVAILABLE:
                 return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=150,temperature=0.7)
             return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=150,temperature=0.7)
-
-
-
-                model="gpt-4o-mini", messages=messages, max_tokens=300, temperature=0.7
-            )
         response = await loop.run_in_executor(executor, call_llm)
         ai_text = response.choices[0].message.content.strip()
         voice_text = ai_text
@@ -154,8 +149,6 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
             speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.1)
-            return speech.content
-            speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.05)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
