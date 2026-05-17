@@ -131,19 +131,39 @@ async def get_ai_response(data: dict):
             messages.append({"role": "user", "content": text})
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor()
-        def call_llm():
+        # ROWNOLEGLE: LLaMA dla glosu + GPT-4o dla tablicy
+        def call_voice_llm():
+            # LLaMA - szybki, krotka odpowiedz glosowa
+            voice_messages = messages[:-1] + [{"role":"user","content": text + "\nOdpowiedz krotko - max 2-3 zdania. NIE dodawaj [TABLICA:]."}]
             if GROQ_AVAILABLE:
                 return groq_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
-                    messages=messages,
-                    max_tokens=160,
+                    messages=voice_messages,
+                    max_tokens=120,
                     temperature=0.7
                 )
             return openai_client.chat.completions.create(
-                model="gpt-4o", messages=messages, max_tokens=160, temperature=0.7
+                model="gpt-4o-mini", messages=voice_messages, max_tokens=120, temperature=0.7
             )
-        response = await loop.run_in_executor(executor, call_llm)
-        ai_text = response.choices[0].message.content.strip()
+
+        def call_board_llm():
+            # GPT-4o - lepsza jakosc dla tablicy
+            board_messages = messages[:-1] + [{"role":"user","content": text + "\nOdpowiedz TYLKO tagiem [TABLICA:] jesli wytlumaczyc cos waznego. Format: [TABLICA: punkt1 | punkt2 | Wzor: $$wzor$$]. Jesli nie trzeba tablicy - odpowiedz pustym stringiem."}]
+            return openai_client.chat.completions.create(
+                model="gpt-4o", messages=board_messages, max_tokens=150, temperature=0.3
+            )
+
+        # Uruchom rownolegle
+        voice_resp, board_resp = await asyncio.gather(
+            loop.run_in_executor(executor, call_voice_llm),
+            loop.run_in_executor(executor, call_board_llm)
+        )
+        voice_text = voice_resp.choices[0].message.content.strip()
+        board_text = board_resp.choices[0].message.content.strip()
+        # Połącz - glos z LLaMA + tablica z GPT-4o
+        ai_text = voice_text
+        if '[TABLICA:' in board_text:
+            ai_text = voice_text + ' ' + board_text
         print(f"[GPT] '{ai_text[:80]}'")
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
