@@ -1022,8 +1022,7 @@ function initAvatar(){
     const hi1=new THREE.Mesh(new THREE.CircleGeometry(0.038,16),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.95}));hi1.position.set(-0.07,0.07,0.012);g.add(hi1);
     const hi2=new THREE.Mesh(new THREE.CircleGeometry(0.018,12),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.5}));hi2.position.set(0.05,-0.04,0.012);g.add(hi2);
     const ring=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,64),new THREE.MeshBasicMaterial({color:0x00aaff,transparent:true,opacity:0.35,side:THREE.DoubleSide}));ring.position.z=-0.01;g.add(ring);
-    const lidShape=new THREE.Shape();lidShape.ellipse(0,0,0.35,0.12,0,Math.PI);
-    const lid=new THREE.Mesh(new THREE.ShapeGeometry(lidShape),new THREE.MeshStandardMaterial({color:0x030d30,roughness:0.2,metalness:0.8}));lid.position.set(0,0.18,-0.01);g.add(lid);
+
     g.position.set(x,0.30,0.84);g.rotation.y=x*-0.20;
     return{group:g,baseMat,ringMat:ring.material,pupil};
   };
