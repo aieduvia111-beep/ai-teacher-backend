@@ -238,7 +238,7 @@ async def respond_stream(data: dict):
     if not sentences: sentences=[clean]
     
     async def generate():
-        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections})+"\n"
+        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections,"emocja":emocja})+"\n"
         # Hmm/aha przed odpowiedzia - naturalny dzwiek myslenia
         import random as _rand
         sounds = ["Hmm...", "No dobra.", "Aha.", "Rozumiem.", "Ok."]
