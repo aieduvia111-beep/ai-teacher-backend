@@ -156,6 +156,12 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
+            if USE_ELEVEN:
+                try:
+                    audio=eleven_client.text_to_speech.convert(text=clean_text,voice_id="pNInz6obpgDQGcFmaJgB",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.5,similarity_boost=0.75,style=0.0,speed=1.1))
+                    return b"".join(audio)
+                except Exception as e:
+                    print(f"[TTS] ElevenLabs error: {e}")
             speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.1)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
