@@ -1457,8 +1457,10 @@ function startLipSync(analyser){
     analyser.getByteFrequencyData(buf);
     let sum=0;
     for(let i=2;i<20;i++) sum+=buf[i];
-    mouthOpenTarget = Math.min(1, (sum/18/255)*4);
-  }, 30);
+    const raw = sum/18/255;
+    // Threshold - usta otwieraja sie tylko gdy jest wyrazny dzwiek
+    mouthOpenTarget = raw > 0.08 ? Math.min(1, raw*3.5) : 0;
+  }, 25);
 }
 function stopLipSync(){
   if(_lipSyncInterval){ clearInterval(_lipSyncInterval); _lipSyncInterval=null; }
