@@ -158,11 +158,12 @@ async def get_ai_response(data: dict):
         def call_tts():
             if USE_ELEVEN and eleven_client and clean_text.strip():
                 try:
+                    is_excited=any(x in clean_text.lower() for x in ["super","swietnie","brawo","dokladnie","wlasnie","niesamowite"])
                     audio=eleven_client.text_to_speech.convert(
                         text=clean_text,
                         voice_id="onwK4e9ZLuTAKqWW03F9",
                         model_id="eleven_turbo_v2_5",
-                        voice_settings=VoiceSettings(stability=0.65,similarity_boost=0.85,style=0.45,speed=1.08)
+                        voice_settings=VoiceSettings(stability=0.62 if is_excited else 0.75,similarity_boost=0.9,style=0.65 if is_excited else 0.35,speed=1.05)
                     )
                     result=b"".join(audio) if hasattr(audio,'__iter__') else audio
                     print(f"[TTS] ElevenLabs OK ({len(clean_text)} znakow)")
