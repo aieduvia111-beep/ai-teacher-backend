@@ -1389,6 +1389,7 @@ async function process(){
 
     // 2. GPT-4o
     hist.push({role:'user', content: userTxt});
+    window._tShown=false;
     // Streaming TTS
     const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1413,7 +1414,9 @@ async function process(){
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
             boardTyping=false;boardQueue=[];
-            window._pendingTabl = msg.tablica||null;
+            // Zapisz tablice
+            const _tabl = msg.tablica||null;
+            if(msg.emocja) setAvatarEmotion(msg.emocja);
             console.log("[TABLICA] pendingTabl:", window._pendingTabl);
             window._tablShown=false;
             if(msg.corrections&&msg.corrections.length>0){
@@ -1424,21 +1427,25 @@ async function process(){
           }
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
-            if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown){
-            console.log("[TABLICA] piszemy!", window._pendingTabl);
-              boardSeparator();
-              boardTyping=false;boardQueue=[];
-              const _parts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
-              let _delay=0;
-              _parts.forEach((p,i)=>{
-                let tp=null;
-                if(/^(bl|err)/i.test(p)) tp='error';
-                else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
-                setTimeout(()=>boardWriteSection(p,tp), _delay);
-                _delay += Math.max(800, p.length*35);
+            if((msg.index===0||msg.index===-1)&&_tabl&&!window._tShown){
+              window._tShown=true;
+              const pts=_tabl.split('|').map(s=>s.trim()).filter(Boolean);
+              pts.forEach((p,idx)=>{
+                setTimeout(()=>{
+                  let tp=null;
+                  if(/^(bl|err)/i.test(p)) tp='error';
+                  else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
+                  const el=document.getElementById('boardText');
+                  if(!el) return;
+                  const sec=document.createElement('span');
+                  sec.className='board-section'+(tp?' '+tp:'');
+                  sec.innerHTML='<span class="board-section-bullet">'+(tp==='error'?'✕ ':tp==='correct'?'✓ ':'› ')+'</span><span>'+p+'</span>';
+                  el.appendChild(sec);
+                  const bc=document.getElementById('boardContent');
+                  if(bc) bc.scrollTop=bc.scrollHeight;
+                },idx*700);
               });
-              });
-              window._pendingTabl=null;
+            }
             }
             await playAudio(msg.audio);
           }
