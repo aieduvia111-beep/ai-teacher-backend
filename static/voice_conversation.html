@@ -1078,12 +1078,12 @@ function initAvatar(){
     if(s==='idle'){head.rotation.y=Math.sin(_t*0.42)*0.08;head.rotation.x=Math.sin(_t*0.31)*0.035;head.position.y=0.15+Math.sin(_t*0.53)*0.03;}
     else if(s==='listening'){head.rotation.y=Math.sin(_t*0.8)*0.05+0.05;head.rotation.x=0.06;head.position.y=0.15+Math.sin(_t*1.2)*0.018;}
     else if(s==='thinking'){head.rotation.y+=0.007;head.position.y=0.15+Math.sin(_t*1.8)*0.015;head.rotation.x=Math.sin(_t*0.6)*0.05;}
+    const emScale=typeof avatarEmotion!=="undefined"&&avatarEmotion==="excited"?1.4:typeof avatarEmotion!=="undefined"&&avatarEmotion==="happy"?1.2:1.0;
     if(s==='speaking'){head.rotation.y=Math.sin(_t*0.7)*0.10*emScale;head.position.y=0.15+Math.sin(_t*0.8)*0.025*emScale;head.rotation.x=Math.sin(_t*1.2)*0.04;}
     // Brwi per stan
     const _em=typeof avatarEmotion!=='undefined'?avatarEmotion:'neutral';
     if(typeof msg!=='undefined'&&msg&&msg.emocja) console.log('[EMOCJA]',msg.emocja);
     // Reakcje na emocje - ruchy glowy
-    const emScale=_em==='excited'?1.4:_em==='happy'?1.2:1.0;
     const browT=_em==='thinking'||s==='thinking'?0.12:_em==='excited'||_em==='happy'?-0.12:s==='listening'?-0.05:0;
     const eyeCol=_em==='happy'?0x00ffaa:_em==='excited'?0xffcc00:_em==='serious'?0x4466ff:EYE_COL[s]||0x00ccff;
     _browCL+=((browT)-_browCL)*0.06;_browCR+=((browT)-_browCR)*0.06;
