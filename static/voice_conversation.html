@@ -1434,7 +1434,7 @@ async function process(){
           }
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
-            if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown{
+            if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown){
               window._tablShown=true;boardSeparator();
               const _parts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
               _parts.forEach((p,i)=>{
