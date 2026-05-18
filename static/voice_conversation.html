@@ -1576,6 +1576,13 @@ function setLevel(btn){
   btn.classList.add('active');
   selLevel = btn.dataset.val;
 }
+function setChip(btn, val){
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selSubject = val;
+  const sel = document.getElementById('subjectSelect');
+  if(sel) sel.value = val;
+}
 function setSubjectFromSelect(sel){ selSubject = sel.value; }
 
 function showErr(msg){
