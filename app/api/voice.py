@@ -16,7 +16,6 @@ openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 try:
     from groq import Groq
-try:
     from elevenlabs.client import ElevenLabs as EL
     from elevenlabs import VoiceSettings
     ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","")
