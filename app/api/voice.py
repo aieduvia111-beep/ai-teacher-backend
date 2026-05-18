@@ -14,20 +14,20 @@ router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-try:
-    from elevenlabs.client import ElevenLabs as EL
-    from elevenlabs import VoiceSettings
-    ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","")
-    if ELEVEN_KEY:
+ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","").strip()
+USE_ELEVEN = False
+eleven_client = None
+if ELEVEN_KEY and len(ELEVEN_KEY) > 20:
+    try:
+        from elevenlabs.client import ElevenLabs as EL
+        from elevenlabs import VoiceSettings
         eleven_client = EL(api_key=ELEVEN_KEY)
         USE_ELEVEN = True
-        print(f"[TTS] ElevenLabs OK: {ELEVEN_KEY[:10]}...")
-    else:
-        USE_ELEVEN = False
-        print("[TTS] Brak klucza ElevenLabs - fallback OpenAI")
-except Exception as ee:
-    USE_ELEVEN = False
-    print(f"[TTS] ElevenLabs import error: {ee}")
+        print(f"[TTS] ElevenLabs OK (voice: onwK4e9ZLuTAKqWW03F9)")
+    except Exception as ee:
+        print(f"[TTS] ElevenLabs error: {ee}")
+else:
+    print("[TTS] Brak klucza ElevenLabs - OpenAI TTS")
 try:
     from groq import Groq
     groq_client = Groq(api_key=settings.GROQ_API_KEY)
@@ -156,13 +156,20 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
-            if USE_ELEVEN:
+            if USE_ELEVEN and eleven_client and clean_text.strip():
                 try:
-                    audio=eleven_client.text_to_speech.convert(text=clean_text,voice_id="onwK4e9ZLuTAKqWW03F9",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.5,similarity_boost=0.75,style=0.0,speed=1.1))
-                    return b"".join(audio)
+                    audio=eleven_client.text_to_speech.convert(
+                        text=clean_text,
+                        voice_id="onwK4e9ZLuTAKqWW03F9",
+                        model_id="eleven_turbo_v2_5",
+                        voice_settings=VoiceSettings(stability=0.65,similarity_boost=0.85,style=0.45,speed=1.08)
+                    )
+                    result=b"".join(audio) if hasattr(audio,'__iter__') else audio
+                    print(f"[TTS] ElevenLabs OK ({len(clean_text)} znakow)")
+                    return result
                 except Exception as e:
-                    print(f"[TTS] ElevenLabs error: {e}")
-            speech = openai_client.audio.speech.create(model="tts-1", voice="onyx", input=clean_text, speed=1.1)
+                    print(f"[TTS] ElevenLabs failed: {e}")
+            speech=openai_client.audio.speech.create(model="tts-1",voice="onyx",input=clean_text,speed=1.1)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
