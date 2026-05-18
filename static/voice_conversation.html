@@ -1423,13 +1423,6 @@ async function process(){
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
             window._pendingTabl = msg.tablica||null;
-              boardClear();
-              msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
-                let tp=null;
-                if(/^(bl|err)/i.test(p)) tp='error';
-                else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
-                setTimeout(()=>boardWriteSection(p,tp),i*550);
-              });
             }
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
