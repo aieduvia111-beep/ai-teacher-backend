@@ -1140,7 +1140,7 @@ function setAvatarState(s){
 let boardQueue = [], boardTyping = false, boardFull = '';
 
 function boardClear(){
-  boardQueue=[];boardTyping=false;
+  boardQueue=[];boardTyping=false;boardQueue.length=0;
   const el=g('boardText');
   if(el) el.innerHTML='<span class="board-cursor"></span>';
   const corr=g('boardCorr');
@@ -1424,6 +1424,7 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
+            boardTyping=false;boardQueue=[];
             window._pendingTabl = msg.tablica||null;
             console.log("[TABLICA] pendingTabl:", window._pendingTabl);
             window._tablShown=false;
