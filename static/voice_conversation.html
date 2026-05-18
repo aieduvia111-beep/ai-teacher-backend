@@ -1425,6 +1425,7 @@ async function process(){
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
             window._pendingTabl = msg.tablica||null;
+            console.log("[TABLICA] pendingTabl:", window._pendingTabl);
             window._tablShown=false;
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
@@ -1435,6 +1436,7 @@ async function process(){
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
             if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown){
+            console.log("[TABLICA] piszemy!", window._pendingTabl);
               window._tablShown=true;boardSeparator();
               const _parts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
               _parts.forEach((p,i)=>{
