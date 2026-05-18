@@ -1432,7 +1432,7 @@ async function process(){
                 let tp=null;
                 if(/^(bl|err)/i.test(p)) tp='error';
                 else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
-                setTimeout(()=>boardWriteSection(p,tp),i*600);
+                boardWriteSection(p,tp);
               });
               window._pendingTabl=null;
             }
