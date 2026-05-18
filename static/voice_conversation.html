@@ -1425,6 +1425,7 @@ async function process(){
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
             window._pendingTabl = msg.tablica||null;
+            window._tablShown=false;
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
                 setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
@@ -1433,8 +1434,8 @@ async function process(){
           }
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
-            if(msg.index===0&&window._pendingTabl){
-              boardSeparator();
+            if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown{
+              window._tablShown=true;boardSeparator();
               const _parts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
               _parts.forEach((p,i)=>{
                 let tp=null;
