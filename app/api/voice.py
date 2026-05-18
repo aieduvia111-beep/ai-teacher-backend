@@ -253,8 +253,14 @@ async def respond_stream(data: dict):
             if len(s)<3: continue
             try:
                 def tts(sx=s):
+                    if USE_ELEVEN and eleven_client:
+                        try:
+                            is_excited=any(w in sx.lower() for w in ["super","swietnie","brawo","dokladnie"])
+                            audio=eleven_client.text_to_speech.convert(text=sx,voice_id="onwK4e9ZLuTAKqWW03F9",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.62 if is_excited else 0.75,similarity_boost=0.9,style=0.65 if is_excited else 0.35,speed=1.06))
+                            return b"".join(audio) if hasattr(audio,"__iter__") else audio
+                        except Exception as ee:
+                            print(f"[TTS stream] ElevenLabs: {ee}")
                     return openai_client.audio.speech.create(model="tts-1",voice="onyx",input=sx,speed=1.1).content
-                audio=await loop.run_in_executor(ex,tts)
                 yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
             except Exception as e:
                 print(f"[TTS stream] {e}")
