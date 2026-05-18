@@ -158,7 +158,7 @@ async def get_ai_response(data: dict):
         def call_tts():
             if USE_ELEVEN:
                 try:
-                    audio=eleven_client.text_to_speech.convert(text=clean_text,voice_id="pNInz6obpgDQGcFmaJgB",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.5,similarity_boost=0.75,style=0.0,speed=1.1))
+                    audio=eleven_client.text_to_speech.convert(text=clean_text,voice_id="onwK4e9ZLuTAKqWW03F9",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.5,similarity_boost=0.75,style=0.0,speed=1.1))
                     return b"".join(audio)
                 except Exception as e:
                     print(f"[TTS] ElevenLabs error: {e}")
