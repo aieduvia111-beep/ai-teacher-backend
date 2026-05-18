@@ -1432,6 +1432,17 @@ async function process(){
           }
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
+            // Tablica zaczyna pisac wraz z pierwszym audio
+            if(msg.index===0&&window._pendingTabl){
+              boardSeparator();
+              window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
+                let tp=null;
+                if(/^(bl|err)/i.test(p)) tp='error';
+                else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
+                setTimeout(()=>boardWriteSection(p,tp),i*600);
+              });
+              window._pendingTabl=null;
+            }
             await playAudio(msg.audio);
           }
         }catch(e){}
