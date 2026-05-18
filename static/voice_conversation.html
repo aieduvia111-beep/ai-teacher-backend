@@ -1078,7 +1078,9 @@ function initAvatar(){
     else if(s==='thinking'){head.rotation.y+=0.007;head.position.y=0.15+Math.sin(_t*1.8)*0.015;head.rotation.x=Math.sin(_t*0.6)*0.05;}
     else if(s==='speaking'){head.rotation.y=Math.sin(_t*0.7)*0.10;head.position.y=0.15+Math.sin(_t*0.8)*0.025;head.rotation.x=Math.sin(_t*1.2)*0.04;}
     // Brwi per stan
-    const browT=s==='thinking'?0.1:s==='listening'?-0.05:0;
+    const _em=typeof avatarEmotion!=='undefined'?avatarEmotion:'neutral';
+    const browT=_em==='thinking'||s==='thinking'?0.12:_em==='excited'||_em==='happy'?-0.1:s==='listening'?-0.05:0;
+    const eyeCol=_em==='happy'?0x00ffaa:_em==='excited'?0xffcc00:_em==='serious'?0x4466ff:EYE_COL[s]||0x00ccff;
     _browCL+=((browT)-_browCL)*0.06;_browCR+=((browT)-_browCR)*0.06;
     browL.group.position.y=0.56-_browCL;browR.group.position.y=0.56-_browCR;
     browL.brow.rotation.z=0.3+_browCL*2;browR.brow.rotation.z=-0.3-_browCR*2;
@@ -1089,7 +1091,7 @@ function initAvatar(){
     const px=Math.sin(_t*0.4)*0.02,py=Math.sin(_t*0.3)*0.015;
     eyeL.pupil.position.set(px,py,0.008);eyeR.pupil.position.set(px,py,0.008);
     // Eye color
-    const ec=EYE_COL[s]||0x00ccff;eyeL.baseMat.color.setHex(ec);eyeR.baseMat.color.setHex(ec);
+    eyeL.baseMat.color.setHex(typeof eyeCol!=='undefined'?eyeCol:EYE_COL[s]||0x00ccff);eyeR.baseMat.color.setHex(typeof eyeCol!=='undefined'?eyeCol:EYE_COL[s]||0x00ccff);
     const ep=s==='speaking'?0.25+Math.sin(_t*8)*0.15:0.35;eyeL.ringMat.opacity=ep;eyeR.ringMat.opacity=ep;
     // Usta
     if(s==='speaking'){const syl=Math.pow(Math.max(0,Math.sin(_t*5.5*Math.PI)),3);_mT=mouthOpenTarget>0.1?mouthOpenTarget:syl*0.55;}else{_mT=0;}
