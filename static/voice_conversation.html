@@ -1094,7 +1094,7 @@ function initAvatar(){
     eyeL.baseMat.color.setHex(typeof eyeCol!=='undefined'?eyeCol:EYE_COL[s]||0x00ccff);eyeR.baseMat.color.setHex(typeof eyeCol!=='undefined'?eyeCol:EYE_COL[s]||0x00ccff);
     const ep=s==='speaking'?0.25+Math.sin(_t*8)*0.15:0.35;eyeL.ringMat.opacity=ep;eyeR.ringMat.opacity=ep;
     // Usta
-    if(s==='speaking'){const syl=Math.pow(Math.max(0,Math.sin(_t*5.5*Math.PI)),3);_mT=mouthOpenTarget>0.1?mouthOpenTarget:syl*0.55;}else{_mT=0;}
+    _mT=mouthOpenTarget>0?mouthOpenTarget*0.8:0;
     _mC+=(_mT-_mC)*0.22;
     mouth.scale.set(1,0.15+_mC*1.2,1);mouthGlowMesh.material.opacity=0.3+_mC*0.7;mouthMat.emissiveIntensity=1.2+_mC*0.8;
     // Anteny
