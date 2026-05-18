@@ -166,7 +166,7 @@ async def get_ai_response(data: dict):
                     return result
                 except Exception as e:
                     print(f"[TTS] ElevenLabs failed: {e}")
-            speech=openai_client.audio.speech.create(model="tts-1",voice="onyx",input=clean_text,speed=1.1)
+            speech=openai_client.audio.speech.create(model="tts-1",voice="nova",input=clean_text,speed=1.1)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
@@ -219,7 +219,7 @@ def call_tts(text: str, emotion: str = "neutral"):
         except Exception as e:
             print(f"[TTS] ElevenLabs error: {e}")
     speed = 1.08 if emotion in ["excited","happy"] else 1.05
-    speech = openai_client.audio.speech.create(model="tts-1",voice="onyx",input=text[:500],speed=speed)
+    speech = openai_client.audio.speech.create(model="tts-1",voice="nova",input=text[:500],speed=speed)
     return speech.content
 
 
@@ -274,7 +274,7 @@ async def respond_stream(data: dict):
         sound = _rand.choice(sounds)
         try:
             def tts_hmm():
-                return openai_client.audio.speech.create(model="tts-1",voice="onyx",input=sound,speed=1.0).content
+                return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sound,speed=1.0).content
             hmm_audio = await loop.run_in_executor(ex, tts_hmm)
             yield _js.dumps({"type":"audio","index":-1,"audio":base64.b64encode(hmm_audio).decode()})+"\n"
         except: pass
