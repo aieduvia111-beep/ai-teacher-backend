@@ -59,6 +59,13 @@ PRZYKLADY dobrej tablicy:
 [TABLICA: Grzyby = organizmy eukariotyczne, nie rosliny ani zwierzeta | Budowa: kapelusz + trzon + grzybnia (pod ziemia) | Odzywanie: rozkladaja martwa materie (saprofity) | Przyklad: borowik, pieczarka, muchomor | Znaczenie: tworza antybiotyki np. penicylina, rozkladaja materie]
 [TABLICA: Pitagoras: $$a^2+b^2=c^2$$ | a,b = przyprostokatne (krotsze boki) | c = przeciwprostokatna (najdluzszy bok) | Przyklad: $$3^2+4^2=9+16=25=5^2$$ wiec c=5 | Zastosowanie: obliczanie odleglosci i wysokosci]
 
+EMOCJA (dodaj zawsze):
+[EMOCJA: happy] — gdy uczen dobrze odpowiada
+[EMOCJA: excited] — gdy temat jest interesujacy
+[EMOCJA: thinking] — gdy wyjasniasz cos trudnego
+[EMOCJA: serious] — gdy poprawiasz blad
+[EMOCJA: neutral] — normalnie
+
 BLEDY UCZNIA: [CORRECTION: zle -> dobrze]
 
 PAMIEC SESJI: Uzywaj historii rozmowy - pamietaj bledy ucznia, dostosowuj poziom."""
@@ -200,8 +207,12 @@ async def respond_stream(data: dict):
     ai_text = resp.choices[0].message.content.strip()
     
     tablica = None
+    emocja = None
     tm = _re2.search(r'\[TABLICA: ([^\]]+)\]', ai_text)
     if tm: tablica = tm.group(1)
+    em = _re2.search(r'\[EMOCJA: ([^\]]+)\]', ai_text)
+    if em: emocja = em.group(1).strip()
+    ai_text = _re2.sub(r'\[EMOCJA:[^\]]*\]', '', ai_text).strip()
     clean = _re2.sub(r'\[TABLICA:[^\]]*\]','',ai_text)
     clean = _re2.sub(r'\[CORRECTION:[^\]]*\]','',clean).strip()
     
