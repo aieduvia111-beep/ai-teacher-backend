@@ -180,6 +180,39 @@ async def voice_health():
 from fastapi.responses import StreamingResponse as _SR
 import json as _js, re as _re2
 
+def call_tts(text: str, emotion: str = "neutral"):
+    if not text or len(text.strip()) < 2:
+        text = "Rozumiem."
+    if USE_ELEVEN and eleven_client:
+        try:
+            settings_map = {
+                "excited":  {"stability":0.55,"style":0.85,"speed":1.08},
+                "happy":    {"stability":0.65,"style":0.70,"speed":1.05},
+                "thinking": {"stability":0.80,"style":0.25,"speed":0.98},
+                "serious":  {"stability":0.75,"style":0.15,"speed":1.02},
+                "neutral":  {"stability":0.72,"style":0.40,"speed":1.05},
+            }
+            cfg = settings_map.get(emotion, settings_map["neutral"])
+            audio = eleven_client.text_to_speech.convert(
+                text=text,
+                voice_id="onwK4e9ZLuTAKqWW03F9",
+                model_id="eleven_turbo_v2_5",
+                voice_settings=VoiceSettings(
+                    stability=cfg["stability"],
+                    similarity_boost=0.92,
+                    style=cfg["style"],
+                    speed=cfg["speed"]
+                )
+            )
+            print(f"[TTS] ElevenLabs | emotion={emotion} | len={len(text)}")
+            return b"".join(audio) if hasattr(audio,"__iter__") else audio
+        except Exception as e:
+            print(f"[TTS] ElevenLabs error: {e}")
+    speed = 1.08 if emotion in ["excited","happy"] else 1.05
+    speech = openai_client.audio.speech.create(model="tts-1",voice="onyx",input=text[:500],speed=speed)
+    return speech.content
+
+
 @router.post("/respond/stream")
 async def respond_stream(data: dict):
     text = data.get("text","")
@@ -244,36 +277,4 @@ async def respond_stream(data: dict):
             except Exception as e:
                 print(f"[TTS stream] {e}")
     
-    return _SR(generate(), media_type="application/x-ndjson")def call_tts(text: str, emotion: str = "neutral"):
-    if not text or len(text.strip()) < 2:
-        text = "Rozumiem."
-    if USE_ELEVEN and eleven_client:
-        try:
-            settings_map = {
-                "excited":  {"stability":0.55,"style":0.85,"speed":1.08},
-                "happy":    {"stability":0.65,"style":0.70,"speed":1.05},
-                "thinking": {"stability":0.80,"style":0.25,"speed":0.98},
-                "serious":  {"stability":0.75,"style":0.15,"speed":1.02},
-                "neutral":  {"stability":0.72,"style":0.40,"speed":1.05},
-            }
-            cfg = settings_map.get(emotion, settings_map["neutral"])
-            audio = eleven_client.text_to_speech.convert(
-                text=text,
-                voice_id="onwK4e9ZLuTAKqWW03F9",
-                model_id="eleven_turbo_v2_5",
-                voice_settings=VoiceSettings(
-                    stability=cfg["stability"],
-                    similarity_boost=0.92,
-                    style=cfg["style"],
-                    speed=cfg["speed"]
-                )
-            )
-            print(f"[TTS] ElevenLabs | emotion={emotion} | len={len(text)}")
-            return b"".join(audio) if hasattr(audio,"__iter__") else audio
-        except Exception as e:
-            print(f"[TTS] ElevenLabs error: {e}")
-    speed = 1.08 if emotion in ["excited","happy"] else 1.05
-    speech = openai_client.audio.speech.create(model="tts-1",voice="onyx",input=text[:500],speed=speed)
-    return speech.content
-
-
+    return _SR(generate(), media_type="application/x-ndjson")
