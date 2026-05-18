@@ -1161,43 +1161,31 @@ function boardRenderKatex(el){
 }
 
 function boardAddSection(text, type, onDone){
-  if(!text||!text.trim()) return;
+  if(!text||!text.trim()){if(typeof onDone==='function')onDone();return;}
   const el=g('boardText');
-  if(!el) return;
-  // Usun stary cursor
+  if(!el){if(typeof onDone==='function')onDone();return;}
   const oldCur=el.querySelector('.board-cursor');
   if(oldCur) oldCur.remove();
-  
   const section=document.createElement('span');
   section.className='board-section'+(type?' '+type:'');
-  
-  // Bullet
-  const bullets={error:'\u00d7 ',correct:'\u2713 ',default:'\u203a '};
-  const bullet=bullets[type]||bullets.default;
-  
-  section.innerHTML='<span class="board-section-bullet">'+bullet+'</span><span class="board-section-text"></span><span class="board-cursor"></span>';
+  const bullets={error:'× ',correct:'✓ ',default:'› '};
+  section.innerHTML='<span class="board-section-bullet">'+(bullets[type]||bullets.default)+'</span><span class="board-section-text"></span><span class="board-cursor"></span>';
   el.appendChild(section);
-  
   const textEl=section.querySelector('.board-section-text');
   const cur=section.querySelector('.board-cursor');
   const chars=text.trim();
   let i=0;
-  
   function typeChar(){
     if(i>=chars.length){
-      if(cur) cur.remove();
-      // Renderuj LaTeX jesli jest wzor
-      if(chars.includes('$')) boardRenderKatex(section);
-      const bc=g('boardContent');
-      if(bc) bc.scrollTop=bc.scrollHeight;
+      if(cur)cur.remove();
+      if(chars.includes('$'))boardRenderKatex(section);
+      const bc=g('boardContent');if(bc)bc.scrollTop=bc.scrollHeight;
+      if(typeof onDone==='function')setTimeout(onDone,100);
       return;
     }
     textEl.textContent+=chars[i++];
-    const bc=g('boardContent');
-    if(bc) bc.scrollTop=bc.scrollHeight;
-    // Szybkosci: normalna=25ms, spacja=40ms
-    const ch=chars[i-1];
-    setTimeout(typeChar, ch===' '?200:80+Math.random()*40);
+    const bc=g('boardContent');if(bc)bc.scrollTop=bc.scrollHeight;
+    setTimeout(typeChar,chars[i-1]===' '?150:55+Math.random()*25);
   }
   typeChar();
 }
