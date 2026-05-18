@@ -273,6 +273,7 @@ async def respond_stream(data: dict):
             try:
                 def tts(sx=s,em=emocja or 'neutral'):
                     return call_tts(sx,emotion=em)
+                audio = await loop.run_in_executor(ex, tts)
                 yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
             except Exception as e:
                 print(f"[TTS stream] {e}")
