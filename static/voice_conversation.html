@@ -1111,6 +1111,11 @@ function initAvatar(){
   window.addEventListener('resize',()=>{const W2=container.clientWidth,H2=container.clientHeight;cam.aspect=W2/H2;cam.updateProjectionMatrix();ren.setSize(W2,H2);});
 }
 
+function setAvatarEmotion(e){
+  avatarEmotion = e||'neutral';
+}
+let avatarEmotion = 'neutral';
+
 function setAvatarState(s){
   avatarState = s;
   const el = g('voState');
