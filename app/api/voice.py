@@ -15,7 +15,6 @@ router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 try:
-    from groq import Groq
     from elevenlabs.client import ElevenLabs as EL
     from elevenlabs import VoiceSettings
     ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","")
@@ -30,19 +29,7 @@ except Exception as ee:
     USE_ELEVEN = False
     print(f"[TTS] ElevenLabs import error: {ee}")
 try:
-    from elevenlabs.client import ElevenLabs as EL
-    from elevenlabs import VoiceSettings
-    ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","")
-    if ELEVEN_KEY:
-        eleven_client = EL(api_key=ELEVEN_KEY)
-        USE_ELEVEN = True
-        print(f"[TTS] ElevenLabs OK: {ELEVEN_KEY[:10]}...")
-    else:
-        USE_ELEVEN = False
-        print("[TTS] Brak klucza ElevenLabs - fallback OpenAI")
-except Exception as ee:
-    USE_ELEVEN = False
-    print(f"[TTS] ElevenLabs import error: {ee}")
+    from groq import Groq
     groq_client = Groq(api_key=settings.GROQ_API_KEY)
     GROQ_AVAILABLE = True
     print("[VOICE] Groq STT aktywny")
