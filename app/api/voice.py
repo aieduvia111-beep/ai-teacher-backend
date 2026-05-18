@@ -38,37 +38,23 @@ except Exception as e:
     GROQ_AVAILABLE = False
     print(f"[VOICE] Groq fallback OpenAI: {e}")
 
-SYSTEM_PROMPT = """Jestes Eduvia - najlepszy na swiecie AI korepetytor.
-Mowisz jak charyzmatyczny, cierpliwy, troche zadziorny nauczyciel z 15-letnim doswiadczeniem.
+SYSTEM_PROMPT = """Jestes Eduvia - jeden z najbardziej charyzmatycznych i skutecznych AI korepetytorów na swiecie.
 
-ZASADY MOWIENIA:
-- ZAWSZE max 2-3 zdania + pytanie na koncu (metoda sokratyczna)
-- Jezyk ciepły, potoczny: "Dobra robota!", "No wez...", "Kurde, prawie!", "Widze gdzie masz problem"
-- Gdy uczen sie myli: delikatna korekta + zacheta
-- Gdy dobrze: szczery entuzjazm + "dlaczego to wazne"
-- Odpowiadaj w jezyku ucznia (polski->polski, angielski->angielski)
+Twoja osobowosc: cierpliwy, pewny siebie, ciepły, lekko zadziorny, zawsze szanujacy ucznia.
 
-TABLICA (min 4-5 punktow, zawsze gdy wyjasniasz):
-Format: [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]
-- Pelne zdania z konkretnymi informacjami
-- Wzory: $$wzor$$
-- Przyklady z liczb i z zycia
-- Ma byc jak profesjonalna notatka do zachowania
+Zasady (trzymaj sie zelazno):
+- Max 2-3 zdania + jedno angażujace pytanie na koncu
+- Mow naturalnie: "No wlasnie", "Tu jest haczyk", "Super, łapiesz klimat", "Dobra, zobaczmy to inaczej"
+- Przy bledzie: delikatnie i konkretnie
+- Przy sukcesie: szczery ale nie przesadzony entuzjazm
+- Odpowiadaj w jezyku ucznia
 
-PRZYKLADY dobrej tablicy:
-[TABLICA: Grzyby = organizmy eukariotyczne, nie rosliny ani zwierzeta | Budowa: kapelusz + trzon + grzybnia (pod ziemia) | Odzywanie: rozkladaja martwa materie (saprofity) | Przyklad: borowik, pieczarka, muchomor | Znaczenie: tworza antybiotyki np. penicylina, rozkladaja materie]
-[TABLICA: Pitagoras: $$a^2+b^2=c^2$$ | a,b = przyprostokatne (krotsze boki) | c = przeciwprostokatna (najdluzszy bok) | Przyklad: $$3^2+4^2=9+16=25=5^2$$ wiec c=5 | Zastosowanie: obliczanie odleglosci i wysokosci]
+Formaty (zawsze uzywaj):
+[TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5] — min 4-5 punktow, konkretna notatka z przyklady i wzorami $$
+[EMOCJA: excited|happy|thinking|serious|neutral]
+[CORRECTION: stare -> nowe]
 
-EMOCJA (dodaj zawsze):
-[EMOCJA: happy] — gdy uczen dobrze odpowiada
-[EMOCJA: excited] — gdy temat jest interesujacy
-[EMOCJA: thinking] — gdy wyjasniasz cos trudnego
-[EMOCJA: serious] — gdy poprawiasz blad
-[EMOCJA: neutral] — normalnie
-
-BLEDY UCZNIA: [CORRECTION: zle -> dobrze]
-
-PAMIEC SESJI: Uzywaj historii rozmowy - pamietaj bledy ucznia, dostosowuj poziom."""
+Dostosowuj poziom idealnie. Pamietaj poprzednie bledy ucznia."""
 
 @router.post("/transcribe")
 async def transcribe_audio(data: dict):
@@ -252,17 +238,42 @@ async def respond_stream(data: dict):
         for i,s in enumerate(sentences):
             if len(s)<3: continue
             try:
-                def tts(sx=s):
-                    if USE_ELEVEN and eleven_client:
-                        try:
-                            is_excited=any(w in sx.lower() for w in ["super","swietnie","brawo","dokladnie"])
-                            audio=eleven_client.text_to_speech.convert(text=sx,voice_id="onwK4e9ZLuTAKqWW03F9",model_id="eleven_turbo_v2_5",voice_settings=VoiceSettings(stability=0.62 if is_excited else 0.75,similarity_boost=0.9,style=0.65 if is_excited else 0.35,speed=1.06))
-                            return b"".join(audio) if hasattr(audio,"__iter__") else audio
-                        except Exception as ee:
-                            print(f"[TTS stream] ElevenLabs: {ee}")
-                    return openai_client.audio.speech.create(model="tts-1",voice="onyx",input=sx,speed=1.1).content
+                def tts(sx=s,em=emocja or 'neutral'):
+                    return call_tts(sx,emotion=em)
                 yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
             except Exception as e:
                 print(f"[TTS stream] {e}")
     
-    return _SR(generate(), media_type="application/x-ndjson")
+    return _SR(generate(), media_type="application/x-ndjson")def call_tts(text: str, emotion: str = "neutral"):
+    if not text or len(text.strip()) < 2:
+        text = "Rozumiem."
+    if USE_ELEVEN and eleven_client:
+        try:
+            settings_map = {
+                "excited":  {"stability":0.55,"style":0.85,"speed":1.08},
+                "happy":    {"stability":0.65,"style":0.70,"speed":1.05},
+                "thinking": {"stability":0.80,"style":0.25,"speed":0.98},
+                "serious":  {"stability":0.75,"style":0.15,"speed":1.02},
+                "neutral":  {"stability":0.72,"style":0.40,"speed":1.05},
+            }
+            cfg = settings_map.get(emotion, settings_map["neutral"])
+            audio = eleven_client.text_to_speech.convert(
+                text=text,
+                voice_id="onwK4e9ZLuTAKqWW03F9",
+                model_id="eleven_turbo_v2_5",
+                voice_settings=VoiceSettings(
+                    stability=cfg["stability"],
+                    similarity_boost=0.92,
+                    style=cfg["style"],
+                    speed=cfg["speed"]
+                )
+            )
+            print(f"[TTS] ElevenLabs | emotion={emotion} | len={len(text)}")
+            return b"".join(audio) if hasattr(audio,"__iter__") else audio
+        except Exception as e:
+            print(f"[TTS] ElevenLabs error: {e}")
+    speed = 1.08 if emotion in ["excited","happy"] else 1.05
+    speech = openai_client.audio.speech.create(model="tts-1",voice="onyx",input=text[:500],speed=speed)
+    return speech.content
+
+
