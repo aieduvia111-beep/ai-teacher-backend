@@ -1427,12 +1427,16 @@ async function process(){
             if((msg.index===0||msg.index===-1)&&window._pendingTabl&&!window._tablShown){
             console.log("[TABLICA] piszemy!", window._pendingTabl);
               boardSeparator();
+              boardTyping=false;boardQueue=[];
               const _parts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
+              let _delay=0;
               _parts.forEach((p,i)=>{
                 let tp=null;
                 if(/^(bl|err)/i.test(p)) tp='error';
                 else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
-                boardWriteSection(p,tp);
+                setTimeout(()=>boardWriteSection(p,tp), _delay);
+                _delay += Math.max(800, p.length*35);
+              });
               });
               window._pendingTabl=null;
             }
