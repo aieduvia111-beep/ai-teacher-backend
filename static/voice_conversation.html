@@ -1413,16 +1413,7 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
-            if(msg.tablica){
-              boardClear();
-              const _pts=msg.tablica.split('|').map(s=>s.trim()).filter(Boolean);
-              let _d=300;
-              _pts.forEach((p)=>{
-                let tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
-                setTimeout(()=>boardWriteSection(p,tp),_d);
-                _d+=Math.max(700,p.length*32);
-              });
-            }
+            window._pendingTabl = msg.tablica||null;
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
                 setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
@@ -1430,6 +1421,18 @@ async function process(){
           }
           }
           if(msg.type==='audio'&&msg.audio){
+            setAvatarState('speaking');
+            if(msg.index===0&&window._pendingTabl){
+              boardClear();
+              const _pts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
+              let _d=0;
+              _pts.forEach((p)=>{
+                const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
+                setTimeout(()=>boardWriteSection(p,tp),_d);
+                _d+=Math.max(700,p.length*32);
+              });
+              window._pendingTabl=null;
+            }
             setAvatarState('speaking');
             if((msg.index===0||msg.index===-1)&&_tabl&&!window._tShown){
               window._tShown=true;
