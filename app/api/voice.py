@@ -262,18 +262,6 @@ async def respond_stream(data: dict):
     
     async def generate():
         yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections,"emocja":emocja})+"\n"
-        # Hmm/aha przed odpowiedzia - naturalny dzwiek myslenia
-        import random as _rand
-        sounds = ["Hmm...", "No dobra.", "Aha.", "Rozumiem.", "Ok."]
-        sound = _rand.choice(sounds)
-        try:
-            def tts_hmm():
-                return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sound,speed=1.0).content
-            hmm_audio = await loop.run_in_executor(ex, tts_hmm)
-            yield _js.dumps({"type":"audio","index":-1,"audio":base64.b64encode(hmm_audio).decode()})+"\n"
-        except: pass
-        for i,s in enumerate(sentences):
-            if len(s)<3: continue
             try:
                 def tts(sx=s,em=emocja or 'neutral'):
                     return call_tts(sx,emotion=em)
