@@ -262,6 +262,8 @@ async def respond_stream(data: dict):
     
     async def generate():
         yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections,"emocja":emocja})+"\n"
+        for i,s in enumerate(sentences):
+            if len(s)<3: continue
             try:
                 def tts(sx=s,em=emocja or 'neutral'):
                     return call_tts(sx,emotion=em)
