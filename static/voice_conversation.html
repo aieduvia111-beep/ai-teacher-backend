@@ -837,7 +837,7 @@ function getPlanBadgeHTML(plan) {
 @keyframes fGo{0%{opacity:.9;}100%{opacity:0;}}
 
 /* TABLICA — dolna 45% */
-.vo-board{flex:0 0 45%;background:linear-gradient(180deg,#090916 0%,#060610 100%);border-top:1px solid rgba(124,106,255,.15);position:relative;overflow:hidden;display:flex;flex-direction:column;z-index:10;box-shadow:inset 0 1px 0 rgba(124,106,255,.08);}
+.vo-board{flex:0 0 45%;background:linear-gradient(180deg,#090916 0%,#060610 100%);border-top:1px solid rgba(124,106,255,.15);position:relative;overflow:hidden;display:flex;flex-direction:column;z-index:10;box-shadow:inset 0 1px 0 rgba(124,106,255,.08);min-height:180px;}
 .vo-board::after{content:'';position:absolute;top:0;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);z-index:1;}
 .board-header{display:flex;align-items:center;gap:6px;padding:8px 16px 0;opacity:.5;}
 .board-header svg{width:12px;height:12px;stroke:var(--accent2);}
@@ -846,7 +846,7 @@ function getPlanBadgeHTML(plan) {
 .board-content{flex:1;padding:6px 14px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;position:relative;z-index:2;min-height:0;}
 .board-content::-webkit-scrollbar{width:2px;}
 .board-content::-webkit-scrollbar-thumb{background:rgba(124,106,255,.3);border-radius:2px;}
-.board-text{font-family:'Caveat',cursive;font-size:1.3em;font-weight:500;color:rgba(235,230,255,.95);line-height:1.8;min-height:40px;word-break:normal;overflow-wrap:anywhere;hyphens:none;}
+.board-text{font-family:'Caveat',cursive;font-size:1.1em;font-weight:500;color:rgba(235,230,255,.95);line-height:1.6;min-height:40px;word-break:normal;overflow-wrap:anywhere;}
 .board-section{margin:4px 0;padding-left:8px;border-left:3px solid rgba(167,139,250,.6);}
 .board-section.correct{border-left-color:#4ade80;}
 .board-section.error{border-left-color:#f87171;}
