@@ -1413,17 +1413,22 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
-            boardTyping=false;boardQueue=[];
-            // Zapisz tablice
-            const _tabl = msg.tablica||null;
-            if(msg.emocja) setAvatarEmotion(msg.emocja);
-            console.log("[TABLICA] pendingTabl:", window._pendingTabl);
-            window._tablShown=false;
+            if(msg.tablica){
+              boardClear();
+              const _pts=msg.tablica.split('|').map(s=>s.trim()).filter(Boolean);
+              let _d=300;
+              _pts.forEach((p)=>{
+                let tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
+                setTimeout(()=>boardWriteSection(p,tp),_d);
+                _d+=Math.max(700,p.length*32);
+              });
+            }
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
                 setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
               });
             }
+          }
           }
           if(msg.type==='audio'&&msg.audio){
             setAvatarState('speaking');
