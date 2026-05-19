@@ -1426,7 +1426,7 @@ async function process(){
               });
           }
           }
-          if(msg.type==='audio'&&msg.audio){
+          if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
             setAvatarState('speaking');
             if(msg.index===0&&window._pendingTabl2){
               boardClear();
