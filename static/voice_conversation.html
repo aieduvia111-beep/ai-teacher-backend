@@ -1427,7 +1427,6 @@ async function process(){
               msg.corrections.forEach((corr,i)=>{
                 setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
               });
-            }
           }
           }
           if(msg.type==='audio'&&msg.audio){
