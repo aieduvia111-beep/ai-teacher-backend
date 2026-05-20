@@ -104,7 +104,15 @@ async def transcribe_audio(data: dict):
                 print(f"[STT] OpenAI: '{text}'")
         finally:
             os.unlink(tmp_path)
-        return {"success": True, "text": text}
+        # Prosta analiza pewnosci ucznia na podstawie tekstu
+        confidence = "neutral"
+        low_conf = ["nie wiem","hmm","chyba","moze","nie jestem pewny","nie pamietam","zapomnialem"]
+        high_conf = ["tak","dokladnie","wiem","rozumiem","jasne","oczywiscie","tak jest"]
+        text_lower = text.lower()
+        if any(w in text_lower for w in low_conf): confidence = "unsure"
+        elif any(w in text_lower for w in high_conf): confidence = "confident"
+        print(f"[STT] confidence={confidence}")
+        return {"success": True, "text": text, "confidence": confidence}
     except Exception as e:
         print(f"[STT ERROR] {e}")
         return {"success": False, "text": "", "error": str(e)}
