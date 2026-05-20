@@ -1439,6 +1439,18 @@ async function process(){
               });
           }
           }
+          if(msg.type==='audio'&&msg.audio){
+            if(msg.index===0&&window._boardTabl){
+              boardClear();
+              const _bp=window._boardTabl.split('|').map(s=>s.trim()).filter(Boolean);
+              let _bd=0;
+              _bp.forEach(p=>{
+                const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
+                setTimeout(()=>boardWriteSection(p,tp),_bd);
+                _bd+=Math.max(800,p.length*30);
+              });
+              window._boardTabl=null;
+            }
           if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
               let _d2=0;
                 const tp2=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
