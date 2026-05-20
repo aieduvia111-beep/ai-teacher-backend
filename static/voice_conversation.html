@@ -1427,7 +1427,7 @@ async function process(){
           }
           }
           if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
-            setAvatarState('speaking');
+            if(msg.index===0||msg.index===-1) setAvatarState('speaking');
               let _d2=0;
                 const tp2=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
                 setTimeout(()=>boardWriteSection(p,tp2),_d2);
@@ -1440,7 +1440,7 @@ async function process(){
                 _d+=Math.max(700,p.length*32);
               });
             }
-            setAvatarState('speaking');
+            if(msg.index===0||msg.index===-1) setAvatarState('speaking');
               pts.forEach((p,idx)=>{
                 setTimeout(()=>{
                   let tp=null;
@@ -1505,7 +1505,7 @@ function stopLipSync(){
 
 async function playAudio(b64){
   if(!sessionActive) return;
-  setAvatarState('speaking');
+  if(msg.index===0||msg.index===-1) setAvatarState('speaking');
   isSpeak = true;
 
   const bytes = atob(b64);
