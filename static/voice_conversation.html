@@ -1134,7 +1134,15 @@ function initAvatar(){
 }
 
 function setAvatarEmotion(e){
-  avatarEmotion = e||'neutral';
+  avatarEmotion=(e||'neutral').toLowerCase();
+  const canvas=document.getElementById('avatarCanvas');
+  if(!canvas)return;
+  if(avatarEmotion==='excited'||avatarEmotion==='happy'){
+    canvas.style.filter='brightness(1.25) saturate(1.4)';
+    setTimeout(()=>{if(canvas)canvas.style.filter='';},1200);
+  }else if(avatarEmotion==='serious'){
+    canvas.style.filter='contrast(1.15) saturate(0.95)';
+  }else{canvas.style.filter='';}
 }
 let avatarEmotion = 'neutral';
 
