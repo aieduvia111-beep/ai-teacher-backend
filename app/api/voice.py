@@ -285,6 +285,7 @@ async def respond_stream(data: dict):
     sentences = [s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
     if not sentences: sentences=[clean]
     async def generate():
+        print(f"[GEN] start, sentences={len(sentences)}")
         yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
         for i,s in enumerate(sentences):
             if len(s)<3: continue
