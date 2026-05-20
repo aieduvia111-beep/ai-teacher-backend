@@ -155,7 +155,7 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
-            if False and USE_ELEVEN and eleven_client:
+            if USE_ELEVEN and eleven_client:
                 try:
                     is_excited=any(x in clean_text.lower() for x in ["super","swietnie","brawo","dokladnie","wlasnie","niesamowite"])
                     audio=eleven_client.text_to_speech.convert(
@@ -173,7 +173,7 @@ async def get_ai_response(data: dict):
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
-        print("[TTS] onyx OK")
+        print("[TTS] nova OK")
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
         if "[CORRECTION:" in ai_text:
@@ -196,7 +196,7 @@ import json as _js, re as _re2
 def call_tts(text: str, emotion: str = "neutral"):
     if not text or len(text.strip()) < 2:
         text = "Rozumiem."
-    if False and USE_ELEVEN:
+    if USE_ELEVEN and eleven_client:
         try:
             settings_map = {
                 "excited":  {"stability":0.55,"style":0.85,"speed":1.08},
@@ -255,7 +255,7 @@ async def respond_stream(data: dict):
         except Exception as ge:
             print(f"[GROQ] fallback: {ge}")
         return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.76)
-    resp = await loop.run_in_executor(ex,call_llm)
+    import time as _t; _t1=_t.time(); resp = await loop.run_in_executor(ex,call_llm); print(f"[LLM] {_t.time()-_t1:.2f}s")
     ai_text = resp.choices[0].message.content.strip()
     tablica = None
     emocja = "neutral"
