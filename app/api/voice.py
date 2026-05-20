@@ -290,6 +290,7 @@ async def respond_stream(data: dict):
         for i,s in enumerate(sentences):
             if len(s)<3: continue
             try:
+                print(f"[TTS] generuje: {s[:40]}")
                 def tts_task(sx=s,em=emocja):
                     speed=1.08 if em in ["excited","happy"] else 1.05
                     return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=speed).content
