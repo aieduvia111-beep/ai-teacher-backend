@@ -1415,6 +1415,7 @@ async function process(){
       body: JSON.stringify({text: userTxt, history: hist.slice(-8), level: selLevel, subject: selSubject, lang: selLang, topic: document.getElementById('sessionTopic')?.value?.trim()||''})
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
+        console.log('[STREAM] started', cr.status);
     const reader = cr.body.getReader();
     const decoder = new TextDecoder();
     let _buf = '';
