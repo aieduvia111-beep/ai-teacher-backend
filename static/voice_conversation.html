@@ -1419,7 +1419,7 @@ async function process(){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
-            window._pendingTabl = msg.tablica||null;
+            window._boardTabl = msg.tablica||null;
             if(msg.corrections&&msg.corrections.length>0){
               msg.corrections.forEach((corr,i)=>{
                 setTimeout(()=>{boardAddSection('\u2717 '+corr.wrong,'error');boardAddSection('\u2713 '+corr.correct,'correct');},i*400+200);
@@ -1428,32 +1428,19 @@ async function process(){
           }
           if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
             setAvatarState('speaking');
-            if(msg.index===0&&window._pendingTabl2){
-              boardClear();
-              const _pts2=window._pendingTabl2.split('|').map(s=>s.trim()).filter(Boolean);
               let _d2=0;
-              _pts2.forEach((p,pi)=>{
                 const tp2=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
                 setTimeout(()=>boardWriteSection(p,tp2),_d2);
                 _d2+=Math.max(800,p.length*35);
               });
-              window._pendingTabl2=null;
             }
-            if(msg.index===0&&window._pendingTabl){
-              boardClear();
-              const _pts=window._pendingTabl.split('|').map(s=>s.trim()).filter(Boolean);
               let _d=0;
-              _pts.forEach((p)=>{
                 const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
                 setTimeout(()=>boardWriteSection(p,tp),_d);
                 _d+=Math.max(700,p.length*32);
               });
-              window._pendingTabl=null;
             }
             setAvatarState('speaking');
-            if((msg.index===0||msg.index===-1)&&_tabl&&!window._tShown){
-              window._tShown=true;
-              const pts=_tabl.split('|').map(s=>s.trim()).filter(Boolean);
               pts.forEach((p,idx)=>{
                 setTimeout(()=>{
                   let tp=null;
@@ -1469,6 +1456,17 @@ async function process(){
                   if(bc) bc.scrollTop=bc.scrollHeight;
                 },idx*700);
               });
+            }
+            if(msg.index===0&&window._boardTabl){
+              boardClear();
+              const _bp=window._boardTabl.split('|').map(s=>s.trim()).filter(Boolean);
+              let _bd=0;
+              _bp.forEach(p=>{
+                const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
+                setTimeout(()=>boardWriteSection(p,tp),_bd);
+                _bd+=Math.max(800,p.length*32);
+              });
+              window._boardTabl=null;
             }
             await playAudio(msg.audio);
           }
