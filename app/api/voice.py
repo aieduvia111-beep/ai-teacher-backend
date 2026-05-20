@@ -219,57 +219,58 @@ def call_tts(text: str, emotion: str = "neutral"):
 
 @router.post("/respond/stream")
 async def respond_stream(data: dict):
-    text = data.get("text","")
-    history = data.get("history",[])
+    text = data.get("text","").strip()
+    history = data.get("history", [])
+    level = data.get("level", "")
+    subject = data.get("subject", "")
+    topic = data.get("topic", "")
     if not text:
         return {"error":"brak tekstu"}
-    
-    messages=[{"role":"system","content":SYSTEM_PROMPT}]
-    for msg in history[-6:]:
+    system = SYSTEM_PROMPT
+    ctx = []
+    if level: ctx.append(f"Poziom: {level}")
+    if subject: ctx.append(f"Przedmiot: {subject}")
+    if topic: ctx.append(f"Temat: {topic}")
+    if ctx: system += "\n\n" + ". ".join(ctx) + "."
+    messages = [{"role":"system","content":system}]
+    for msg in history[-12:]:
         if isinstance(msg,dict) and msg.get("role") in ("user","assistant"):
-            messages.append({"role":msg["role"],"content":msg["content"]})
+            messages.append(msg)
     messages.append({"role":"user","content":text})
-    
-    loop=asyncio.get_event_loop()
-    ex=concurrent.futures.ThreadPoolExecutor()
-    
+    loop = asyncio.get_event_loop()
+    ex = concurrent.futures.ThreadPoolExecutor()
     def call_llm():
         try:
             if GROQ_AVAILABLE:
-                return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.75)
+                return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.76)
         except Exception as ge:
             print(f"[GROQ] fallback: {ge}")
-        return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.75)
-    resp = await loop.run_in_executor(ex, call_llm)
+        return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.76)
+    resp = await loop.run_in_executor(ex,call_llm)
     ai_text = resp.choices[0].message.content.strip()
-    
     tablica = None
-    emocja = None
-    tm = _re2.search(r'\[TABLICA: ([^\]]+)\]', ai_text)
-    if tm: tablica = tm.group(1)
-    em = _re2.search(r'\[EMOCJA: ([^\]]+)\]', ai_text)
-    if em: emocja = em.group(1).strip()
-    ai_text = _re2.sub(r'\[EMOCJA:[^\]]*\]', '', ai_text).strip()
-    clean = _re2.sub(r'\[TABLICA:[^\]]*\]','',ai_text)
-    clean = _re2.sub(r'\[CORRECTION:[^\]]*\]','',clean).strip()
-    
-    corrections=[]
+    emocja = "neutral"
+    tm = _re2.search(r'\[TABLICA: ([^\]]+)\]',ai_text)
+    if tm: tablica = tm.group(1).strip()
+    em = _re2.search(r'\[EMOCJA: ([^\]]+)\]',ai_text)
+    if em: emocja = em.group(1).strip().lower()
+    clean = _re2.sub(r'\[TABLICA:[^\]]*\]|\[EMOCJA:[^\]]*\]|\[CORRECTION:[^\]]*\]','',ai_text).strip()
+    corrections = []
     for m in _re2.finditer(r'\[CORRECTION: ([^-]+) -> ([^\]]+)\]',ai_text):
         corrections.append({"wrong":m.group(1).strip(),"correct":m.group(2).strip()})
-    
-    sentences=[s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
+    sentences = [s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
     if not sentences: sentences=[clean]
-    
     async def generate():
-        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"corrections":corrections,"emocja":emocja})+"\n"
+        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
         for i,s in enumerate(sentences):
             if len(s)<3: continue
             try:
-                def tts(sx=s,em=emocja or 'neutral'):
-                    return call_tts(sx,emotion=em)
-                audio = await loop.run_in_executor(ex, tts)
+                def tts_task(sx=s,em=emocja):
+                    speed=1.08 if em in ["excited","happy"] else 1.05
+                    return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=speed).content
+                audio = await loop.run_in_executor(ex,tts_task)
                 yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
             except Exception as e:
                 print(f"[TTS stream] {e}")
-    
-    return _SR(generate(), media_type="application/x-ndjson")
+    return _SR(generate(),media_type="application/x-ndjson")
+
