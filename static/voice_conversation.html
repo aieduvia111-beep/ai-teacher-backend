@@ -1429,6 +1429,7 @@ async function process(){
         if(!_ln.trim()) continue;
         try{
           const msg = JSON.parse(_ln);
+          console.log('[MSG]', msg.type, msg.index);
           if(msg.type==='meta'){
             const aiTxt=msg.text||'';
             hist.push({role:'assistant',content:aiTxt});
