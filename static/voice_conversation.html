@@ -1451,40 +1451,6 @@ async function process(){
               });
               window._boardTabl=null;
             }
-          if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
-              });
-            }
-              let _d=0;
-                const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
-                setTimeout(()=>boardWriteSection(p,tp),_d);
-                _d+=Math.max(700,p.length*32);
-              });
-            }
-                setTimeout(()=>{
-                  let tp=null;
-                  if(/^(bl|err)/i.test(p)) tp='error';
-                  else if(/^(pop|cor|dobr)/i.test(p)) tp='correct';
-                  const el=document.getElementById('boardText');
-                  if(!el) return;
-                  const sec=document.createElement('span');
-                  el.appendChild(sec);
-                  const bc=document.getElementById('boardContent');
-                  if(bc) bc.scrollTop=bc.scrollHeight;
-                },idx*700);
-              });
-            }
-            if(msg.index===0&&window._boardTabl){
-              boardClear();
-              const _bp=window._boardTabl.split('|').map(s=>s.trim()).filter(Boolean);
-              let _bd=0;
-              _bp.forEach(p=>{
-                const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
-                setTimeout(()=>boardWriteSection(p,tp),_bd);
-                _bd+=Math.max(800,p.length*32);
-              });
-              window._boardTabl=null;
-            }
-            await playAudio(msg.audio);
           }
         }catch(e){}
       }
