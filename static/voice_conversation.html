@@ -1452,10 +1452,6 @@ async function process(){
               window._boardTabl=null;
             }
           if(msg.type==='audio'&&msg.audio){console.log('[AUDIO]',msg.index,'len:',msg.audio?.length);
-              let _d2=0;
-                const tp2=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
-                setTimeout(()=>boardWriteSection(p,tp2),_d2);
-                _d2+=Math.max(800,p.length*35);
               });
             }
               let _d=0;
@@ -1464,7 +1460,6 @@ async function process(){
                 _d+=Math.max(700,p.length*32);
               });
             }
-              pts.forEach((p,idx)=>{
                 setTimeout(()=>{
                   let tp=null;
                   if(/^(bl|err)/i.test(p)) tp='error';
@@ -1472,8 +1467,6 @@ async function process(){
                   const el=document.getElementById('boardText');
                   if(!el) return;
                   const sec=document.createElement('span');
-                  sec.className='board-section'+(tp?' '+tp:'');
-                  sec.innerHTML='<span class="board-section-bullet">'+(tp==='error'?'✕ ':tp==='correct'?'✓ ':'› ')+'</span><span>'+p+'</span>';
                   el.appendChild(sec);
                   const bc=document.getElementById('boardContent');
                   if(bc) bc.scrollTop=bc.scrollHeight;
