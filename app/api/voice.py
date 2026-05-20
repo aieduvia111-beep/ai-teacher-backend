@@ -284,19 +284,23 @@ async def respond_stream(data: dict):
         corrections.append({"wrong":m.group(1).strip(),"correct":m.group(2).strip()})
     sentences = [s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
     if not sentences: sentences=[clean]
+    import asyncio as _aio
+    async def make_audio(idx2, s2):
+        if len(s2)<3: return None
+        try:
+            def tts_t(sx=s2,em=emocja):
+                spd=1.08 if em in ["excited","happy"] else 1.05
+                return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=spd).content
+            aud = await loop.run_in_executor(ex,tts_t)
+            print(f"[TTS] OK {idx2}: {s2[:25]}")
+            return base64.b64encode(aud).decode()
+        except Exception as e:
+            print(f"[TTS] ERR: {e}")
+            return None
+    audios = await _aio.gather(*[make_audio(i,s) for i,s in enumerate(sentences)])
     async def generate():
-        print(f"[GEN] start, sentences={len(sentences)}")
         yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
-        for i,s in enumerate(sentences):
-            if len(s)<3: continue
-            try:
-                print(f"[TTS] generuje: {s[:40]}")
-                def tts_task(sx=s,em=emocja):
-                    speed=1.08 if em in ["excited","happy"] else 1.05
-                    return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=speed).content
-                audio = await loop.run_in_executor(ex,tts_task)
-                yield _js.dumps({"type":"audio","index":i,"audio":base64.b64encode(audio).decode()})+"\n"
-            except Exception as e:
-                print(f"[TTS stream] {e}")
+        for i,a in enumerate(audios):
+            if a: yield _js.dumps({"type":"audio","index":i,"audio":a})+"\n"
     return _SR(generate(),media_type="application/x-ndjson")
 
