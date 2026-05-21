@@ -1319,6 +1319,7 @@ function boardAddCorrection(wrong, correct){
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
 async function startSession(){
+  if(window._explodeOrb) window._explodeOrb();
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
 
@@ -1730,10 +1731,102 @@ window.animateCounter=animateCounter;
 </script>
 
 <script>
-(function(){const cv=document.getElementById('particleCanvas');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts=[];function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}resize();window.addEventListener('resize',resize);for(let i=0;i<40;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,r:Math.random()*.8+.2,a:Math.random(),va:(Math.random()-.5)*.006,c:Math.random()>.5?'124,106,255':'56,189,248'});function draw(){ctx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=p.va;if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba('+p.c+','+p.a*.4+')';ctx.fill();});requestAnimationFrame(draw);}draw();})();
+(function(){const el=document.getElementById('aiWaitTxt');if(!el)return;const msgs=['Czeka na Ciebie — gotowy do nauki','Zapytaj mnie o wszystko...','Matematyka, biologia, historia...','Twój osobisty korepetytor AI'];let i=0;setInterval(()=>{i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(()=>{el.textContent=msgs[i];el.style.opacity='1';},400);},3000);})();
 </script>
 <script>
-(function(){const el=document.getElementById('aiWaitTxt');if(!el)return;const msgs=['Czeka na Ciebie — gotowy do nauki','Zapytaj mnie o wszystko...','Matematyka, biologia, historia...','Twój osobisty korepetytor AI'];let i=0;setInterval(()=>{i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(()=>{el.textContent=msgs[i];el.style.opacity='1';},400);},3000);})();
+(function(){
+  const cv=document.getElementById('particleCanvas');
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  let W,H;
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+
+  // Orbiting particles wokol orba
+  const orbEl=document.querySelector('.ai-orb');
+  let orbiting=[];
+  for(let i=0;i<12;i++) orbiting.push({
+    angle:(Math.PI*2/12)*i,
+    speed:0.008+Math.random()*0.006,
+    dist:80+Math.random()*18,
+    r:Math.random()*2+1,
+    a:Math.random()*.7+.3,
+    c:Math.random()>.5?'167,139,250':'56,189,248'
+  });
+
+  // Background particles
+  let bg=[];
+  for(let i=0;i<35;i++) bg.push({
+    x:Math.random()*2000,y:Math.random()*2000,
+    vx:(Math.random()-.5)*.15,vy:(Math.random()-.5)*.15,
+    r:Math.random()*.6+.2,a:Math.random(),va:(Math.random()-.5)*.005,
+    c:Math.random()>.5?'124,106,255':'56,189,248'
+  });
+
+  // Explosion
+  let exploding=[];
+  window._explodeOrb=function(){
+    if(!orbEl)return;
+    const r=orbEl.getBoundingClientRect();
+    const ox=r.left+r.width/2,oy=r.top+r.height/2;
+    for(let i=0;i<50;i++){
+      const ang=Math.random()*Math.PI*2,spd=3+Math.random()*7;
+      exploding.push({x:ox,y:oy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,r:Math.random()*3+1,life:1,c:Math.random()>.5?'167,139,250':'56,189,248'});
+    }
+  };
+
+  function getOrb(){
+    if(!orbEl)return{x:W/2,y:200};
+    const r=orbEl.getBoundingClientRect();
+    return{x:r.left+r.width/2,y:r.top+r.height/2};
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const{x:ox,y:oy}=getOrb();
+
+    // Orbiting
+    orbiting.forEach(p=>{
+      p.angle+=p.speed;
+      const px=ox+Math.cos(p.angle)*p.dist;
+      const py=oy+Math.sin(p.angle)*p.dist;
+      ctx.beginPath();ctx.arc(px,py,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.a})`;ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ox+Math.cos(p.angle-.15)*p.dist,oy+Math.sin(p.angle-.15)*p.dist,p.r*.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.a*.3})`;ctx.fill();
+    });
+
+    // BG
+    bg.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.a+=p.va;
+      if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.a*.35})`;ctx.fill();
+    });
+
+    // Explosion
+    exploding=exploding.filter(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vx*=.92;p.vy*=.92;p.life-=.025;
+      if(p.life<=0)return false;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.life})`;ctx.fill();
+      return true;
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  // Tekst zmieniajacy sie
+  const el=document.querySelector('.ai-wait');
+  if(el){
+    const msgs=['Czeka na Ciebie — gotowy do nauki','Zapytaj mnie o wszystko...','Matematyka, biologia, historia...','Twój osobisty korepetytor AI'];
+    let mi=0;el.style.transition='opacity .4s';
+    setInterval(()=>{mi=(mi+1)%msgs.length;el.style.opacity='0';setTimeout(()=>{el.textContent=msgs[mi];el.style.opacity='1';},400);},3000);
+  }
+})();
 </script>
 </body>
 </html>
