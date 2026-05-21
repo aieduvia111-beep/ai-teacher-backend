@@ -398,6 +398,27 @@ button:active{transform:scale(.95)!important;}
 .input-wrap select{margin-bottom:0;}
 .field{margin-bottom:16px;}
 
+
+.ai-hero-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:20px;display:flex;flex-direction:column;align-items:center;margin-bottom:0;}
+.ai-hero-card::after{content:'';position:absolute;top:0;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);}
+.ai-rings-wrap{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;}
+.ai-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.2);animation:rEx 3s ease-out infinite;}
+.ai-ring:nth-child(1){width:90px;height:90px;animation-delay:0s;}
+.ai-ring:nth-child(2){width:118px;height:118px;animation-delay:1s;}
+.ai-ring:nth-child(3){width:148px;height:148px;animation-delay:2s;}
+@keyframes rEx{0%{opacity:.55;transform:scale(.88);}100%{opacity:0;transform:scale(1.04);}}
+.ai-orb{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 38% 35%,rgba(124,106,255,.45),rgba(56,189,248,.12),rgba(5,5,15,.95));border:1px solid rgba(124,106,255,.3);position:relative;animation:orbF 3.5s ease-in-out infinite;box-shadow:0 0 32px rgba(124,106,255,.22);}
+@keyframes orbF{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.ai-eye{width:11px;height:8px;background:#00ddff;border-radius:50%;position:absolute;box-shadow:0 0 12px #00ddff;animation:eyeB 5s ease-in-out infinite;}
+.ai-eye.l{left:15px;top:25px;}.ai-eye.r{right:15px;top:25px;}
+@keyframes eyeB{0%,86%,100%{transform:scaleY(1);}93%{transform:scaleY(.08);}}
+.ai-mouth{width:20px;height:6px;border-radius:0 0 10px 10px;border:1.5px solid rgba(0,210,255,.5);border-top:none;position:absolute;bottom:16px;left:50%;transform:translateX(-50%);}
+.ai-wait{font-family:var(--h);font-size:.67em;color:var(--muted2);letter-spacing:.05em;margin-top:10px;animation:tP 2.5s ease-in-out infinite;text-align:center;}
+@keyframes tP{0%,100%{opacity:.4;}50%{opacity:.9;}}
+#particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;}
+.content-grid{display:flex!important;flex-direction:column!important;gap:14px;}
+.info-panel{display:none!important;}
+
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -588,6 +609,7 @@ function getPlanBadgeHTML(plan) {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="if(window.renderMathInElement)renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:false}]})"></script>
 </head>
 <body>
+<canvas id="particleCanvas"></canvas>
 
 <div class="cursor" id="cur"></div>
 <div class="cursor-ring" id="ring"></div>
@@ -659,6 +681,20 @@ function getPlanBadgeHTML(plan) {
   </div>
 
   <div class="content-grid">
+  <div class="ai-hero-card">
+    <div class="ai-rings-wrap">
+      <div class="ai-ring"></div>
+      <div class="ai-ring"></div>
+      <div class="ai-ring"></div>
+      <div class="ai-orb">
+        <div class="ai-eye l"></div>
+        <div class="ai-eye r"></div>
+        <div class="ai-mouth"></div>
+      </div>
+    </div>
+    <div class="ai-wait">Czeka na Ciebie — gotowy do nauki</div>
+  </div>
+
     <!-- FORMULARZ -->
     <div class="form-panel">
 
@@ -1666,5 +1702,8 @@ window.animateCounter=animateCounter;
 // Uruchom mic stream po po\u0142\u0105czeniu WS
 </script>
 
+<script>
+(function(){const cv=document.getElementById('particleCanvas');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts=[];function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}resize();window.addEventListener('resize',resize);for(let i=0;i<40;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,r:Math.random()*.8+.2,a:Math.random(),va:(Math.random()-.5)*.006,c:Math.random()>.5?'124,106,255':'56,189,248'});function draw(){ctx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=p.va;if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba('+p.c+','+p.a*.4+')';ctx.fill();});requestAnimationFrame(draw);}draw();})();
+</script>
 </body>
 </html>
