@@ -442,7 +442,7 @@ button:active{transform:scale(.95)!important;}
 .ai-wait{font-family:var(--h);font-size:.67em;color:rgba(255,255,255,.4);letter-spacing:.05em;margin-top:12px;transition:opacity .4s;text-align:center;}
 .badge-dot{animation:sonarB 2s ease-out infinite!important;}
 @keyframes sonarB{0%{box-shadow:0 0 0 0 rgba(34,211,160,.5);}70%{box-shadow:0 0 0 10px rgba(34,211,160,0);}100%{box-shadow:0 0 0 0 rgba(34,211,160,0);}}
-#particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;}
+#particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:1;}
 .content-grid{display:flex!important;flex-direction:column!important;gap:14px;}
 .info-panel{display:none!important;}
 
@@ -636,7 +636,7 @@ function getPlanBadgeHTML(plan) {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="if(window.renderMathInElement)renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:false}]})"></script>
 </head>
 <body>
-<canvas id="particleCanvas"></canvas>
+<canvas id="particleCanvas" style="position:fixed;inset:0;pointer-events:none;z-index:1;opacity:1;"></canvas>
 
 <div class="cursor" id="cur"></div>
 <div class="cursor-ring" id="ring"></div>
