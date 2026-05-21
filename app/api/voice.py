@@ -52,6 +52,7 @@ ZAWSZE gdy wyjaśniasz — ta kolejność:
 3. Pytanie które angażuje
 
 TABLICA — profesjonalna notatka (min 4-5 punktów, PEŁNE zdania):
+Wzory matematyczne ZAWSZE w $$...$$ np. $$x^2+5x+6=0$$ nie x^2+5x+6=0!
 [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]
 
 PRZYKŁAD idealnej odpowiedzi na "co to są grzyby":
