@@ -1554,6 +1554,7 @@ function openCamera(){
                 const msg=JSON.parse(ln);
                 if(msg.type==='meta'){
                   if(msg.emocja) setAvatarEmotion(msg.emocja);
+                  boardTyping=false;boardQueue=[];
                   window._camTabl = msg.tablica||null;
                 }
                 if(msg.type==='audio'&&msg.audio){
