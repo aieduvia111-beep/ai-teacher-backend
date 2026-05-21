@@ -1535,15 +1535,35 @@ function openCamera(){
         boardClear();
         boardAddSection('Analizuje zdjecie...');
         try{
-          const r=await fetch(BACKEND_URL+'/api/v1/voice/respond',{
+          const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku po polsku.',image:b64,history:[]})
+            body:JSON.stringify({text:'Rozwiaz to zadanie krok po kroku po polsku. Napisz na tablicy wszystkie kroki rozwiazania.',image:b64,history:[]})
           });
-          const d=await r.json();
-          boardClear();
-          const tb=d.text&&d.text.match(/\[TABLICA: ([^\]]+)\]/);
-          if(tb){tb[1].split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>setTimeout(()=>boardWriteSection(p,null),i*550));}
-          if(d.audio) await playAudio(d.audio);
+          if(!r.ok) throw new Error('Blad '+r.status);
+          const reader2=r.body.getReader();
+          const dec2=new TextDecoder();
+          let buf2='';
+          while(true){
+            const {done,value}=await reader2.read();
+            if(done) break;
+            buf2+=dec2.decode(value,{stream:true});
+            const lns=buf2.split('\n');buf2=lns.pop();
+            for(const ln of lns){
+              if(!ln.trim()) continue;
+              try{
+                const msg=JSON.parse(ln);
+                if(msg.type==='meta'){
+                  boardClear();
+                  if(msg.tablica){
+                    msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
+                      setTimeout(()=>boardWriteSection(p,null),i*600);
+                    });
+                  }
+                }
+                if(msg.type==='audio'&&msg.audio) await playAudio(msg.audio);
+              }catch(e2){}
+            }
+          }
         }catch(e){boardAddSection('Blad: '+e.message);}
       };
       reader.readAsDataURL(file);
