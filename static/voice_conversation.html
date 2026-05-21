@@ -1533,7 +1533,7 @@ function openCamera(){
       reader.onload=async(ev)=>{
         const b64=ev.target.result.split(',')[1];
         boardClear();
-        boardAddSection('Analizuje zdjecie...');
+        boardClear(); boardWriteSection('⏳ Analizuję zdjęcie...', null);
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json'},
