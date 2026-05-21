@@ -1537,7 +1537,7 @@ function openCamera(){
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({text:'Wytlumacz co widzisz na zdjeciu - jesli to zadanie to rozwiaz krok po kroku, jesli material to wytlumacz kluczowe pojecia.',image:b64,history:[]})
+            body:JSON.stringify({text:'Wytlumacz co widzisz. Napisz TABLICE z min 5 punktami. [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]',image:b64,history:[]})
           });
           if(!r.ok) throw new Error('Blad '+r.status);
           const reader2=r.body.getReader();
