@@ -251,7 +251,14 @@ async def respond_stream(data: dict):
     for msg in history[-12:]:
         if isinstance(msg,dict) and msg.get("role") in ("user","assistant"):
             messages.append(msg)
-    messages.append({"role":"user","content":text})
+    image_b64 = data.get("image")
+    if image_b64:
+        messages.append({"role":"user","content":[
+            {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}","detail":"high"}},
+            {"type":"text","text":text}
+        ]})
+    else:
+        messages.append({"role":"user","content":text})
     loop = asyncio.get_event_loop()
     ex = concurrent.futures.ThreadPoolExecutor()
     def call_llm():
