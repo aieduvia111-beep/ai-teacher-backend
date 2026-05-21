@@ -399,8 +399,34 @@ button:active{transform:scale(.95)!important;}
 .field{margin-bottom:16px;}
 
 
-.ai-hero-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:20px;display:flex;flex-direction:column;align-items:center;margin-bottom:0;}
-.ai-hero-card::after{content:'';position:absolute;top:0;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);}
+/* PREMIUM FORMULARZ */
+.form-panel{background:linear-gradient(180deg,rgba(15,15,28,.95),rgba(7,7,18,.98));border:1px solid rgba(124,106,255,.2);border-radius:20px;padding:24px;position:relative;overflow:hidden;}
+.form-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.5),rgba(56,189,248,.3),transparent);}
+.sec-label{font-family:var(--h);font-size:.63em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(167,139,250,.7);display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.field-label{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.input-wrap input{background:rgba(255,255,255,.04);border:1px solid rgba(124,106,255,.2);border-radius:12px;color:#e8e0ff;font-size:.9em;padding:13px 16px;transition:all .25s;}
+.input-wrap input:focus{border-color:rgba(124,106,255,.5);background:rgba(124,106,255,.06);box-shadow:0 0 0 3px rgba(124,106,255,.1);}
+.input-wrap input::placeholder{color:rgba(255,255,255,.2);}
+.level-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.5);font-weight:600;font-size:.82em;padding:11px;transition:all .2s cubic-bezier(.34,1.56,.64,1);}
+.level-btn:hover{border-color:rgba(124,106,255,.3);color:rgba(255,255,255,.8);transform:scale(1.02);}
+.level-btn.active{background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(79,63,207,.15));border-color:rgba(124,106,255,.4);color:#a78bfa;box-shadow:0 0 16px rgba(124,106,255,.15);}
+.chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:100px;color:rgba(255,255,255,.45);font-size:.75em;padding:6px 14px;transition:all .18s;}
+.chip:hover{border-color:rgba(124,106,255,.3);color:rgba(255,255,255,.8);}
+.chip.active{background:rgba(124,106,255,.15);border-color:rgba(124,106,255,.4);color:#a78bfa;box-shadow:0 0 10px rgba(124,106,255,.12);}
+#startBtn{background:linear-gradient(135deg,#7c6aff,#4f3fcf);border:none;border-radius:14px;padding:17px;font-size:.92em;font-weight:700;letter-spacing:.04em;box-shadow:0 4px 24px rgba(124,106,255,.35);transition:all .3s;position:relative;overflow:hidden;}
+#startBtn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,106,255,.5);}
+#startBtn::after{content:'';position:absolute;top:0;left:-100%;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:shineB 3s ease-in-out infinite;}
+@keyframes shineB{0%{left:-100%;}40%,100%{left:150%;}}
+.trust-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:4px;}
+.trust-item{display:flex;align-items:center;gap:5px;font-size:.67em;color:rgba(255,255,255,.3);}
+.trust-dot{width:5px;height:5px;border-radius:50%;}
+.trust-dot.g{background:#22d3a0;box-shadow:0 0 6px #22d3a0;}
+.trust-dot.p{background:#a78bfa;box-shadow:0 0 6px #a78bfa;}
+.trust-dot.b{background:#38bdf8;box-shadow:0 0 6px #38bdf8;}
+
+/* ORB */
+.ai-hero-card{background:linear-gradient(180deg,rgba(15,15,28,.95),rgba(7,7,18,.98));border:1px solid rgba(124,106,255,.2);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;}
+.ai-hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.5),rgba(56,189,248,.3),transparent);}
 .ai-rings-wrap{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;}
 .ai-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.2);animation:rEx 3s ease-out infinite;}
 .ai-ring:nth-child(1){width:90px;height:90px;animation-delay:0s;}
@@ -413,15 +439,12 @@ button:active{transform:scale(.95)!important;}
 .ai-eye.l{left:15px;top:25px;}.ai-eye.r{right:15px;top:25px;}
 @keyframes eyeB{0%,86%,100%{transform:scaleY(1);}93%{transform:scaleY(.08);}}
 .ai-mouth{width:20px;height:6px;border-radius:0 0 10px 10px;border:1.5px solid rgba(0,210,255,.5);border-top:none;position:absolute;bottom:16px;left:50%;transform:translateX(-50%);}
-.ai-wait{font-family:var(--h);font-size:.67em;color:var(--muted2);letter-spacing:.05em;margin-top:10px;animation:tP 2.5s ease-in-out infinite;text-align:center;}
-@keyframes tP{0%,100%{opacity:.4;}50%{opacity:.9;}}
+.ai-wait{font-family:var(--h);font-size:.67em;color:rgba(255,255,255,.4);letter-spacing:.05em;margin-top:12px;transition:opacity .4s;text-align:center;}
+.badge-dot{animation:sonarB 2s ease-out infinite!important;}
+@keyframes sonarB{0%{box-shadow:0 0 0 0 rgba(34,211,160,.5);}70%{box-shadow:0 0 0 10px rgba(34,211,160,0);}100%{box-shadow:0 0 0 0 rgba(34,211,160,0);}}
 #particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;}
 .content-grid{display:flex!important;flex-direction:column!important;gap:14px;}
 .info-panel{display:none!important;}
-
-
-.badge-dot{animation:sonarB 2s ease-out infinite!important;}
-@keyframes sonarB{0%{box-shadow:0 0 0 0 rgba(34,211,160,.5);}70%{box-shadow:0 0 0 10px rgba(34,211,160,0);}100%{box-shadow:0 0 0 0 rgba(34,211,160,0);}}
 
 </style>
 <script type="module">
@@ -696,7 +719,7 @@ function getPlanBadgeHTML(plan) {
         <div class="ai-mouth"></div>
       </div>
     </div>
-    <div class="ai-wait">Czeka na Ciebie — gotowy do nauki</div>
+    <div class="ai-wait" id="aiWaitTxt">Czeka na Ciebie — gotowy do nauki</div>
   </div>
 
     <!-- FORMULARZ -->
@@ -1710,23 +1733,7 @@ window.animateCounter=animateCounter;
 (function(){const cv=document.getElementById('particleCanvas');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts=[];function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}resize();window.addEventListener('resize',resize);for(let i=0;i<40;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,r:Math.random()*.8+.2,a:Math.random(),va:(Math.random()-.5)*.006,c:Math.random()>.5?'124,106,255':'56,189,248'});function draw(){ctx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=p.va;if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba('+p.c+','+p.a*.4+')';ctx.fill();});requestAnimationFrame(draw);}draw();})();
 </script>
 <script>
-(function(){
-  const el = document.querySelector('.ai-wait');
-  if(!el) return;
-  const msgs = [
-    'Czeka na Ciebie — gotowy do nauki',
-    'Zapytaj mnie o wszystko...',
-    'Porozmawiajmy o matematyce, biologii...',
-    'Twój osobisty korepetytor AI'
-  ];
-  let i = 0;
-  setInterval(() => {
-    i = (i+1) % msgs.length;
-    el.style.opacity = '0';
-    setTimeout(() => { el.textContent = msgs[i]; el.style.opacity = '1'; }, 400);
-  }, 3000);
-  el.style.transition = 'opacity .4s';
-})();
+(function(){const el=document.getElementById('aiWaitTxt');if(!el)return;const msgs=['Czeka na Ciebie — gotowy do nauki','Zapytaj mnie o wszystko...','Matematyka, biologia, historia...','Twój osobisty korepetytor AI'];let i=0;setInterval(()=>{i=(i+1)%msgs.length;el.style.opacity='0';setTimeout(()=>{el.textContent=msgs[i];el.style.opacity='1';},400);},3000);})();
 </script>
 </body>
 </html>
