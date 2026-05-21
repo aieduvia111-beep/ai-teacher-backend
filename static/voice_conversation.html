@@ -398,6 +398,73 @@ button:active{transform:scale(.95)!important;}
 .input-wrap select{margin-bottom:0;}
 .field{margin-bottom:16px;}
 
+
+/* ═══ PREMIUM VOICE AI START PAGE ═══ */
+.content-grid{display:block;max-width:560px;margin:0 auto;}
+
+.voice-hero{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:22px;position:relative;overflow:hidden;margin-bottom:14px;}
+.voice-hero::after{content:'';position:absolute;top:0;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);}
+
+.voice-hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.voice-hero-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:100px;flex-shrink:0;}
+.voice-hero-badge-dot{width:7px;height:7px;border-radius:50%;background:#22d3a0;box-shadow:0 0 0 0 rgba(34,211,160,.4);animation:sonar 2s ease-out infinite;}
+@keyframes sonar{0%{box-shadow:0 0 0 0 rgba(34,211,160,.5);}70%{box-shadow:0 0 0 10px rgba(34,211,160,0);}100%{box-shadow:0 0 0 0 rgba(34,211,160,0);}}
+.voice-hero-badge span{font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#22d3a0;}
+.voice-hero-title{font-family:var(--h);font-size:1.75em;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:5px;}
+.voice-hero-sub{font-size:.8em;color:var(--muted2);}
+
+/* AI ORB */
+.ai-preview{display:flex;flex-direction:column;align-items:center;padding:8px 0 4px;}
+.ai-rings-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:160px;height:160px;}
+.ai-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.25);animation:ringEx 2.5s ease-out infinite;}
+.ai-ring:nth-child(1){width:100px;height:100px;animation-delay:0s;}
+.ai-ring:nth-child(2){width:130px;height:130px;animation-delay:.8s;}
+.ai-ring:nth-child(3){width:160px;height:160px;animation-delay:1.6s;}
+@keyframes ringEx{0%{opacity:.5;transform:scale(.85);}100%{opacity:0;transform:scale(1);}
+}
+.ai-orb{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(124,106,255,.35),rgba(56,189,248,.1),rgba(7,7,13,.9));border:1px solid rgba(124,106,255,.3);position:relative;animation:orbF 3s ease-in-out infinite;box-shadow:0 0 30px rgba(124,106,255,.2);}
+@keyframes orbF{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.ai-eye{width:11px;height:8px;background:#00ccff;border-radius:50%;position:absolute;box-shadow:0 0 10px #00ccff;animation:eyeB 4s ease-in-out infinite;}
+.ai-eye.l{left:17px;top:27px;}.ai-eye.r{right:17px;top:27px;}
+@keyframes eyeB{0%,88%,100%{transform:scaleY(1);}94%{transform:scaleY(.08);}}
+.ai-mouth{width:18px;height:5px;border-radius:0 0 9px 9px;border:1.5px solid rgba(0,200,255,.5);border-top:none;position:absolute;bottom:17px;left:50%;transform:translateX(-50%);}
+.ai-waiting{font-family:var(--h);font-size:.67em;color:var(--muted2);letter-spacing:.05em;margin-top:8px;animation:tP 2s ease-in-out infinite;}
+@keyframes tP{0%,100%{opacity:.5;}50%{opacity:1;}}
+
+/* FORM */
+.form-panel{background:var(--s1);border:1px solid var(--border-hi);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px;position:relative;}
+.form-panel::after{content:'';position:absolute;top:0;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.3),transparent);}
+.sec-label{font-family:var(--h);font-size:.63em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);display:flex;align-items:center;gap:6px;}
+.sec-label svg{stroke:currentColor;opacity:.5;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field-label{font-family:var(--h);font-size:.61em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);}
+.input-wrap input{width:100%;padding:12px 15px;background:var(--s2);border:1px solid var(--border-hi);border-radius:11px;color:var(--text);font-family:var(--b);font-size:.9em;outline:none;transition:all .25s;}
+.input-wrap input:focus{border-color:rgba(124,106,255,.4);background:rgba(124,106,255,.04);box-shadow:0 0 0 3px rgba(124,106,255,.07);}
+.input-wrap input::placeholder{color:var(--muted);}
+.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.sel-btn{padding:10px 8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-family:var(--b);font-size:.78em;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;}
+.sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
+.sel-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.3);color:#a78bfa;}
+.subject-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{padding:5px 12px;background:var(--s2);border:1px solid var(--border);border-radius:100px;color:var(--muted2);font-family:var(--b);font-size:.74em;cursor:pointer;transition:all .18s;}
+.chip:hover{border-color:var(--border-hi);color:var(--text);}
+.chip.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.32);color:#a78bfa;}
+.gen-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5f4fcf);border:none;border-radius:12px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 4px 20px rgba(124,106,255,.25);position:relative;overflow:hidden;}
+.gen-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .2s;}
+.gen-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,106,255,.4);}
+.gen-btn:hover::after{opacity:1;}
+.trust-row{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
+.trust-item{display:flex;align-items:center;gap:5px;font-size:.67em;color:var(--muted);}
+.trust-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.trust-dot.g{background:#22d3a0;box-shadow:0 0 5px #22d3a0;}
+.trust-dot.p{background:#a78bfa;box-shadow:0 0 5px #a78bfa;}
+.trust-dot.b{background:#38bdf8;box-shadow:0 0 5px #38bdf8;}
+.error-msg{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;font-size:.78em;color:#f87171;}
+.error-msg svg{width:14px;height:14px;stroke:#f87171;flex-shrink:0;}
+
+/* Particles */
+#particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;}
+
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -588,6 +655,7 @@ function getPlanBadgeHTML(plan) {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="if(window.renderMathInElement)renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:false}]})"></script>
 </head>
 <body>
+<canvas id="particleCanvas"></canvas>
 
 <div class="cursor" id="cur"></div>
 <div class="cursor-ring" id="ring"></div>
@@ -659,61 +727,85 @@ function getPlanBadgeHTML(plan) {
   </div>
 
   <div class="content-grid">
+
+    <!-- HERO -->
+    <div class="voice-hero">
+      <div class="voice-hero-top">
+        <div>
+          <div class="page-label">Narzędzia AI</div>
+          <div class="voice-hero-title">Voice AI</div>
+          <div class="voice-hero-sub">Nauczyciel AI z głosem, tablicą i kamerą</div>
+        </div>
+        <div class="voice-hero-badge">
+          <div class="voice-hero-badge-dot"></div>
+          <span>AI aktywny</span>
+        </div>
+      </div>
+      <div class="ai-preview">
+        <div class="ai-rings-wrap">
+          <div class="ai-ring"></div>
+          <div class="ai-ring"></div>
+          <div class="ai-ring"></div>
+          <div class="ai-orb">
+            <div class="ai-eye l"></div>
+            <div class="ai-eye r"></div>
+            <div class="ai-mouth"></div>
+          </div>
+        </div>
+        <div class="ai-waiting">Czeka na Ciebie — gotowy do nauki</div>
+      </div>
+    </div>
+
     <!-- FORMULARZ -->
     <div class="form-panel">
 
       <span class="sec-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
         Konfiguracja sesji
       </span>
 
       <div class="field">
-        <span class="field-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          Co chcesz dziś przećwiczyć?
-        </span>
+        <span class="field-label">Co chcesz dziś przećwiczyć?</span>
         <div class="input-wrap">
-          <input type="text" id="sessionTopic" placeholder="np. Czasy angielskie, całki, II wojna światowa..." maxlength="120" autocomplete="off">
+          <input type="text" id="sessionTopic" placeholder="np. Całki, czasy angielskie, fotosynteza..." maxlength="120" autocomplete="off">
         </div>
       </div>
 
       <div class="field">
-        <span class="field-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Poziom edukacji
-        </span>
-        <div class="grid-2">
+        <span class="field-label">Poziom</span>
+        <div class="level-grid">
           <button class="sel-btn" data-val="podstawowka" onclick="setLevel(this)">Podstawówka</button>
-          <button class="sel-btn active" data-val="liceum" onclick="setLevel(this)">Liceum / Tech.</button>
+          <button class="sel-btn active" data-val="liceum" onclick="setLevel(this)">Liceum</button>
           <button class="sel-btn" data-val="matura" onclick="setLevel(this)">Matura</button>
           <button class="sel-btn" data-val="studia" onclick="setLevel(this)">Studia</button>
         </div>
       </div>
 
       <div class="field">
-        <span class="field-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          Przedmiot
-        </span>
-        <div class="input-wrap">
-          <select id="subjectSelect" onchange="setSubjectFromSelect(this)">
-            <option value="Dowolny">Dowolny przedmiot</option>
-            <option value="Matematyka">Matematyka</option>
-            <option value="Fizyka">Fizyka</option>
-            <option value="Chemia">Chemia</option>
-            <option value="Biologia">Biologia</option>
-            <option value="Historia">Historia</option>
-            <option value="Angielski">Angielski</option>
-            <option value="Polski">Język polski</option>
-            <option value="Informatyka">Informatyka</option>
-          </select>
+        <span class="field-label">Przedmiot</span>
+        <div class="subject-chips">
+          <button class="chip active" onclick="setChip(this,'Dowolny')">Dowolny</button>
+          <button class="chip" onclick="setChip(this,'Matematyka')">Matematyka</button>
+          <button class="chip" onclick="setChip(this,'Fizyka')">Fizyka</button>
+          <button class="chip" onclick="setChip(this,'Chemia')">Chemia</button>
+          <button class="chip" onclick="setChip(this,'Biologia')">Biologia</button>
+          <button class="chip" onclick="setChip(this,'Historia')">Historia</button>
+          <button class="chip" onclick="setChip(this,'Angielski')">Angielski</button>
+          <button class="chip" onclick="setChip(this,'Polski')">Polski</button>
+          <button class="chip" onclick="setChip(this,'Informatyka')">Informatyka</button>
         </div>
+        <select id="subjectSelect" style="display:none" onchange="setSubjectFromSelect(this)">
+          <option value="Dowolny">Dowolny</option>
+          <option value="Matematyka">Matematyka</option>
+          <option value="Fizyka">Fizyka</option>
+          <option value="Chemia">Chemia</option>
+          <option value="Biologia">Biologia</option>
+          <option value="Historia">Historia</option>
+          <option value="Angielski">Angielski</option>
+          <option value="Polski">Język polski</option>
+          <option value="Informatyka">Informatyka</option>
+        </select>
       </div>
-
-      
-      </div>
-
-
 
       <div class="error-msg" id="errMsg" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -721,203 +813,21 @@ function getPlanBadgeHTML(plan) {
       </div>
 
       <button class="gen-btn" id="startBtn" onclick="startSession()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
         Połącz z AI i zacznij lekcję
       </button>
 
-    </div>
-
-    <!-- PRAWA KOLUMNA -->
-    <div class="info-panel">
-
-      <div class="info-card">
-        <div class="info-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Twoje sesje
-        </div>
-        <div class="stat-mini">
-          <div class="sm-item"><div class="sm-n" id="statSessions" style="color:var(--accent2)">0</div><div class="sm-d">Sesji</div></div>
-          <div class="sm-item"><div class="sm-n" id="statMinutes" style="color:var(--green)">0</div><div class="sm-d">Minut</div></div>
-          <div class="sm-item"><div class="sm-n" id="statXP" style="color:var(--gold)">0</div><div class="sm-d">XP zdobyte</div></div>
-        </div>
-      </div>
-
-      <div class="info-card">
-        <div class="info-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Jak to działa
-        </div>
-        <div class="tip">
-          <div class="tip-ico" style="background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-          </div>
-          <div>
-            <div class="tip-title">Mów — AI słucha i odpowiada</div>
-            <div class="tip-body">Przytrzymaj mikrofon, zadaj pytanie. Odpowiedź głosem w 2 sekundy przez OpenAI Realtime.</div>
-          </div>
-        </div>
-        <div class="tip">
-          <div class="tip-ico" style="background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          </div>
-          <div>
-            <div class="tip-title">Tablica AI — pisze jak człowiek</div>
-            <div class="tip-body">Trudne wzory i kroki rozwiązania pojawiają się na tablicy odręczną czcionką, w czasie rzeczywistym.</div>
-          </div>
-        </div>
-        <div class="tip">
-          <div class="tip-ico" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          </div>
-          <div>
-            <div class="tip-title">Pokaż zadanie kamerą</div>
-            <div class="tip-body">AI widzi twoją kartkę i rozwiązuje je głosem i na tablicy — jak tutor obok ciebie.</div>
-          </div>
-        </div>
-        <div class="tip">
-          <div class="tip-ico" style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div>
-            <div class="tip-title">PDF po każdej lekcji</div>
-            <div class="tip-body">Automatyczna notatka z tego, czego się uczyłeś i co sprawiało problem — do pobrania po sesji.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="info-card">
-        <div class="info-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Dlaczego wyjątkowe
-        </div>
-        <div class="vision-highlight">
-          <div class="vh-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-1a6 6 0 0 1 12 0v1"/></svg>
-          </div>
-          <div>
-            <div class="vh-title">Prawdziwy nauczyciel AI</div>
-            <div class="vh-body">Głos + tablica + kamera + notatki PDF w jednym. Żadna aplikacja edukacyjna tego nie ma.</div>
-          </div>
-        </div>
+      <div class="trust-row">
+        <span class="trust-item"><span class="trust-dot g"></span>Głos w 2s</span>
+        <span class="trust-item"><span class="trust-dot p"></span>Tablica AI</span>
+        <span class="trust-item"><span class="trust-dot b"></span>Analiza zdjęć</span>
       </div>
 
     </div>
   </div>
-</main>
-</div>
 
 
-<!-- VOICE SESSION OVERLAY -->
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-/* ═══ SESSION OVERLAY ═══ */
-.vo{position:fixed;inset:0;z-index:5000;background:#05050f;display:none;flex-direction:column;overflow:hidden;}
-.vo.on{display:flex;}
-
-/* HEADER */
-.vo-hdr{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;z-index:20;background:rgba(5,5,15,.8);backdrop-filter:blur(12px);border-bottom:1px solid rgba(124,106,255,.12);}
-.vo-hdr-left{display:flex;align-items:center;gap:8px;font-family:var(--h);font-size:.82em;font-weight:700;color:rgba(255,255,255,.7);}
-.vo-dot{width:5px;height:5px;border-radius:50%;background:#22d3a0;box-shadow:0 0 6px #22d3a0;animation:blink 1.4s infinite;opacity:0;transition:opacity .4s;}
-.vo-dot.on{opacity:1;}
-.vo-state{font-family:var(--h);font-size:.62em;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);transition:color .3s;}
-.vo-state.listening{color:rgba(34,211,160,.9);}
-.vo-state.speaking{color:rgba(167,139,250,.9);}
-.vo-state.thinking{color:rgba(124,106,255,.8);}
-.vo-end{padding:8px 16px;border-radius:100px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#f87171;font-family:var(--h);font-size:.72em;font-weight:700;cursor:pointer;transition:all .2s;}
-.vo-end:hover{background:rgba(248,113,113,.2);}
-
-/* AVATAR SEKCJA — górna 55% */
-.vo-avatar{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-#avatarCanvas{width:100%;height:100%;display:block;transition:filter .5s ease;}
-.vo-cam{position:absolute;bottom:12px;right:12px;width:80px;height:60px;border-radius:10px;overflow:hidden;border:1px solid rgba(124,106,255,.3);display:none;z-index:10;}
-
-.snap-flash{position:absolute;inset:0;background:white;opacity:0;pointer-events:none;z-index:15;}
-.snap-flash.go{animation:fGo .2s ease-out forwards;}
-@keyframes fGo{0%{opacity:.9;}100%{opacity:0;}}
-
-/* TABLICA — dolna 45% */
-.vo-board{flex:0 0 45%;background:linear-gradient(180deg,#0a0a18 0%,#05050f 100%);border-top:2px solid rgba(167,139,250,.4);box-shadow:inset 0 0 60px rgba(0,0,0,.8);position:relative;overflow:hidden;display:flex;flex-direction:column;z-index:10;}
-.board-header{display:flex;align-items:center;gap:8px;padding:12px 20px 8px;background:rgba(0,0,0,.4);border-bottom:1px solid rgba(124,106,255,.3);}
-.vo-board::after{content:'';position:absolute;top:0;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.4),transparent);z-index:1;}
-.board-header{display:flex;align-items:center;gap:6px;padding:8px 16px 0;opacity:.5;}
-.board-header svg{width:12px;height:12px;stroke:var(--accent2);}
-.board-header span{font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent2);}
-.board-lines{position:absolute;inset:0;pointer-events:none;opacity:.06;}
-.board-content{flex:1;padding:16px 20px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;position:relative;z-index:2;min-height:0;background:linear-gradient(rgba(124,106,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,106,255,.04) 1px,transparent 1px);background-size:40px 40px;}
-.board-content::-webkit-scrollbar{width:4px;}
-.board-content::-webkit-scrollbar-thumb{background:rgba(167,139,250,.4);border-radius:10px;}
-.board-content::-webkit-scrollbar{width:2px;}
-.board-content::-webkit-scrollbar-thumb{background:rgba(124,106,255,.3);border-radius:2px;}
-.board-text{font-family:'Caveat',cursive;font-size:1.3em;font-weight:500;color:rgba(235,230,255,.95);line-height:1.8;min-height:40px;word-break:normal;overflow-wrap:anywhere;}
-
-.board-section{display:block;margin:14px 0;padding:6px 0 6px 20px;border-left:4px solid #a78bfa;position:relative;animation:boardPopIn .45s ease forwards;opacity:0;}
-.board-section:nth-child(3n+1){border-left-color:#a78bfa;}
-.board-section:nth-child(3n+2){border-left-color:#38bdf8;}
-.board-section:nth-child(3n+3){border-left-color:#22d3a0;}
-.board-section.correct{border-left-color:#4ade80!important;}
-.board-section.error{border-left-color:#f87171!important;}
-@keyframes boardPopIn{from{opacity:0;transform:translateX(-20px) scale(.97)}to{opacity:1;transform:none}}
-.katex{font-size:1.2em!important;background:rgba(124,106,255,.12);padding:2px 6px;border-radius:5px;color:#c4b5ff;}
-@keyframes slideIn{from{opacity:0;transform:translateX(-14px) scale(.98)}to{opacity:1;transform:none}}
-.board-section.correct{border-left-color:#4ade80;}
-.board-section.error{border-left-color:#f87171;}
-.board-section:last-child{border-bottom:none;}
-.board-section-bar{width:2.5px;min-width:2.5px;border-radius:100px;margin-top:4px;flex-shrink:0;align-self:stretch;background:rgba(167,139,250,.7);box-shadow:0 0 6px rgba(167,139,250,.25);}
-.board-section.correct .board-section-bar{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.3);}
-.board-section.error .board-section-bar{background:#f87171;box-shadow:0 0 6px rgba(248,113,113,.3);}
-.board-section-bullet{color:#a78bfa;margin-right:4px;font-size:1.1em;}
-.board-section-text{display:inline;}
-.board-section.error .board-section-bullet{color:#f87171;}
-.board-section.error .board-section-text{color:rgba(248,113,113,.9);}
-.board-section.correct .board-section-bullet{color:#4ade80;}
-.board-section.correct .board-section-text{color:rgba(74,222,128,.9);}
-@keyframes bsIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:none;}}
-.katex{font-size:1.1em !important;}
-.board-cursor{display:inline-block;width:2px;height:1.1em;background:var(--accent2);margin-left:2px;vertical-align:middle;animation:curBlink .8s step-end infinite;}
-@keyframes curBlink{0%,100%{opacity:1;}50%{opacity:0;}}
-.board-corrections{padding:0 16px 8px;display:flex;flex-direction:column;gap:4px;}
-.board-corr{display:flex;align-items:center;gap:6px;font-family:'Caveat',cursive;font-size:.95em;color:rgba(255,255,255,.6);}
-.board-corr .wrong{text-decoration:line-through;color:#f87171;}
-.board-corr .right{color:#4ade80;font-weight:600;}
-
-/* BOTTOM BAR */
-.vo-bar{position:absolute;bottom:0;left:0;right:0;height:76px;background:rgba(5,5,15,.95);border-top:1px solid rgba(124,106,255,.1);display:flex;align-items:center;justify-content:center;gap:14px;padding:0 20px 8px;z-index:20;}
-.vb{width:56px;height:56px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s,box-shadow .15s;}
-.vb svg{width:22px;height:22px;}
-.vb-cam{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);}
-.vb-cam svg{stroke:rgba(255,255,255,.8);}
-.vb-cam:active{transform:scale(.9);}
-.vb-mic{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);width:68px;height:68px;}
-.vb-mic svg{stroke:rgba(255,255,255,.85);width:26px;height:26px;}
-.vb-mic.speaking-ai{border-color:rgba(167,139,250,.5);background:rgba(124,106,255,.15);}
-.vb-mic.listening{background:rgba(34,211,160,.2);border-color:rgba(34,211,160,.5);box-shadow:0 0 20px rgba(34,211,160,.3);}
-.vb-mic.listening svg{stroke:#22d3a0;}
-.vb-mic.disabled{opacity:.3;pointer-events:none;}
-.vb-end{background:#c62828;border:none;box-shadow:0 4px 16px rgba(198,40,40,.4);}
-.vb-end svg{stroke:white;}
-.vb-end:active{transform:scale(.9);}
-.vb-flip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);}
-.vb-flip svg{stroke:rgba(255,255,255,.6);}
-
-.err-toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#f87171;padding:9px 18px;border-radius:12px;font-size:.83em;z-index:9999;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .3s;}
-.err-toast.show{opacity:1;}
-
-/* MOBILE: ukryj kamerę jako overlay, pokaż jako miniaturka */
-@media(max-width:768px){
-  .vo{top:56px;bottom:60px;}
-  .vo-avatar{flex:0 0 52%;}
-  .vo-board{flex:0 0 48%;}
-  .vo-cam{display:block;}
-}
-@media(min-width:769px){
-  .vo-cam{display:none;}
-  .vb-flip{display:none;}
-}
-</style>
-
-<!-- OVERLAY HTML -->
-<div class="vo" id="voSes">
+<div class="vo" id="voSes" style="display:none">
   <!-- HEADER -->
   <div class="vo-hdr">
     <div class="vo-hdr-left">
@@ -1666,5 +1576,32 @@ window.animateCounter=animateCounter;
 // Uruchom mic stream po po\u0142\u0105czeniu WS
 </script>
 
+<script>
+(function(){
+  const cv=document.getElementById('particleCanvas');
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  let W,H,pts=[];
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  for(let i=0;i<50;i++)pts.push({x:Math.random()*1e4,y:Math.random()*1e4,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.2+.3,a:Math.random(),va:(Math.random()-.5)*.008,c:Math.random()>.5?'124,106,255':'56,189,248'});
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.a+=p.va;
+      if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.a*.6})`;ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){ctx.beginPath();ctx.strokeStyle=`rgba(124,106,255,${(1-d/120)*.06})`;ctx.lineWidth=.5;ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.stroke();}
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
 </body>
 </html>
