@@ -1553,14 +1553,23 @@ function openCamera(){
               try{
                 const msg=JSON.parse(ln);
                 if(msg.type==='meta'){
-                  boardClear();
-                  if(msg.tablica){
-                    msg.tablica.split('|').map(s=>s.trim()).filter(Boolean).forEach((p,i)=>{
-                      setTimeout(()=>boardWriteSection(p,null),i*600);
-                    });
-                  }
+                  if(msg.emocja) setAvatarEmotion(msg.emocja);
+                  window._camTabl = msg.tablica||null;
                 }
-                if(msg.type==='audio'&&msg.audio) await playAudio(msg.audio);
+                if(msg.type==='audio'&&msg.audio){
+                  if(msg.index===0&&window._camTabl){
+                    boardClear();
+                    const _cp=window._camTabl.split('|').map(s=>s.trim()).filter(Boolean);
+                    let _cd=0;
+                    _cp.forEach(p=>{
+                      const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
+                      setTimeout(()=>boardWriteSection(p,tp),_cd);
+                      _cd+=Math.max(800,p.length*30);
+                    });
+                    window._camTabl=null;
+                  }
+                  await playAudio(msg.audio);
+                }
               }catch(e2){}
             }
           }
