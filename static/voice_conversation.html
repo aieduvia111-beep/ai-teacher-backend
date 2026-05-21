@@ -419,6 +419,10 @@ button:active{transform:scale(.95)!important;}
 .content-grid{display:flex!important;flex-direction:column!important;gap:14px;}
 .info-panel{display:none!important;}
 
+
+.badge-dot{animation:sonarB 2s ease-out infinite!important;}
+@keyframes sonarB{0%{box-shadow:0 0 0 0 rgba(34,211,160,.5);}70%{box-shadow:0 0 0 10px rgba(34,211,160,0);}100%{box-shadow:0 0 0 0 rgba(34,211,160,0);}}
+
 </style>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1704,6 +1708,25 @@ window.animateCounter=animateCounter;
 
 <script>
 (function(){const cv=document.getElementById('particleCanvas');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts=[];function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}resize();window.addEventListener('resize',resize);for(let i=0;i<40;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,r:Math.random()*.8+.2,a:Math.random(),va:(Math.random()-.5)*.006,c:Math.random()>.5?'124,106,255':'56,189,248'});function draw(){ctx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=p.va;if(p.a<0)p.va=Math.abs(p.va);if(p.a>1)p.va=-Math.abs(p.va);if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba('+p.c+','+p.a*.4+')';ctx.fill();});requestAnimationFrame(draw);}draw();})();
+</script>
+<script>
+(function(){
+  const el = document.querySelector('.ai-wait');
+  if(!el) return;
+  const msgs = [
+    'Czeka na Ciebie — gotowy do nauki',
+    'Zapytaj mnie o wszystko...',
+    'Porozmawiajmy o matematyce, biologii...',
+    'Twój osobisty korepetytor AI'
+  ];
+  let i = 0;
+  setInterval(() => {
+    i = (i+1) % msgs.length;
+    el.style.opacity = '0';
+    setTimeout(() => { el.textContent = msgs[i]; el.style.opacity = '1'; }, 400);
+  }, 3000);
+  el.style.transition = 'opacity .4s';
+})();
 </script>
 </body>
 </html>
