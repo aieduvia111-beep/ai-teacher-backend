@@ -1558,7 +1558,6 @@ function openCamera(){
                   window._camTabl = msg.tablica||null;
                 }
                 if(msg.type==='audio'&&msg.audio){
-                  if(msg.index===0){boardClear();}
                   if(msg.index===0&&window._camTabl){
                     boardClear();
                     const _cp=window._camTabl.split('|').map(s=>s.trim()).filter(Boolean);
