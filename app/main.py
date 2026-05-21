@@ -118,6 +118,15 @@ except Exception as e:
 
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/voice")
+async def voice_page():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/voice_conversation.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
     print("✅ static OK")
 except Exception as e:
     print(f"⚠️ static: {e}")
