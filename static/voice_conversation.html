@@ -1341,6 +1341,9 @@ function boardAddCorrection(wrong, correct){
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
 async function startSession(){
+  if(window._pendingHist&&window._pendingHist.length){
+    setTimeout(function(){window.hist=window._pendingHist;window._pendingHist=null;},500);
+  }
   if(window._explodeOrb) window._explodeOrb();
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
@@ -1880,15 +1883,14 @@ function vLoadSes(ses){
   vCloseHist();
   var stored=localStorage.getItem('voiceHist_'+ses.id);
   var messages=stored?JSON.parse(stored):[];
-  document.getElementById('sessionTopic').value=ses.topic||'';
-  // Ustaw przedmiot i poziom
-  document.querySelectorAll('.level-btn').forEach(function(b){b.classList.toggle('active',b.dataset.val===ses.level);});
+  var el=document.getElementById('sessionTopic');
+  if(el)el.value=ses.topic||'';
   window.selSubject=ses.subject||'Dowolny';
   window.selLevel=ses.level||'liceum';
-  // Zaladuj historie i zacznij sesje
-  startSession().then(function(){
-    if(messages.length) window.hist=messages;
-  });
+  document.querySelectorAll('.level-btn').forEach(function(b){b.classList.toggle('active',b.dataset&&b.dataset.val===ses.level);});
+  // Najpierw ustaw hist, potem startSession
+  window._pendingHist=messages;
+  startSession();
 }
 function vRelTime(ts){var d=Date.now()-ts;if(d<60000)return 'przed chwila';if(d<3600000)return Math.floor(d/60000)+' min temu';if(d<86400000)return Math.floor(d/3600000)+' godz. temu';return Math.floor(d/86400000)+' dni temu';}
 function vFormatDur(sec){if(!sec||sec<60)return '<1 min';return Math.floor(sec/60)+' min';}
