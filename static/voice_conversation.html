@@ -1868,7 +1868,28 @@ window.animateCounter=animateCounter;
 <script>
 function vOpenHist(){document.getElementById('vHistPanel').classList.add('open');document.getElementById('vHistOverlay').classList.add('open');vRenderHist();}
 function vCloseHist(){document.getElementById('vHistPanel').classList.remove('open');document.getElementById('vHistOverlay').classList.remove('open');}
-function vSaveSes(topic,subject,duration){var s=JSON.parse(localStorage.getItem('voiceSessions')||'[]');s.unshift({id:Date.now(),topic:topic||'Sesja',subject:subject||'Dowolny',duration:duration||0,ts:Date.now()});if(s.length>50)s.pop();localStorage.setItem('voiceSessions',JSON.stringify(s));}
+function vSaveSes(topic,subject,duration,messages){
+  var s=JSON.parse(localStorage.getItem('voiceSessions')||'[]');
+  var id=Date.now();
+  s.unshift({id:id,topic:topic||'Sesja',subject:subject||'Dowolny',duration:duration||0,ts:id});
+  if(s.length>50)s.pop();
+  localStorage.setItem('voiceSessions',JSON.stringify(s));
+  if(messages&&messages.length)localStorage.setItem('voiceHist_'+id,JSON.stringify(messages.slice(0,50)));
+}
+function vLoadSes(ses){
+  vCloseHist();
+  var stored=localStorage.getItem('voiceHist_'+ses.id);
+  var messages=stored?JSON.parse(stored):[];
+  document.getElementById('sessionTopic').value=ses.topic||'';
+  // Ustaw przedmiot i poziom
+  document.querySelectorAll('.level-btn').forEach(function(b){b.classList.toggle('active',b.dataset.val===ses.level);});
+  window.selSubject=ses.subject||'Dowolny';
+  window.selLevel=ses.level||'liceum';
+  // Zaladuj historie i zacznij sesje
+  startSession().then(function(){
+    if(messages.length) window.hist=messages;
+  });
+}
 function vRelTime(ts){var d=Date.now()-ts;if(d<60000)return 'przed chwila';if(d<3600000)return Math.floor(d/60000)+' min temu';if(d<86400000)return Math.floor(d/3600000)+' godz. temu';return Math.floor(d/86400000)+' dni temu';}
 function vFormatDur(sec){if(!sec||sec<60)return '<1 min';return Math.floor(sec/60)+' min';}
 function vDelSes(id,e){e.stopPropagation();var s=JSON.parse(localStorage.getItem('voiceSessions')||'[]');s=s.filter(function(x){return x.id!=id;});localStorage.setItem('voiceSessions',JSON.stringify(s));vRenderHist();}
