@@ -1681,6 +1681,7 @@ function openCamera(){
 }
 
 function endSes(){
+  try{var _wd=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');if(_wd.length>3)_wd=_wd.slice(3);else _wd=[];localStorage.setItem('eduviaWeakDetails',JSON.stringify(_wd));}catch(e){}
   sessionActive = false;
   if(curAudio){ curAudio.pause(); curAudio=null; }
   if(ttsAbort){ ttsAbort.abort(); ttsAbort=null; }
