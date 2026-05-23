@@ -892,6 +892,19 @@ function go(u){window.location.href=u;}
 const QUIZ_KEY='eduvia_quiz_history';
 function getQuizHistory(){try{return JSON.parse(localStorage.getItem(QUIZ_KEY)||'[]');}catch{return[];}}
 function saveQuiz(title,correct,total,xpEarned){
+  // Zapisz slabe tematy
+  if(wrongIndexes.length>0){
+    var weakTopics=wrongIndexes.map(function(i){return questions[i]&&questions[i].topic||title;}).filter(function(t,i,a){return a.indexOf(t)===i;});
+    var stored=JSON.parse(localStorage.getItem('eduviaWeakTopics')||'[]');
+    weakTopics.forEach(function(t){
+      var ex=stored.find(function(x){return x.topic===t;});
+      if(ex){ex.count++;ex.ts=Date.now();}
+      else stored.push({topic:t,quiz:title,count:1,ts:Date.now()});
+    });
+    stored.sort(function(a,b){return b.count-a.count;});
+    if(stored.length>20)stored.pop();
+    localStorage.setItem('eduviaWeakTopics',JSON.stringify(stored));
+  }
   // Zapisz do Firebase jesli dostepne
   if(typeof window._fbSaveQuiz==='function')window._fbSaveQuiz(title,correct,total,xpEarned);
   const h=getQuizHistory();
