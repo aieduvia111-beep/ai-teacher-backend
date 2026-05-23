@@ -1378,7 +1378,7 @@ async function startSession(){
       }
     }catch(e){}
   }
-  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'+_weakCtx+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
+  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+_weakCtx+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
   hist = [{role:'system', content: ctx}];
 
   boardClear();
