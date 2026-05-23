@@ -1368,7 +1368,17 @@ async function startSession(){
   // Kontekst dla AI
   const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
   const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
-  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
+  var _weakRaw=localStorage.getItem('eduviaWeakDetails');
+  var _weakCtx='';
+  if(_weakRaw){
+    try{
+      var _wd=JSON.parse(_weakRaw).slice(0,5);
+      if(_wd.length){
+        _weakCtx=' WAZNE - uczen popelnil bledy: '+_wd.map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ')+'. Wytlumacz te bledy i upewnij sie ze uczen rozumie.';
+      }
+    }catch(e){}
+  }
+  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'+_weakCtx+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
   hist = [{role:'system', content: ctx}];
 
   boardClear();

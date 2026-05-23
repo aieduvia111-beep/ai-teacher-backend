@@ -1115,7 +1115,28 @@ function answer(idx){
     if(document.getElementById('qiXP'))document.getElementById('qiXP').textContent=xp;
     if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent=streak>=2?'🔥 x'+streak:'1';
     let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak:'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
-  }else{streak=0;wrongIndexes.push(currentQ);if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';}
+  }else{
+    streak=0;wrongIndexes.push(currentQ);
+    if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';
+    // Zapisz szczegoly bledu niewidocznie
+    var stored=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');
+    var q=questions[currentQ];
+    if(q){
+      var letters=['A','B','C','D'];
+      var ex=stored.find(function(x){return x.q===q.question;});
+      if(ex){ex.count++;ex.ts=Date.now();}
+      else stored.push({
+        q:q.question,
+        wrong:letters[idx]+') '+(q.options[idx]||''),
+        correct:letters[q.correct]+') '+(q.options[q.correct]||''),
+        topic:q.topic||quiz&&quiz.title||'Quiz',
+        count:1,ts:Date.now()
+      });
+      stored.sort(function(a,b){return b.count-a.count;});
+      if(stored.length>20)stored=stored.slice(0,20);
+      localStorage.setItem('eduviaWeakDetails',JSON.stringify(stored));
+    }
+  }
   let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
   if(correct){fb.className='feedback-box correct-fb show';window._haptic('ok');fh.className='feedback-header correct-h';fh.textContent='✓ Poprawnie!';}
   else{
