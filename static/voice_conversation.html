@@ -1906,7 +1906,7 @@ function vRenderHist(){
     var h=document.createElement('div');h.className='voice-hist-section';h.textContent=label;el.appendChild(h);
     items.forEach(function(x){
       var d=document.createElement('div');d.className='voice-hist-item';
-      d.innerHTML='<div class="voice-hist-info"><div class="voice-hist-label">'+x.topic+'</div><div class="voice-hist-meta">'+x.subject+' • '+vFormatDur(x.duration)+' • '+vRelTime(x.ts)+'</div></div><button class="voice-hist-del" onclick="vDelSes('+x.id+',event)">×</button>';d.onclick=function(e){if(!e.target.closest('.voice-hist-del'))vLoadSes(x);};
+      d.innerHTML='<div class="voice-hist-info"><div class="voice-hist-label">'+x.topic+'</div><div class="voice-hist-meta">'+x.subject+' • '+vFormatDur(x.duration)+' • '+vRelTime(x.ts)+'</div></div><button class="voice-hist-del" onclick="vDelSes('+x.id+',event)">×</button>';
       el.appendChild(d);
     });
   }
@@ -1917,7 +1917,7 @@ window.addEventListener('load',function(){
   var oS=window.startSession,oE=window.endSes,t=null;
   if(oS)window.startSession=function(){t=Date.now();return oS.apply(this,arguments);};
   if(oE)window.endSes=function(){
-    if(t){var dur=Math.round((Date.now()-t)/1000);var top=document.getElementById('sessionTopic');vSaveSes(top&&top.value.trim()||'Sesja',window.selSubject||'Dowolny',dur,window.hist||[]);t=null;}
+    if(t){var dur=Math.round((Date.now()-t)/1000);var top=document.getElementById('sessionTopic');vSaveSes(top&&top.value.trim()||'Sesja',window.selSubject||'Dowolny',dur);t=null;}
     return oE.apply(this,arguments);
   };
 });
