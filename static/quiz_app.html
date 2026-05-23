@@ -1122,13 +1122,13 @@ function answer(idx){
     var stored=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');
     var _q2=questions[currentQ];
     if(_q2){
-      var letters=['A','B','C','D'];
+      var _letters2=['A','B','C','D'];
       var ex=stored.find(function(x){return x.q===q.question;});
       if(ex){ex.count++;ex.ts=Date.now();}
       else stored.push({
         q:_q2.question,
-        wrong:letters[idx]+') '+(_q2.options[idx]||''),
-        correct:letters[_q2.correct]+') '+(_q2.options[_q2.correct]||''),
+        wrong:_letters2[idx]+') '+(_q2.options[idx]||''),
+        correct:_letters2[_q2.correct]+') '+(_q2.options[_q2.correct]||''),
         topic:_q2.topic||quiz&&quiz.title||'Quiz',
         count:1,ts:Date.now()
       });
