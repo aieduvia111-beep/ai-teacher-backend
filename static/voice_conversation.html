@@ -1374,7 +1374,7 @@ async function startSession(){
     try{
       var _wd=JSON.parse(_weakRaw).slice(0,5);
       if(_wd.length){
-        _weakCtx=' WAZNE - uczen popelnil bledy: '+_wd.map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ')+'. Wytlumacz te bledy i upewnij sie ze uczen rozumie.';
+        _weakCtx=_wd.slice(0,3).map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ');
       }
     }catch(e){}
   }
