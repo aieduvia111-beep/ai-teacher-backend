@@ -128,7 +128,7 @@ async def get_ai_response(data: dict):
         system = SYSTEM_PROMPT
         weak_context = data.get("weak_context","").strip()
         if weak_context:
-            system += "\n\nWAZNE - uczen popelnil bledy w quizie: "+weak_context+" Wytlumacz te bledy naturalnie jak nauczyciel, nie mow ze to z quizu."
+            system += "\n\nBARDZO WAZNE - zacznij od razu od omowienia bledow ucznia. Uczen popelnil te bledy w quizie: "+weak_context+". Powiedz dokladnie: co bylo pytanie, co uczen odpowiedzial zle i dlaczego poprawna odpowiedz jest inna. Bądz konkretny i naturalny jak nauczyciel."
         if level and level in level_map:
             system += f"\nPOZIOM: {level_map[level]}"
         if subject:
