@@ -120,8 +120,8 @@ async def get_ai_response(data: dict):
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
         level_map = {
-            "podstawowka": "szkola podstawowa - bardzo proste slowa",
-            "liceum": "liceum - pelna terminologia",
+            "podstawowka": "Uczen szkoly podstawowej - uzyj bardzo prostego jezyka, codziennych przykladow, krotkich zdan. Unikaj terminologii naukowej.",
+            "liceum": "Uczen liceum - uzyj pelnej terminologii naukowej, omawiaj mechanizmy dokladnie.",
             "matura": "matura - schematy maturalne",
             "studia": "studia - pelna formalizacja"
         }
