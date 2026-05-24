@@ -127,7 +127,7 @@ async def get_ai_response(data: dict):
         }
         system = SYSTEM_PROMPT
         if level and level in level_map:
-            system += f"\nPOZIOM: {level_map[level]}"
+            system = system + "\n\nKRYTYCZNE: " + level_map[level] + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
         if subject:
             system += f"\nPRZEDMIOT: {subject}"
         topic = data.get("topic", "")
