@@ -1,4 +1,4 @@
-const CACHE = 'eduvia-v10';
+const CACHE = 'eduvia-v99';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
