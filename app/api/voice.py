@@ -126,9 +126,6 @@ async def get_ai_response(data: dict):
             "studia": "studia - pelna formalizacja"
         }
         system = SYSTEM_PROMPT
-        profile_context = data.get("profile_context","").strip()
-        if profile_context:
-            system += "\n\n"+profile_context
         if level and level in level_map:
             system += f"\nPOZIOM: {level_map[level]}"
         if subject:
