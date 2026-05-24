@@ -1382,6 +1382,26 @@ async function startSession(){
   hist = [{role:'system', content: ctx}];
 
   boardClear();
+  // Jesli sa bledy z quizu - AI zaczyna od nich
+  if(_weakCtx && _weakCtx.length > 0){
+    setTimeout(async function(){
+      try{
+        const r2=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:'Zacznij od omowienia moich bledow z quizu. Nie pytaj mnie o nic - od razu wytlumacz co zrobilem zle.',history:hist.slice(-4),level:selLevel,subject:selSubject,weak_context:_weakCtx||''})
+        });
+        if(!r2.ok)return;
+        const rdr=r2.body.getReader(),dec=new TextDecoder();let buf='';
+        while(true){const{done,value}=await rdr.read();if(done)break;buf+=dec.decode(value,{stream:true});
+          const lns=buf.split('\n');buf=lns.pop();
+          for(const ln of lns){if(!ln.trim())continue;try{const msg=JSON.parse(ln);
+            if(msg.type==='meta'){if(msg.emocja)setAvatarEmotion(msg.emocja);window._boardTabl=msg.tablica||null;hist.push({role:'assistant',content:msg.text||''});}
+            if(msg.type==='audio'&&msg.audio){await playAudio(msg.audio);}
+          }catch(e2){}}
+        }
+      }catch(e){}
+    },1000);
+  }
   const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
   if(_topic){
     boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
