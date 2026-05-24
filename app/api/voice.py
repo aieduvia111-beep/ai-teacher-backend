@@ -126,9 +126,6 @@ async def get_ai_response(data: dict):
             "studia": "studia - pelna formalizacja"
         }
         system = SYSTEM_PROMPT
-        weak_context = data.get("weak_context","").strip()
-        if weak_context:
-            system += "\n\nBARDZO WAZNE INSTRUKCJA: Twoja pierwsza odpowiedz MUSI zaczac sie od slow \'Hej, zanim zaczniemy - widze ze miales problem z...\" i wymien KONKRETNIE co bylo zle. Bledy ucznia: "+weak_context+". Omow kazdy blad po kolei - pytanie, zla odpowiedz ucznia, poprawna odpowiedz i krotkie wyjasnienie. Dopiero potem kontynuuj normalnie."
         if level and level in level_map:
             system += f"\nPOZIOM: {level_map[level]}"
         if subject:

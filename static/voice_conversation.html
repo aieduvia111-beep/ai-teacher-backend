@@ -737,12 +737,10 @@ function getPlanBadgeHTML(plan) {
 
 
     <!-- SLABE TEMATY -->
-    <div class="weak-topics-card" id="weakTopicsCard" style="display:none;">
       <div class="weak-topics-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Powtórz słabe punkty
       </div>
-      <div id="weakTopicsList"></div>
     </div>
 
     <!-- FORMULARZ -->
@@ -1342,8 +1340,6 @@ function boardAddCorrection(wrong, correct){
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
 async function startSession(){
-  var _weakCtx='';
-  try{var _wd=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');if(_wd.length){_weakCtx=_wd.slice(0,3).map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ');}}catch(e){}
   if(window._explodeOrb) window._explodeOrb();
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
@@ -1370,17 +1366,13 @@ async function startSession(){
   // Kontekst dla AI
   const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
   const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
-  var _weakRaw=localStorage.getItem('eduviaWeakDetails');
-  var _weakCtx='';
   if(_weakRaw){
     try{
       var _wd=JSON.parse(_weakRaw).slice(0,5);
       if(_wd.length){
-        _weakCtx=' WAZNE - uczen popelnil bledy: '+_wd.map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ')+'. Wytlumacz te bledy i upewnij sie ze uczen rozumie.';
       }
     }catch(e){}
   }
-  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+_weakCtx+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie. Jak wyjasniasz wzory lub kroki napisz: [TABLICA: punkt1 | punkt2]. Jak uczen sie myli napisz: [KOREKTA: zle -> dobrze]';
   hist = [{role:'system', content: ctx}];
 
   boardClear();
@@ -1511,7 +1503,6 @@ async function process(){
     // Streaming TTS
     const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text: userTxt, weak_context: _weakCtx||"", history: hist.slice(-8), level: selLevel, subject: selSubject, lang: selLang, topic: document.getElementById('sessionTopic')?.value?.trim()||''})
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
         console.log('[STREAM] started', cr.status);
@@ -1870,8 +1861,6 @@ window.animateCounter=animateCounter;
 <script>
 function loadWeakTopics(){
   var topics=JSON.parse(localStorage.getItem('eduviaWeakTopics')||'[]');
-  var card=document.getElementById('weakTopicsCard');
-  var list=document.getElementById('weakTopicsList');
   if(!card||!list)return;
   if(!topics.length){card.style.display='none';return;}
   card.style.display='block';

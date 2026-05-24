@@ -1119,22 +1119,13 @@ function answer(idx){
     streak=0;wrongIndexes.push(currentQ);
     if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';
     // Zapisz szczegoly bledu niewidocznie
-    var stored=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');
-    var _q2=questions[currentQ];
-    if(_q2){
-      var _letters2=['A','B','C','D'];
       var ex=stored.find(function(x){return x.q===q.question;});
       if(ex){ex.count++;ex.ts=Date.now();}
       else stored.push({
-        q:_q2.question,
-        wrong:_letters2[idx]+') '+(_q2.options[idx]||''),
-        correct:_letters2[_q2.correct]+') '+(_q2.options[_q2.correct]||''),
-        topic:_q2.topic||quiz&&quiz.title||'Quiz',
         count:1,ts:Date.now()
       });
       stored.sort(function(a,b){return b.count-a.count;});
       if(stored.length>20)stored=stored.slice(0,20);
-      localStorage.setItem('eduviaWeakDetails',JSON.stringify(stored));
     }
   }
   let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
