@@ -1402,13 +1402,7 @@ async function startSession(){
       }catch(e){}
     },1000);
   }
-  const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
-  if(_topic){
-    boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
-    // AI sam zaczyna gdy jest temat
-    setTimeout(async()=>{
-      const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+  const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';,
         body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic})
       });
       if(!cr.ok) return;
