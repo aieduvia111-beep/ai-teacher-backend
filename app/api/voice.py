@@ -240,6 +240,7 @@ async def respond_stream(data: dict):
     level = data.get("level", "")
     subject = data.get("subject", "")
     topic = data.get("topic", "")
+    profile_context = data.get("profile_context", "").strip()
     if not text:
         return {"error":"brak tekstu"}
     system = SYSTEM_PROMPT
@@ -248,6 +249,7 @@ async def respond_stream(data: dict):
     if subject: ctx.append(f"Przedmiot: {subject}")
     if topic: ctx.append(f"Temat: {topic}")
     if ctx: system += "\n\n" + ". ".join(ctx) + "."
+    if profile_context: system += "\n\n" + profile_context
     messages = [{"role":"system","content":system}]
     for msg in history[-12:]:
         if isinstance(msg,dict) and msg.get("role") in ("user","assistant"):
