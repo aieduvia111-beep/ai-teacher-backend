@@ -1402,7 +1402,7 @@ async function startSession(){
       }catch(e){}
     },1000);
   }
-  const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';,
+  const _topic = document.getElementById('sessionTopic')?.value?.trim()||'';
         body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic})
       });
       if(!cr.ok) return;
