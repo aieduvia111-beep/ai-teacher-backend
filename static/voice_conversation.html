@@ -1365,11 +1365,6 @@ async function startSession(){
   // Kontekst dla AI
   const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
   const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
-    try{
-      if(_wd.length){
-      }
-    }catch(e){}
-  }
   hist = [{role:'system', content: ctx}];
 
   boardClear();
