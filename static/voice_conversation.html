@@ -1335,6 +1335,10 @@ function boardAddCorrection(wrong, correct){
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
 async function startSession(){
+  // Pobierz profil ucznia
+  var _profile = window._userProfile || {};
+  var _profileCtx = '';
+  if(_profile.name) _profileCtx = ' Uczen nazywa sie '+_profile.name+'. Ma '+(_profile.xp||0)+' XP i serie '+(_profile.streak||0)+' dni. Zrobil '+(_profile.quizCount||0)+' quizow. Zwracaj sie do niego po imieniu i odwoluj sie do jego postepow.';
   if(window._explodeOrb) window._explodeOrb();
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
