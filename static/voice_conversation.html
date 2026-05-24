@@ -450,14 +450,14 @@ button:active{transform:scale(.95)!important;}
 
 
 
-.weak-topics-card{background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:16px;padding:18px;position:relative;overflow:hidden;margin-bottom:0;}
-.weak-topics-card::after{content:'';position:absolute;top:0;left:18px;right:18px;height:1px;background:linear-gradient(90deg,transparent,rgba(248,113,113,.3),transparent);}
-.weak-topics-title{font-family:var(--h);font-size:.62em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(248,113,113,.7);display:flex;align-items:center;gap:7px;margin-bottom:12px;}
-.weak-topic-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.1);border-radius:9px;margin-bottom:6px;cursor:pointer;transition:all .2s;}
-.weak-topic-item:hover{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.25);}
-.weak-topic-name{font-size:.78em;color:var(--text);font-weight:500;}
-.weak-topic-count{font-size:.65em;color:rgba(248,113,113,.7);font-family:var(--h);}
-.weak-topic-arrow{font-size:.7em;color:rgba(248,113,113,.5);}
+
+
+
+
+
+
+
+
 
 </style>
 <script type="module">
@@ -736,12 +736,7 @@ function getPlanBadgeHTML(plan) {
   </div>
 
 
-    <!-- SLABE TEMATY -->
-      <div class="weak-topics-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Powtórz słabe punkty
-      </div>
-    </div>
+        </div>
 
     <!-- FORMULARZ -->
     <div class="form-panel">
@@ -1858,27 +1853,6 @@ window.animateCounter=animateCounter;
 
 
 
-<script>
-function loadWeakTopics(){
-  var topics=JSON.parse(localStorage.getItem('eduviaWeakTopics')||'[]');
-  if(!card||!list)return;
-  if(!topics.length){card.style.display='none';return;}
-  card.style.display='block';
-  list.innerHTML='';
-  topics.slice(0,5).forEach(function(t){
-    var div=document.createElement('div');
-    div.className='weak-topic-item';
-    div.innerHTML='<span class="weak-topic-name">'+t.topic+'</span><span class="weak-topic-count">'+t.count+' bledow</span><span class="weak-topic-arrow">→</span>';
-    div.onclick=function(){
-      var el=document.getElementById('sessionTopic');
-      if(el)el.value=t.topic;
-      el.scrollIntoView({behavior:'smooth'});
-      el.focus();
-    };
-    list.appendChild(div);
-  });
-}
-document.addEventListener('DOMContentLoaded',loadWeakTopics);
-</script>
+
 </body>
 </html>
