@@ -1533,7 +1533,7 @@ async function process(){
               _bp.forEach(p=>{
                 const tp=p.match(/^(bl|err)/i)?'error':p.match(/^(pop|cor|dobr)/i)?'correct':null;
                 setTimeout(()=>boardWriteSection(p,tp),_bd);
-                _bd+=Math.max(800,p.length*30);
+                _bd+=Math.max(1200,p.length*45);
               });
               window._boardTabl=null;
             }
