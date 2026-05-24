@@ -1502,6 +1502,7 @@ async function process(){
     // Streaming TTS
     const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text: userTxt, history: hist.slice(-8), level: selLevel, subject: selSubject, topic: document.getElementById('sessionTopic')?.value?.trim()||''}),
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
         console.log('[STREAM] started', cr.status);
