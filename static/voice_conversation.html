@@ -1342,6 +1342,8 @@ function boardAddCorrection(wrong, correct){
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
 async function startSession(){
+  var _weakCtx='';
+  try{var _wd=JSON.parse(localStorage.getItem('eduviaWeakDetails')||'[]');if(_wd.length){_weakCtx=_wd.slice(0,3).map(function(x){return 'Pytanie: "'+x.q+'" - odpowiedzial: "'+x.wrong+'" a powinno byc: "'+x.correct+'"';}).join('; ');}}catch(e){}
   if(window._explodeOrb) window._explodeOrb();
   const btn = g('startBtn');
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
@@ -1509,7 +1511,7 @@ async function process(){
     // Streaming TTS
     const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text: userTxt, history: hist.slice(-8), level: selLevel, subject: selSubject, lang: selLang, topic: document.getElementById('sessionTopic')?.value?.trim()||''})
+      body: JSON.stringify({text: userTxt, weak_context: _weakCtx||"", history: hist.slice(-8), level: selLevel, subject: selSubject, lang: selLang, topic: document.getElementById('sessionTopic')?.value?.trim()||''})
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
         console.log('[STREAM] started', cr.status);
