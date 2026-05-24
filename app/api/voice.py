@@ -120,8 +120,8 @@ async def get_ai_response(data: dict):
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
         level_map = {
-            "podstawowka": "Uczen szkoly podstawowej - uzyj bardzo prostego jezyka, codziennych przykladow, krotkich zdan. Unikaj terminologii naukowej.",
-            "liceum": "Uczen liceum - uzyj pelnej terminologii naukowej, omawiaj mechanizmy dokladnie.",
+            "podstawowka": "Mow jak do dziecka 12 lat. Przyklad: zamiast 'fotosynteza to konwersja energii' powiedz 'rosliny jedzą slonce'. Uzyj slow: super, fajne, wiesz co. Max 2 krotkie zdania.",
+            "liceum": "Uzyj terminologii: chlorofil, ATP, CO2, glukoza, chloroplasty. Wyjasniaj mechanizmy. 2-3 zdania.",
             "matura": "matura - schematy maturalne",
             "studia": "studia - pelna formalizacja"
         }
