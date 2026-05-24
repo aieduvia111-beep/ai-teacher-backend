@@ -1365,6 +1365,7 @@ async function startSession(){
   // Kontekst dla AI
   const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
   const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
+  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie.';
   hist = [{role:'system', content: ctx}];
 
   boardClear();
