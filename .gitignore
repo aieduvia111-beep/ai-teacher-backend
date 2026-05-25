@@ -3,3 +3,4 @@ __pycache__/
 *.db 
 *.pyc 
 app/firebase-admin.json
+firebase-service-account.json
