@@ -1,3 +1,31 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+
+# Firebase Admin init
+try:
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json'))
+        firebase_admin.initialize_app(cred)
+    _fdb = firestore.client()
+except Exception as _fe:
+    print(f"Firebase Admin nie zaladowany: {_fe}")
+    _fdb = None
+
+def _update_firebase_plan(user_id: str, is_pro: bool):
+    """Aktualizuje plan w Firebase Firestore"""
+    if not _fdb:
+        print("Brak Firebase Admin - pomijam aktualizacje Firebase")
+        return
+    try:
+        _fdb.collection('users').document(user_id).set({
+            'plan': 'pro' if is_pro else 'free',
+            'premium_until': None if not is_pro else None
+        }, merge=True)
+        print(f"Firebase zaktualizowany: user {user_id} -> {'PRO' if is_pro else 'FREE'}")
+    except Exception as e:
+        print(f"Blad aktualizacji Firebase: {e}")
+
 """
 💳 STRIPE SERVICE - Obsługa płatności
 Dzień 6: Integracja Stripe Payments
@@ -178,7 +206,7 @@ class StripeService:
             user.is_premium = True
             user.premium_until = datetime.fromtimestamp(subscription.current_period_end)
             db.commit()
-            
+            _update_firebase_plan(user_id, True)
             print(f"✅ User {user_id} ustawiony jako PREMIUM do {user.premium_until}")
         
         # Zapisz subskrypcję
@@ -228,6 +256,7 @@ class StripeService:
                 else:
                     user.is_premium = False
                     user.premium_until = None
+                    _update_firebase_plan(user.firebase_uid, False)
             
             db.commit()
             print(f"✅ Subskrypcja zaktualizowana")
