@@ -114,7 +114,7 @@ def build_prompt(subject: str, mode: str, generate_similar: bool, show_explanati
         "- NIE POMIJAJ zadania ostatniego na stronie!\n"
         "- Jesli widzisz 6 zadan na zdjeciu - w JSON musi byc 6 obiektow\n"
         "- Jesli widzisz 5 zadan - 5 obiektow. Itd.\n"
-        "- Podpunkty A B C D to jedno zadanie\n"
+        "- KRYTYCZNE: Podpunkty a) b) c) d) to CZESC jednego zadania - NIE osobne zadania! Jeden obiekt w problems[]\n"
         "- similar_problems: konkretne zadania z liczbami, nie nazwy tematow"
     )
 
