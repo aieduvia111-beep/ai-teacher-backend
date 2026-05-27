@@ -202,9 +202,9 @@ ZASADY:
 }}
 
 === WYMAGANIA ILOSCI ===
-- sekcja zamknieta: 5-8 pytan po 1-2 pkt
-- sekcja otwarta: 3-5 zadan po 3-6 pkt
 - DOKLADNIE {liczba_pytan} pytan lacznie (NIE wiecej, NIE mniej)
+- rozdziel proporcjonalnie: okolo 60% zamknietych, 40% otwartych
+- PRIORYTET: liczba pytan {liczba_pytan} jest WAZNIEJSZA niz zakresy sekcji
 - punkty lacznie: 25-35 pkt
 - trudnosc rosnaca w obrebie kazdej sekcji
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
