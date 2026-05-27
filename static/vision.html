@@ -877,7 +877,7 @@ function snapPhoto(){
   const v=document.getElementById('cameraVideo'),c=document.getElementById('cameraCanvas');
   c.width=v.videoWidth;c.height=v.videoHeight;
   c.getContext('2d').drawImage(v,0,0);
-  closeCamera();setImage(c.toDataURL('image/jpeg',.9));
+  closeCamera();const _vc=c;const _vmax=800;if(_vc.width>_vmax){const _vr=_vmax/_vc.width;const _vt=document.createElement('canvas');_vt.width=_vmax;_vt.height=_vc.height*_vr;_vt.getContext('2d').drawImage(_vc,0,0,_vt.width,_vt.height);setImage(_vt.toDataURL('image/jpeg',.6));}else{setImage(_vc.toDataURL('image/jpeg',.6));}
 }
 
 /* USTAW ZDJECIE */
@@ -975,7 +975,7 @@ function compressImage(base64,maxPx,quality){
       if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
       const c=document.createElement('canvas');c.width=w;c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
-      resolve(c.toDataURL('image/jpeg',quality));
+      const _q=Math.min(quality,0.6);const _qmax=800;if(c.width>_qmax){const _qr=_qmax/c.width;const _qt=document.createElement('canvas');_qt.width=_qmax;_qt.height=c.height*_qr;_qt.getContext('2d').drawImage(c,0,0,_qt.width,_qt.height);resolve(_qt.toDataURL('image/jpeg',_q));}else{resolve(c.toDataURL('image/jpeg',_q));}
     };
     img.src=base64;
   });
