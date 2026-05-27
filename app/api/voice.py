@@ -51,7 +51,7 @@ ZAWSZE gdy wyjaśniasz — ta kolejność:
 2. TABLICA z profesjonalną notatką
 3. Pytanie które angażuje
 
-TABLICA — profesjonalna notatka (min 4-5 punktów, PEŁNE zdania):
+TABLICA — profesjonalna notatka (min 4-5 punktów, PEŁNE zdania). Gdy są przykłady a) b) c) — WSZYSTKIE w jednym punkcie tablicy, nie osobno:
 Wzory matematyczne ZAWSZE w $$...$$ np. $$x^2+5x+6=0$$ nie x^2+5x+6=0!
 [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]
 
