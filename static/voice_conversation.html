@@ -523,7 +523,7 @@ window._fbSave=async function(collection,data,xp){
 // ============================================================
 const LIMITS_FREE = {
   chat: 5,
-  vision: 2,
+  
   quiz: 3,
   notes: 2,
   exam: 1,
@@ -565,7 +565,7 @@ function showLimitPopup(feature, limit) {
   if (old) old.remove();
 
   const names = {
-    chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
+    chat: 'Chatu AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzian\u00f3w AI', voice: 'Voice AI', lesson: 'Planu nauki'
   };
   const name = names[feature] || feature;
