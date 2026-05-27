@@ -1297,7 +1297,11 @@ async function snapPhoto(){
   canvas.width=video.videoWidth;
   canvas.height=video.videoHeight;
   canvas.getContext('2d').drawImage(video,0,0);
-  const b64=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
+  // Kompresja - max 800px
+const maxW=800,maxH=800;
+let cw=canvas.width,ch=canvas.height;
+if(cw>maxW||ch>maxH){const r=Math.min(maxW/cw,maxH/ch);const tmp=document.createElement('canvas');tmp.width=cw*r;tmp.height=ch*r;tmp.getContext('2d').drawImage(canvas,0,0,tmp.width,tmp.height);canvas.width=tmp.width;canvas.height=tmp.height;canvas.getContext('2d').drawImage(tmp,0,0);}
+const b64=canvas.toDataURL('image/jpeg',0.6).split(',')[1];
   photos.push(b64);
   renderPhotos();
   closeCamera();
