@@ -33,7 +33,7 @@ async def generate_exam_from_image(
         
         WYMAGANIA:
         - Poziom trudnoÅ›ci: {difficulty}
-        - ÅÄ…czna liczba pytaÅ„: {num_questions}
+        - ÅÄ…czna liczba pytaÅ„: {num_questions} (BEZWZGLEDNIE {num_questions} pytan - nie mniej, nie wiecej!)
         - {'Zawiera pytania otwarte' if include_open_questions else 'Tylko test jednokrotnego wyboru'}
         
         FORMAT ODPOWIEDZI (TYLKO JSON, nic wiÄ™cej):
