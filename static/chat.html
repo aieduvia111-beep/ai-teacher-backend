@@ -1217,6 +1217,12 @@ async function generateFromYT(type){
     exam:'https://eduvia-backend-2.onrender.com/api/v1/youtube/exam'
   };
   try{
+    if(type==='notes'){
+      // Przekieruj do notatek z auto-generowaniem
+      localStorage.setItem('yt_autourl', url);
+      window.location.href='notes_generator.html?yt=1';
+      return;
+    }
     const res=await fetch(endpoints[type],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,klasa:'liceum',num_sections:3,num_questions:10})});
     if(!res.ok)throw new Error('Blad serwera');
     const ct=res.headers.get('content-type')||'';
