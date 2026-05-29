@@ -69,6 +69,11 @@ except Exception as e:
 
 try:
     from .api.notes_api import router as notes_router
+except Exception as e:
+    print(f"notes_api error: {e}")
+try:
+    from .api.youtube_notes import router as youtube_router
+    app.include_router(youtube_router)
     app.include_router(notes_router)
     print("✅ notes OK")
 except Exception as e:
