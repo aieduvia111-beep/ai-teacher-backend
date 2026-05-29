@@ -58,3 +58,86 @@ async def youtube_notes(req: YoutubeRequest):
         return {"success": False, "error": str(e)}
     except Exception as e:
         return {"success": False, "error": f"Blad: {str(e)}"}
+
+from ..openai_exam import generate_exam_from_image
+
+class YoutubeQuizRequest(BaseModel):
+    url: str
+    klasa: str = "liceum"
+    num_questions: int = 10
+    difficulty: str = "medium"
+
+@router.post("/quiz")
+async def youtube_quiz(req: YoutubeQuizRequest):
+    try:
+        video_id = extract_video_id(req.url)
+        try:
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pl'])
+        except:
+            try:
+                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+            except:
+                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        
+        full_text = ' '.join([t['text'] for t in transcript])[:5000]
+        
+        from openai import AsyncOpenAI
+        client2 = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        response = await client2.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role":"user","content":f"""Na podstawie tej transkrypcji wygeneruj {req.num_questions} pytan quizowych po polsku.
+
+Transkrypcja:
+{full_text}
+
+Odpowiedz TYLKO JSON:
+{{"questions":[{{"question":"Pytanie?","options":["a) ..","b) ..","c) ..","d) .."],"correct":"a","explanation":"Wyjasnienie"}}],"topic":"Temat quizu"}}"""}],
+            max_tokens=3000,
+            response_format={"type":"json_object"}
+        )
+        
+        import json
+        data = json.loads(response.choices[0].message.content)
+        data["success"] = True
+        return data
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.post("/exam")  
+async def youtube_exam(req: YoutubeRequest):
+    try:
+        video_id = extract_video_id(req.url)
+        try:
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pl'])
+        except:
+            try:
+                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+            except:
+                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        
+        full_text = ' '.join([t['text'] for t in transcript])[:5000]
+        temat = f"Temat z YouTube (transkrypcja): {full_text[:200]}"
+        
+        from ..exam_pdf_generator import ExamGenerator
+        gen = ExamGenerator(settings.OPENAI_API_KEY)
+        
+        loop = asyncio.get_event_loop()
+        pdf_path = await loop.run_in_executor(
+            _executor, lambda: gen.generate_exam(
+                temat=temat,
+                klasa=req.klasa,
+                liczba_pytan=10,
+                wlasne_instrukcje=f"Sprawdzian oparty na tej transkrypcji z YouTube:\n{full_text[:3000]}"
+            )
+        )
+        
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=sprawdzian-youtube.pdf"}
+        )
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
