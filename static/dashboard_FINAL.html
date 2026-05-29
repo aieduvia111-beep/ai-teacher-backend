@@ -402,6 +402,9 @@ onAuthStateChanged(auth,async(user)=>{
   currentUser=user;
   localStorage.setItem('eduvia_uid',user.uid);
   const snap=await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists()){
+    await setDoc(doc(db,'users',user.uid),{uid:user.uid,email:user.email||'',name:user.displayName||'Uzytkownik',xp:0,streak:0,plan:'free',quizHistory:[],notesHistory:[],examHistory:[],visionHistory:[],createdAt:new Date().toISOString()});
+  }
   if(snap.exists()){
     const d=snap.data();
     localStorage.setItem('eduvia_xp',d.xp||0);
