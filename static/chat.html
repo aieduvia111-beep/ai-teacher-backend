@@ -1156,8 +1156,51 @@ setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 *
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }
 
 function openYoutubePanel(){
-  const p=document.getElementById('ytPanel');
-  if(p) p.style.display=p.style.display==='none'?'block':'none';
+  const msgs=document.getElementById('msgsArea');
+  const es=document.getElementById('emptyState');
+  if(es)es.style.display='none';
+  const oldF=document.getElementById('ytFormMsg');
+  if(oldF)oldF.remove();
+  const g=document.createElement('div');
+  g.className='msg-group ai';
+  g.id='ytFormMsg';
+  g.innerHTML=`
+    <div class="msg-meta ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>Eduvia AI</div>
+    <div class="bubble" style="padding:0;overflow:hidden;min-width:280px;max-width:420px;background:linear-gradient(160deg,rgba(15,15,28,.97),rgba(10,10,20,.98));border:1px solid rgba(255,255,255,.08);border-radius:16px;">
+      <div style="padding:13px 15px 11px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;">
+        <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,60,60,.1);border:1px solid rgba(255,60,60,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div>
+          <div style="font-family:var(--h);font-size:.8em;font-weight:700;color:var(--text);">YouTube do AI</div>
+          <div style="font-size:.67em;color:var(--muted);margin-top:1px;">Wklej link i wybierz format</div>
+        </div>
+      </div>
+      <div style="padding:13px 15px;">
+        <div style="position:relative;margin-bottom:13px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" width="13" height="13" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <input id="ytInput" type="text" placeholder="https://youtube.com/watch?v=..." style="width:100%;padding:9px 11px 9px 30px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;color:var(--text);font-family:var(--b);font-size:.81em;outline:none;" onfocus="this.style.borderColor='rgba(124,106,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+        </div>
+        <div style="font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Wybierz format</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <button onclick="generateFromYT('notes')" style="padding:9px 4px;border-radius:9px;border:1px solid rgba(124,106,255,.22);background:rgba(124,106,255,.07);color:var(--accent2);font-family:var(--h);font-size:.68em;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;" onmouseover="this.style.background='rgba(124,106,255,.16)'" onmouseout="this.style.background='rgba(124,106,255,.07)'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            Notatka
+          </button>
+          <button onclick="generateFromYT('quiz')" style="padding:9px 4px;border-radius:9px;border:1px solid rgba(34,211,160,.22);background:rgba(34,211,160,.07);color:#22d3a0;font-family:var(--h);font-size:.68em;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;" onmouseover="this.style.background='rgba(34,211,160,.16)'" onmouseout="this.style.background='rgba(34,211,160,.07)'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Quiz
+          </button>
+          <button onclick="generateFromYT('exam')" style="padding:9px 4px;border-radius:9px;border:1px solid rgba(56,189,248,.22);background:rgba(56,189,248,.07);color:#38bdf8;font-family:var(--h);font-size:.68em;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;" onmouseover="this.style.background='rgba(56,189,248,.16)'" onmouseout="this.style.background='rgba(56,189,248,.07)'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Sprawdzian
+          </button>
+        </div>
+      </div>
+    </div>`;
+  msgs.appendChild(g);
+  msgs.scrollTop=msgs.scrollHeight;
+}
 }
 
 async function generateFromYT(type){
