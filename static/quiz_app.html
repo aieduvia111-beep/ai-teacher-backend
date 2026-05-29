@@ -426,10 +426,17 @@ onAuthStateChanged(auth, async (user) => {
 window._fbSaveQuiz = async function(title, correct, total, xpEarned) {
   if (!currentUser) return;
   try {
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      quizHistory: arrayUnion({title, correct, total, xp: xpEarned, timestamp: new Date().toISOString()}),
-      xp: increment(xpEarned)
-    });
+    const ref = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      const {setDoc, serverTimestamp} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      await setDoc(ref, {uid: currentUser.uid, email: currentUser.email||'', name: currentUser.displayName||'Uzytkownik', xp: xpEarned, streak: 0, plan: 'free', quizHistory: [{title, correct, total, xp: xpEarned, timestamp: new Date().toISOString()}], notesHistory: [], examHistory: [], visionHistory: [], createdAt: new Date().toISOString()});
+    } else {
+      await updateDoc(ref, {
+        quizHistory: arrayUnion({title, correct, total, xp: xpEarned, timestamp: new Date().toISOString()}),
+        xp: increment(xpEarned)
+      });
+    }
   } catch(e) { console.log('Firebase save error:', e); }
 };
 </script>
