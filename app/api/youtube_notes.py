@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, FetchedTranscript
 from ..config import settings
 from ..notes_pdf_generator import PremiumNotesGenerator
 from concurrent.futures import ThreadPoolExecutor
@@ -31,15 +31,16 @@ async def youtube_notes(req: YoutubeRequest):
         video_id = extract_video_id(req.url)
         
         # Pobierz transkrypcje
+        api = YouTubeTranscriptApi()
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pl'])
+            transcript = api.fetch(video_id, languages=['pl'])
         except:
             try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+                transcript = api.fetch(video_id, languages=['en'])
             except:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+                transcript = api.fetch(video_id)
         
-        full_text = ' '.join([t['text'] for t in transcript])[:6000]
+        full_text = ' '.join([t.text for t in transcript])[:6000]
         temat = f"Notatka z YouTube: {req.url}"
         
         loop = asyncio.get_event_loop()
@@ -71,15 +72,16 @@ class YoutubeQuizRequest(BaseModel):
 async def youtube_quiz(req: YoutubeQuizRequest):
     try:
         video_id = extract_video_id(req.url)
+        api = YouTubeTranscriptApi()
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pl'])
+            transcript = api.fetch(video_id, languages=['pl'])
         except:
             try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+                transcript = api.fetch(video_id, languages=['en'])
             except:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+                transcript = api.fetch(video_id)
         
-        full_text = ' '.join([t['text'] for t in transcript])[:5000]
+        full_text = ' '.join([t.text for t in transcript])[:5000]
         
         from openai import AsyncOpenAI
         client2 = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
@@ -109,15 +111,16 @@ Odpowiedz TYLKO JSON:
 async def youtube_exam(req: YoutubeRequest):
     try:
         video_id = extract_video_id(req.url)
+        api = YouTubeTranscriptApi()
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['pl'])
+            transcript = api.fetch(video_id, languages=['pl'])
         except:
             try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+                transcript = api.fetch(video_id, languages=['en'])
             except:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+                transcript = api.fetch(video_id)
         
-        full_text = ' '.join([t['text'] for t in transcript])[:5000]
+        full_text = ' '.join([t.text for t in transcript])[:5000]
         temat = f"Temat z YouTube (transkrypcja): {full_text[:200]}"
         
         from ..exam_pdf_generator import ExamGenerator
