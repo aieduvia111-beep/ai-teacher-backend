@@ -665,19 +665,11 @@ function getPlanBadgeHTML(plan) {
         <div class="field">
           <span class="field-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-            Źródło notatki
+            Temat notatki
           </span>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <button id="tabTemat" onclick="switchTab('temat')" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--accent);background:rgba(124,106,255,.15);color:var(--accent2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;">📝 Temat</button>
-            <button id="tabYT" onclick="switchTab('yt')" style="flex:1;padding:8px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;">▶️ YouTube</button>
-          </div>
-          <div id="wrapTemat" class="input-wrap">
+          <div class="input-wrap">
             <input type="text" id="temat" placeholder="np. Całki oznaczone, DNA, I Wojna Światowa..." maxlength="100">
             <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-          </div>
-          <div id="wrapYT" class="input-wrap" style="display:none;">
-            <input type="text" id="ytUrl" placeholder="https://youtube.com/watch?v=..." maxlength="200">
-            <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
           </div>
         </div>
 
