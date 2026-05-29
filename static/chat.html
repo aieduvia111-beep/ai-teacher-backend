@@ -1154,6 +1154,39 @@ setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 *
 
 // TEXTAREA
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }
+
+function openYoutubePanel(){
+  const p=document.getElementById('ytPanel');
+  if(p) p.style.display=p.style.display==='none'?'block':'none';
+}
+
+async function generateFromYT(type){
+  const url=document.getElementById('ytInput').value.trim();
+  if(!url){alert('Wklej link YouTube!');return;}
+  document.getElementById('ytPanel').style.display='none';
+  const names={notes:'Notatka',quiz:'Quiz',exam:'Sprawdzian'};
+  const endpoints={
+    notes:'https://eduvia-backend-2.onrender.com/api/v1/youtube/notes',
+    quiz:'https://eduvia-backend-2.onrender.com/api/v1/youtube/quiz',
+    exam:'https://eduvia-backend-2.onrender.com/api/v1/youtube/exam'
+  };
+  try{
+    const res=await fetch(endpoints[type],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,klasa:'liceum',num_sections:3,num_questions:10})});
+    if(!res.ok)throw new Error('Blad serwera');
+    const ct=res.headers.get('content-type')||'';
+    if(ct.includes('application/pdf')){
+      const blob=await res.blob(),lnk=document.createElement('a');
+      lnk.href=URL.createObjectURL(blob);lnk.download=names[type]+'_YouTube.pdf';lnk.click();
+    } else {
+      const d=await res.json();
+      if(type==='quiz'&&d.questions){
+        localStorage.setItem('ytQuizData',JSON.stringify(d));
+        window.location.href='quiz_app.html?yt=1';
+      }
+    }
+  }catch(e){alert('Blad: '+e.message);}
+}
+
 function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 
 // FILES
