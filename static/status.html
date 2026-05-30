@@ -160,15 +160,16 @@ async function checkService(i){
   try{
     const res = await fetch(s.url, {method: s.method, signal: AbortSignal.timeout(8000)});
     const ms = Date.now() - start;
-    if(res.ok){
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.status!=='error'){
       badge.className = 'status-badge ok';
-      badge.textContent = 'Działa';
+      badge.textContent = 'Dziala';
       ping.textContent = ms + 'ms';
     } else {
       badge.className = 'status-badge err';
-      badge.textContent = 'Błąd ' + res.status;
+      const errMsg = data.errors && data.errors[0] ? data.errors[0] : ('Blad '+res.status);
+      badge.textContent = errMsg;
       ping.textContent = ms + 'ms';
-    }
     return res.ok;
   } catch(e){
     const ms = Date.now() - start;
