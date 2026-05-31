@@ -262,6 +262,7 @@ window._currentUser=()=>currentUser;
     <div class="plan-name pro-name" style="margin-top:30px">Pro</div>
     <div class="plan-price"><span class="plan-amt pro-amt">29</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">miesięcznie · anuluj kiedy chcesz</div>
+    <div style="margin-bottom:12px;"><input id="affCode" type="text" placeholder="Kod polecajacy (opcjonalnie)" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:var(--text);font-family:var(--h);font-size:.78em;outline:none;box-sizing:border-box;" oninput="this.value=this.value.toUpperCase()"><div id="affMsg" style="font-size:.68em;margin-top:4px;min-height:14px;"></div></div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
       <span id="btnText">Kup Pro teraz →</span>
       <div class="btn-loader" id="btnLoader"></div>
