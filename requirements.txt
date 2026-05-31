@@ -21,3 +21,4 @@ aiofiles==23.2.1
 groq
 elevenlabs
 youtube-transcript-api
+firebase-admin
