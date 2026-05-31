@@ -55,7 +55,8 @@ main{max-width:700px;margin:40px auto;padding:0 24px;}
 <main>
   <div class="section-title">Usługi</div>
   <div class="services" id="services"></div>
-  <div class="updated" id="updated">Sprawdzanie...</div>
+  <div id="errSec" style="display:none;margin-top:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div class="section-title" style="margin-bottom:0;">Ostatnie bledy</div><span id="errCount" style="font-family:var(--h);font-size:.65em;font-weight:700;color:#f87171;"></span></div><div id="errList"></div></div>
+  <div class="updated" id="updated"></div>
   <button class="refresh-btn" onclick="checkAll()">↻ Odśwież</button>
 </main>
 
