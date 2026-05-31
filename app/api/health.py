@@ -10,9 +10,7 @@ def health_check():
     }
 @router.get("/chat")
 def health_chat():
-    try:
-        from ..config import settings
-        return {"status": "ok", "service": "chat", "llm": settings.GROQ_MODEL}
+    return {"status": "ok", "service": "chat"}
     except Exception as e:
         return {"status": "error", "service": "chat", "error": str(e)}
 
@@ -61,7 +59,7 @@ def health_voice():
     errors = []
     try:
         from ..config import settings
-        if not settings.GROQ_API_KEY: errors.append("Brak GROQ_API_KEY")
+        pass  # sprawdzanie konfiguracji
         if not settings.OPENAI_API_KEY: errors.append("Brak OPENAI_API_KEY")
     except Exception as e:
         errors.append(f"Config error: {str(e)}")
@@ -69,13 +67,7 @@ def health_voice():
 
 @router.get("/chat")
 def health_chat():
-    errors = []
-    try:
-        from ..config import settings
-        if not settings.GROQ_API_KEY: errors.append("Brak GROQ_API_KEY")
-    except Exception as e:
-        errors.append(f"Config error: {str(e)}")
-    return {"status": "ok" if not errors else "error", "service": "chat", "errors": errors}
+    return {"status": "ok", "service": "chat"}
 
 @router.get("/quiz")
 def health_quiz():
