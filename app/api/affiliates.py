@@ -10,7 +10,12 @@ def get_db():
     import firebase_admin
     from firebase_admin import credentials, firestore
     if not firebase_admin._apps:
-        cred = credentials.Certificate('app/eduvia-c69bc-firebase-adminsdk-fbsvc-be39724e72.json')
+        sa_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+        if sa_json:
+            import json
+            cred = credentials.Certificate(json.loads(sa_json))
+        else:
+            cred = credentials.Certificate('app/eduvia-c69bc-firebase-adminsdk-fbsvc-be39724e72.json')
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
