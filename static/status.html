@@ -61,7 +61,7 @@ main{max-width:700px;margin:40px auto;padding:0 24px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const _fbApp = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc"});
 const _fdb = getFirestore(_fbApp);
 async function loadErrors(){
