@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 """QUIZ API - generowanie quizu z obrazka, tematu lub pliku PDF/DOCX"""
 from fastapi import APIRouter
 from pydantic import BaseModel

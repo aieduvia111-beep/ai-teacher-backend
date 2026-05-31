@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 """VOICE CONVERSATION API - Groq STT + GPT-4o + ElevenLabs TTS"""
 from fastapi import APIRouter
 from openai import OpenAI

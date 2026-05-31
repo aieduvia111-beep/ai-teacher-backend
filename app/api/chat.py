@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
@@ -155,6 +156,7 @@ async def chat_message(req: ChatRequest):
         return _build_response(ai_data, req.text)
 
     except Exception as e:
+        log_error("Chat", str(e))
         print(f"❌ Błąd chat HTTP: {e}")
         return {
             "title": "Błąd",
@@ -317,6 +319,7 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
     except WebSocketDisconnect:
         print(f"👋 User {user_id} rozłączył się")
     except Exception as e:
+        log_error("Chat", str(e))
         print(f"❌ Nieoczekiwany błąd: {e}")
 
 

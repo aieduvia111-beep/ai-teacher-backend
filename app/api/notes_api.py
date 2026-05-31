@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 """NOTES API - generowanie PDF z tematu LUB zdjecia (1 lub wiele)"""
 from fastapi import APIRouter
 from fastapi.responses import FileResponse

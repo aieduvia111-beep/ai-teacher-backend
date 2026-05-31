@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional

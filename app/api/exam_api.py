@@ -1,3 +1,4 @@
+from ..error_logger import log_error
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
