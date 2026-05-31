@@ -108,3 +108,36 @@ async def get_stats(code: str):
         return {"success": True, "stats": doc.to_dict()}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+class AffiliateGenerate(BaseModel):
+    user_id: str
+    name: str
+    email: str
+
+@router.post("/generate")
+async def generate_affiliate(req: AffiliateGenerate):
+    try:
+        db = get_db()
+        import random, string
+        # Sprawdz czy juz ma kod
+        existing = db.collection('affiliates').where('user_id', '==', req.user_id).limit(1).get()
+        if existing:
+            for doc in existing:
+                return {"success": True, "code": doc.id, "stats": doc.to_dict()}
+        # Generuj unikalny kod
+        suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        code = f"EDU{suffix}"
+        db.collection('affiliates').document(code).set({
+            "code": code,
+            "user_id": req.user_id,
+            "name": req.name,
+            "email": req.email,
+            "commission": 0.30,
+            "sales": 0,
+            "earnings": 0.0,
+            "created_at": datetime.utcnow().isoformat(),
+            "active": True
+        })
+        return {"success": True, "code": code}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
