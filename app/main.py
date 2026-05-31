@@ -155,6 +155,11 @@ async def page_quiz():
     return FileResponse(os.path.join(BASE_DIR, "static", "quiz_app.html"))
 
 try:
+    from .api.affiliates import router as affiliates_router
+    app.include_router(affiliates_router)
+except Exception as e:
+    print(f"affiliates error: {e}")
+try:
     from .api.health import router as health_router
     app.include_router(health_router)
 except Exception as e:
