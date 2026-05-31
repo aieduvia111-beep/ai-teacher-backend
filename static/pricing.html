@@ -365,6 +365,14 @@ async function startCheckout() {
   if(p.get('payment') === 'success'){
     localStorage.setItem('eduvia_plan','pro');
     if(typeof window._fbSetPlan === 'function') window._fbSetPlan('pro');
+    // Rejestruj sprzedaz afiliacyjna
+    const affCode = localStorage.getItem('eduvia_aff_code');
+    if(affCode){
+      fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/sale',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({code:affCode,amount:29.0,buyer_uid:localStorage.getItem('eduvia_uid')||''})
+      }).then(()=>localStorage.removeItem('eduvia_aff_code')).catch(()=>{});
+    }
     showToast('🎉 Dziękujemy! Plan Pro aktywowany!', 'success');
     setTimeout(()=>{ window.location.href = 'dashboard_FINAL.html'; }, 2500);
   } else if(p.get('payment') === 'cancel'){
