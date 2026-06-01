@@ -484,8 +484,8 @@ async function generatePartnerCode(){
 function copyCode(){
   const code=document.getElementById('partnerCode').textContent;
   navigator.clipboard.writeText(code);
-  const btn=event.target;btn.textContent='Skopiowano!';
-  setTimeout(()=>btn.textContent='Kopiuj',2000);
+  const btn=event.target;btn.textContent='✓';
+  setTimeout(()=>btn.textContent='Kopiuj',1500);
 }
 window.addEventListener('load',loadPartnerStatus);
 
