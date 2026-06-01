@@ -349,7 +349,7 @@ FORMAT (TYLKO JSON):
 WAÅ»NE:
 - Pytania z materiaÅ‚u na obrazku
 - "correct" = index (0-3)
-- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{a}{b}$
+- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $x^2/y$
 - ZwrÃ³Ä‡ TYLKO JSON
 """
         
