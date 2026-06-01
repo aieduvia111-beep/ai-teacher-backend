@@ -325,33 +325,35 @@ async def generate_quiz_from_image(
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
         
-        prompt = f"""
-StwÃ³rz QUIZ na podstawie tego materiaÅ‚u.
+        prompt = f"""Jestes ekspertem matematycznym i nauczycielem. Przeanalizuj obrazek ze zdjeciami zadan matematycznych.
 
-PARAMETRY:
-- Liczba pytaÅ„: {num_questions}
-- TrudnoÅ›Ä‡: {difficulty}
+ZADANIE:
+1. Przeczytaj WSZYSTKIE zadania na obrazku
+2. Rozwiaz kazde zadanie krok po kroku
+3. Na podstawie tresci i rozwiazan stwórz {num_questions} pytan quizowych
+
+WAZNE:
+- NIE pytaj o numery zadan (np. "Co bylo w zadaniu 3?")
+- Pytaj o MATEMATYCZNE KONCEPTY z tych zadan (np. "Ile wynosi x w rownaniu 2x+4=10?")
+- Kazde pytanie musi miec konkretna odpowiedz matematyczna
+- Wzory ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$
+- Trudnosc: {difficulty}
 
 FORMAT (TYLKO JSON):
 {{
-    "title": "TytuÅ‚ quizu",
+    "title": "Quiz matematyczny",
     "questions": [
         {{
             "id": 1,
-            "question": "TreÅ›Ä‡ pytania",
-            "options": ["A", "B", "C", "D"],
+            "question": "Tresc pytania z konkretnymi liczbami i wzorami",
+            "options": ["$a$", "$b$", "$c$", "$d$"],
             "correct": 0,
-            "explanation": "WyjaÅ›nienie"
+            "explanation": "Krok po kroku: ..."
         }}
     ]
 }}
 
-WAÅ»NE:
-- Pytania z materiaÅ‚u na obrazku
-- "correct" = index (0-3)
-- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $x^2/y$
-- ZwrÃ³Ä‡ TYLKO JSON
-"""
+Zwroc TYLKO JSON."""
         
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
         
