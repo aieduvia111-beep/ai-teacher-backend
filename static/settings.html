@@ -282,6 +282,41 @@ button:active{transform:scale(.95)!important;}
 
     <div class="sec">
       <div class="sec-lbl">Sesja</div>
+
+    <div class="config-card" style="margin-bottom:16px;">
+      <div class="sec-hdr">
+        <div class="sec-hdr-ic" style="background:rgba(34,211,160,.1);border-color:rgba(34,211,160,.2);"><svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="sec-hdr-txt"><div class="sec-title">Program Partnerski</div><div class="sec-sub">Zarabiaj polecajac Eduvia</div></div>
+      </div>
+      <div class="sec-body">
+        <div id="partnerLoading" style="padding:16px;text-align:center;color:var(--muted);font-size:.82em;">Ladowanie...</div>
+        <div id="partnerPanel" style="display:none;padding:4px 0;">
+          <div style="padding:12px 16px;background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.15);border-radius:12px;margin-bottom:12px;">
+            <div style="font-family:var(--h);font-size:.68em;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">Twoj kod</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div id="partnerCode" style="font-family:var(--h);font-size:1.4em;font-weight:800;color:#22d3a0;letter-spacing:.05em;"></div>
+              <button onclick="copyCode()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(34,211,160,.3);background:rgba(34,211,160,.08);color:#22d3a0;font-family:var(--h);font-size:.65em;font-weight:700;cursor:pointer;">Kopiuj</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div style="padding:12px;background:var(--s2);border-radius:11px;text-align:center;">
+              <div id="partnerSales" style="font-family:var(--h);font-size:1.5em;font-weight:800;color:var(--text);">0</div>
+              <div style="font-size:.65em;color:var(--muted);margin-top:2px;">Sprzedazy</div>
+            </div>
+            <div style="padding:12px;background:var(--s2);border-radius:11px;text-align:center;">
+              <div id="partnerEarnings" style="font-family:var(--h);font-size:1.5em;font-weight:800;color:#22d3a0;">0 zl</div>
+              <div style="font-size:.65em;color:var(--muted);margin-top:2px;">Zarobki</div>
+            </div>
+          </div>
+          <div style="font-size:.72em;color:var(--muted);line-height:1.6;padding:0 4px;">Udostepnij swoj kod — zarabiasz <strong style="color:var(--text);">30%</strong> od kazdej sprzedazy Pro (8,70 zl). Wyplaty realizowane przez BLIK/przelew po osiagnieciu 50 zl.</div>
+        </div>
+        <div id="partnerBtn" style="display:none;padding:4px 0;">
+          <button onclick="generatePartnerCode()" style="width:100%;padding:13px;border-radius:11px;border:none;background:linear-gradient(135deg,#22d3a0,#38bdf8);color:#000;font-family:var(--h);font-size:.84em;font-weight:700;cursor:pointer;">Dolacz do Programu Partnerskiego</button>
+          <div style="font-size:.7em;color:var(--muted);text-align:center;margin-top:8px;">Zarabiaj 30% od kazdej sprzedazy przez Twoj link</div>
+        </div>
+      </div>
+    </div>
+
       <div class="sec-body">
         <div class="item red" onclick="showModal()">
           <div class="item-ic ic-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
@@ -413,6 +448,47 @@ window.showError = function(msg) {
 };
 
 window.animateCounter = animateCounter;
+
+async function loadPartnerStatus(){
+  const uid=localStorage.getItem('eduvia_uid');
+  if(!uid)return;
+  document.getElementById('partnerLoading').style.display='none';
+  try{
+    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/by-user/'+uid);
+    const d=await res.json();
+    if(d.success&&d.code){
+      document.getElementById('partnerPanel').style.display='block';
+      document.getElementById('partnerCode').textContent=d.code;
+      document.getElementById('partnerSales').textContent=d.stats.sales||0;
+      document.getElementById('partnerEarnings').textContent=(d.stats.earnings||0).toFixed(2)+' zl';
+    }else{document.getElementById('partnerBtn').style.display='block';}
+  }catch(e){document.getElementById('partnerBtn').style.display='block';}
+}
+async function generatePartnerCode(){
+  const uid=localStorage.getItem('eduvia_uid');
+  const name=localStorage.getItem('eduvia_name')||'Partner';
+  const email=localStorage.getItem('eduvia_email')||'';
+  if(!uid)return;
+  try{
+    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,name:name,email:email})});
+    const d=await res.json();
+    if(d.success){
+      document.getElementById('partnerBtn').style.display='none';
+      document.getElementById('partnerPanel').style.display='block';
+      document.getElementById('partnerCode').textContent=d.code;
+      document.getElementById('partnerSales').textContent='0';
+      document.getElementById('partnerEarnings').textContent='0.00 zl';
+    }
+  }catch(e){alert('Blad: '+e.message);}
+}
+function copyCode(){
+  const code=document.getElementById('partnerCode').textContent;
+  navigator.clipboard.writeText(code);
+  const btn=event.target;btn.textContent='Skopiowano!';
+  setTimeout(()=>btn.textContent='Kopiuj',2000);
+}
+window.addEventListener('load',loadPartnerStatus);
+
 </script>
 
 </body>
