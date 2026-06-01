@@ -356,7 +356,7 @@ WAÅ»NE:
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
         
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
