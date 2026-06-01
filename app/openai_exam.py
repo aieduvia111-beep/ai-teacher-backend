@@ -1,9 +1,9 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 from .config import settings
 from typing import List, Dict, Optional
 import json
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 async def generate_exam_from_image(
     image_data: str,
@@ -87,7 +87,7 @@ async def generate_exam_from_image(
         
         print(f"ðŸ“‹ GenerujÄ™ sprawdzian (poziom: {difficulty}, pytaÅ„: {num_questions})...")
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
@@ -182,7 +182,7 @@ async def generate_notes_from_image(
         
         print(f"ðŸ“ GenerujÄ™ notatki (styl: {style})...")
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
@@ -290,7 +290,7 @@ ZwrÃ³Ä‡ TYLKO Markdown.
         
         print(f"ðŸ“ GenerujÄ™ notatki: {topic} ({level}, {subject})...")
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=2500,
@@ -354,7 +354,7 @@ WAÅ»NE:
         
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
@@ -515,7 +515,7 @@ ZASADY:
             "Dobry przyklad opcji: [$x = \\\\frac{1}{2}$, $x = 2$, $x = -1$, $x = 0$]"
         )
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system},
