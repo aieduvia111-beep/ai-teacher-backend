@@ -405,6 +405,9 @@ def fix_latex_in_quiz(quiz_data):
         t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
         # Usun \text{...} - zamien na sam tekst bez komendy
         t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
+        t = re_module.sub(r"(?<![a-zA-Z\\\\])imes\\b", r"\\\\times", t)
+        t = re_module.sub(r"(?<![a-zA-Z\\\\])riangle\\b", r"\\\\triangle", t)
+        t = re_module.sub(r"(?<![a-zA-Z\\\\])cdot\\b", r"\\\\cdot", t)
         return t
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
