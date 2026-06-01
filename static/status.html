@@ -254,11 +254,13 @@ async function checkAll(){
   document.getElementById('updated').textContent = 'Ostatnie sprawdzenie: ' + now.toLocaleTimeString('pl-PL');
 }
 
-renderServices();
-checkAll();
-setInterval(checkAll, 60000);
-loadErrors();
-setInterval(loadErrors, 30000);
+window.addEventListener('DOMContentLoaded', function(){
+  renderServices();
+  checkAll();
+  setInterval(checkAll, 60000);
+  loadErrors();
+  setInterval(loadErrors, 30000);
+});
 </script>
 </body>
 </html>
