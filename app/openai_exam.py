@@ -379,7 +379,10 @@ Zwroc TYLKO JSON."""
             response_format={"type": "json_object"}
         )
         
-        quiz_data = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if not content:
+            return {"success": False, "quiz": None, "error": "AI nie mogl przetworzyc obrazka. Sprobuj ponownie."}
+        quiz_data = json.loads(content)
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         
         return {"success": True, "quiz": quiz_data}
