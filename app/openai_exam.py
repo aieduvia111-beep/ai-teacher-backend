@@ -325,35 +325,32 @@ async def generate_quiz_from_image(
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
         
-        prompt = f"""Jestes ekspertem matematycznym i nauczycielem. Przeanalizuj obrazek ze zdjeciami zadan matematycznych.
+        prompt = f"""
+StwÃ³rz QUIZ na podstawie tego materiaÅ‚u.
 
-ZADANIE:
-1. Przeczytaj WSZYSTKIE zadania na obrazku
-2. Rozwiaz kazde zadanie krok po kroku
-3. Na podstawie tresci i rozwiazan stwórz {num_questions} pytan quizowych
-
-WAZNE:
-- NIE pytaj o numery zadan (np. "Co bylo w zadaniu 3?")
-- Pytaj o MATEMATYCZNE KONCEPTY z tych zadan (np. "Ile wynosi x w rownaniu 2x+4=10?")
-- Kazde pytanie musi miec konkretna odpowiedz matematyczna
-- KRYTYCZNE: Kazdy wzor matematyczny MUSI byc w dolarach np: $x^2$, $b/(2a)$
-- ZAKAZ pisania wzorow bez dolarow
+PARAMETRY:
+- Liczba pytaÅ„: {num_questions}
+- TrudnoÅ›Ä‡: {difficulty}
 
 FORMAT (TYLKO JSON):
 {{
-    "title": "Quiz matematyczny",
+    "title": "TytuÅ‚ quizu",
     "questions": [
         {{
             "id": 1,
-            "question": "Tresc pytania z konkretnymi liczbami i wzorami",
-            "options": ["$a$", "$b$", "$c$", "$d$"],
+            "question": "TreÅ›Ä‡ pytania",
+            "options": ["A", "B", "C", "D"],
             "correct": 0,
-            "explanation": "Krok po kroku: ..."
+            "explanation": "WyjaÅ›nienie"
         }}
     ]
 }}
 
-Zwroc TYLKO JSON."""
+WAÅ»NE:
+- Pytania z materiaÅ‚u na obrazku
+- "correct" = index (0-3)
+- ZwrÃ³Ä‡ TYLKO JSON
+"""
         
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
         
@@ -379,10 +376,7 @@ Zwroc TYLKO JSON."""
             response_format={"type": "json_object"}
         )
         
-        content = response.choices[0].message.content
-        if not content:
-            return {"success": False, "quiz": None, "error": "AI nie mogl przetworzyc obrazka. Sprobuj ponownie."}
-        quiz_data = json.loads(content)
+        quiz_data = json.loads(response.choices[0].message.content)
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         
         return {"success": True, "quiz": quiz_data}
@@ -408,19 +402,11 @@ def fix_latex_in_quiz(quiz_data):
         t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
         # Usun \text{...} - zamien na sam tekst bez komendy
         t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
-        t = re_module.sub(r"(?<![a-zA-Z\\\\])imes\\b", r"\\\\times", t)
-        t = re_module.sub(r"(?<![a-zA-Z\\\\])riangle\\b", r"\\\\triangle", t)
-        t = re_module.sub(r"(?<![a-zA-Z\\\\])cdot\\b", r"\\\\cdot", t)
         return t
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
             if "question" in q: q["question"] = fix(q["question"])
-            if "explanation" in q:
-                exp = fix(q["explanation"])
-                # Usun nierenderowany LaTeX - znaki jak x=, b^2 itp bez dolarow
-                exp = re_module.sub(r'(?<!\$)\\[a-zA-Z]+(?!\$)', lambda m: '', exp)
-                exp = re_module.sub(r'\s+', ' ', exp).strip()
-                q["explanation"] = exp
+            if "explanation" in q: q["explanation"] = fix(q["explanation"])
             if "options" in q: q["options"] = [fix(o) for o in q["options"]]
     return quiz_data
 
