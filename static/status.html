@@ -7,103 +7,103 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#07070d;color:#eeeef5;font-family:'Syne',sans-serif;padding:24px;}
-.logo{font-size:1.2em;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:24px;}
-.card{background:#0f0f18;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
-.name{font-size:.9em;font-weight:700;}
-.desc{font-size:.7em;color:#8888a0;margin-top:2px;}
-.badge{padding:4px 12px;border-radius:100px;font-size:.65em;font-weight:700;}
+body{background:#07070d;color:#eeeef5;font-family:'Syne',sans-serif;min-height:100vh;}
+#pin{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;}
+#pin h1{font-size:1.3em;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+#pin input{padding:12px 20px;background:#0f0f18;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-family:'Syne',sans-serif;font-size:1.1em;text-align:center;outline:none;width:180px;letter-spacing:.2em;}
+#pin button{padding:11px 32px;background:#7c6aff;border:none;border-radius:10px;color:#fff;font-family:'Syne',sans-serif;font-size:.9em;font-weight:700;cursor:pointer;}
+#pin .err{color:#f87171;font-size:.75em;min-height:16px;}
+#app{display:none;padding:24px;}
+.logo{font-size:1.1em;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:20px;}
+.svc{background:#0f0f18;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.svc-name{font-size:.88em;font-weight:700;}
+.svc-desc{font-size:.68em;color:#8888a0;margin-top:2px;}
+.badge{padding:4px 11px;border-radius:100px;font-size:.62em;font-weight:700;}
 .ok{background:rgba(34,211,160,.1);color:#22d3a0;border:1px solid rgba(34,211,160,.2);}
 .err{background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2);}
-.loading{background:rgba(245,166,35,.1);color:#f5a623;border:1px solid rgba(245,166,35,.2);}
-.ping{font-size:.65em;color:#8888a0;margin-right:8px;}
-.refresh{margin-top:16px;padding:10px 24px;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:100px;color:#8888a0;font-family:'Syne',sans-serif;font-size:.75em;font-weight:700;cursor:pointer;}
-.updated{font-size:.65em;color:#8888a0;margin-top:12px;text-align:center;}
+.chk{background:rgba(245,166,35,.1);color:#f5a623;border:1px solid rgba(245,166,35,.2);}
+.ping{font-size:.63em;color:#8888a0;margin-right:8px;}
+.refresh{margin-top:14px;padding:9px 22px;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:100px;color:#8888a0;font-family:'Syne',sans-serif;font-size:.72em;font-weight:700;cursor:pointer;}
+.updated{font-size:.63em;color:#8888a0;margin-top:10px;text-align:center;}
 </style>
 </head>
 <body>
-<div id="pinScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:12px;">
-  <div style="font-family:Syne,sans-serif;font-size:1.1em;font-weight:800;color:#a78bfa;margin-bottom:8px;">Eduvia Status</div>
-  <input id="pinInput" type="password" placeholder="Wpisz PIN" maxlength="10" style="padding:12px 16px;background:#0f0f18;border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-family:Syne,sans-serif;font-size:1em;outline:none;width:200px;text-align:center;" onkeydown="if(event.key==='Enter')checkPin()">
-  <button onclick="checkPin()" style="padding:10px 28px;background:#7c6aff;border:none;border-radius:10px;color:#fff;font-family:Syne,sans-serif;font-size:.85em;font-weight:700;cursor:pointer;">Wejdź</button>
-  <div id="pinErr" style="color:#f87171;font-size:.75em;"></div>
+
+<div id="pin">
+  <h1>Eduvia Status</h1>
+  <input type="password" id="pinInput" placeholder="••••" maxlength="8" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()">Wejdź</button>
+  <div class="err" id="pinErr"></div>
 </div>
-<div id="mainScreen" style="display:none;">
-<div class="logo">Eduvia Status</div>
-<div id="services"></div>
-<div class="updated" id="updated"></div>
-<button class="refresh" onclick="checkAll()">↻ Odśwież</button>
+
+<div id="app">
+  <div class="logo">Eduvia Status</div>
+  <div id="list"></div>
+  <div class="updated" id="upd"></div>
+  <button class="refresh" onclick="checkAll()">↻ Odśwież</button>
 </div>
 
 <script>
-const PIN = '2223';
+var PIN = '2223';
+var BASE = 'https://eduvia-backend-2.onrender.com';
+var SVCS = [
+  {n:'Voice AI', d:'Korepetytor głosowy', u:'/health/voice'},
+  {n:'Chat AI', d:'Czat z AI', u:'/health/chat'},
+  {n:'Quiz AI', d:'Quizy', u:'/health/quiz'},
+  {n:'Notatki AI', d:'Generowanie PDF', u:'/health/notes'},
+  {n:'Sprawdziany AI', d:'Sprawdziany PDF', u:'/health/exam'},
+  {n:'Plan Nauki', d:'Plan nauki AI', u:'/health/lessons'},
+];
 
-function checkPin(){
-  const val = document.getElementById('pinInput').value;
-  if(val === PIN){
-    sessionStorage.setItem('esp', PIN);
-    document.getElementById('pinScreen').style.display='none';
-    document.getElementById('mainScreen').style.display='block';
-    init();
+function login(){
+  var v = document.getElementById('pinInput').value;
+  if(v === PIN){
+    sessionStorage.setItem('esp','ok');
+    document.getElementById('pin').style.display='none';
+    document.getElementById('app').style.display='block';
+    start();
   } else {
     document.getElementById('pinErr').textContent='Zły PIN';
   }
 }
 
-window.addEventListener('DOMContentLoaded', function(){
-  if(sessionStorage.getItem('esp') === PIN){
-    document.getElementById('pinScreen').style.display='none';
-    document.getElementById('mainScreen').style.display='block';
-    init();
+if(sessionStorage.getItem('esp')==='ok'){
+  document.getElementById('pin').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+function start(){
+  var html='';
+  for(var i=0;i<SVCS.length;i++){
+    html+='<div class="svc"><div><div class="svc-name">'+SVCS[i].n+'</div><div class="svc-desc">'+SVCS[i].d+'</div></div><div style="display:flex;align-items:center;"><span class="ping" id="p'+i+'"></span><span class="badge chk" id="b'+i+'">Sprawdzam</span></div></div>';
   }
-});
-
-const BASE = 'https://eduvia-backend-2.onrender.com';
-const SVCS = [
-  {name:'Voice AI', desc:'Korepetytor głosowy', url:'/health/voice'},
-  {name:'Chat AI', desc:'Czat z AI', url:'/health/chat'},
-  {name:'Quiz AI', desc:'Quizy', url:'/health/quiz'},
-  {name:'Notatki AI', desc:'Generowanie PDF', url:'/health/notes'},
-  {name:'Sprawdziany AI', desc:'Sprawdziany PDF', url:'/health/exam'},
-  {name:'Plan Nauki', desc:'Plan nauki AI', url:'/health/lessons'},
-];
-
-function init(){
-  const c = document.getElementById('services');
-  c.innerHTML = SVCS.map((_,i) => `
-    <div class="card">
-      <div><div class="name">${SVCS[i].name}</div><div class="desc">${SVCS[i].desc}</div></div>
-      <div style="display:flex;align-items:center;">
-        <span class="ping" id="p${i}"></span>
-        <span class="badge loading" id="b${i}">Sprawdzam</span>
-      </div>
-    </div>`).join('');
+  document.getElementById('list').innerHTML=html;
   checkAll();
-  setInterval(checkAll, 60000);
+  setInterval(checkAll,60000);
 }
 
-async function checkAll(){
-  for(let i=0;i<SVCS.length;i++) await checkOne(i);
-  document.getElementById('updated').textContent = 'Ostatnie: ' + new Date().toLocaleTimeString('pl-PL');
+function checkAll(){
+  for(var i=0;i<SVCS.length;i++) checkOne(i);
+  document.getElementById('upd').textContent='Ostatnie: '+new Date().toLocaleTimeString('pl-PL');
 }
 
-async function checkOne(i){
-  const b=document.getElementById('b'+i);
-  const p=document.getElementById('p'+i);
-  const t=Date.now();
-  try{
-    const res=await fetch(BASE+SVCS[i].url,{signal:AbortSignal.timeout(8000)});
-    const ms=Date.now()-t;
-    const d=await res.json().catch(()=>({}));
-    if(res.ok && d.status==='ok'){
-      b.className='badge ok';b.textContent='Działa';p.textContent=ms+'ms';
-    } else {
-      b.className='badge err';
-      b.textContent=d.errors&&d.errors[0]?d.errors[0]:'Błąd';
-      p.textContent=ms+'ms';
-    }
-  }catch(e){b.className='badge err';b.textContent='Offline';p.textContent='';}
+function checkOne(i){
+  var b=document.getElementById('b'+i);
+  var p=document.getElementById('p'+i);
+  var t=Date.now();
+  var s=SVCS[i];
+  fetch(BASE+s.u)
+    .then(function(r){
+      var ms=Date.now()-t;
+      return r.json().then(function(d){
+        if(r.ok&&d.status==='ok'){b.className='badge ok';b.textContent='Działa';p.textContent=ms+'ms';}
+        else{b.className='badge err';b.textContent=d.errors&&d.errors[0]?d.errors[0]:'Błąd';p.textContent=ms+'ms';}
+      });
+    })
+    .catch(function(){b.className='badge err';b.textContent='Offline';p.textContent='';});
 }
+
+if(sessionStorage.getItem('esp')==='ok') start();
 </script>
 </body>
 </html>
