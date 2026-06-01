@@ -46,6 +46,8 @@ main{max-width:700px;margin:40px auto;padding:0 24px;}
 .hist-label{display:flex;justify-content:space-between;margin-top:6px;}
 .hist-label span{font-size:.58em;color:var(--muted2,#55556a);}
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <header>
@@ -60,11 +62,10 @@ main{max-width:700px;margin:40px auto;padding:0 24px;}
   <button class="refresh-btn" onclick="checkAll()">↻ Odśwież</button>
 </main>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-const _fbApp = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc"});
-const _fdb = getFirestore(_fbApp);
+<script>
+// Firebase loaded via CDN
+const _fbApp = firebase.initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc"});
+const _fdb = firebase.firestore();
 async function loadErrors(){
   try{
     const {where,updateDoc,doc:fdoc}=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
