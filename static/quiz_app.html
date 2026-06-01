@@ -969,6 +969,11 @@ let XP_MAP={easy:10,medium:20,hard:35};
 
 function math(raw){
   if(!raw)return'';let t=String(raw);
+  // Auto-wrap LaTeX bez dolarow
+  t=t.replace(/(\\frac\{[^}]+\}\{[^}]+\})/g,'$$$1$$');
+  t=t.replace(/(\\sqrt\{[^}]+\})/g,'$$$1$$');
+  t=t.replace(/(\\cdot|\\times|\\div)/g,'$$$1$$');
+  t=t.replace(/\((-?\\frac\{[^}]+\}\{[^}]+\}[^)]*)\)/g,'$($1)$');
   t=t.replace(/\\rac\{/g,'\\frac{');t=t.replace(/([^a-zA-Z\\])rac\{/g,'$1\\frac{');
   t=t.replace(/\\ext\{/g,'\\text{');t=t.replace(/([^a-zA-Z\\])ext\{/g,'$1\\text{');
   t=t.replace(/(^|[^$])\\begin\{cases\}/g,'$1$$\\begin{cases}');
