@@ -358,7 +358,7 @@ Zwroc TYLKO JSON."""
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
         
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
