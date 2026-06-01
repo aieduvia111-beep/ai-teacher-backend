@@ -412,7 +412,12 @@ def fix_latex_in_quiz(quiz_data):
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
             if "question" in q: q["question"] = fix(q["question"])
-            if "explanation" in q: q["explanation"] = fix(q["explanation"])
+            if "explanation" in q:
+                exp = fix(q["explanation"])
+                # Usun nierenderowany LaTeX - znaki jak x=, b^2 itp bez dolarow
+                exp = re_module.sub(r'(?<!\$)\\[a-zA-Z]+(?!\$)', lambda m: '', exp)
+                exp = re_module.sub(r'\s+', ' ', exp).strip()
+                q["explanation"] = exp
             if "options" in q: q["options"] = [fix(o) for o in q["options"]]
     return quiz_data
 
