@@ -141,3 +141,14 @@ async def generate_affiliate(req: AffiliateGenerate):
         return {"success": True, "code": code}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@router.get("/by-user/{user_id}")
+async def get_by_user(user_id: str):
+    try:
+        db = get_db()
+        docs = db.collection('affiliates').where('user_id', '==', user_id).limit(1).get()
+        for doc in docs:
+            return {"success": True, "code": doc.id, "stats": doc.to_dict()}
+        return {"success": False}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
