@@ -976,6 +976,10 @@ function math(raw){
   t=t.replace(/\((-?\\frac\{[^}]+\}\{[^}]+\}[^)]*)\)/g,'$($1)$');
   t=t.replace(/\\rac\{/g,'\\frac{');t=t.replace(/([^a-zA-Z\\])rac\{/g,'$1\\frac{');
   t=t.replace(/\\ext\{/g,'\\text{');t=t.replace(/([^a-zA-Z\\])ext\{/g,'$1\\text{');
+  // Auto-wrap isolated LaTeX bez dolarow
+  t=t.replace(/(?<![\$\\])(\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
+  t=t.replace(/(?<![\$\\])(\\sqrt\{[^{}]+\})/g,'$$$1$$');
+  t=t.replace(/x\s*=\s*(-?\\frac\{[^{}]+\}\{[^{}]+\})/g,'$x = $1$');
   t=t.replace(/(^|[^$])\\begin\{cases\}/g,'$1$$\\begin{cases}');
   t=t.replace(/\\end\{cases\}([^$]|$)/g,'\\end{cases}$$$1');
   if(typeof renderMathInElement==='undefined')return t;
