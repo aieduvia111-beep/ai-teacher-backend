@@ -336,7 +336,8 @@ WAZNE:
 - NIE pytaj o numery zadan (np. "Co bylo w zadaniu 3?")
 - Pytaj o MATEMATYCZNE KONCEPTY z tych zadan (np. "Ile wynosi x w rownaniu 2x+4=10?")
 - Kazde pytanie musi miec konkretna odpowiedz matematyczna
-- KRYTYCZNE: Kazdy wzor matematyczny MUSI byc w dolarach $wzor$ np: $x^2$, $\\frac{b}{2a}$\n- ZAKAZ pisania wzorów bez dolarów — \\frac{b}{2a} BEZ $ jest BLEDEM\n- Trudnosc: {difficulty}
+- KRYTYCZNE: Kazdy wzor matematyczny MUSI byc w dolarach np: $x^2$, $b/(2a)$
+- ZAKAZ pisania wzorow bez dolarow
 
 FORMAT (TYLKO JSON):
 {{
