@@ -1079,8 +1079,17 @@ function handleFiles(e){
     if(photos.length>=15)return;
     const r=new FileReader();
     r.onload=ev=>{
-      photos.push(ev.target.result.split(',')[1]);
-      renderPhotos();
+      const img=new Image();
+      img.onload=()=>{
+        const maxW=800,maxH=800;
+        let w=img.width,h=img.height;
+        if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        photos.push(cv.toDataURL('image/jpeg',0.6).split(',')[1]);
+        renderPhotos();
+      };
+      img.src=ev.target.result;
     };
     r.readAsDataURL(f);
   });
