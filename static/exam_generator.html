@@ -1188,6 +1188,20 @@ window.showError = function(msg) {
 };
 
 window.animateCounter = animateCounter;
+
+window.addEventListener('load', function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('auto')==='1'){
+    const topic = localStorage.getItem('auto_exam_topic');
+    if(topic){
+      localStorage.removeItem('auto_exam_topic');
+      const el = document.getElementById('temat');
+      if(el) el.value = topic;
+      setTimeout(function(){ generate(); }, 500);
+    }
+  }
+});
+
 </script>
 
 </body>

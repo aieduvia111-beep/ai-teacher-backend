@@ -1219,6 +1219,21 @@ window.showError = function(msg) {
 };
 
 window.animateCounter = animateCounter;
+
+window.addEventListener('load', function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('auto')==='1'){
+    const topic = localStorage.getItem('auto_notes_topic');
+    const level = localStorage.getItem('auto_notes_level');
+    if(topic){
+      localStorage.removeItem('auto_notes_topic');
+      document.getElementById('temat').value = topic;
+      if(level) window._autoLevel = level;
+      setTimeout(function(){ generate(); }, 500);
+    }
+  }
+});
+
 </script>
 
 </body>
