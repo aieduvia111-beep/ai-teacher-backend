@@ -396,6 +396,8 @@ def fix_latex_in_quiz(quiz_data):
     """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
     def fix(t):
         if not t: return t
+        # Napraw podwojne dolary na pojedyncze
+        t = t.replace("$$", "$")
         # Napraw rac{ -> \frac{
         t = t.replace("\\rac{", "\\frac{")
         t = re_module.sub(r"(?<![a-zA-Z\\])rac\{", r"\\frac{", t)
