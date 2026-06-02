@@ -969,19 +969,26 @@ let XP_MAP={easy:10,medium:20,hard:35};
 
 function math(raw){
   if(!raw)return'';let t=String(raw);
-  // Auto-wrap LaTeX bez dolarow
-  t=t.replace(/(\\frac\{[^}]+\}\{[^}]+\})/g,'$$$1$$');
-  t=t.replace(/(\\sqrt\{[^}]+\})/g,'$$$1$$');
-  t=t.replace(/(\\cdot|\\times|\\div)/g,'$$$1$$');
-  t=t.replace(/\((-?\\frac\{[^}]+\}\{[^}]+\}[^)]*)\)/g,'$($1)$');
-  t=t.replace(/\\rac\{/g,'\\frac{');t=t.replace(/([^a-zA-Z\\])rac\{/g,'$1\\frac{');
-  t=t.replace(/\\ext\{/g,'\\text{');t=t.replace(/([^a-zA-Z\\])ext\{/g,'$1\\text{');
-  // Auto-wrap isolated LaTeX bez dolarow
-  t=t.replace(/(?<![\$\\])(\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
-  t=t.replace(/(?<![\$\\])(\\sqrt\{[^{}]+\})/g,'$$$1$$');
-  t=t.replace(/x\s*=\s*(-?\\frac\{[^{}]+\}\{[^{}]+\})/g,'$x = $1$');
-  t=t.replace(/(^|[^$])\\begin\{cases\}/g,'$1$$\\begin{cases}');
-  t=t.replace(/\\end\{cases\}([^$]|$)/g,'\\end{cases}$$$1');
+  // Napraw brakujace backslashe
+  t=t.replace(/(?<![a-zA-Z\\])rac\{/g,'\\frac{');
+  t=t.replace(/(?<![a-zA-Z\\])sqrt\{/g,'\\sqrt{');
+  t=t.replace(/(?<![a-zA-Z\\])frac\{/g,'\\frac{');
+  t=t.replace(/(?<![a-zA-Z\\])times\b/g,'\\times');
+  t=t.replace(/(?<![a-zA-Z\\])cdot\b/g,'\\cdot');
+  t=t.replace(/(?<![a-zA-Z\\])triangle\b/g,'\\triangle');
+  t=t.replace(/(?<![a-zA-Z\\])alpha\b/g,'\\alpha');
+  t=t.replace(/(?<![a-zA-Z\\])beta\b/g,'\\beta');
+  t=t.replace(/(?<![a-zA-Z\\])pi\b/g,'\\pi');
+  // Normalizuj dolary: $$ -> $
+  t=t.replace(/\$\$(.*?)\$\$/gs, '\$\$\$1\$\$\$');
+  t=t.replace(/([^\$])\$\$/g,'\$1\$');
+  t=t.replace(/\$\$([^\$])/g,'\$\$1');
+  // Owij wzory bez dolarow
+  t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'\$\$1\$');
+  t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'\$\$1\$');
+  t=t.replace(/(?<!\$)(\\times|\\cdot|\\pm|\\leq|\\geq|\\neq)(?!\$)/g,'\$\$1\$');
+  t=t.replace(/(^|[^$])\\begin\{cases\}/g,'\$1\$\$\\begin{cases}');
+  t=t.replace(/\\end\{cases\}([^$]|$)/g,'\\end{cases}\$\$\$1');
   if(typeof renderMathInElement==='undefined')return t;
   let el=document.createElement('span');el.textContent=t;el.style.cssText='position:absolute;left:-9999px;visibility:hidden;pointer-events:none;';
   document.body.appendChild(el);
