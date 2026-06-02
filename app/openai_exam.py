@@ -281,7 +281,7 @@ FORMAT MARKDOWN:
 WAÅ»NE:
 - Markdown (##, -, **)
 - PojÄ™cia: **POJÄ˜CIE**
-- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$ — ZAKAZ wzorów bez dolarów
+- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$ — ZAKAZ wzorów bez dolarów
 - Min 300 sÅ‚Ã³w
 - PO POLSKU!
 
@@ -349,7 +349,7 @@ FORMAT (TYLKO JSON):
 WAÅ»NE:
 - Pytania z materiaÅ‚u na obrazku
 - "correct" = index (0-3)
-- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$
+- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$
 - ZwrÃ³Ä‡ TYLKO JSON
 """
         
