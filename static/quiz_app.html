@@ -1095,6 +1095,13 @@ function renderQuestion(){
     let txt=document.createElement('span');txt.innerHTML=math(opt);
     div.appendChild(span);div.appendChild(txt);div.onclick=function(){answer(i);};opts.appendChild(div);
   });
+  // Renderuj LaTeX na calym pytaniu naraz
+  setTimeout(function(){
+    var qEl = document.getElementById('pageQuiz');
+    if(qEl && typeof renderMathInElement !== 'undefined'){
+      try{renderMathInElement(qEl,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false});}catch(e){}
+    }
+  }, 50);
   document.getElementById('feedbackBox').className='feedback-box';
   document.getElementById('xpPop').style.display='none';
   let nb=document.getElementById('nextBtn');nb.className='next-btn';
