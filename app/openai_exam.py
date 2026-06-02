@@ -466,8 +466,9 @@ PARAMETRY:
 - Liczba pytań: {num_questions}
 - DOKŁADNY POZIOM: {poziom_opis}
 {instrukcje_blok}
-KRYTYCZNE: Pytania MUSZĄ pasować do opisu poziomu powyżej.
-Jeśli poziom to studia — pytaj o całki, macierze, szeregi — NIE o równania kwadratowe.
+KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO pytania o ten temat.
+Poziom okresla trudnosc i jezyk pytan, NIE zmienia tematu.
+NIGDY nie zmieniaj tematu na inny.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.
 
 WZORY MATEMATYCZNE - KRYTYCZNE:
