@@ -98,7 +98,7 @@ async def generate_exam_from_image(
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{image_data}",
-                                "detail": "high"
+                                "detail": "low"
                             }
                         }
                     ]
@@ -193,7 +193,7 @@ async def generate_notes_from_image(
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{image_data}",
-                                "detail": "high"
+                                "detail": "low"
                             }
                         }
                     ]
@@ -367,7 +367,7 @@ WAÅ»NE:
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{image_data}",
-                                "detail": "high"
+                                "detail": "low"
                             }
                         }
                     ]
