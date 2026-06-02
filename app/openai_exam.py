@@ -397,6 +397,10 @@ def fix_latex_in_quiz(quiz_data):
     """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
     def fix(t):
         if not t: return t
+        # Usun uszkodzone wzory LaTeX - same liczby w left/right
+        import re as _r
+        t = _r.sub(r'\\left\[\s*\d+', lambda m: m.group(0).replace('\\left[', ''), t)
+        t = _r.sub(r'\\left\(\s*\d+', lambda m: m.group(0).replace('\\left(', ''), t)
         # Napraw podwojne dolary na pojedyncze
         t = t.replace("$$", "$")
         # Napraw rac{ -> \frac{
