@@ -141,7 +141,7 @@ async def chat_message(req: ChatRequest):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            max_tokens=4000,
+            max_tokens=8000,
             temperature=0.7,
             response_format={"type": "json_object"}
         )
@@ -213,7 +213,7 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
                         {"role": "system", "content": SYSTEM_PROMPT},
                         *conversation_history
                     ],
-                    max_tokens=4000,
+                    max_tokens=8000,
                     temperature=0.7,
                     response_format={"type": "json_object"}
                 )
