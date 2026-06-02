@@ -1197,6 +1197,8 @@ window.addEventListener('load', function(){
       localStorage.removeItem('auto_exam_topic');
       const el = document.getElementById('temat');
       if(el) el.value = topic;
+      const lvl = localStorage.getItem('auto_exam_level');
+      if(lvl && window.vals) window.vals.klasa = lvl;
       setTimeout(function(){ generate(); }, 500);
     }
   }
