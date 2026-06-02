@@ -380,6 +380,7 @@ WAÅ»NE:
         quiz_data = json.loads(response.choices[0].message.content)
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         
+        quiz_data = fix_latex_in_quiz(quiz_data)
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
