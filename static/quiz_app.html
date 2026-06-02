@@ -983,8 +983,10 @@ function math(raw){
   t=t.replace(/\$\$(.*?)\$\$/gs, '\$\$\$1\$\$\$');
   t=t.replace(/([^\$])\$\$/g,'\$1\$');
   t=t.replace(/\$\$([^\$])/g,'\$\$1');
-  // Owij wzory bez dolarow
-  t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'\$\$1\$');
+  // Owij wzory bez dolarow - prosta metoda
+  t=t.replace(/(?<!\$)(\\frac\{[^\}]+\}\{[^\}]+\})(?!\$)/g, '\$$1\$');
+  t=t.replace(/(?<!\$)(\\sqrt\{[^\}]+\})(?!\$)/g, '\$$1\$');
+  t=t.replace(/(?<!\$)(\\[a-zA-Z]+\{[^\}]*\})(?!\$)/g, '\$$1\$');
   t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'\$\$1\$');
   t=t.replace(/(?<!\$)(\\times|\\cdot|\\pm|\\leq|\\geq|\\neq)(?!\$)/g,'\$\$1\$');
   t=t.replace(/(^|[^$])\\begin\{cases\}/g,'\$1\$\$\\begin{cases}');
