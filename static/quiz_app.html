@@ -1212,13 +1212,13 @@ function reviewAll(){
 
 
 function goToNotes(){
-  const topic = document.getElementById('topicInput') ? document.getElementById('topicInput').value : (window._lastTopic||'');
+  const topic = (document.getElementById('topic') ? document.getElementById('topic').value : '') || (window._lastTopic||'');
   const level = window._lastLevel || 'liceum';
   if(topic){ localStorage.setItem('auto_notes_topic', topic); localStorage.setItem('auto_notes_level', level); }
   window.location.href='notes_generator.html?auto=1';
 }
 function goToExam(){
-  const topic = document.getElementById('topicInput') ? document.getElementById('topicInput').value : (window._lastTopic||'');
+  const topic = (document.getElementById('topic') ? document.getElementById('topic').value : '') || (window._lastTopic||'');
   const level = window._lastLevel || 'liceum';
   if(topic){ localStorage.setItem('auto_exam_topic', topic); localStorage.setItem('auto_exam_level', level); }
   window.location.href='exam_generator.html?auto=1';
