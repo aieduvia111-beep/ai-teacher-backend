@@ -1057,6 +1057,7 @@ async function startQuiz(){
   if(!topic){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
   window._lastTopic=topic;
   window._lastLevel=document.getElementById('subject')?document.getElementById('subject').value:'liceum';
+  window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
   fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
   .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
@@ -1214,7 +1215,8 @@ function reviewAll(){
 function goToNotes(){
   const topic = (document.getElementById('topic') ? document.getElementById('topic').value : '') || (window._lastTopic||'');
   const level = window._lastLevel || 'liceum';
-  if(topic){ localStorage.setItem('auto_notes_topic', topic); localStorage.setItem('auto_notes_level', level); }
+  const subject = window._lastSubject || 'matematyka';
+  if(topic){ localStorage.setItem('auto_notes_topic', topic); localStorage.setItem('auto_notes_level', level); localStorage.setItem('auto_notes_subject', subject); }
   window.location.href='notes_generator.html?auto=1';
 }
 function goToExam(){
