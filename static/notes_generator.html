@@ -1229,6 +1229,8 @@ window.addEventListener('load', function(){
       localStorage.removeItem('auto_notes_topic');
       document.getElementById('temat').value = topic;
       if(level){ window._autoLevel = level; window.level = level; }
+      const subj = localStorage.getItem('auto_notes_subject');
+      if(subj){ localStorage.removeItem('auto_notes_subject'); }
       setTimeout(function(){ generate(); }, 500);
     }
   }
