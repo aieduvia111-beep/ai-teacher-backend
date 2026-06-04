@@ -217,6 +217,8 @@ def _fix_latex(tekst: str) -> str:
     for cmd in ['frac', 'sqrt', 'cdot', 'times', 'div', 'sum', 'int',
                 'alpha', 'beta', 'gamma', 'delta', 'pi', 'theta',
                 'infty', 'leq', 'geq', 'neq', 'approx', 'pm',
+                'land', 'lor', 'lnot', 'forall', 'exists', 'in', 'notin',
+                'cup', 'cap', 'subset', 'supset', 'emptyset',
                 'left', 'right', 'text', 'mathrm', 'overline']:
         # Zamień " rac{" -> "\frac{" (gdy brak backslasha)
         tekst = tekst.replace(' ' + cmd + '{', ' \\' + cmd + '{')
