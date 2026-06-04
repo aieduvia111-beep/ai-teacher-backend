@@ -1347,7 +1347,19 @@ async function sendMessage() {
     if (response.quiz_topic) {
       const qBtn = document.createElement('button'); qBtn.className = 'quiz-shortcut-btn';
       qBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Zrób quiz z tego';
-      qBtn.onclick = () => { navTo('quiz_app.html?topic=' + encodeURIComponent(response.quiz_topic)); };
+      qBtn.onclick = () => { 
+  const topic = response.quiz_topic || '';
+  const topicLow = topic.toLowerCase();
+  let subject = 'matematyka';
+  if(topicLow.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz/)) subject='biologia';
+  else if(topicLow.match(/reakcja|pierwiastek|mol|kwas|zasada|atom|układ okresowy|chemi/)) subject='chemia';
+  else if(topicLow.match(/energia|prędkość|siła|ruch|fala|elektr|magnet|optyk|fizyk/)) subject='fizyka';
+  else if(topicLow.match(/historia|wojna|rewolucja|cesarz|królestwo|bitwa|dynastia/)) subject='historia';
+  else if(topicLow.match(/english|grammar|tense|vocabulary|angielski|czasownik ang/)) subject='angielski';
+  else if(topicLow.match(/wiersz|lektura|literatura|czytanka|polski|grammatyk|ortograf/)) subject='polski';
+  else if(topicLow.match(/geografia|kontynent|klimat|rzeka|góry|kraj|stolica/)) subject='geografia';
+  navTo('quiz_app.html?topic=' + encodeURIComponent(topic) + '&subject=' + subject);
+};
       aiGroup.appendChild(qBtn);
     }
 
