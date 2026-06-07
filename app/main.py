@@ -133,7 +133,6 @@ except Exception as e:
 async def root():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/static/eduvia-final.html")
-    }
 
 @app.get("/chat")
 @app.head("/chat")
