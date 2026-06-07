@@ -129,19 +129,10 @@ except Exception as e:
 
 
 # ══ STRONY HTML ══
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    return {
-        "status": "online",
-        "message": "AI Teacher API is running! 🚀",
-        "endpoints": {
-            "health": "/health",
-            "docs": "/docs",
-            "chat": "/chat",
-            "quiz": "/quiz",
-            "dashboard": "/static/dashboard_FINAL.html",
-            "voice": "/static/voice_conversation.html",
-        }
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/static/eduvia-final.html")
     }
 
 @app.get("/chat")
