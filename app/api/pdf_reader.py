@@ -70,6 +70,9 @@ Tekst:
             raise HTTPException(status_code=500, detail="Błąd parsowania odpowiedzi AI")
         
         quiz_data = json.loads(match.group())
-        return {"success": True, "quiz": {"title": "Quiz z PDF", "questions": quiz_data["questions"]}}
+        # Napraw LaTeX w pytaniach
+        from app.openai_exam import fix_latex_in_quiz
+        questions = fix_latex_in_quiz(quiz_data["questions"])
+        return {"success": True, "quiz": {"title": "Quiz z PDF", "questions": questions}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
