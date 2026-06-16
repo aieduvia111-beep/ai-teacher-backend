@@ -1348,7 +1348,11 @@ function takePhoto(){
 function handlePDF(e){
   const file = e.target.files[0];
   if(!file) return;
-  if(file.size > 20*1024*1024){ showErr('PDF za duzy — max 20MB'); return; }
+  if(file.size > 5*1024*1024){ showErr('PDF za duzy — max 5MB'); return; }
+  // Pokaz loading od razu
+  const info = document.getElementById('pdfInfo');
+  info.style.display='flex';
+  info.innerHTML = 'Wczytuje PDF...';
   const reader = new FileReader();
   reader.onload = ev => {
     const b64 = ev.target.result.split(',')[1];
