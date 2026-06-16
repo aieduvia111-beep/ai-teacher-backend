@@ -708,6 +708,7 @@ function getPlanBadgeHTML(plan) {
           <input type="file" id="inputCam" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
           <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
           <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="handlePDF(event)">
+          <div id="pdfInfo" style="display:none;margin:8px 0;padding:8px 12px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:8px;font-size:.78em;color:#22d3a0;align-items:center;gap:8px;"></div>
         </div>
         <div class="field">
           <span class="field-label">Własne instrukcje <span style="color:var(--muted);font-weight:400;">(opcjonalne)</span></span>
@@ -1357,14 +1358,14 @@ function handlePDF(e){
     window._pdfName = file.name;
     document.getElementById('errMsg').style.display='none';
     // Pokaz info ze PDF zaladowany
-    let info = document.getElementById('pdfInfo');
-    if(!info){ info=document.createElement('div'); info.id='pdfInfo'; info.style.cssText='margin:8px 0;padding:8px 12px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:8px;font-size:.78em;color:#22d3a0;display:flex;align-items:center;gap:8px;'; document.getElementById('captureGrid').after(info); }
+    const info = document.getElementById('pdfInfo');
+    info.style.display='flex';
     info.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ' + file.name + ' <span style="margin-left:auto;cursor:pointer;color:#888;" onclick="clearPDF()">✕</span>';
   };
   reader.readAsDataURL(file);
   e.target.value='';
 }
-function clearPDF(){ window._pdfB64=null; window._pdfName=null; const i=document.getElementById('pdfInfo'); if(i)i.remove(); }
+function clearPDF(){ window._pdfB64=null; window._pdfName=null; const i=document.getElementById('pdfInfo'); if(i){i.style.display='none';i.innerHTML='';} }
 
 function handleFiles(e){
   const files=Array.from(e.target.files);
