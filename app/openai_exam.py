@@ -472,6 +472,8 @@ PARAMETRY:
 KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO pytania o ten temat.
 Poziom okresla trudnosc i jezyk pytan, NIE zmienia tematu.
 NIGDY nie zmieniaj tematu na inny.
+KAZDE pytanie musi byc kompletne i jednoznaczne — nigdy nie urywaj zdania ani wzoru.
+Nigdy nie pisz 'cos 14?' bez kontekstu — zawsze pelne rownanie np. 'cos(x) = 0.5'.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.
 
 WZORY MATEMATYCZNE - KRYTYCZNE:
