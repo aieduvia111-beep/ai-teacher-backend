@@ -127,7 +127,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .input-wrap input,.input-wrap select{width:100%;padding:13px 15px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.92em;outline:none;transition:all .25s;}
 .input-wrap input:focus,.input-wrap select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,255,.1);}
 .input-wrap select option{background:#131320;}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .sel-btn{padding:11px 7px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;}
 .sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
@@ -237,7 +237,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .score-label{font-size:.68em;color:var(--muted2);}
 .results-title{font-family:var(--h);font-size:1.35em;font-weight:800;margin-bottom:5px;}
 .results-sub{color:var(--muted2);font-size:.86em;}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:22px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:22px;}
 .stat-box{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:14px;text-align:center;}
 .stat-val{font-family:var(--h);font-size:1.35em;font-weight:800;}
 .stat-val.green{color:var(--green);}.stat-val.red{color:var(--red);}.stat-val.gold{color:var(--gold);}
@@ -287,7 +287,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .page-h1{font-size:1.5em!important;}
 }
 /* ── UPLOAD MULTI-ZDJECIA ── */
-.capture-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
 .capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
 .capture-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--cbc,rgba(124,106,255,.05)),transparent 60%);pointer-events:none;}
 .capture-btn:hover{border-color:var(--cbh,rgba(124,106,255,.4));transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.3);}
@@ -697,13 +697,7 @@ function getPlanBadgeHTML(plan) {
               <div class="cb-title">Wybierz z galerii</div>
               <div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
             </button>
-            <button class="capture-btn" onclick="document.getElementById('pdfInput').click()" style="--cb:rgba(34,211,160,.08);border-color:rgba(34,211,160,.2);">
-              <div class="cb-icon" style="background:rgba(34,211,160,.1);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              </div>
-              <div class="cb-title" style="color:#22d3a0;">Wgraj PDF</div>
-              <div class="cb-sub">Podręcznik, notatki<br>lub skrypt</div>
-            </button>
+
           </div>
           <input type="file" id="inputCam" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
           <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
