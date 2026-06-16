@@ -1067,17 +1067,13 @@ async function startQuiz(){
   if(window._pdfB64 && !topic){
     err.textContent='';err.style.display='none';
     showPage('pageLoading');
-    fetch(BASE+'/api/v1/pdf/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:window._pdfB64})})
+    fetch(BASE+'/api/v1/pdf/quiz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:window._pdfB64})})
     .then(r=>r.json()).then(d=>{
       if(!d.success) throw new Error(d.detail||'Błąd PDF');
       const pdfTopic = window._pdfName ? window._pdfName.replace('.pdf','') : 'PDF';
       window._lastTopic = pdfTopic;
       document.getElementById('topic').value = pdfTopic;
-      // Generuj quiz z tekstu PDF przez wlasne instrukcje
-      const pdfInstr = 'Wygeneruj quiz na podstawie tego tekstu z PDF:\n\n' + d.text.substring(0,8000);
-      fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:pdfTopic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:pdfInstr})})
-      .then(r=>r.json()).then(d2=>{if(!d2.success)throw new Error(d2.error||'Błąd');quiz=d2.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
-      .catch(e=>{showPage('pageSetup');showErr('Błąd generowania quizu z PDF');});
+      quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
     }).catch(e=>{showPage('pageSetup');showErr('Błąd odczytu PDF: '+e.message);});
     return;
   }
