@@ -996,6 +996,9 @@ function math(raw){
   t=t.replace(/\$\$(.*?)\$\$/gs, '\$\$\$1\$\$\$');
   t=t.replace(/([^\$])\$\$/g,'\$1\$');
   t=t.replace(/\$\$([^\$])/g,'\$\$1');
+  // Auto-wrap wyrazen z potegami i indeksami bez dolarow
+  t=t.replace(/(?<!\$)([a-zA-Z0-9]+\^[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
+  t=t.replace(/(?<!\$)([a-zA-Z0-9]+_[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
   // Owij wzory bez dolarow - prosta metoda
   t=t.replace(/(?<!\$)(\\frac\{[^\}]+\}\{[^\}]+\})(?!\$)/g, '\$$1\$');
   t=t.replace(/(?<!\$)(\\sqrt\{[^\}]+\})(?!\$)/g, '\$$1\$');
