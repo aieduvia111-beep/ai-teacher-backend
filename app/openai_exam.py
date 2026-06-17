@@ -414,13 +414,10 @@ def fix_latex_in_quiz(quiz_data):
         if not t: return t
         # Napraw $1 jako pm/plus-minus
         t = t.replace('$1 ', '$\\pm$').replace('=$1', '=$\\pm$').replace('= $1', '= $\\pm$')
-        # Napraw int, sum, lim bez backslasha - regex
-        import re as _r2
-        t = _r2.sub(r'\$int\b', '$\\int', t)
-        t = _r2.sub(r'\$sum\b', '$\\sum', t)
-        t = _r2.sub(r'\$lim\b', '$\\lim', t)
-        t = _r2.sub(r'(?<!\\)\bint\s*_', '\\int_', t)
-        t = _r2.sub(r'(?<!\\)\bint\s*\^', '\\int^', t)
+        # Napraw int, sum, lim bez backslasha
+        t = t.replace('$int ', '$\\int ').replace('$int_', '$\\int_').replace('$int^', '$\\int^')
+        t = t.replace('$int0', '$\\int_0').replace('$int1', '$\\int_1')
+        t = t.replace('$sum ', '$\\sum ').replace('$lim ', '$\\lim ')
         # Napraw podwojne dolary na pojedyncze
         t = t.replace("$$", "$")
         # Napraw rac{ -> \frac{
