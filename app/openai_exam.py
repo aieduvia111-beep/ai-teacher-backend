@@ -418,6 +418,63 @@ def fix_latex_in_quiz(quiz_data):
     return quiz_data
 
 
+
+async def generate_quiz_from_text(
+    text: str,
+    num_questions: int = 5,
+    difficulty: str = "medium",
+    level: str = "liceum"
+) -> Dict:
+    """Generuje quiz z tekstu PDF przez GPT-4o"""
+    try:
+        prompt = f"""Stwórz QUIZ na podstawie tego tekstu.
+
+PARAMETRY:
+- Liczba pytań: {num_questions}
+- Trudność: {difficulty}
+- Poziom: {level}
+
+TEKST:
+{text[:7000]}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Tytuł quizu",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Treść pytania",
+            "options": ["A", "B", "C", "D"],
+            "correct": 0,
+            "explanation": "Wyjaśnienie"
+        }}
+    ]
+}}
+
+WAŻNE:
+- Pytania TYLKO z podanego tekstu
+- "correct" = index (0-3)
+- Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$
+- Zwróć TYLKO JSON
+"""
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{{"role": "user", "content": prompt}}],
+            max_tokens=2000,
+            temperature=0.3
+        )
+        
+        import json as _json, re as _re
+        raw = response.choices[0].message.content
+        match = _re.search(r'\{{.*\}}', raw, _re.DOTALL)
+        if not match:
+            return {{"success": False, "error": "Błąd parsowania"}}
+        data = _json.loads(match.group())
+        questions = fix_latex_in_quiz(data.get("questions", []))
+        return {{"success": True, "quiz": {{"title": data.get("title","Quiz z PDF"), "questions": questions}}}}
+    except Exception as e:
+        return {{"success": False, "error": str(e)}}
+
 async def generate_quiz_from_topic(
     topic: str,
     subject: str = "matematyka",

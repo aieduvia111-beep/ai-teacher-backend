@@ -76,3 +76,22 @@ Tekst:
         return {"success": True, "quiz": {"title": "Quiz z PDF", "questions": questions}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/quiz-text")
+async def quiz_from_text(req: PDFRequest):
+    """Quiz z tekstu PDF przez GPT-4o"""
+    try:
+        data = base64.b64decode(req.pdf_base64)
+        doc = fitz.open(stream=data, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text()
+            if len(text) > 8000: break
+        doc.close()
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="PDF nie zawiera tekstu")
+        from app.openai_exam import generate_quiz_from_text
+        result = await generate_quiz_from_text(text[:7000])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

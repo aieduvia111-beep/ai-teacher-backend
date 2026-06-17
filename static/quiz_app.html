@@ -1082,8 +1082,8 @@ async function startQuiz(){
   if(window._pdfText && !topic && !photos.length){
     window._lastTopic = window._pdfName || 'PDF';
     document.getElementById('topic').value = window._pdfName || 'PDF';
-    const pdfInstr = 'Wygeneruj quiz WYLACZNIE na podstawie tego tekstu:\n\n' + window._pdfText;
     showPage('pageLoading');
+    const pdfInstr = 'Wygeneruj quiz WYLACZNIE na podstawie tego tekstu. Nie wymyslaj pytan spoza tekstu:\n\n' + window._pdfText;
     fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:window._pdfName||'PDF',subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:pdfInstr})})
     .then(r=>r.json()).then(d=>{if(!d.success)throw new Error(d.error||'Blad');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
     .catch(e=>{showPage('pageSetup');showErr('Blad generowania quizu z PDF');});
