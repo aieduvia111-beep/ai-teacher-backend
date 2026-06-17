@@ -414,9 +414,6 @@ def fix_latex_in_quiz(quiz_data):
         if not t: return t
         # Napraw $1 jako pm/plus-minus
         t = t.replace('$1 ', '$\\pm$').replace('=$1', '=$\\pm$').replace('= $1', '= $\\pm$')
-        # Napraw int, sum, lim bez backslasha
-        t = t.replace("$int ", "$\\int ").replace("$int_", "$\\int_").replace("$int^", "$\\int^")
-        t = t.replace("$sum ", "$\\sum ").replace("$lim ", "$\\lim ").replace("$inf ", "$\\infty ")
         # Napraw podwojne dolary na pojedyncze
         t = t.replace("$$", "$")
         # Napraw rac{ -> \frac{
