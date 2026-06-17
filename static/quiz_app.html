@@ -1054,7 +1054,20 @@ async function startQuiz(){
     showPage('pageLoading');
     fetch(BASE+'/api/v1/quiz/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
     .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-    .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
+    .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
+      // Auto-wykryj przedmiot z tytulu quizu
+      if(quiz.title){
+        const t=quiz.title.toLowerCase();
+        const sel=document.getElementById('subject');
+        if(sel){
+          if(t.match(/biolog|fotosynteza|komórka|dna/)) sel.value='biologia';
+          else if(t.match(/chemi|reakcja|pierwiastek|mol/)) sel.value='chemia';
+          else if(t.match(/fizyk|energia|prędkość|siła/)) sel.value='fizyka';
+          else if(t.match(/histori|wojna|rewolucja/)) sel.value='historia';
+          else if(t.match(/matemat|równanie|funkcja|geometria/)) sel.value='matematyka';
+          window._lastSubject=sel.value;
+        }
+      }})
     .catch(function(e){showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
