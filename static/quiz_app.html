@@ -1142,6 +1142,7 @@ function renderQuestion(){
     var qEl = document.getElementById('pageQuiz');
     if(qEl && typeof renderMathInElement !== 'undefined'){
       try{renderMathInElement(qEl,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false});}catch(e){}
+      setTimeout(()=>{try{renderMathInElement(document.getElementById('pageQuiz'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:false});}catch(e){}},80);
     }
   }, 50);
   document.getElementById('feedbackBox').className='feedback-box';
