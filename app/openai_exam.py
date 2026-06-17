@@ -29,7 +29,7 @@ async def generate_exam_from_image(
         
         # Prompt dla generatora sprawdzianÃ³w
         prompt = f"""
-        JesteÅ› doÅ›wiadczonym nauczycielem. Na podstawie tego materiaÅ‚u stwÃ³rz PROFESJONALNY SPRAWDZIAN.
+        JesteÅ› doÅ›wiadczonym nauczycielem. Na podstawie tego materiału stwÃ³rz PROFESJONALNY SPRAWDZIAN.
         
         WYMAGANIA:
         - Poziom trudnoÅ›ci: {difficulty}
@@ -51,10 +51,10 @@ async def generate_exam_from_image(
                     "questions": [
                         {{
                             "id": 1,
-                            "question": "TreÅ›Ä‡ pytania",
+                            "question": "Treść pytania",
                             "options": ["a) opcja1", "b) opcja2", "c) opcja3", "d) opcja4"],
                             "correct_answer": "c",
-                            "explanation": "WyjaÅ›nienie dlaczego c jest poprawne"
+                            "explanation": "Wyjaśnienie dlaczego c jest poprawne"
                         }}
                     ]
                 }},
@@ -64,7 +64,7 @@ async def generate_exam_from_image(
                     "questions": [
                         {{
                             "id": 1,
-                            "question": "TreÅ›Ä‡ zadania",
+                            "question": "Treść zadania",
                             "points": 5,
                             "answer": "PrzykÅ‚adowa odpowiedÅº",
                             "grading_criteria": [
@@ -78,11 +78,11 @@ async def generate_exam_from_image(
             ]
         }}
         
-        WAÅ»NE:
+        WAŻNE:
         - Pytania muszÄ… byÄ‡ KONKRETNE i zwiÄ…zane z materiaÅ‚em na obrazku
         - Dystraktory (zÅ‚e odpowiedzi) muszÄ… byÄ‡ REALISTYCZNE
         - WyjaÅ›nienia muszÄ… byÄ‡ KRÃ“TKIE ale JASNE
-        - ZwrÃ³Ä‡ TYLKO JSON, bez dodatkowego tekstu
+        - Zwróć TYLKO JSON, bez dodatkowego tekstu
         """
         
         print(f"ðŸ“‹ GenerujÄ™ sprawdzian (poziom: {difficulty}, pytaÅ„: {num_questions})...")
@@ -177,7 +177,7 @@ async def generate_notes_from_image(
         ### Podsumowanie
         - NajwaÅ¼niejsze wnioski
         
-        ZwrÃ³Ä‡ TYLKO Markdown, bez dodatkowego tekstu.
+        Zwróć TYLKO Markdown, bez dodatkowego tekstu.
         """
         
         print(f"ðŸ“ GenerujÄ™ notatki (styl: {style})...")
@@ -278,7 +278,7 @@ FORMAT MARKDOWN:
 ### WskazÃ³wki do nauki
 [Jak siÄ™ tego nauczyÄ‡?]
 
-WAÅ»NE:
+WAŻNE:
 - Markdown (##, -, **)
 - PojÄ™cia: **POJÄ˜CIE**
 - Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$ — ZAKAZ wzorów bez dolarów
@@ -286,7 +286,7 @@ WAÅ»NE:
 - Min 300 sÅ‚Ã³w
 - PO POLSKU!
 
-ZwrÃ³Ä‡ TYLKO Markdown.
+Zwróć TYLKO Markdown.
 """
         
         print(f"ðŸ“ GenerujÄ™ notatki: {topic} ({level}, {subject})...")
@@ -327,7 +327,7 @@ async def generate_quiz_from_image(
             image_data = image_data.split("base64,")[1]
         
         prompt = f"""
-StwÃ³rz QUIZ na podstawie tego materiaÅ‚u.
+StwÃ³rz QUIZ na podstawie tego materiału.
 
 PARAMETRY:
 - Liczba pytaÅ„: {num_questions}
@@ -339,19 +339,20 @@ FORMAT (TYLKO JSON):
     "questions": [
         {{
             "id": 1,
-            "question": "TreÅ›Ä‡ pytania",
+            "question": "Treść pytania",
             "options": ["A", "B", "C", "D"],
             "correct": 0,
-            "explanation": "WyjaÅ›nienie"
+            "explanation": "Wyjaśnienie"
         }}
     ]
 }}
 
-WAÅ»NE:
-- Pytania z materiaÅ‚u na obrazku
+WAŻNE:
+- Pytania z materiału na obrazku
+- Na początku JSON dodaj pole "subject" z wykrytym przedmiotem (matematyka/biologia/fizyka/chemia/historia)
 - "correct" = index (0-3)
 - Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$
-- ZwrÃ³Ä‡ TYLKO JSON
+- Zwróć TYLKO JSON
 """
         
         print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
