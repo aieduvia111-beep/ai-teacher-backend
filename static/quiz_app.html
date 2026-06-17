@@ -1394,8 +1394,7 @@ function handlePDF(e){
       for(let i = 1; i <= maxPages; i++){
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        text += content.items.map(item => item.str).join(' ') + '
-';
+        text += content.items.map(item => item.str).join(' ') + '\n';
       }
       
       if(!text.trim()){ showErr('PDF nie zawiera tekstu — sprobuj inny plik'); info.style.display='none'; return; }
