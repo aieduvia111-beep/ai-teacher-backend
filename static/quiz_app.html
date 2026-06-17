@@ -287,7 +287,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
   .page-h1{font-size:1.5em!important;}
 }
 /* ── UPLOAD MULTI-ZDJECIA ── */
-.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.capture-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
 .capture-btn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 12px;background:var(--s2);border:1px solid var(--border-hi);border-radius:16px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
 .capture-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--cbc,rgba(124,106,255,.05)),transparent 60%);pointer-events:none;}
 .capture-btn:hover{border-color:var(--cbh,rgba(124,106,255,.4));transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.3);}
@@ -700,6 +700,7 @@ function getPlanBadgeHTML(plan) {
 
           </div>
           <input type="file" id="inputCam" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
+          <input type="file" id="pdfInput" accept=".pdf,application/pdf" style="display:none" onchange="handlePDF(event)">
           <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
           <input type="file" id="pdfInput" accept="application/pdf,.pdf,application/x-pdf,application/acrobat" style="display:none" onchange="handlePDF(event)">
           <div id="pdfInfo" style="display:none;margin:8px 0;padding:8px 12px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:8px;font-size:.78em;color:#22d3a0;gap:8px;"></div>
@@ -1071,6 +1072,17 @@ async function startQuiz(){
     }).catch(e=>{showPage('pageSetup');showErr('Błąd odczytu PDF: '+e.message);});
     return;
   }
+  // PDF
+  if(window._pdfText && !topic && !photos.length){
+    window._lastTopic = window._pdfName || 'PDF';
+    document.getElementById('topic').value = window._pdfName || 'PDF';
+    const pdfInstr = 'Wygeneruj quiz WYLACZNIE na podstawie tego tekstu:\n\n' + window._pdfText;
+    showPage('pageLoading');
+    fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:window._pdfName||'PDF',subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:pdfInstr})})
+    .then(r=>r.json()).then(d=>{if(!d.success)throw new Error(d.error||'Blad');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
+    .catch(e=>{showPage('pageSetup');showErr('Blad generowania quizu z PDF');});
+    return;
+  }
   if(!topic && !photos.length){err.textContent='Wpisz temat, dodaj zdjęcie lub wgraj PDF!';err.style.display='block';return;}
   window._lastTopic=topic;
   window._lastLevel=document.getElementById('subject')?document.getElementById('subject').value:'liceum';
@@ -1358,6 +1370,54 @@ function handlePDF(e){
   e.target.value='';
 }
 function clearPDF(){ window._pdfB64=null; window._pdfName=null; const i=document.getElementById('pdfInfo'); if(i){i.style.display='none';i.innerHTML='';} }
+
+
+function handlePDF(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 20*1024*1024){ showErr('PDF za duzy — max 20MB'); return; }
+  const info = document.getElementById('pdfInfo');
+  info.style.display='flex';
+  info.innerHTML = 'Wczytuje PDF...';
+  
+  const reader = new FileReader();
+  reader.onload = async function(ev){
+    try {
+      // Ustaw worker PDF.js
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      
+      const pdf = await pdfjsLib.getDocument({data: ev.target.result}).promise;
+      let text = '';
+      const maxPages = Math.min(pdf.numPages, 10);
+      
+      for(let i = 1; i <= maxPages; i++){
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '
+';
+      }
+      
+      if(!text.trim()){ showErr('PDF nie zawiera tekstu — sprobuj inny plik'); info.style.display='none'; return; }
+      
+      window._pdfText = text.substring(0, 8000);
+      window._pdfName = file.name.replace('.pdf','');
+      
+      info.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ' + file.name + ' (' + pdf.numPages + ' str.) <span style="margin-left:auto;cursor:pointer;color:#888;" onclick="clearPDF()">✕</span>';
+    } catch(err) {
+      showErr('Blad odczytu PDF: ' + err.message);
+      info.style.display='none';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value='';
+}
+
+function clearPDF(){
+  window._pdfText = null;
+  window._pdfName = null;
+  const i = document.getElementById('pdfInfo');
+  if(i){ i.style.display='none'; i.innerHTML=''; }
+}
 
 function handleFiles(e){
   const files=Array.from(e.target.files);
