@@ -1065,7 +1065,7 @@ async function startQuiz(){
   }
   if(!topic && !photos.length){err.textContent='Wpisz temat, dodaj zdjęcie lub wgraj PDF!';err.style.display='block';return;}
   window._lastTopic=topic;
-  window._lastLevel=document.getElementById('subject')?document.getElementById('subject').value:'liceum';
+  window._lastLevel=VALS.level||'liceum';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
   fetch(BASE+'/api/v1/quiz/generate-topic',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
