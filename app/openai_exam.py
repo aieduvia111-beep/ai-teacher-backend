@@ -283,6 +283,9 @@ WAŻNE:
 - PojÄ™cia: **POJÄ˜CIE**
 - Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$ — ZAKAZ wzorów bez dolarów
 - Do mnozenia uzywaj $\\cdot$ lub $\\times$ — NIGDY nie pisz samego 1 jako operatora
+- ZAWSZE kompletne wzory: $\\frac{{1}}{{3}}$ NIE $\\left[ 1 \\right]$
+- NIGDY nie urywaj wzoru w polowie — kazdy \\left[ musi miec \\right] z pelna zawartoscia
+- Przyklad poprawnej calki: $\\left[\\frac{{x^3}}{{3}}\\right]_{{0}}^{{2}}$ — tak ma wygladac
 - Min 300 sÅ‚Ã³w
 - PO POLSKU!
 
