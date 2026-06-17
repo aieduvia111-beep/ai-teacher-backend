@@ -386,12 +386,6 @@ WAŻNE:
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         
         quiz_data = fix_latex_in_quiz(quiz_data)
-        # Waliduj i napraw uszkodzone wzory
-        if isinstance(quiz_data, dict) and "questions" in quiz_data:
-            for q in quiz_data["questions"]:
-                for key in ["question","explanation"]:
-                    if key in q and not validate_latex(q[key]):
-                        q[key] = q[key].replace("\\left[","").replace("\\right]","").replace("\\left(","").replace("\\right)","")
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
@@ -402,17 +396,6 @@ WAŻNE:
 
 
 import re as re_module
-
-def validate_latex(text: str) -> bool:
-    """Sprawdza czy LaTeX jest kompletny"""
-    lefts = text.count('\\left[') + text.count('\\left(')
-    rights = text.count('\\right]') + text.count('\\right)')
-    if lefts != rights:
-        return False
-    dollars = text.count('$')
-    if dollars % 2 != 0:
-        return False
-    return True
 
 def fix_latex_in_quiz(quiz_data):
     """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
@@ -632,12 +615,6 @@ ZASADY:
         quiz_data = fix_latex_in_quiz(quiz_data)
         print(f"Quiz: {quiz_data.get('title')}")
         
-        # Waliduj i napraw uszkodzone wzory
-        if isinstance(quiz_data, dict) and "questions" in quiz_data:
-            for q in quiz_data["questions"]:
-                for key in ["question","explanation"]:
-                    if key in q and not validate_latex(q[key]):
-                        q[key] = q[key].replace("\\left[","").replace("\\right]","").replace("\\left(","").replace("\\right)","")
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
