@@ -993,6 +993,9 @@ function math(raw){
   t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\int[_^][^$\s]+)(?!\$)/g,'$$$1$$');
+  // Owij frac i sqrt bez dolarow wszedzie
+  t=t.replace(/(?<![=$])([-−]\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
+  t=t.replace(/(?<!\$)(\\left\[.*?\\right\][_^]?\{[^}]*\}\{[^}]*\})/g,'$$$1$$');
   if(typeof renderMathInElement==='undefined')return t;
   let el=document.createElement('span');el.textContent=t;el.style.cssText='position:absolute;left:-9999px;visibility:hidden;pointer-events:none;';
   document.body.appendChild(el);
