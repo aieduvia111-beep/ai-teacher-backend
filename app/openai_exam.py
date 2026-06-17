@@ -403,6 +403,13 @@ def fix_latex_in_quiz(quiz_data):
         if not t: return t
         # Napraw $1 jako pm/plus-minus
         t = t.replace('$1 ', '$\\pm$').replace('=$1', '=$\\pm$').replace('= $1', '= $\\pm$')
+        # Napraw spacje w frac
+        import re as _r3
+        t = _r3.sub(r'\\frac\{\s*-\s*', r'\\frac{-', t)
+        t = _r3.sub(r'\\frac\{\s*', r'\\frac{', t)
+        # Napraw znak funkcji (⁡) i stopnie (o -> °)
+        t = t.replace('\u2061', '')  # invisible function application
+        t = _r3.sub(r'(sin|cos|tan|log|ln)(\d+)o\b', r'\\1(\2°)', t)
         # Napraw podwojne dolary na pojedyncze
         t = t.replace("$$", "$")
         # Napraw rac{ -> \frac{
