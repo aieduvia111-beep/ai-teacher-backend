@@ -989,6 +989,15 @@ function math(raw){
     const re=new RegExp('(?<![a-zA-Z\\\\])'+cmd+'(?=[^a-zA-Z]|$)','g');
     t=t.replace(re,'\\'+cmd);
   });
+  // Zamien unicode symbole na LaTeX
+  t=t.replace(/∫/g,'$\\int$');
+  t=t.replace(/∑/g,'$\\sum$');
+  t=t.replace(/√/g,'$\\sqrt{}$');
+  t=t.replace(/≤/g,'$\\leq$');
+  t=t.replace(/≥/g,'$\\geq$');
+  t=t.replace(/≠/g,'$\\neq$');
+  t=t.replace(/→/g,'$\\to$');
+  t=t.replace(/∞/g,'$\\infty$');
   // Owij wyrazenia LaTeX bez dolarow
   t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'$$$1$$');
