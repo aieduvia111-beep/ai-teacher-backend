@@ -981,29 +981,18 @@ let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Ni
 let XP_MAP={easy:10,medium:20,hard:35};
 
 function math(raw){
-  if(!raw)return'';let t=String(raw);
-  // Napraw brakujace backslashe
-  t=t.replace(/(?<![a-zA-Z\\])rac\{/g,'\\frac{');
-  t=t.replace(/(?<![a-zA-Z\\])sqrt\{/g,'\\sqrt{');
-  t=t.replace(/(?<![a-zA-Z\\])frac\{/g,'\\frac{');
-  t=t.replace(/(?<![a-zA-Z\\])times\b/g,'\\times');
-  t=t.replace(/(?<![a-zA-Z\\])cdot\b/g,'\\cdot');
-  t=t.replace(/(?<![a-zA-Z\\])triangle\b/g,'\\triangle');
-  t=t.replace(/(?<![a-zA-Z\\])alpha\b/g,'\\alpha');
-  t=t.replace(/(?<![a-zA-Z\\])beta\b/g,'\\beta');
-  t=t.replace(/(?<![a-zA-Z\\])pi\b/g,'\\pi');
-  // Normalizuj dolary - pomijamy aby nie psuc wzorcow
-  // Auto-wrap wyrazen z potegami i indeksami bez dolarow
-  t=t.replace(/(?<!\$)([a-zA-Z0-9]+\^[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
-  t=t.replace(/(?<!\$)([a-zA-Z0-9]+_[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
-  // Owij wzory bez dolarow - prosta metoda
-  t=t.replace(/(?<!\$)(\\frac\{[^\}]+\}\{[^\}]+\})(?!\$)/g, '\$$1\$');
-  t=t.replace(/(?<!\$)(\\sqrt\{[^\}]+\})(?!\$)/g, '\$$1\$');
-  t=t.replace(/(?<!\$)(\\[a-zA-Z]+\{[^\}]*\})(?!\$)/g, '\$$1\$');
-  t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'\$\$1\$');
-  t=t.replace(/(?<!\$)(\\times|\\cdot|\\pm|\\leq|\\geq|\\neq)(?!\$)/g,'\$\$1\$');
-  t=t.replace(/(^|[^$])\\begin\{cases\}/g,'\$1\$\$\\begin{cases}');
-  t=t.replace(/\\end\{cases\}([^$]|$)/g,'\\end{cases}\$\$\$1');
+  if(!raw)return'';
+  let t=String(raw);
+  // Napraw brakujace backslashe przed komendami
+  const cmds=['frac','sqrt','int','sum','lim','cdot','times','div','pm','leq','geq','neq','alpha','beta','gamma','pi','theta','infty','left','right','begin','end','text','sin','cos','tan','ln','log'];
+  cmds.forEach(cmd=>{
+    const re=new RegExp('(?<![a-zA-Z\\\\])'+cmd+'(?=[^a-zA-Z]|$)','g');
+    t=t.replace(re,'\\'+cmd);
+  });
+  // Owij wyrazenia LaTeX bez dolarow
+  t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'$$$1$$');
+  t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'$$$1$$');
+  t=t.replace(/(?<!\$)(\\int[_^][^$\s]+)(?!\$)/g,'$$$1$$');
   if(typeof renderMathInElement==='undefined')return t;
   let el=document.createElement('span');el.textContent=t;el.style.cssText='position:absolute;left:-9999px;visibility:hidden;pointer-events:none;';
   document.body.appendChild(el);
