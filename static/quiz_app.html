@@ -1406,6 +1406,19 @@ function handlePDF(e){
       
       window._pdfText = text.substring(0, 8000);
       window._pdfName = file.name.replace('.pdf','');
+      // Auto-wykryj przedmiot z tekstu
+      const t = text.toLowerCase();
+      const subjectEl = document.getElementById('subject');
+      if(subjectEl){
+        if(t.match(/fotosynteza|komórka|dna|ewolucja|biolog|genetyk|mitoz|chlorofil/)) subjectEl.value='biologia';
+        else if(t.match(/reakcja|pierwiastek|mol|kwas|zasada|atom|układ okresowy|chemia|wiązanie/)) subjectEl.value='chemia';
+        else if(t.match(/energia|prędkość|siła|ruch|fala|elektr|magnet|optyk|fizyk|newton/)) subjectEl.value='fizyka';
+        else if(t.match(/historia|wojna|rewolucja|cesarz|królestwo|bitwa|dynastia|wiek|rok \d{3,4}/)) subjectEl.value='historia';
+        else if(t.match(/equal|grammar|tense|vocabulary|english|czasownik ang|angielski/)) subjectEl.value='angielski';
+        else if(t.match(/wiersz|lektura|literatura|powieść|polski|gramatyka|ortografia/)) subjectEl.value='polski';
+        else if(t.match(/geografia|kontynent|klimat|rzeka|góry|kraj|stolica|mapa/)) subjectEl.value='geografia';
+        else if(t.match(/równanie|funkcja|pochodna|całka|geometria|trygon|macierz|wektor|logarytm|pierwiastek/)) subjectEl.value='matematyka';
+      }
       
       info.style.display='block';
       info.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><div style="position:relative;width:80px;height:80px;border-radius:10px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="1.8" width="24" height="24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:.6em;color:#22d3a0;font-weight:700;text-align:center;padding:0 4px;word-break:break-all;">' + pdf.numPages + ' str.</span><button onclick="clearPDF()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#333;border:none;color:#aaa;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button></div></div>';
