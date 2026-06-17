@@ -127,8 +127,8 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .input-wrap input,.input-wrap select{width:100%;padding:13px 15px;background:var(--s2);border:1px solid var(--border-hi);border-radius:12px;color:var(--text);font-family:var(--b);font-size:.92em;outline:none;transition:all .25s;}
 .input-wrap input:focus,.input-wrap select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,255,.1);}
 .input-wrap select option{background:#131320;}
-.grid-3{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
 .sel-btn{padding:11px 7px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;}
 .sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
 .sel-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);color:var(--accent2);}
@@ -237,7 +237,7 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .score-label{font-size:.68em;color:var(--muted2);}
 .results-title{font-family:var(--h);font-size:1.35em;font-weight:800;margin-bottom:5px;}
 .results-sub{color:var(--muted2);font-size:.86em;}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:22px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:22px;}
 .stat-box{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:14px;text-align:center;}
 .stat-val{font-family:var(--h);font-size:1.35em;font-weight:800;}
 .stat-val.green{color:var(--green);}.stat-val.red{color:var(--red);}.stat-val.gold{color:var(--gold);}
@@ -698,12 +698,17 @@ function getPlanBadgeHTML(plan) {
               <div class="cb-title">Wybierz z galerii</div>
               <div class="cb-sub">Wiele zdiec naraz<br>z urzadzenia</div>
             </button>
-
+            <button class="capture-btn" onclick="document.getElementById('pdfInput').click()" style="border-color:rgba(34,211,160,.25);background:rgba(34,211,160,.05);">
+              <div class="cb-icon" style="background:rgba(34,211,160,.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div class="cb-title" style="color:#22d3a0;">Wgraj PDF</div>
+              <div class="cb-sub">Podręcznik lub<br>skrypt</div>
+            </button>
           </div>
           <input type="file" id="inputCam" accept="image/*" capture="environment" style="display:none" onchange="handleFiles(event)">
           <input type="file" id="pdfInput" accept=".pdf,application/pdf" style="display:none" onchange="handlePDF(event)">
           <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(event)">
-          <input type="file" id="pdfInput" accept="application/pdf,.pdf,application/x-pdf,application/acrobat" style="display:none" onchange="handlePDF(event)">
           <div id="pdfInfo" style="display:none;margin:8px 0;padding:8px 12px;background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:8px;font-size:.78em;color:#22d3a0;gap:8px;"></div>
         </div>
         <div class="field">
@@ -845,7 +850,7 @@ function getPlanBadgeHTML(plan) {
           <button class="btn-primary" onclick="restartQuiz()">Nowy quiz →</button>
           <button class="btn-secondary" onclick="reviewAll()">Przejrzyj odpowiedzi</button>
           <button class="btn-secondary" onclick="go('dashboard_FINAL.html')">← Wróć do Dashboard</button>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px;">
             <button onclick="goToNotes()" style="padding:12px 8px;border-radius:11px;border:1px solid rgba(124,106,255,.25);background:rgba(124,106,255,.08);color:var(--accent2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s;" onmouseover="this.style.background='rgba(124,106,255,.16)'" onmouseout="this.style.background='rgba(124,106,255,.08)'">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
               Notatka PDF
