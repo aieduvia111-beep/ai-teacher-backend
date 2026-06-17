@@ -105,7 +105,7 @@ async def generate_exam_from_image(
                 }
             ],
             max_tokens=3000,
-            temperature=0.2,
+            temperature=0.7,
             response_format={"type": "json_object"}
         )
         
@@ -200,7 +200,7 @@ async def generate_notes_from_image(
                 }
             ],
             max_tokens=2000,
-            temperature=0.2
+            temperature=0.7
         )
         
         notes_markdown = response.choices[0].message.content
@@ -298,7 +298,7 @@ Zwróć TYLKO Markdown.
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=2500,
-            temperature=0.2
+            temperature=0.7
         )
         
         notes = response.choices[0].message.content
@@ -378,7 +378,7 @@ WAŻNE:
                 }
             ],
             max_tokens=2000,
-            temperature=0.2,
+            temperature=0.7,
             response_format={"type": "json_object"}
         )
         
@@ -607,7 +607,7 @@ ZASADY:
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2500,
-            temperature=0.2,
+            temperature=0.7,
             response_format={"type": "json_object"}
         )
         
