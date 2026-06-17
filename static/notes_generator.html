@@ -1230,7 +1230,13 @@ window.addEventListener('load', function(){
       document.getElementById('temat').value = topic;
       if(level){ window._autoLevel = level; window.level = level; }
       const subj = localStorage.getItem('auto_notes_subject');
-      if(subj){ localStorage.removeItem('auto_notes_subject'); }
+      if(subj){ 
+        localStorage.removeItem('auto_notes_subject');
+        // Ustaw przedmiot jesli jest pole
+        const subjEl = document.getElementById('przedmiot') || document.getElementById('subject');
+        if(subjEl) subjEl.value = subj;
+        window._autoSubject = subj;
+      }
       setTimeout(function(){ generate(); }, 500);
     }
   }
