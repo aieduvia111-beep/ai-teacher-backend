@@ -386,6 +386,12 @@ WAŻNE:
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         
         quiz_data = fix_latex_in_quiz(quiz_data)
+        # Waliduj i napraw uszkodzone wzory
+        if isinstance(quiz_data, dict) and "questions" in quiz_data:
+            for q in quiz_data["questions"]:
+                for key in ["question","explanation"]:
+                    if key in q and not validate_latex(q[key]):
+                        q[key] = q[key].replace("\\left[","").replace("\\right]","").replace("\\left(","").replace("\\right)","")
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
@@ -626,6 +632,12 @@ ZASADY:
         quiz_data = fix_latex_in_quiz(quiz_data)
         print(f"Quiz: {quiz_data.get('title')}")
         
+        # Waliduj i napraw uszkodzone wzory
+        if isinstance(quiz_data, dict) and "questions" in quiz_data:
+            for q in quiz_data["questions"]:
+                for key in ["question","explanation"]:
+                    if key in q and not validate_latex(q[key]):
+                        q[key] = q[key].replace("\\left[","").replace("\\right]","").replace("\\left(","").replace("\\right)","")
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
