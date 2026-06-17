@@ -792,10 +792,6 @@ function getPlanBadgeHTML(plan) {
           <div class="feedback-box" id="feedbackBox">
             <div class="feedback-header" id="feedbackHeader"></div>
             <div class="feedback-explain" id="feedbackExplain"></div>
-            <button id="listenBtn" onclick="listenExplanation()" style="display:none;margin:8px 0 0;padding:7px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:9px;color:var(--accent2);font-size:.75em;font-weight:700;font-family:var(--h);cursor:pointer;gap:6px;align-items:center;" onmouseover="this.style.background='rgba(124,106,255,.16)'" onmouseout="this.style.background='rgba(124,106,255,.08)'">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-              Posłuchaj wyjaśnienia
-            </button>
             <div class="feedback-motivation" id="feedbackMotivation"></div>
           </div>
           <div style="display:flex;justify-content:flex-end;height:22px;margin-bottom:4px;"><div class="xp-pop" id="xpPop"></div></div>
@@ -1006,26 +1002,6 @@ function math(raw){
   try{renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false});}catch(e){}
   let out=el.innerHTML;document.body.removeChild(el);return out;
 }
-
-function listenExplanation(){
-  const btn = document.getElementById('listenBtn');
-  const text = document.getElementById('feedbackExplain').innerText;
-  if(!text) return;
-  
-  // Zatrzymaj jesli gra
-  if(window._ttsAudio){ window._ttsAudio.pause(); window._ttsAudio=null; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> Posłuchaj wyjaśnienia'; return; }
-  
-  btn.textContent = 'Ładowanie...';
-  fetch(BASE+'/api/v1/voice/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,voice:'nova'})})
-  .then(r=>r.blob()).then(blob=>{
-    const url=URL.createObjectURL(blob);
-    window._ttsAudio=new Audio(url);
-    window._ttsAudio.play();
-    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Zatrzymaj';
-    window._ttsAudio.onended=()=>{ btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> Posłuchaj wyjaśnienia'; window._ttsAudio=null; };
-  }).catch(()=>{ btn.textContent='Błąd — spróbuj ponownie'; });
-}
-
 function setMath(el,text){if(el)el.innerHTML=math(text);}
 
 function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');VALS[group]=btn.dataset.v;}
@@ -1159,7 +1135,6 @@ function renderQuestion(){
     }
   }, 50);
   document.getElementById('feedbackBox').className='feedback-box';
-  const _lb=document.getElementById('listenBtn'); if(_lb) _lb.style.display='none'; if(window._ttsAudio){window._ttsAudio.pause();window._ttsAudio=null;}
   document.getElementById('xpPop').style.display='none';
   let nb=document.getElementById('nextBtn');nb.className='next-btn';
   nb.textContent=currentQ===total-1?'Zobacz wyniki →':'Następne pytanie →';
@@ -1190,7 +1165,6 @@ function answer(idx){
     let span=document.createElement('span');span.innerHTML='Poprawna: '+letters[q.correct]+') '+math(q.options[q.correct]);fh.innerHTML='';fh.appendChild(span);
   }
   setMath(document.getElementById('feedbackExplain'),q.explanation||'');
-  const lb=document.getElementById('listenBtn'); if(lb && q.explanation) lb.style.display='inline-flex';
   document.getElementById('feedbackMotivation').textContent=rand(correct?MOT_OK:MOT_ERR);
   document.getElementById('nextBtn').className='next-btn show';
   document.getElementById('streakTxt').textContent=streak>=2?'🔥 Seria: '+streak:'';
