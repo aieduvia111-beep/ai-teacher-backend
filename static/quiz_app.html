@@ -1037,6 +1037,7 @@ async function startQuiz(){
   let wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
   if(photos.length>0){
     showPage('pageLoading');
+    window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     fetch(BASE+'/api/v1/quiz/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
     .then(function(r){if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
     .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
