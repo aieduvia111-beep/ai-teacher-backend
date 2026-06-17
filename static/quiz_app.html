@@ -992,10 +992,7 @@ function math(raw){
   t=t.replace(/(?<![a-zA-Z\\])alpha\b/g,'\\alpha');
   t=t.replace(/(?<![a-zA-Z\\])beta\b/g,'\\beta');
   t=t.replace(/(?<![a-zA-Z\\])pi\b/g,'\\pi');
-  // Normalizuj dolary: $$ -> $
-  t=t.replace(/\$\$(.*?)\$\$/gs, '\$\$\$1\$\$\$');
-  t=t.replace(/([^\$])\$\$/g,'\$1\$');
-  t=t.replace(/\$\$([^\$])/g,'\$\$1');
+  // Normalizuj dolary - pomijamy aby nie psuc wzorcow
   // Auto-wrap wyrazen z potegami i indeksami bez dolarow
   t=t.replace(/(?<!\$)([a-zA-Z0-9]+\^[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
   t=t.replace(/(?<!\$)([a-zA-Z0-9]+_[\{]?[^\s\$\}]+[\}]?)(?!\$)/g, '$$$1$$');
