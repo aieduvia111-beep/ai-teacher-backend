@@ -998,6 +998,8 @@ function math(raw){
   t=t.replace(/≠/g,'$\\neq$');
   t=t.replace(/→/g,'$\\to$');
   t=t.replace(/∞/g,'$\\infty$');
+  // Owij minus+frac bez dolarow
+  t=t.replace(/([-−])(\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$2$$');
   // Owij wyrazenia LaTeX bez dolarow
   t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'$$$1$$');
