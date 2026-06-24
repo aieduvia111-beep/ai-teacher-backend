@@ -262,6 +262,13 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .viz-card [data-step]:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
 .viz-formula{margin-top:14px;padding:10px 14px;background:rgba(124,106,255,0.06);border:1px solid rgba(124,106,255,0.15);border-radius:10px;text-align:center;font-size:.78em;color:var(--muted2);letter-spacing:.02em;transition:border-color .3s,background .3s;}
 .viz-formula:hover{background:rgba(124,106,255,0.12);border-color:rgba(124,106,255,0.35);color:var(--text);}
+.fc-card{margin-top:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(34,211,160,.06),rgba(34,211,160,.02));border:1px solid rgba(34,211,160,.2);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .2s,background .2s;}
+.fc-card:hover{border-color:rgba(34,211,160,.35);background:linear-gradient(135deg,rgba(34,211,160,.1),rgba(34,211,160,.04));}
+.fc-card-left{display:flex;flex-direction:column;gap:3px;}
+.fc-card-label{font-size:.65em;color:rgba(34,211,160,.6);letter-spacing:.06em;text-transform:uppercase;font-weight:700;font-family:var(--h);}
+.fc-card-text{font-size:.85em;color:var(--text);font-weight:500;}
+.fc-card-btn{flex-shrink:0;padding:8px 16px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;border-radius:10px;color:#000;font-size:.78em;font-weight:700;font-family:var(--b);cursor:pointer;transition:transform .2s,box-shadow .2s;white-space:nowrap;box-shadow:0 4px 14px rgba(34,211,160,.25);}
+.fc-card-btn:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 6px 20px rgba(34,211,160,.4);}
 .quiz-shortcut-btn{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 14px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.3);border-radius:8px;color:var(--accent2);font-size:0.76em;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:var(--h);}
 .quiz-shortcut-btn:hover{background:rgba(124,106,255,0.25);transform:translateY(-1px);}
 
@@ -1221,6 +1228,18 @@ function toggleExplainLevels(){
   }
 }
 
+function detectFlashcards(text){
+  const t = text.toLowerCase();
+  return t.match(/fiszk|flashcard|fisz/);
+}
+
+function extractFlashcardTopic(text){
+  const t = text.toLowerCase();
+  const match = t.match(/fiszk[ie]?\s+(?:z|na temat|o|ze)?\s+(.+)/);
+  if(match && match[1] && match[1].trim().length > 1) return match[1].trim();
+  return null;
+}
+
 async function sendMessage() {
   const _lim = await checkLimit('chat');
   if(!_lim.allowed) return;
@@ -1361,6 +1380,31 @@ async function sendMessage() {
   navTo('quiz_app.html?topic=' + encodeURIComponent(topic) + '&subject=' + subject);
 };
       aiGroup.appendChild(qBtn);
+    }
+
+    // Karta fiszek jesli user pytal o fiszki
+    const lastUserMsg = history.filter(m=>m.role==='user').slice(-1)[0];
+    const lastText = lastUserMsg ? (lastUserMsg.content||lastUserMsg.text||'') : '';
+    if(detectFlashcards(lastText)){
+      const fcTopic = extractFlashcardTopic(lastText) || response.quiz_topic || response.title || '';
+      if(fcTopic){
+        const fcCard = document.createElement('div');
+        fcCard.className = 'fc-card';
+        const topicLow = fcTopic.toLowerCase();
+        let subject = 'matematyka';
+        if(topicLow.match(/biolog|fotosynteza|komórka|dna/)) subject='biologia';
+        else if(topicLow.match(/chemi|reakcja|pierwiastek/)) subject='chemia';
+        else if(topicLow.match(/fizyk|energia|siła/)) subject='fizyka';
+        else if(topicLow.match(/historia|wojna/)) subject='historia';
+        fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Fiszki gotowe</div><div class="fc-card-text">${fcTopic} • 10 fiszek</div></div><button class="fc-card-btn" onclick="navTo('flashcards.html?topic=${encodeURIComponent(fcTopic)}&subject=${subject}')">Otwórz</button>`;
+        aiGroup.appendChild(fcCard);
+      } else {
+        // Brak tematu - pokaz info
+        const fcCard = document.createElement('div');
+        fcCard.className = 'fc-card';
+        fcCard.innerHTML = '<div class="fc-card-left"><div class="fc-card-label">Fiszki AI</div><div class="fc-card-text">Podaj temat np. "fiszki z fotosynteza"</div></div>';
+        aiGroup.appendChild(fcCard);
+      }
     }
 
     history.push({ role: 'assistant', content: response.text || '' });
