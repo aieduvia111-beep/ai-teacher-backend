@@ -1296,7 +1296,7 @@ function detectFlashcards(text){
 }
 
 function extractFlashcardTopic(text){
-  const m = text.match(/fiszk[ie]?\s+(?:z|ze|na temat|o|dot\.?)?\s*(.+)/i);
+  const m = text.match(/fiszk[ie]?\s+(?:z|ze|na temat|o|dot\.?)?\s*([\w\sąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)/i);
   if(m && m[1] && m[1].trim().length > 1) return m[1].trim();
   return null;
 }
