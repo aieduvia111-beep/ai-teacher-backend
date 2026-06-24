@@ -262,6 +262,16 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .viz-card [data-step]:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
 .viz-formula{margin-top:14px;padding:10px 14px;background:rgba(124,106,255,0.06);border:1px solid rgba(124,106,255,0.15);border-radius:10px;text-align:center;font-size:.78em;color:var(--muted2);letter-spacing:.02em;transition:border-color .3s,background .3s;}
 .viz-formula:hover{background:rgba(124,106,255,0.12);border-color:rgba(124,106,255,0.35);color:var(--text);}
+.fc-level-popup{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;}
+.fc-level-box{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;min-width:260px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.fc-level-title{font-family:var(--h);font-size:.9em;font-weight:800;color:var(--text);text-align:center;}
+.fc-level-sub{font-size:.75em;color:var(--muted2);text-align:center;margin-top:-8px;}
+.fc-level-btns{display:flex;flex-direction:column;gap:8px;}
+.fc-level-btn{padding:11px 16px;border-radius:12px;border:1px solid var(--border-hi);background:var(--s2);color:var(--muted2);font-family:var(--h);font-size:.8em;font-weight:700;cursor:pointer;transition:.2s;text-align:left;display:flex;align-items:center;gap:10px;}
+.fc-level-btn:hover{border-color:rgba(34,211,160,.35);background:rgba(34,211,160,.06);color:var(--green);}
+.fc-level-cancel{padding:8px;border:none;background:none;color:var(--muted);font-size:.75em;cursor:pointer;font-family:var(--b);transition:.2s;}
+.fc-level-cancel:hover{color:var(--text);}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 .fc-card{margin-top:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(34,211,160,.06),rgba(34,211,160,.02));border:1px solid rgba(34,211,160,.2);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .2s,background .2s;}
 .fc-card:hover{border-color:rgba(34,211,160,.35);background:linear-gradient(135deg,rgba(34,211,160,.1),rgba(34,211,160,.04));}
 .fc-card-left{display:flex;flex-direction:column;gap:3px;}
@@ -1228,6 +1238,43 @@ function toggleExplainLevels(){
   }
 }
 
+function openFlashcardsWithLevel(topic, subject){
+  const existing = document.getElementById('fcLevelPopup');
+  if(existing) existing.remove();
+  
+  const popup = document.createElement('div');
+  popup.className = 'fc-level-popup';
+  popup.id = 'fcLevelPopup';
+  popup.innerHTML = `
+    <div class="fc-level-box">
+      <div class="fc-level-title">Wybierz poziom fiszek</div>
+      <div class="fc-level-sub">${topic}</div>
+      <div class="fc-level-btns">
+        <button class="fc-level-btn" onclick="goFlashcards('${encodeURIComponent(topic)}','${subject}','podstawowka')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Podstawówka
+        </button>
+        <button class="fc-level-btn" onclick="goFlashcards('${encodeURIComponent(topic)}','${subject}','liceum')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          Liceum
+        </button>
+        <button class="fc-level-btn" onclick="goFlashcards('${encodeURIComponent(topic)}','${subject}','studia')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+          Studia
+        </button>
+      </div>
+      <button class="fc-level-cancel" onclick="document.getElementById('fcLevelPopup').remove()">Anuluj</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  popup.onclick = (e) => { if(e.target===popup) popup.remove(); };
+}
+
+function goFlashcards(topic, subject, level){
+  document.getElementById('fcLevelPopup').remove();
+  navTo('flashcards.html?topic='+topic+'&subject='+subject+'&level='+level);
+}
+
 function detectFlashcards(text){
   const t = text.toLowerCase();
   return t.match(/fiszk|flashcard|fisz/);
@@ -1396,7 +1443,7 @@ async function sendMessage() {
         else if(topicLow.match(/chemi|reakcja|pierwiastek/)) subject='chemia';
         else if(topicLow.match(/fizyk|energia|siła/)) subject='fizyka';
         else if(topicLow.match(/historia|wojna/)) subject='historia';
-        fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Fiszki gotowe</div><div class="fc-card-text">${fcTopic} • 10 fiszek</div></div><button class="fc-card-btn" onclick="navTo('flashcards.html?topic=${encodeURIComponent(fcTopic)}&subject=${subject}')">Otwórz</button>`;
+        fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Fiszki gotowe</div><div class="fc-card-text">${fcTopic} • 10 fiszek</div></div><button class="fc-card-btn" onclick="openFlashcardsWithLevel('${fcTopic}','${subject}')">Otwórz</button>`;
         aiGroup.appendChild(fcCard);
       } else {
         // Brak tematu - pokaz info
