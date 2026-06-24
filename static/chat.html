@@ -1384,7 +1384,7 @@ function _oldDetectFlashcards(text){
 
 function extractFlashcardTopic(text){
   const t = text.toLowerCase();
-  const match = t.match(/fiszk[ie]?\s+(?:z|na temat|o|ze)?\s+(.+)/);
+  const match = t.match(/fiszk[ie]?\s+(?:z|ze|na temat|o|dot\.?)?\s*([\w\sąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)/i);
   if(match && match[1] && match[1].trim().length > 1) return match[1].trim();
   return null;
 }

@@ -159,7 +159,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 <div class="app">
   <div class="topbar">
     <div class="topbar-left">
-      <a href="chat.html" class="back-btn">
+      <a href="#" onclick="history.back();return false;" class="back-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         Wróć
       </a>
@@ -277,7 +277,7 @@ function render(){
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10"/></svg>
           Powtórz
         </button>
-        <a href="chat.html" class="res-btn res-btn-secondary">
+        <a href="#" onclick="history.back();return false;" class="res-btn res-btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           Wróć do chatu
         </a>
