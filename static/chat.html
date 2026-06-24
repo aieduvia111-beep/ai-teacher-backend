@@ -1297,7 +1297,7 @@ function detectFlashcards(text){
 
 function extractFlashcardTopic(text){
   // Usun slowo fiszki i zostaw reszte
-  let t = text.replace(/fiszk[ie]?/gi,'').replace(/fiski/gi,'').replace(/flashcards?/gi,'').trim();
+  let t = text.replace(/fiszk[ieau]*/gi,'').replace(/fiski/gi,'').replace(/flashcards?/gi,'').trim();
   t = t.replace(/^(z|ze|na temat|o|dot\.|:)\s*/i,'').trim();
   return t.length > 1 ? t : null;
 }
