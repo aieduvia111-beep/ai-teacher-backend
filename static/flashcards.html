@@ -201,7 +201,7 @@ async function generate(){
         level: level,
         num_questions: 10,
         difficulty: 'medium',
-        wlasne_instrukcje: `Wygeneruj FISZKI (nie quiz). Każde "pytanie" to krótkie pojęcie/termin/wzór do zapamiętania (max 1 zdanie), a "wyjaśnienie" to definicja/odpowiedź (max 2 zdania). Opcje A/B/C/D mogą być identyczne - nie są używane. Format fiszki: front=pytanie, back=wyjaśnienie.`
+        wlasne_instrukcje: `Wygeneruj FISZKI edukacyjne (NIE quiz z opcjami). Poziom: ${level}. Każde pytanie to krótkie pojęcie/termin/wzór (max 1 zdanie), wyjaśnienie to definicja/odpowiedź dopasowana do poziomu ${level} (max 2 zdania). Dla podstawówki - proste słowa. Dla liceum - pojęcia maturalne. Dla studiów - zaawansowane definicje. Opcje A/B/C/D zostaw puste lub identyczne.`
       })
     });
     const data = await resp.json();
