@@ -1345,7 +1345,7 @@ function startFcGen(cardId, topicEnc, level){
   else if(/fizyk|energia|siła/.test(topicLow)) subject='fizyka';
   else if(/historia|wojna/.test(topicLow)) subject='historia';
   
-  fetch(window.BACKEND_URL+'/api/v1/quiz/generate-topic',{
+  fetch(BACKEND_URL+'/api/v1/quiz/generate-topic',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
