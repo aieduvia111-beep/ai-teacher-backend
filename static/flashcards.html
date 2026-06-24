@@ -191,6 +191,17 @@ const subject = params.get('subject') || localStorage.getItem('fc_subject') || '
 document.getElementById('topicLabel').textContent = topic || 'Fiszki';
 
 async function generate(){
+  // Sprawdz cache z czatu
+  const fromCache = params.get('from_cache');
+  const cached = localStorage.getItem('fc_cards');
+  if(fromCache==='1' && cached){
+    try{
+      cards = JSON.parse(cached);
+      localStorage.removeItem('fc_cards');
+      render();
+      return;
+    }catch(e){}
+  }
   try{
     const resp = await fetch(BASE+'/api/v1/quiz/generate-topic',{
       method:'POST',
