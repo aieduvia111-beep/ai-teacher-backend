@@ -280,18 +280,22 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .fc-card-btn{flex-shrink:0;padding:8px 16px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;border-radius:10px;color:#000;font-size:.78em;font-weight:700;font-family:var(--b);cursor:pointer;transition:transform .2s,box-shadow .2s;white-space:nowrap;box-shadow:0 4px 14px rgba(34,211,160,.25);}
 .fc-card-btn:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 6px 20px rgba(34,211,160,.4);}
 
-.fc-bubble{margin-top:14px;padding:18px 20px;background:linear-gradient(135deg,rgba(34,211,160,.07),rgba(34,211,160,.02));border:1px solid rgba(34,211,160,.2);border-radius:16px;display:flex;flex-direction:column;gap:14px;}
-.fc-bubble-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.fc-bubble{margin-top:14px;padding:20px;background:linear-gradient(135deg,rgba(34,211,160,.05),rgba(34,211,160,.01));border:1px solid rgba(34,211,160,.18);border-radius:18px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden;}
+.fc-bubble::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(34,211,160,.12),transparent 70%);pointer-events:none;}
+.fc-bubble-top{display:flex;align-items:center;gap:14px;}
+.fc-bubble-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(34,211,160,.15),rgba(34,211,160,.05));border:1px solid rgba(34,211,160,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .fc-bubble-info{display:flex;flex-direction:column;gap:3px;}
-.fc-bubble-label{font-size:.63em;color:rgba(34,211,160,.65);letter-spacing:.08em;text-transform:uppercase;font-weight:700;font-family:var(--h);}
-.fc-bubble-title{font-size:.88em;color:var(--text);font-weight:500;}
+.fc-bubble-label{font-size:.62em;color:rgba(34,211,160,.6);letter-spacing:.09em;text-transform:uppercase;font-weight:700;font-family:var(--h);}
+.fc-bubble-title{font-size:.9em;color:var(--text);font-weight:600;font-family:var(--h);}
 .fc-level-row{display:flex;gap:7px;flex-wrap:wrap;}
-.fc-lvl-btn{padding:7px 14px;border-radius:9px;border:1px solid var(--border-hi);background:var(--s2);color:var(--muted2);font-family:var(--h);font-size:.72em;font-weight:700;cursor:pointer;transition:.2s;}
-.fc-lvl-btn:hover{border-color:rgba(34,211,160,.35);color:var(--green);background:rgba(34,211,160,.06);}
-.fc-progress-bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;display:none;}
-.fc-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),#0ea572);border-radius:99px;width:0%;transition:width .4s;}
-.fc-open-btn{padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;color:#000;font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:.2s;display:none;}
-.fc-open-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(34,211,160,.35);}
+.fc-lvl-btn{padding:8px 16px;border-radius:10px;border:1px solid rgba(34,211,160,.15);background:rgba(34,211,160,.05);color:rgba(34,211,160,.7);font-family:var(--h);font-size:.73em;font-weight:700;cursor:pointer;transition:.2s;}
+.fc-lvl-btn:hover{border-color:rgba(34,211,160,.4);color:var(--green);background:rgba(34,211,160,.1);transform:translateY(-1px);}
+.fc-progress-wrap{display:none;flex-direction:column;gap:6px;}
+.fc-progress-bar{height:3px;background:rgba(34,211,160,.1);border-radius:99px;overflow:hidden;}
+.fc-progress-fill{height:100%;background:linear-gradient(90deg,#22d3a0,#38bdf8);border-radius:99px;width:0%;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.fc-progress-txt{font-size:.68em;color:var(--muted2);font-family:var(--h);font-weight:700;}
+.fc-open-btn{padding:10px 20px;border-radius:11px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;color:#000;font-family:var(--h);font-size:.78em;font-weight:800;cursor:pointer;transition:.2s;display:none;align-self:flex-start;box-shadow:0 4px 16px rgba(34,211,160,.25);}
+.fc-open-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(34,211,160,.4);}
 .quiz-shortcut-btn{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 14px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.3);border-radius:8px;color:var(--accent2);font-size:0.76em;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:var(--h);}
 .quiz-shortcut-btn:hover{background:rgba(124,106,255,0.25);transform:translateY(-1px);}
 
@@ -1309,6 +1313,9 @@ function showFcCard(msgs, aiGroup, topic){
   const cardId = card.id;
   card.innerHTML = `
     <div class="fc-bubble-top">
+      <div class="fc-bubble-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="1.8" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
       <div class="fc-bubble-info">
         <div class="fc-bubble-label">Fiszki AI</div>
         <div class="fc-bubble-title" id="${cardId}_title">${topic}</div>
@@ -1319,8 +1326,11 @@ function showFcCard(msgs, aiGroup, topic){
       <button class="fc-lvl-btn" onclick="startFcGen('${cardId}','${encodeURIComponent(topic)}','liceum')">Liceum</button>
       <button class="fc-lvl-btn" onclick="startFcGen('${cardId}','${encodeURIComponent(topic)}','studia')">Studia</button>
     </div>
-    <div class="fc-progress-bar" id="${cardId}_bar"><div class="fc-progress-fill" id="${cardId}_fill"></div></div>
-    <button class="fc-open-btn" id="${cardId}_btn">Otwórz fiszki</button>
+    <div class="fc-progress-wrap" id="${cardId}_bar">
+      <div class="fc-progress-bar"><div class="fc-progress-fill" id="${cardId}_fill"></div></div>
+      <div class="fc-progress-txt" id="${cardId}_ptxt">Generuję fiszki...</div>
+    </div>
+    <button class="fc-open-btn" id="${cardId}_btn">Otwórz fiszki →</button>
   `;
   aiGroup.appendChild(card);
   msgs.appendChild(aiGroup);
