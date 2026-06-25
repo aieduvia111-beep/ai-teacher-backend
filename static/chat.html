@@ -925,7 +925,7 @@ function getPlanBadgeHTML(plan) {
           <button class="calc-ibtn" id="calcToggleBtn" onclick="toggleCalcPanel()" title="Kalkulator matematyczny">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8.01" y2="10" stroke-width="2"/><line x1="12" y1="10" x2="12.01" y2="10" stroke-width="2"/><line x1="16" y1="10" x2="16.01" y2="10" stroke-width="2"/><line x1="8" y1="14" x2="8.01" y2="14" stroke-width="2"/><line x1="12" y1="14" x2="12.01" y2="14" stroke-width="2"/><line x1="16" y1="14" x2="16.01" y2="14" stroke-width="2"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
           </button>
-          <button class="send-btn" id="sendBtn" onclick="if(window.sendMessage)window.sendMessage()" title="Wyślij">
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Wyślij">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
           </button>
         </div>
@@ -1195,7 +1195,7 @@ setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 *
 
 // TEXTAREA
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }
-function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if(window.sendMessage)window.sendMessage(); } }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 window.sendMessage = sendMessage;
 
 // FILES
