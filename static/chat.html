@@ -1530,14 +1530,42 @@ async function sendMessage() {
     // Pokaz wygenerowany obrazek
     if (response.image_url) {
       const imgWrap = document.createElement('div');
-      imgWrap.style.cssText = 'margin-top:12px;';
-      const img = document.createElement('img');
-      img.src = response.image_url;
-      img.style.cssText = 'width:100%;max-width:400px;border-radius:14px;border:1px solid var(--border-hi);display:block;';
-      img.alt = 'Wygenerowany obrazek';
-      img.onload = () => scrollDown();
-      imgWrap.appendChild(img);
+      imgWrap.style.cssText = 'margin-top:14px;max-width:400px;';
+      imgWrap.innerHTML = \`<div id="imgPlaceholder_\${Date.now()}" style="width:100%;height:280px;border-radius:14px;border:1px solid rgba(124,106,255,.2);overflow:hidden;position:relative;background:#0d0d1a;">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,255,.06),rgba(34,211,160,.04));"></div>
+        <div style="position:absolute;top:0;left:-60%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(124,106,255,.1),rgba(167,139,250,.15),transparent);animation:imgScan 1.8s ease-in-out infinite;"></div>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+          <div style="position:relative;width:52px;height:52px;">
+            <div style="position:absolute;inset:0;border-radius:50%;border:2px solid rgba(124,106,255,.12);"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;border:2px solid transparent;border-top-color:#a78bfa;animation:imgSpin 1s linear infinite;"></div>
+            <div style="position:absolute;inset:7px;border-radius:50%;border:1.5px solid transparent;border-top-color:#22d3a0;animation:imgSpin .7s linear infinite reverse;"></div>
+            <div style="position:absolute;inset:15px;border-radius:50%;background:radial-gradient(circle,rgba(124,106,255,.4),rgba(34,211,160,.15));animation:imgPulse 2s ease-in-out infinite;"></div>
+          </div>
+          <div style="font-family:var(--h);font-size:.72em;font-weight:700;color:rgba(167,139,250,.75);letter-spacing:.06em;">Generuję obrazek</div>
+          <div style="display:flex;gap:5px;">
+            <div style="width:5px;height:5px;border-radius:50%;background:#a78bfa;animation:imgDot 1.2s ease-in-out infinite;"></div>
+            <div style="width:5px;height:5px;border-radius:50%;background:#a78bfa;animation:imgDot 1.2s ease-in-out infinite;animation-delay:.2s;"></div>
+            <div style="width:5px;height:5px;border-radius:50%;background:#22d3a0;animation:imgDot 1.2s ease-in-out infinite;animation-delay:.4s;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:.68em;color:var(--muted2);margin-top:6px;display:flex;align-items:center;gap:5px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span id="imgCaption_" style="opacity:.7;">Wygenerowano przez AI</span>
+      </div>\`;
       aiGroup.appendChild(imgWrap);
+      scrollDown();
+
+      const img = new Image();
+      const ph = imgWrap.querySelector('[id^="imgPlaceholder"]');
+      img.onload = () => {
+        if(ph) ph.style.display='none';
+        img.style.cssText='width:100%;border-radius:14px;border:1px solid var(--border-hi);display:block;opacity:0;transition:opacity .5s ease;';
+        imgWrap.insertBefore(img, imgWrap.firstChild);
+        setTimeout(()=>{ img.style.opacity='1'; scrollDown(); }, 50);
+      };
+      img.onerror = () => { if(ph) ph.style.display='none'; };
+      img.src = response.image_url;
     }
 
     if (response.diagram) {
