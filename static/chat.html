@@ -1380,6 +1380,7 @@ function startFcGen(cardId, topicEnc, level){
       const btn = document.getElementById(cardId+'_btn');
       btn.style.display='block';
       btn.onclick=()=>{ 
+        if(!d||!d.quiz||!d.quiz.questions){ navTo('flashcards.html?topic='+encodeURIComponent(topic)+'&level='+level+'&subject='+subject); return; }
         localStorage.setItem('fc_cards', JSON.stringify(d.quiz.questions.map(q=>({front:q.question,back:q.explanation}))));
         localStorage.setItem('fc_topic', topic);
         localStorage.setItem('fc_level', level);
