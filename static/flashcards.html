@@ -314,6 +314,7 @@ function initSwipe(){
 
 // DZWIEK KARTY
 function playFlip(){
+  if(!checkFlashcardsLimit()) return;
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
@@ -330,6 +331,27 @@ function playFlip(){
     src.start();
     setTimeout(()=>ctx.close(), 200);
   }catch(e){}
+}
+
+
+// LIMIT FISZEK
+function checkFlashcardsLimit(){
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if(plan !== 'free') return true;
+  const today = new Date().toISOString().split('T')[0];
+  const key = 'eduvia_limit_flashcards_'+today;
+  const used = parseInt(localStorage.getItem(key)||'0');
+  if(used >= 3){
+    document.getElementById('cardArea').innerHTML = `<div style="text-align:center;padding:40px;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-family:var(--h);font-size:1em;font-weight:800;color:var(--text);">Limit dzienny</div>
+      <div style="font-size:.85em;color:var(--muted2);line-height:1.6;max-width:260px;">Wykorzystałeś 3 zestawy fiszek dzisiaj. Wróć jutro lub kup Pro — bez limitów.</div>
+      <a href="pricing.html" style="padding:12px 24px;background:linear-gradient(135deg,var(--accent),#5040c8);border-radius:12px;color:#fff;font-family:var(--h);font-size:.8em;font-weight:700;text-decoration:none;">Kup Pro</a>
+      <a href="#" onclick="history.back();return false;" style="font-size:.78em;color:var(--muted2);text-decoration:none;">← Wróć</a>
+    </div>`;
+    return false;
+  }
+  localStorage.setItem(key, used+1);
+  return true;
 }
 
 async function generate(attempt=1){
