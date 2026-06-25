@@ -1197,6 +1197,8 @@ setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 *
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }
 function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if(window.sendMessage)window.sendMessage(); } }
 window.sendMessage = sendMessage;
+window.quickAsk = function(t){ const i=document.getElementById('msgInput');if(i){i.value=t;sendMessage();} };
+window.startQuiz = typeof startQuiz !== 'undefined' ? startQuiz : null;
 
 // FILES
 function handleFiles(e) {
