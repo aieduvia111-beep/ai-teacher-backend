@@ -282,7 +282,7 @@ async function generate(attempt=1){
   }catch(e){
     if(attempt < 4){
       setTimeout(()=>generate(attempt+1), 4000);
-      document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Łączenie... próba '+attempt+'</div></div>';
+      document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Generuję fiszki...</div></div>';
     } else {
       document.getElementById('cardArea').innerHTML='<div style="text-align:center;color:var(--red);font-size:.85em;line-height:2.2;">Błąd generowania.<br><a href="chat.html" style="color:var(--accent2);text-decoration:none;font-family:var(--h);font-weight:700;">← Wróć</a></div>';
     }
