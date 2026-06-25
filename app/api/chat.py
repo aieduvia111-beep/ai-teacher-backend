@@ -30,6 +30,7 @@ ZAWSZE zwracaj odpowiedź jako JSON w dokładnie tym formacie (nic poza JSONem!)
   "show_chart": false,
   "chart": null,
   "diagram": null,
+  "generate_image": null,
   "topic_en": "temat po angielsku do YouTube i Wolfram"
 }
 
@@ -52,6 +53,8 @@ POLE "diagram" — możliwe wartości (string):
 
 Jeśli uczeń pyta o wizualizację/schemat/diagram i temat pasuje do listy wyżej — ustaw "diagram" na odpowiednią wartość.
 Jeśli temat NIE pasuje — zostaw null.
+
+POLE "generate_image" — ustaw gdy uczeń prosi o obrazek, ilustrację, zdjęcie lub rysunek czegoś. Wpisz krótki prompt po angielsku do generowania obrazu (max 15 słów). Przykład: "photosynthesis process diagram educational illustration". Dla czegoś abstrakcyjnego lub szkolnego tematu ustaw null.
 
 KRYTYCZNE: Jeśli show_chart = true, pole "text" NIE może zawierać żadnego JSON ani danych wykresu!
 Dane wykresu idą TYLKO do pola "chart". W "text" piszesz normalny tekst z wyjaśnieniem.

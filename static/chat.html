@@ -298,6 +298,14 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .fc-progress-txt{font-size:.68em;color:var(--muted2);font-family:var(--h);font-weight:700;}
 .fc-open-btn{padding:10px 20px;border-radius:11px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;color:#000;font-family:var(--h);font-size:.78em;font-weight:800;cursor:pointer;transition:.2s;display:none;align-self:flex-start;box-shadow:0 4px 16px rgba(34,211,160,.25);}
 .fc-open-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(34,211,160,.4);}
+.ai-image{
+  margin-top:12px;border-radius:14px;overflow:hidden;
+  border:1px solid var(--border-hi);max-width:100%;
+  background:var(--s2);position:relative;
+}
+.ai-image img{width:100%;display:block;border-radius:14px;}
+.ai-image-label{font-size:.68em;color:var(--muted2);padding:6px 10px;font-family:var(--h);font-weight:700;letter-spacing:.06em;}
+.ai-image-loading{padding:40px;text-align:center;color:var(--muted2);font-size:.8em;}
 .quiz-shortcut-btn{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 14px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.3);border-radius:8px;color:var(--accent2);font-size:0.76em;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:var(--h);}
 .quiz-shortcut-btn:hover{background:rgba(124,106,255,0.25);transform:translateY(-1px);}
 
@@ -1170,7 +1178,8 @@ async function callAIhttp(text, hist, imgs=[]) {
     sources:    data.sources    || [],
     videos:     data.videos     || [],
     has_latex:  data.has_latex  || false,
-    quiz_topic: data.title      || null
+    quiz_topic: data.title      || null,
+    generate_image: data.generate_image || null
   };
 }
 
@@ -1572,6 +1581,24 @@ async function sendMessage() {
     copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Kopiuj`;
     copyBtn.onclick = () => { navigator.clipboard.writeText(response.text || '').then(() => { copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Skopiowano`; copyBtn.style.color = 'var(--green)'; setTimeout(() => { copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Kopiuj`; copyBtn.style.color = ''; }, 2000); }); };
     aiGroup.appendChild(copyBtn);
+    // Generowanie obrazka
+    if (response.generate_image) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'ai-image';
+      imgWrap.innerHTML = '<div class="ai-image-loading">Generuję obrazek...</div>';
+      aiGroup.appendChild(imgWrap);
+      
+      const prompt = encodeURIComponent(response.generate_image + ', educational, clean, colorful');
+      const imgUrl = `https://image.pollinations.ai/prompt/${prompt}?width=600&height=400&nologo=true`;
+      
+      const img = new Image();
+      img.onload = () => {
+        imgWrap.innerHTML = `<img src="${imgUrl}" alt="${response.generate_image}" loading="lazy"><div class="ai-image-label">Wygenerowany przez AI</div>`;
+      };
+      img.onerror = () => { imgWrap.remove(); };
+      img.src = imgUrl;
+    }
+
     if (response.quiz_topic) {
       const qBtn = document.createElement('button'); qBtn.className = 'quiz-shortcut-btn';
       qBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Zrób quiz z tego';
