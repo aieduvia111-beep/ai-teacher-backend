@@ -298,22 +298,18 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .fc-progress-txt{font-size:.68em;color:var(--muted2);font-family:var(--h);font-weight:700;}
 .fc-open-btn{padding:10px 20px;border-radius:11px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;color:#000;font-family:var(--h);font-size:.78em;font-weight:800;cursor:pointer;transition:.2s;display:none;align-self:flex-start;box-shadow:0 4px 16px rgba(34,211,160,.25);}
 .fc-open-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(34,211,160,.4);}
-.ai-image{
-  margin-top:12px;border-radius:14px;overflow:hidden;
-  border:1px solid var(--border-hi);max-width:100%;
-  background:var(--s2);position:relative;
+.ai-image-wrap{
+  margin-top:14px;position:relative;border-radius:16px;padding:2px;
+  background:linear-gradient(135deg,rgba(124,106,255,.3),rgba(56,189,248,.2),rgba(34,211,160,.25));
 }
-.ai-image img{width:100%;display:block;border-radius:14px;}
-.ai-image-label{font-size:.68em;color:var(--muted2);padding:6px 10px;font-family:var(--h);font-weight:700;letter-spacing:.06em;}
-.ai-image-loading{padding:40px;text-align:center;color:var(--muted2);font-size:.8em;}
-.ai-image{
-  margin-top:12px;border-radius:14px;overflow:hidden;
-  border:1px solid var(--border-hi);max-width:100%;
-  background:var(--s2);position:relative;
-}
-.ai-image img{width:100%;display:block;border-radius:14px;}
-.ai-image-label{font-size:.68em;color:var(--muted2);padding:6px 10px;font-family:var(--h);font-weight:700;letter-spacing:.06em;}
-.ai-image-loading{padding:40px;text-align:center;color:var(--muted2);font-size:.8em;}
+.ai-image-inner{border-radius:14px;overflow:hidden;background:var(--s2);position:relative;}
+.ai-image-inner img{width:100%;display:block;border-radius:14px;}
+.ai-image-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);}
+.ai-image-badge{display:flex;align-items:center;gap:5px;font-family:var(--h);font-size:.62em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);}
+.ai-image-badge svg{width:11px;height:11px;}
+.ai-image-model{font-size:.6em;color:var(--muted);font-family:var(--h);}
+.ai-image-shimmer{width:100%;aspect-ratio:3/2;background:linear-gradient(90deg,#0f0f18 25%,rgba(124,106,255,.07) 50%,#0f0f18 75%);background-size:200% 100%;animation:shim 1.4s ease-in-out infinite;border-radius:14px;}
+@keyframes shim{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 .quiz-shortcut-btn{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 14px;background:rgba(124,106,255,0.12);border:1px solid rgba(124,106,255,0.3);border-radius:8px;color:var(--accent2);font-size:0.76em;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:var(--h);}
 .quiz-shortcut-btn:hover{background:rgba(124,106,255,0.25);transform:translateY(-1px);}
 
@@ -1592,8 +1588,8 @@ async function sendMessage() {
     // Generowanie obrazka
     if (response.generate_image) {
       const imgWrap = document.createElement('div');
-      imgWrap.className = 'ai-image';
-      imgWrap.innerHTML = '<div class="ai-image-loading">Generuję obrazek...</div>';
+      imgWrap.className = 'ai-image-wrap';
+      imgWrap.innerHTML = '<div class="ai-image-inner"><div class="ai-image-shimmer"></div></div>';
       aiGroup.appendChild(imgWrap);
       
       const prompt = encodeURIComponent(response.generate_image + ', educational, clean, colorful');
@@ -1610,8 +1606,8 @@ async function sendMessage() {
     // Generowanie obrazka
     if (response.generate_image) {
       const imgWrap = document.createElement('div');
-      imgWrap.className = 'ai-image';
-      imgWrap.innerHTML = '<div class="ai-image-loading">Generuję obrazek...</div>';
+      imgWrap.className = 'ai-image-wrap';
+      imgWrap.innerHTML = '<div class="ai-image-inner"><div class="ai-image-shimmer"></div></div>';
       aiGroup.appendChild(imgWrap);
       
       const prompt = encodeURIComponent(response.generate_image + ', educational, clean, colorful');
