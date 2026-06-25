@@ -180,6 +180,11 @@ body::after{
 .res-s{background:transparent;border:1px solid var(--border-hi);color:var(--muted2);}
 .res-s:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
 
+
+/* SWIPE */
+@keyframes flyLeft{0%{transform:translateX(0) rotate(0deg);opacity:1;}100%{transform:translateX(-130%) rotate(-18deg);opacity:0;}}
+@keyframes flyRight{0%{transform:translateX(0) rotate(0deg);opacity:1;}100%{transform:translateX(130%) rotate(18deg);opacity:0;}}
+@keyframes cardIn{0%{transform:translateX(50px);opacity:0;}100%{transform:translateX(0);opacity:1;}}
 /* LOADING */
 .loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
 .spin{width:36px;height:36px;border:2px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
@@ -258,6 +263,75 @@ const topic = p.get('topic') || localStorage.getItem('fc_topic') || '';
 const level = p.get('level') || localStorage.getItem('fc_level') || 'liceum';
 const subject = p.get('subject') || localStorage.getItem('fc_subject') || 'matematyka';
 
+// SWIPE GESTURES
+let _tx=0, _ty=0, _dragging=false, _dragX=0;
+
+function initSwipe(){
+  const scene = document.querySelector('.card-scene');
+  if(!scene) return;
+
+  scene.addEventListener('touchstart', e=>{
+    _tx = e.touches[0].clientX;
+    _ty = e.touches[0].clientY;
+    _dragging = true;
+  },{passive:true});
+
+  scene.addEventListener('touchmove', e=>{
+    if(!_dragging) return;
+    _dragX = e.touches[0].clientX - _tx;
+    const dy = Math.abs(e.touches[0].clientY - _ty);
+    if(Math.abs(_dragX) < dy) return; // scroll pionowy
+    const card = document.getElementById('C');
+    if(card && flipped){
+      card.style.transform = `rotateY(180deg) translateX(${-_dragX}px) rotate(${_dragX * -0.04}deg)`;
+      card.style.transition = 'none';
+    }
+  },{passive:true});
+
+  scene.addEventListener('touchend', e=>{
+    if(!_dragging) return;
+    _dragging = false;
+    const card = document.getElementById('C');
+    if(!card){ _dragX=0; return; }
+    card.style.transition = '';
+
+    if(Math.abs(_dragX) > 90 && flipped){
+      if(_dragX < 0){
+        // swipe lewo = nie wiedziałem
+        card.style.animation = 'flyLeft .35s ease forwards';
+        setTimeout(()=>{ card.style.animation=''; answer(false); }, 320);
+      } else {
+        // swipe prawo = wiedziałem
+        card.style.animation = 'flyRight .35s ease forwards';
+        setTimeout(()=>{ card.style.animation=''; answer(true); }, 320);
+      }
+    } else {
+      card.style.transform = flipped ? 'rotateY(180deg)' : '';
+    }
+    _dragX = 0;
+  },{passive:true});
+}
+
+// DZWIEK KARTY
+function playFlip(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i=0;i<data.length;i++){
+      data[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.015));
+    }
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    src.buffer = buf;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    setTimeout(()=>ctx.close(), 200);
+  }catch(e){}
+}
+
 async function generate(attempt=1){
   try{
     const controller = new AbortController();
@@ -305,6 +379,7 @@ function showCards(){
       </div>
     </div>`;
   showCard(0);
+  setTimeout(initSwipe, 150);
 }
 
 function rm(el){
@@ -320,6 +395,8 @@ function showCard(i){
   document.getElementById('tapHint').style.opacity='1';
 
   const fc=cards[i];
+  const card=document.getElementById('C');
+  if(card && i>0){ card.style.animation='cardIn .3s ease'; setTimeout(()=>{ if(card) card.style.animation=''; },310); }
   const ft=document.getElementById('FT');
   const bt=document.getElementById('BT');
   if(!ft||!bt) return;
@@ -335,6 +412,7 @@ function showCard(i){
 
 function flip(){
   flipped=!flipped;
+  playFlip();
   const c=document.getElementById('C');
   if(c) c.classList.toggle('flipped',flipped);
   if(flipped){
