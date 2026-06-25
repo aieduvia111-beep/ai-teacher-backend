@@ -1531,7 +1531,7 @@ async function sendMessage() {
     if (response.image_url) {
       const imgWrap = document.createElement('div');
       imgWrap.style.cssText = 'margin-top:14px;max-width:400px;';
-      imgWrap.innerHTML = \`<div id="imgPlaceholder_\${Date.now()}" style="width:100%;height:280px;border-radius:14px;border:1px solid rgba(124,106,255,.2);overflow:hidden;position:relative;background:#0d0d1a;">
+      imgWrap.innerHTML = `<div id="imgPlaceholder_\${Date.now()}" style="width:100%;height:280px;border-radius:14px;border:1px solid rgba(124,106,255,.2);overflow:hidden;position:relative;background:#0d0d1a;">
         <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,255,.06),rgba(34,211,160,.04));"></div>
         <div style="position:absolute;top:0;left:-60%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(124,106,255,.1),rgba(167,139,250,.15),transparent);animation:imgScan 1.8s ease-in-out infinite;"></div>
         <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
@@ -1552,7 +1552,7 @@ async function sendMessage() {
       <div style="font-size:.68em;color:var(--muted2);margin-top:6px;display:flex;align-items:center;gap:5px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <span id="imgCaption_" style="opacity:.7;">Wygenerowano przez AI</span>
-      </div>\`;
+      </div>`;
       aiGroup.appendChild(imgWrap);
       scrollDown();
 
