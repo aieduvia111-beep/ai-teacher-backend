@@ -196,7 +196,7 @@ body::after{
 <div class="screen">
   <!-- TOP -->
   <div class="topbar">
-    <a href="#" onclick="history.back();return false;" class="x-btn" id="closeBtn">
+    <a href="#" onclick="if(document.referrer && document.referrer.includes('chat')) history.back(); else window.location.href='chat.html'; return false;" class="x-btn" id="closeBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </a>
     <div class="prog-wrap">
@@ -231,7 +231,7 @@ body::after{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10"/></svg>
         Powtórz
       </button>
-      <a href="#" onclick="history.back();return false;" class="res-btn res-s">
+      <a href="#" onclick="if(document.referrer && document.referrer.includes('chat')) history.back(); else window.location.href='chat.html'; return false;" class="res-btn res-s">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         Zamknij
       </a>
@@ -346,7 +346,7 @@ function checkFlashcardsLimit(){
       <div style="font-family:var(--h);font-size:1em;font-weight:800;color:var(--text);">Limit dzienny</div>
       <div style="font-size:.85em;color:var(--muted2);line-height:1.6;max-width:260px;">Wykorzystałeś 3 zestawy fiszek dzisiaj. Wróć jutro lub kup Pro — bez limitów.</div>
       <a href="pricing.html" style="padding:12px 24px;background:linear-gradient(135deg,var(--accent),#5040c8);border-radius:12px;color:#fff;font-family:var(--h);font-size:.8em;font-weight:700;text-decoration:none;">Kup Pro</a>
-      <a href="#" onclick="history.back();return false;" style="font-size:.78em;color:var(--muted2);text-decoration:none;">← Wróć</a>
+      <a href="#" onclick="if(document.referrer && document.referrer.includes('chat')) history.back(); else window.location.href='chat.html'; return false;" style="font-size:.78em;color:var(--muted2);text-decoration:none;">← Wróć</a>
     </div>`;
     return false;
   }
