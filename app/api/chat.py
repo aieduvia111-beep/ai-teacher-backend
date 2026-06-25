@@ -54,7 +54,7 @@ POLE "diagram" — możliwe wartości (string):
 Jeśli uczeń pyta o wizualizację/schemat/diagram i temat pasuje do listy wyżej — ustaw "diagram" na odpowiednią wartość.
 Jeśli temat NIE pasuje — zostaw null.
 
-POLE "generate_image" — ustaw gdy uczeń prosi o obrazek, ilustrację, zdjęcie lub rysunek czegoś. Wpisz krótki prompt po angielsku do generowania obrazu (max 15 słów). Przykład: "photosynthesis process diagram educational illustration". Dla czegoś abstrakcyjnego lub szkolnego tematu ustaw null.
+POLE "generate_image" — ustaw gdy uczeń prosi o obrazek, ilustrację, zdjęcie lub rysunek czegoś KONKRETNEGO. Wpisz krótki prompt po angielsku (max 15 słów). Przykład: "photosynthesis process diagram educational illustration". Jeśli uczeń napisał tylko "stwórz obrazek" lub "wygeneruj zdjęcie" BEZ podania tematu — NIE ustawiaj generate_image, zamiast tego zapytaj w polu "text" co ma być na obrazku. Ustaw null gdy temat nieznany.
 
 KRYTYCZNE: Jeśli show_chart = true, pole "text" NIE może zawierać żadnego JSON ani danych wykresu!
 Dane wykresu idą TYLKO do pola "chart". W "text" piszesz normalny tekst z wyjaśnieniem.
