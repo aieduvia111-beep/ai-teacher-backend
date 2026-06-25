@@ -631,6 +631,8 @@ window._fbSave = async function(col, data, xp) {
 <script>
 function go(f){window.location.href=f;}
 function navTo(f){window.location.href=f;}
+function quickAsk(t){const i=document.getElementById("msgInput");if(i){i.value=t;setTimeout(()=>{if(window.sendMessage)window.sendMessage();},100);}}
+window.quickAsk=quickAsk;
 // ============================================================
 // EDUVIA LIMITS MODULE - wklej do kazdego pliku
 // ============================================================
