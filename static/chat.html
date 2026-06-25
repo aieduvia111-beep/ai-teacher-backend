@@ -1052,6 +1052,10 @@ document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style
 
 // STATE
 let history = [], attachments = [], isThinking = false;
+try{
+  const saved = localStorage.getItem('eduvia_chat_history');
+  if(saved){ history = JSON.parse(saved); }
+}catch(e){}
 
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
@@ -1613,6 +1617,7 @@ async function sendMessage() {
     }
 
     history.push({ role: 'assistant', content: response.text || '' });
+  try{ localStorage.setItem('eduvia_chat_history', JSON.stringify(history.slice(-20))); }catch(e){}
     // Finalny pass — po dodaniu WSZYSTKICH elementów
     setTimeout(() => renderLatex(aiGroup), 200);
     scrollDown();
