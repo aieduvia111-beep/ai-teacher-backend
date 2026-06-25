@@ -2449,6 +2449,14 @@ if(msgInput){
     });
   }
 }
+
+// Eksport funkcji na window (wymagane przez onclick w HTML)
+window.sendMessage = sendMessage;
+window.quickAsk = (t) => { const i=document.getElementById('msgInput'); if(i){i.value=t; sendMessage();} };
+window.handleKey = handleKey;
+window.autoResize = autoResize;
+window.navTo = navTo;
+window.go = go;
 </script>
 
 </body>
