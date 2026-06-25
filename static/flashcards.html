@@ -260,7 +260,13 @@ const subject = p.get('subject') || localStorage.getItem('fc_subject') || 'matem
 
 async function generate(attempt=1){
   try{
-    const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{
+    // Najpierw obudz serwer
+    try{ await fetch(BASE+'/health'); }catch(e){}
+    await new Promise(r=>setTimeout(r,1000));
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 45000);
+    const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{signal:controller.signal,
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         topic:topic||'ogólne', subject, level,
@@ -268,13 +274,14 @@ async function generate(attempt=1){
         wlasne_instrukcje:`Wygeneruj FISZKI edukacyjne. Poziom: ${level}. Pytanie = krótkie pojęcie lub termin (max 1 zdanie). Wyjaśnienie = definicja dopasowana do poziomu ${level} (max 2 zdania). Podstawówka: proste. Liceum: maturalne. Studia: naukowe definicje.`
       })
     });
+    clearTimeout(timeout);
     const d = await r.json();
     if(!d.success) throw new Error(d.error);
     cards = d.quiz.questions.map(q=>({f:q.question,b:q.explanation}));
     showCards();
   }catch(e){
-    if(attempt < 3){
-      setTimeout(()=>generate(attempt+1), 2000);
+    if(attempt < 4){
+      setTimeout(()=>generate(attempt+1), 4000);
       document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Łączenie... próba '+attempt+'</div></div>';
     } else {
       document.getElementById('cardArea').innerHTML='<div style="text-align:center;color:var(--red);font-size:.85em;line-height:2.2;">Błąd generowania.<br><a href="chat.html" style="color:var(--accent2);text-decoration:none;font-family:var(--h);font-weight:700;">← Wróć</a></div>';
