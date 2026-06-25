@@ -260,12 +260,8 @@ const subject = p.get('subject') || localStorage.getItem('fc_subject') || 'matem
 
 async function generate(attempt=1){
   try{
-    // Najpierw obudz serwer
-    try{ await fetch(BASE+'/health'); }catch(e){}
-    await new Promise(r=>setTimeout(r,1000));
-    
     const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 45000);
+    const timeout = setTimeout(()=>controller.abort(), 60000);
     const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{signal:controller.signal,
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
