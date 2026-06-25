@@ -631,7 +631,7 @@ window._fbSave = async function(col, data, xp) {
 <script>
 function go(f){window.location.href=f;}
 function navTo(f){window.location.href=f;}
-function quickAsk(t){const i=document.getElementById("msgInput");if(i){i.value=t;setTimeout(()=>{if(window.sendMessage)window.sendMessage();},100);}}
+function quickAsk(t){const i=document.getElementById("msgInput");if(i){i.value=t;setTimeout(()=>sendMessage(),0);}}
 window.quickAsk=quickAsk;
 // ============================================================
 // EDUVIA LIMITS MODULE - wklej do kazdego pliku
@@ -1196,7 +1196,6 @@ setInterval(() => { fetch(BACKEND_URL + '/health').catch(() => {}); }, 10 * 60 *
 // TEXTAREA
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px'; }
 function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
-window.sendMessage = sendMessage;
 
 // FILES
 function handleFiles(e) {
