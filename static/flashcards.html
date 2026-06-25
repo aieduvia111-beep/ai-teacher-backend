@@ -258,7 +258,7 @@ const topic = p.get('topic') || localStorage.getItem('fc_topic') || '';
 const level = p.get('level') || localStorage.getItem('fc_level') || 'liceum';
 const subject = p.get('subject') || localStorage.getItem('fc_subject') || 'matematyka';
 
-async function generate(){
+async function generate(attempt=1){
   try{
     const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -273,7 +273,12 @@ async function generate(){
     cards = d.quiz.questions.map(q=>({f:q.question,b:q.explanation}));
     showCards();
   }catch(e){
-    document.getElementById('cardArea').innerHTML='<div style="text-align:center;color:var(--red);font-size:.85em;line-height:2.2;">Błąd generowania.<br><a href="chat.html" style="color:var(--accent2);text-decoration:none;font-family:var(--h);font-weight:700;">← Wróć</a></div>';
+    if(attempt < 3){
+      setTimeout(()=>generate(attempt+1), 2000);
+      document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Łączenie... próba '+attempt+'</div></div>';
+    } else {
+      document.getElementById('cardArea').innerHTML='<div style="text-align:center;color:var(--red);font-size:.85em;line-height:2.2;">Błąd generowania.<br><a href="chat.html" style="color:var(--accent2);text-decoration:none;font-family:var(--h);font-weight:700;">← Wróć</a></div>';
+    }
   }
 }
 
