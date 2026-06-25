@@ -156,7 +156,17 @@ async def chat_message(req: ChatRequest):
         except json.JSONDecodeError:
             ai_data = {"title": "Odpowiedź", "text": raw_response, "has_latex": False, "show_sources": False, "show_videos": False, "show_chart": False, "chart": None, "topic_en": req.text}
 
-        return _build_response(ai_data, req.text)
+        # Generuj obrazek jesli AI poprosil
+        image_url = None
+        if ai_data.get("generate_image"):
+            import urllib.parse as _up
+            safe = _up.quote(str(ai_data["generate_image"]))
+            image_url = f"https://image.pollinations.ai/prompt/{safe}?width=800&height=600&nologo=true"
+        
+        response = _build_response(ai_data, req.text)
+        if image_url:
+            response["image_url"] = image_url
+        return response
 
     except Exception as e:
         log_error("Chat", str(e))

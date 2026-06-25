@@ -1526,6 +1526,19 @@ async function sendMessage() {
     // renderLatex po enrichBubble — używamy requestAnimationFrame dla pewności
     requestAnimationFrame(() => renderLatex(aiGroup));
 
+    // Pokaz wygenerowany obrazek
+    if (response.image_url) {
+      const imgWrap = document.createElement('div');
+      imgWrap.style.cssText = 'margin-top:12px;';
+      const img = document.createElement('img');
+      img.src = response.image_url;
+      img.style.cssText = 'width:100%;max-width:400px;border-radius:14px;border:1px solid var(--border-hi);display:block;';
+      img.alt = 'Wygenerowany obrazek';
+      img.onload = () => scrollDown();
+      imgWrap.appendChild(img);
+      aiGroup.appendChild(imgWrap);
+    }
+
     if (response.diagram) {
       const d = buildDiagram(response.diagram);
       if (d) {
