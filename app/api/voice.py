@@ -197,6 +197,30 @@ async def get_ai_response(data: dict):
         print(f"[RESPOND ERROR] {e}")
         return {"success": False, "text": "", "audio": None, "error": str(e)}
 
+
+@router.post("/preview")
+async def voice_preview(data: dict):
+    text = data.get("text", "Cześć, jestem Twoim nauczycielem AI!")
+    voice_id = data.get("voice_id", "Xb7hH8MSUJpSbSDYk0k2")
+    loop = asyncio.get_event_loop()
+    def make():
+        if USE_ELEVEN and eleven_client:
+            try:
+                audio = eleven_client.text_to_speech.convert(
+                    text=text[:200],
+                    voice_id=voice_id,
+                    model_id="eleven_turbo_v2_5",
+                    voice_settings=VoiceSettings(stability=0.7, similarity_boost=0.9, style=0.4, speed=1.0)
+                )
+                result = b"".join(audio) if hasattr(audio, '__iter__') else audio
+                return base64.b64encode(result).decode()
+            except Exception as e:
+                print(f"[PREVIEW] ElevenLabs failed: {e}")
+        speech = openai_client.audio.speech.create(model="tts-1", voice="nova", input=text[:200], speed=1.0)
+        return base64.b64encode(speech.content).decode()
+    audio_b64 = await loop.run_in_executor(executor, make)
+    return {"audio": audio_b64}
+
 @router.get("/health")
 async def voice_health():
     return {"status": "ok", "stt": "groq" if GROQ_AVAILABLE else "openai", "tts": "elevenlabs", "llm": "gpt-4o"}
