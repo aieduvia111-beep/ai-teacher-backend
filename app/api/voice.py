@@ -239,6 +239,7 @@ def call_tts(text: str, emotion: str = "neutral"):
 
 @router.post("/respond/stream")
 async def respond_stream(data: dict):
+    selected_voice = data.get("voice_id", "Xb7hH8MSUJpSbSDYk0k2")
     text = data.get("text","").strip()
     history = data.get("history", [])
     level = data.get("level", "")
@@ -299,7 +300,7 @@ async def respond_stream(data: dict):
                     try:
                         audio=eleven_client.text_to_speech.convert(
                             text=sx[:500],
-                            voice_id="Xb7hH8MSUJpSbSDYk0k2",
+                            voice_id=selected_voice,
                             model_id="eleven_turbo_v2_5",
                             voice_settings=VoiceSettings(stability=0.7,similarity_boost=0.9,style=0.4,speed=spd)
                         )
