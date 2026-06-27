@@ -1375,10 +1375,14 @@ function startFcGen(cardId, topicEnc, level){
   
   const topicLow = topic.toLowerCase();
   let subject = 'matematyka';
-  if(/biolog|fotosynteza|komórka|dna|grzyb/.test(topicLow)) subject='biologia';
-  else if(/chemi|reakcja|pierwiastek/.test(topicLow)) subject='chemia';
-  else if(/fizyk|energia|siła/.test(topicLow)) subject='fizyka';
-  else if(/historia|wojna/.test(topicLow)) subject='historia';
+  if(/biolog|fotosynteza|komórka|dna|grzyb|ewolucja|ekolog/.test(topicLow)) subject='biologia';
+  else if(/chemi|reakcja|pierwiastek|mol|kwas|zasad/.test(topicLow)) subject='chemia';
+  else if(/fizyk|energia|prędkość|siła|ruch|fala|elektr/.test(topicLow)) subject='fizyka';
+  else if(/histor|wojna|rewolucja|cesarz|dynastia/.test(topicLow)) subject='historia';
+  else if(/english|grammar|tense|angielski|verb|noun|vocabulary/.test(topicLow)) subject='angielski';
+  else if(/polski|wiersz|lektura|literatura|gramatyka|ortograf/.test(topicLow)) subject='polski';
+  else if(/geografia|kontynent|klimat|rzeka|kraj|stolica/.test(topicLow)) subject='geografia';
+  else if(/równan|funkcj|pochodn|całk|trygon|geometr|algebra/.test(topicLow)) subject='matematyka';
   
   fetch(BACKEND_URL+'/api/v1/quiz/generate-topic',{
     method:'POST',
