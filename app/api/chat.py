@@ -140,10 +140,24 @@ async def chat_message(req: ChatRequest):
 
         # Dodaj aktualną wiadomość
         if req.document:
-            doc_content = req.document
             doc_name = req.document_name or "dokument"
+            doc_text = req.document
+            try:
+                import base64 as _b64
+                raw = _b64.b64decode(req.document)
+                if doc_name.lower().endswith('.pdf'):
+                    import fitz
+                    pdf = fitz.open(stream=raw, filetype="pdf")
+                    doc_text = "\n".join([page.get_text() for page in pdf])[:8000]
+                elif doc_name.lower().endswith(('.docx','.doc')):
+                    import docx, io
+                    doc = docx.Document(io.BytesIO(raw))
+                    doc_text = "\n".join([p.text for p in doc.paragraphs])[:8000]
+            except Exception as pe:
+                print(f"[DOC] parse error: {pe}")
+                doc_text = req.document[:8000]
             user_content = [
-                {"type": "text", "text": f"[Plik: {doc_name}]\n\n{doc_content[:8000]}\n\n{req.text or 'Przeanalizuj ten dokument.'}"}
+                {"type": "text", "text": f"[Plik: {doc_name}]\n\n{doc_text}\n\n{req.text or 'Przeanalizuj ten dokument.'}"}
             ]
         elif req.image:
             img_b64 = req.image.split("base64,")[1] if "base64," in req.image else req.image

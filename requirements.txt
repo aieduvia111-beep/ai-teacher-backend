@@ -23,3 +23,4 @@ elevenlabs
 youtube-transcript-api
 firebase-admin
 pymupdf
+python-docx==1.1.0
