@@ -1383,6 +1383,7 @@ function startFcGen(cardId, topicEnc, level){
   else if(/polski|wiersz|lektura|literatura|gramatyka|ortograf/.test(topicLow)) subject='polski';
   else if(/geografia|kontynent|klimat|rzeka|kraj|stolica/.test(topicLow)) subject='geografia';
   else if(/równan|funkcj|pochodn|całk|trygon|geometr|algebra/.test(topicLow)) subject='matematyka';
+  else if(/python|java|kod|programow|algorytm|baza danych|html|css|javascript/.test(topicLow)) subject='informatyka';
   
   fetch(BACKEND_URL+'/api/v1/quiz/generate-topic',{
     method:'POST',
