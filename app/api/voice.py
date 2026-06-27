@@ -202,6 +202,8 @@ async def get_ai_response(data: dict):
 async def voice_preview(data: dict):
     text = data.get("text", "Cześć, jestem Twoim nauczycielem AI!")
     voice_id = data.get("voice_id", "Xb7hH8MSUJpSbSDYk0k2")
+    from concurrent.futures import ThreadPoolExecutor
+    _ex = ThreadPoolExecutor(max_workers=1)
     loop = asyncio.get_event_loop()
     def make():
         if USE_ELEVEN and eleven_client:
@@ -218,7 +220,7 @@ async def voice_preview(data: dict):
                 print(f"[PREVIEW] ElevenLabs failed: {e}")
         speech = openai_client.audio.speech.create(model="tts-1", voice="nova", input=text[:200], speed=1.0)
         return base64.b64encode(speech.content).decode()
-    audio_b64 = await loop.run_in_executor(executor, make)
+    audio_b64 = await loop.run_in_executor(_ex, make)
     return {"audio": audio_b64}
 
 @router.get("/health")
