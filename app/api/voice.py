@@ -163,7 +163,7 @@ async def get_ai_response(data: dict):
         clean_text = re.sub(r'[CORRECTION:[^]]*]', '', ai_text).strip()
         clean_text = re.sub(r'[TABLICA:[^]]*]', '', clean_text).strip()
         def call_tts():
-            if False and USE_ELEVEN and eleven_client:
+            if USE_ELEVEN and eleven_client:
                 try:
                     is_excited=any(x in clean_text.lower() for x in ["super","swietnie","brawo","dokladnie","wlasnie","niesamowite"])
                     audio=eleven_client.text_to_speech.convert(
@@ -204,7 +204,7 @@ import json as _js, re as _re2
 def call_tts(text: str, emotion: str = "neutral"):
     if not text or len(text.strip()) < 2:
         text = "Rozumiem."
-    if False and USE_ELEVEN and eleven_client:
+    if USE_ELEVEN and eleven_client:
         try:
             settings_map = {
                 "excited":  {"stability":0.55,"style":0.85,"speed":1.08},
