@@ -168,6 +168,8 @@ button:active{transform:scale(.95)!important;}
 .edu-error.show{display:flex;align-items:center;gap:10px;}
 .edu-error svg{flex-shrink:0;}
 
+.vbtn-preview{display:none!important;}
+@media(min-width:769px){.vbtn-preview{display:inline-block!important;}}
 </style>
 </head>
 <body>
@@ -562,7 +564,7 @@ function renderVoiceList(){
         <div class="vitem-desc">${desc}</div>
       </div>
       <div class="vitem-actions">
-        <button class="vbtn" onclick="previewVoice('${id}','${name}')">Wypróbuj</button>
+        <button class="vbtn vbtn-preview" onclick="previewVoice('${id}','${name}')">Wypróbuj</button>
         <button class="vbtn ${active?'active':''}" onclick="selectVoice2('${id}','${name}','${desc}')">${active?'✓ Aktywny':'Wybierz'}</button>
       </div>
     </div>`;
