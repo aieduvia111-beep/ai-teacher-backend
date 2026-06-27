@@ -295,6 +295,19 @@ async def respond_stream(data: dict):
         try:
             def tts_t(sx=s2,em=emocja):
                 spd=1.08 if em in ["excited","happy"] else 1.05
+                if USE_ELEVEN and eleven_client:
+                    try:
+                        audio=eleven_client.text_to_speech.convert(
+                            text=sx[:500],
+                            voice_id="Xb7hH8MSUJpSbSDYk0k2",
+                            model_id="eleven_turbo_v2_5",
+                            voice_settings=VoiceSettings(stability=0.7,similarity_boost=0.9,style=0.4,speed=spd)
+                        )
+                        result=b"".join(audio) if hasattr(audio,'__iter__') else audio
+                        print(f"[TTS] ElevenLabs stream OK")
+                        return result
+                    except Exception as e:
+                        print(f"[TTS] ElevenLabs stream failed: {e}")
                 return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=spd).content
             aud = await loop.run_in_executor(ex,tts_t)
             print(f"[TTS] OK {idx2}: {s2[:25]}")
