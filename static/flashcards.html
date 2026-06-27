@@ -355,6 +355,19 @@ function checkFlashcardsLimit(){
 }
 
 async function generate(attempt=1){
+  // Sprawdz czy sa juz wygenerowane fiszki w cache
+  const fromCache = new URLSearchParams(window.location.search).get('from_cache');
+  if(fromCache === '1'){
+    try{
+      const cached = localStorage.getItem('fc_cards');
+      if(cached){
+        cards = JSON.parse(cached);
+        localStorage.removeItem('fc_cards');
+        if(cards.length > 0){ showCards(); return; }
+      }
+    }catch(e){}
+  }
+
   try{
     const controller = new AbortController();
     const timeout = setTimeout(()=>controller.abort(), 60000);
