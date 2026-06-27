@@ -1047,7 +1047,7 @@ function getPlanBadgeHTML(plan) {
     <div style="display:none"><!-- inputy plików -->
       <input type="file" id="inputCam" accept="image/*" capture="environment" onchange="handleFiles(event)" style="display:none">
       <input type="file" id="inputGal" accept="image/*" multiple onchange="handleFiles(event)" style="display:none">
-      <input type="file" id="inputFil" multiple accept=".pdf,.doc,.docx,.txt,image/*" onchange="handleFiles(event)" style="display:none">
+      <input type="file" id="inputFil" multiple accept="image/*,application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt" onchange="handleFiles(event)" style="display:none">
       <div class="input-hint" style="font-size:.62em;opacity:.4;margin-top:4px;">Enter — wyślij &nbsp;·&nbsp; ⇧Enter — nowa linia</div>
     </div>
   </div>
