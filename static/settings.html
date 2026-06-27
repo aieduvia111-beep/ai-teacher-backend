@@ -213,6 +213,15 @@ button:active{transform:scale(.95)!important;}
   <div class="secs">
 
     <div class="sec">
+      <div class="sec-lbl">Głos nauczyciela</div>
+      <div class="sec-body" style="padding:12px;">
+        <div style="font-size:.78em;color:var(--muted2);margin-bottom:14px;">Wybierz głos AI który będzie Cię uczyć w Voice AI</div>
+        <div id="voiceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-lbl">Konto</div>
       <div class="sec-body">
         <div class="item" onclick="resetPass()">
@@ -491,5 +500,47 @@ window.addEventListener('load',loadPartnerStatus);
 
 </script>
 
+
+<script>
+const VOICES = [("Xb7hH8MSUJpSbSDYk0k2", "Alice", "Wyraźna, angażująca", "👩\u200d🏫"), ("EXAVITQu4vr4xnSDxMaL", "Sarah", "Dojrzała, pewna siebie", "👩\u200d💼"), ("IKne3meq5aSn9XLyUdCD", "Charlie", "Głęboki, energiczny", "🎓"), ("JBFqnCBsd6RMkjVDRZzb", "George", "Ciepły, charyzmatyczny", "👨\u200d🏫"), ("TX3LPaxmHKxFdv7VOQHJ", "Liam", "Energiczny, młody", "⚡"), ("SAz9YHcvj6GT2YYXdXww", "River", "Spokojny, neutralny", "🌊")];
+const savedVoice = localStorage.getItem('eduvia_voice_id') || 'Xb7hH8MSUJpSbSDYk0k2';
+
+function renderVoices(){
+  const grid = document.getElementById('voiceGrid');
+  if(!grid) return;
+  grid.innerHTML = VOICES.map(([id, name, desc, emoji]) => {
+    const active = id === savedVoice;
+    return `<div class="voice-card ${active ? 'voice-active' : ''}" onclick="selectVoice('${id}', this)">
+      <div style="font-size:1.4em;margin-bottom:4px;">${emoji}</div>
+      <div style="font-family:var(--h);font-size:.82em;font-weight:700;color:var(--text);">${name}</div>
+      <div style="font-size:.68em;color:var(--muted2);margin-top:2px;">${desc}</div>
+      <div style="margin-top:8px;font-size:.65em;color:${active ? 'var(--green)' : 'var(--muted)'};font-family:var(--h);font-weight:700;">${active ? '✓ Aktywny' : 'Wybierz'}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectVoice(id, el){
+  localStorage.setItem('eduvia_voice_id', id);
+  document.querySelectorAll('.voice-card').forEach(c=>{
+    c.classList.remove('voice-active');
+    c.querySelector('div:last-child').style.color='var(--muted)';
+    c.querySelector('div:last-child').textContent='Wybierz';
+  });
+  el.classList.add('voice-active');
+  el.querySelector('div:last-child').style.color='var(--green)';
+  el.querySelector('div:last-child').textContent='✓ Aktywny';
+}
+
+document.addEventListener('DOMContentLoaded', renderVoices);
+</script>
+<style>
+.voice-card{
+  padding:14px 10px;border-radius:14px;
+  background:var(--s2);border:1px solid var(--border-hi);
+  text-align:center;cursor:pointer;transition:all .2s;
+}
+.voice-card:hover{border-color:rgba(124,106,255,.3);background:rgba(124,106,255,.06);}
+.voice-card.voice-active{border-color:rgba(34,211,160,.35);background:rgba(34,211,160,.06);}
+</style>
 </body>
 </html>
