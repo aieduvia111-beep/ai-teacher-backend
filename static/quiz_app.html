@@ -1269,6 +1269,8 @@ window.addEventListener('DOMContentLoaded',function(){
     let t=topic.toLowerCase();
     let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
     for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
+    // Auto-start quizu jesli temat podany z URL
+    setTimeout(function(){ startQuiz(); }, 600);
   }
 });
 
