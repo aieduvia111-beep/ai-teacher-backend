@@ -568,7 +568,9 @@ function renderVoiceList(){
   }).join('');
 }
 
+let _previewAudio = null;
 function previewVoice(id, name){
+  if(_previewAudio){ _previewAudio.pause(); _previewAudio=null; }
   const text = `Cześć, jestem ${name} — Twój nauczyciel AI. Razem osiągniemy świetne wyniki!`;
   fetch('/api/v1/voice/preview', {
     method:'POST',
@@ -576,8 +578,8 @@ function previewVoice(id, name){
     body: JSON.stringify({text, voice_id: id})
   }).then(r=>r.json()).then(d=>{
     if(d.audio){
-      const audio = new Audio('data:audio/mpeg;base64,'+d.audio);
-      audio.play();
+      _previewAudio = new Audio('data:audio/mpeg;base64,'+d.audio);
+      _previewAudio.play();
     }
   }).catch(()=>{});
 }
