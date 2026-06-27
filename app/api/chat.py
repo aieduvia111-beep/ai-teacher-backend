@@ -91,6 +91,8 @@ class ChatRequest(BaseModel):
     text: str
     history: Optional[List[ChatMessage]] = []
     image: Optional[str] = None
+    document: Optional[str] = None  # base64 PDF lub tekst z Word
+    document_name: Optional[str] = None  # nazwa pliku
 
 def _build_response(ai_data: dict, user_message: str) -> dict:
     topic_en = ai_data.get("topic_en", user_message)
@@ -137,7 +139,13 @@ async def chat_message(req: ChatRequest):
             messages.append({"role": msg.role, "content": msg.content})
 
         # Dodaj aktualną wiadomość
-        if req.image:
+        if req.document:
+            doc_content = req.document
+            doc_name = req.document_name or "dokument"
+            user_content = [
+                {"type": "text", "text": f"[Plik: {doc_name}]\n\n{doc_content[:8000]}\n\n{req.text or 'Przeanalizuj ten dokument.'}"}
+            ]
+        elif req.image:
             img_b64 = req.image.split("base64,")[1] if "base64," in req.image else req.image
             user_content = [
                 {"type": "text", "text": req.text or "Przeanalizuj to zdjecie i rozwiaz zadania."},
