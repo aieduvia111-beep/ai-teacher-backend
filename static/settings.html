@@ -212,10 +212,17 @@ button:active{transform:scale(.95)!important;}
 
   <div class="secs">
 
+    </div>
+
     <div class="sec">
       <div class="sec-lbl">Głos nauczyciela</div>
       <div class="sec-body">
-        <div id="voiceList"></div>
+        <div class="item" onclick="toggleVoices()" style="cursor:pointer;" id="voiceToggle">
+          <div class="item-ic ic-p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+          <div class="item-txt"><div class="item-title">Wybierz głos nauczyciela</div><div class="item-sub" id="voiceSubtitle">Alice — Wyraźna, angażująca</div></div>
+          <svg id="voiceArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;color:var(--muted2);transition:.2s;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="voiceList" style="display:none;margin-top:4px;"></div>
       </div>
     </div>
 
@@ -502,18 +509,22 @@ window.addEventListener('load',loadPartnerStatus);
 
 
 
+
+
+
 <style>
-.vitem{display:flex;align-items:center;gap:14px;padding:13px 4px;border-bottom:1px solid var(--border);}
+.vitem{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);}
 .vitem:last-child{border-bottom:none;}
 .vitem-info{flex:1;}
-.vitem-name{font-family:var(--h);font-size:.85em;font-weight:700;color:var(--text);}
-.vitem-desc{font-size:.72em;color:var(--muted2);margin-top:2px;}
-.vitem-btn{padding:6px 14px;border-radius:8px;font-family:var(--h);font-size:.7em;font-weight:700;cursor:pointer;border:1px solid var(--border-hi);background:transparent;color:var(--muted2);transition:.2s;white-space:nowrap;}
-.vitem-btn.active{border-color:rgba(34,211,160,.35);background:rgba(34,211,160,.08);color:var(--green);}
-.vitem-btn:hover:not(.active){border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.vitem-name{font-family:var(--h);font-size:.84em;font-weight:700;color:var(--text);}
+.vitem-desc{font-size:.7em;color:var(--muted2);margin-top:2px;}
+.vitem-actions{display:flex;gap:6px;flex-shrink:0;}
+.vbtn{padding:5px 12px;border-radius:8px;font-family:var(--h);font-size:.68em;font-weight:700;cursor:pointer;border:1px solid var(--border-hi);background:transparent;color:var(--muted2);transition:.2s;}
+.vbtn:hover{border-color:rgba(124,106,255,.3);color:var(--accent2);}
+.vbtn.active{border-color:rgba(34,211,160,.35);background:rgba(34,211,160,.08);color:var(--green);}
 </style>
 <script>
-const VOICES2 = [
+const VOICE_LIST = [
   ["Xb7hH8MSUJpSbSDYk0k2","Alice","Wyraźna, angażująca nauczycielka"],
   ["EXAVITQu4vr4xnSDxMaL","Sarah","Dojrzała, pewna siebie"],
   ["IKne3meq5aSn9XLyUdCD","Charlie","Głęboki, energiczny"],
@@ -522,28 +533,66 @@ const VOICES2 = [
   ["SAz9YHcvj6GT2YYXdXww","River","Spokojny, neutralny"],
 ];
 
+let voicesOpen = false;
+
+function toggleVoices(){
+  voicesOpen = !voicesOpen;
+  const list = document.getElementById('voiceList');
+  const arrow = document.getElementById('voiceArrow');
+  if(voicesOpen){
+    list.style.display='block';
+    arrow.style.transform='rotate(180deg)';
+    renderVoiceList();
+  } else {
+    list.style.display='none';
+    arrow.style.transform='';
+  }
+}
+
 function renderVoiceList(){
   const list = document.getElementById('voiceList');
   if(!list) return;
   const saved = localStorage.getItem('eduvia_voice_id') || 'Xb7hH8MSUJpSbSDYk0k2';
-  list.innerHTML = VOICES2.map(([id,name,desc])=>{
+  list.innerHTML = VOICE_LIST.map(([id,name,desc])=>{
     const active = id===saved;
     return `<div class="vitem">
       <div class="vitem-info">
         <div class="vitem-name">${name}</div>
         <div class="vitem-desc">${desc}</div>
       </div>
-      <button class="vitem-btn ${active?'active':''}" onclick="selectVoice2('${id}')">${active?'✓ Aktywny':'Wybierz'}</button>
+      <div class="vitem-actions">
+        <button class="vbtn" onclick="previewVoice('${id}','${name}')">Wypróbuj</button>
+        <button class="vbtn ${active?'active':''}" onclick="selectVoice2('${id}','${name}','${desc}')">${active?'✓ Aktywny':'Wybierz'}</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-function selectVoice2(id){
+function previewVoice(id, name){
+  const text = `Cześć, jestem ${name} — Twój nauczyciel AI. Razem osiągniemy świetne wyniki!`;
+  fetch('/api/v1/voice/preview', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text, voice_id: id})
+  }).then(r=>r.json()).then(d=>{
+    if(d.audio){
+      const audio = new Audio('data:audio/mpeg;base64,'+d.audio);
+      audio.play();
+    }
+  }).catch(()=>{});
+}
+
+function selectVoice2(id, name, desc){
   localStorage.setItem('eduvia_voice_id', id);
+  document.getElementById('voiceSubtitle').textContent = name + ' — ' + desc;
   renderVoiceList();
 }
 
-document.addEventListener('DOMContentLoaded', renderVoiceList);
+document.addEventListener('DOMContentLoaded', ()=>{
+  const saved = localStorage.getItem('eduvia_voice_id') || 'Xb7hH8MSUJpSbSDYk0k2';
+  const v = VOICE_LIST.find(x=>x[0]===saved);
+  if(v) document.getElementById('voiceSubtitle').textContent = v[1]+' — '+v[2];
+});
 </script>
 </body>
 </html>
