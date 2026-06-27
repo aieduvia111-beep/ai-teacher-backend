@@ -176,12 +176,15 @@ async def get_ai_response(data: dict):
                     print(f"[TTS] ElevenLabs OK ({len(clean_text)} znakow)")
                     return result
                 except Exception as e:
+                    import traceback
                     print(f"[TTS] ElevenLabs failed: {e}")
+                    print(traceback.format_exc())
             speech=openai_client.audio.speech.create(model="tts-1",voice="nova",input=clean_text,speed=1.1)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
-        print("[TTS] nova OK")
+        if USE_ELEVEN: print("[TTS] fallback nova")
+        else: print("[TTS] nova OK")
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
         corrections = []
         if "[CORRECTION:" in ai_text:
