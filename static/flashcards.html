@@ -361,7 +361,7 @@ async function generate(attempt=1){
     try{
       const cached = localStorage.getItem('fc_cards');
       if(cached){
-        cards = JSON.parse(cached);
+        cards = JSON.parse(cached).map(x=>({f:x.f||x.front||x.question||"",b:x.b||x.back||x.explanation||""}));
         localStorage.removeItem('fc_cards');
         if(cards.length > 0){ showCards(); return; }
       }
