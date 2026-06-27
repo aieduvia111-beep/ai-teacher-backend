@@ -1166,6 +1166,11 @@ async function callAIhttp(text, hist, imgs=[]) {
     })),
   };
   if (imgs && imgs.length > 0) payload.image = imgs[0];
+  const docAtt = (attachments||[]).find(a=>a.isPdf||a.isWord||a.isText);
+  if(docAtt){
+    payload.document = docAtt.isText ? docAtt.textContent : (docAtt.dataUrl.split(',')[1]||docAtt.dataUrl);
+    payload.document_name = docAtt.file.name;
+  }
 
   const res = await fetch(BACKEND_URL + '/api/v1/chat/message', {
     method: 'POST',
