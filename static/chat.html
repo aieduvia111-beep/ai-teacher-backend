@@ -1215,6 +1215,22 @@ function handleFiles(e) {
           renderAttachments();
         };
         img.src=ev.target.result;
+      } else if(f.type === 'application/pdf') {
+        // PDF - wyslij jako base64 do backendu
+        attachments.push({file:f,dataUrl:ev.target.result,type:f.type,isPdf:true});
+        renderAttachments();
+      } else if(f.type.includes('word') || f.name.endsWith('.docx') || f.name.endsWith('.doc')) {
+        // Word - wyslij jako base64
+        attachments.push({file:f,dataUrl:ev.target.result,type:f.type,isWord:true});
+        renderAttachments();
+      } else if(f.type === 'text/plain') {
+        // TXT - czytaj jako tekst
+        const reader2 = new FileReader();
+        reader2.onload = e2 => {
+          attachments.push({file:f,dataUrl:e2.target.result,type:'text/plain',isText:true,textContent:e2.target.result});
+          renderAttachments();
+        };
+        reader2.readAsText(f);
       } else {
         attachments.push({file:f,dataUrl:ev.target.result,type:f.type});
         renderAttachments();
