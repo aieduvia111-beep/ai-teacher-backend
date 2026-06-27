@@ -511,8 +511,7 @@ function renderVoices(){
   grid.innerHTML = VOICES.map(([id, name, desc, emoji]) => {
     const active = id === savedVoice;
     return `<div class="voice-card ${active ? 'voice-active' : ''}" onclick="selectVoice('${id}', this)">
-      <div style="font-size:1.4em;margin-bottom:4px;">${emoji}</div>
-      <div style="font-family:var(--h);font-size:.82em;font-weight:700;color:var(--text);">${name}</div>
+            <div style="font-family:var(--h);font-size:.82em;font-weight:700;color:var(--text);">${name}</div>
       <div style="font-size:.68em;color:var(--muted2);margin-top:2px;">${desc}</div>
       <div style="margin-top:8px;font-size:.65em;color:${active ? 'var(--green)' : 'var(--muted)'};font-family:var(--h);font-weight:700;">${active ? '✓ Aktywny' : 'Wybierz'}</div>
     </div>`;
