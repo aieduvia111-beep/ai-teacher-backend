@@ -1107,5 +1107,13 @@ window.animateCounter = animateCounter;
 const PING_URL = 'https://eduvia-backend-2.onrender.com/api/v1/voice/health';
 setInterval(()=>fetch(PING_URL).catch(()=>{}), 50000);
 </script>
+
+<script>
+// Obsługa przycisku cofnij Android - zawsze wracaj do dashboard
+history.pushState(null, '', window.location.href);
+window.addEventListener('popstate', function() {
+  history.pushState(null, '', window.location.href);
+});
+</script>
 </body>
 </html>
