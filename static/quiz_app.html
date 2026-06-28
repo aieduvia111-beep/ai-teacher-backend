@@ -1007,7 +1007,15 @@ function math(raw){
   // Owij frac i sqrt bez dolarow wszedzie
   t=t.replace(/(?<![=$])([-−]\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\left\[.*?\\right\][_^]?\{[^}]*\}\{[^}]*\})/g,'$$$1$$');
-  if(typeof renderMathInElement==='undefined')return t;
+  if(typeof renderMathInElement==='undefined'){
+    // KaTeX nie zaladowany - zwroc tekst i sprobuj pozniej
+    setTimeout(()=>{
+      document.querySelectorAll('.question-text,.option,.feedback-explain').forEach(el=>{
+        if(el._rawMath) el.innerHTML=math(el._rawMath);
+      });
+    }, 500);
+    return t;
+  }
   let el=document.createElement('span');el.textContent=t;el.style.cssText='position:absolute;left:-9999px;visibility:hidden;pointer-events:none;';
   document.body.appendChild(el);
   try{renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false});}catch(e){}
