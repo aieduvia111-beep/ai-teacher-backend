@@ -1048,6 +1048,7 @@ function getPlanBadgeHTML(plan) {
       <input type="file" id="inputCam" accept="image/*" capture="environment" onchange="handleFiles(event)" style="display:none">
       <input type="file" id="inputGal" accept="image/*" multiple onchange="handleFiles(event)" style="display:none">
       <input type="file" id="inputPdf" accept="application/pdf,.pdf" onchange="handleFiles(event)" style="display:none">
+      <input type="file" id="inputDoc" accept=".doc,.docx,.txt,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleFiles(event)" style="display:none">
       <input type="file" id="inputFil" multiple accept="image/*,application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt" onchange="handleFiles(event)" style="display:none">
       <div class="input-hint" style="font-size:.62em;opacity:.4;margin-top:4px;">Enter — wyślij &nbsp;·&nbsp; ⇧Enter — nowa linia</div>
     </div>
@@ -2126,6 +2127,7 @@ function toggleAttachMenu(e) {
 function doOpenCamera()  { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputCam').click(); }
 function doOpenGallery() { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputGal').click(); }
 function doOpenPdf()    { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputPdf').click(); }
+function doOpenDoc()    { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputDoc').click(); }
 function doOpenFile()    { document.getElementById('attachMenu').style.display='none'; document.getElementById('inputFil').click(); }
 document.addEventListener('click', function(e) {
   const menu = document.getElementById('attachMenu');
