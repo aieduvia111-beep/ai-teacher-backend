@@ -1115,5 +1115,41 @@ window.addEventListener('popstate', function() {
   history.pushState(null, '', window.location.href);
 });
 </script>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
+  authDomain: "eduvia-c69bc.firebaseapp.com",
+  projectId: "eduvia-c69bc",
+  storageBucket: "eduvia-c69bc.firebasestorage.app",
+  messagingSenderId: "613529563678",
+  appId: "1:613529563678:web:5028a3edfbd68969d4340f"
+};
+
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+
+async function initPush(){
+  try {
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted') return;
+    const messaging = getMessaging(app);
+    const token = await getToken(messaging, {
+      vapidKey: 'BK5oMBm3JjcatbW05Yqi9S9FDXEjDwZnRxU4Hbm2qmF7JSLtaKCXvHZ3_-d1LsSDzXaRynr_OkTnWOMNWZNSWLw',
+      serviceWorkerRegistration: await navigator.serviceWorker.register('/static/sw.js')
+    });
+    if(token){
+      localStorage.setItem('eduvia_fcm_token', token);
+      console.log('[FCM] Token:', token.slice(0,20)+'...');
+    }
+  } catch(e){ console.warn('[FCM]', e); }
+}
+
+if('Notification' in window && 'serviceWorker' in navigator){
+  setTimeout(initPush, 3000);
+}
+</script>
 </body>
 </html>
