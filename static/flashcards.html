@@ -487,5 +487,12 @@ function showResult(){
 function restart(){ showCards(); }
 generate();
 </script>
+<script>
+// Android back button - wroc do dashboard
+window.addEventListener('popstate', function() {
+  window.location.href = 'dashboard_FINAL.html';
+});
+history.pushState(null, '', window.location.href);
+</script>
 </body>
 </html>

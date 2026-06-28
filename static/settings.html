@@ -599,5 +599,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(v) document.getElementById('voiceSubtitle').textContent = v[1]+' — '+v[2];
 });
 </script>
+<script>
+// Android back button - wroc do dashboard
+window.addEventListener('popstate', function() {
+  window.location.href = 'dashboard_FINAL.html';
+});
+history.pushState(null, '', window.location.href);
+</script>
 </body>
 </html>
