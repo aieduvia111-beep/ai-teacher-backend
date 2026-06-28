@@ -176,7 +176,7 @@ button:active{transform:scale(.95)!important;}
 <audio id="previewPlayer" style="display:none"></audio>
 
 <div class="hdr">
-  <button class="back" onclick="window.location.href='dashboard_FINAL.html';">
+  <button class="back" onclick="window.location.href='https://ai-teacher-backend-inky.vercel.app/dashboard_FINAL.html';">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
   </button>
   <div class="hdr-t">Ustawienia</div>
@@ -236,7 +236,7 @@ button:active{transform:scale(.95)!important;}
           <div class="item-txt"><div class="item-title">Zmień hasło</div><div class="item-sub">Link resetowania na email</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
-        <div class="item" onclick="location.href='pricing.html'">
+        <div class="item" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/pricing.html'">
           <div class="item-ic ic-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
           <div class="item-txt"><div class="item-title">Plan i subskrypcja</div><div class="item-sub">Odblokuj pełne możliwości AI</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -247,17 +247,17 @@ button:active{transform:scale(.95)!important;}
     <div class="sec">
       <div class="sec-lbl">Narzędzia</div>
       <div class="sec-body">
-        <div class="item" onclick="location.href='chat.html'">
+        <div class="item" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/chat.html'">
           <div class="item-ic ic-p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
           <div class="item-txt"><div class="item-title">Czat AI</div><div class="item-sub">Zadaj pytanie AI</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
-        <div class="item" onclick="location.href='notes_generator.html'">
+        <div class="item" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/notes_generator.html'">
           <div class="item-ic ic-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
           <div class="item-txt"><div class="item-title">Notatki AI</div><div class="item-sub">Generuj notatki PDF</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
-        <div class="item" onclick="location.href='quiz_app.html'">
+        <div class="item" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/quiz_app.html'">
           <div class="item-ic ic-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
           <div class="item-txt"><div class="item-title">Quiz AI</div><div class="item-sub">Sprawdź wiedzę</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
@@ -405,7 +405,7 @@ function updateXPBar(xp,data){
 }
 
 onAuthStateChanged(auth,async u=>{
-  if(!u){window.location.href='login.html';return;}
+  if(!u){window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';return;}
   const name=u.displayName||u.email?.split('@')[0]||'Użytkownik';
   document.getElementById('av').textContent=name[0].toUpperCase();
   document.getElementById('hName').textContent=name;
@@ -424,7 +424,7 @@ onAuthStateChanged(auth,async u=>{
   }catch(e){}
 });
 
-window.doLogout=async function(){await signOut(auth);window.location.href='login.html';};
+window.doLogout=async function(){await signOut(auth);window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';};
 window.resetPass=async function(){
   const u=auth.currentUser;
   if(!u?.email)return;
