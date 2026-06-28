@@ -574,7 +574,7 @@ let _previewAudio = null;
 function previewVoice(id, name){
   const _p=document.getElementById('previewPlayer'); if(_p){_p.pause();_p.src='';}
   const text = `Cześć, jestem ${name} — Twój nauczyciel AI. Razem osiągniemy świetne wyniki!`;
-  fetch('/api/v1/voice/preview', {
+  fetch('https://eduvia-backend-2.onrender.com/api/v1/voice/preview', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({text, voice_id: id})
