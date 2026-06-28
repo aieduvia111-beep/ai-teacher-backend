@@ -129,6 +129,11 @@ except Exception as e:
 
 
 # ══ STRONY HTML ══
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/manifest.json")
+
 @app.get("/", include_in_schema=False)
 async def root():
     from fastapi.responses import RedirectResponse
