@@ -1701,7 +1701,7 @@ async function sendMessage() {
       qBtn.onclick = () => { 
   const topic = response.quiz_topic || '';
   const topicLow = topic.toLowerCase();
-  let subject = 'matematyka';
+  let subject = 'inne';
   if(topicLow.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz|grzyb|roślina|zwierzę|ssak/)) subject='biologia';
   else if(topicLow.match(/reakcja|pierwiastek|mol|kwas|zasada|atom|układ okresowy|chemi/)) subject='chemia';
   else if(topicLow.match(/energia|prędkość|siła|ruch|fala|elektr|magnet|optyk|fizyk/)) subject='fizyka';
