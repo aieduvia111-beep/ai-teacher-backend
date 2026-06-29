@@ -490,7 +490,7 @@ generate();
 <script>
 // Android back button - wroc do dashboard
 window.addEventListener('popstate', function() {
-  window.location.href = 'chat.html';
+  if(document.referrer.includes('chat')) history.back(); else window.location.href = 'chat.html';
 });
 history.pushState(null, '', window.location.href);
 </script>
