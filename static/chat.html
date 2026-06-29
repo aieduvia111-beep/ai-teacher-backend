@@ -1702,10 +1702,12 @@ async function sendMessage() {
   const topic = response.quiz_topic || '';
   const topicLow = topic.toLowerCase();
   let subject = 'matematyka';
-  if(topicLow.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz/)) subject='biologia';
+  if(topicLow.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz|grzyb|roślina|zwierzę|ssak/)) subject='biologia';
   else if(topicLow.match(/reakcja|pierwiastek|mol|kwas|zasada|atom|układ okresowy|chemi/)) subject='chemia';
   else if(topicLow.match(/energia|prędkość|siła|ruch|fala|elektr|magnet|optyk|fizyk/)) subject='fizyka';
   else if(topicLow.match(/historia|wojna|rewolucja|cesarz|królestwo|bitwa|dynastia/)) subject='historia';
+  else if(topicLow.match(/python|java|kod|programow|algorytm|html|css|javascript|baza danych/)) subject='informatyka';
+  else if(topicLow.match(/równan|funkcj|pochodn|całk|trygon|geometr|algebra|liczb/)) subject='matematyka';
   else if(topicLow.match(/english|grammar|tense|vocabulary|angielski|czasownik ang/)) subject='angielski';
   else if(topicLow.match(/wiersz|lektura|literatura|czytanka|polski|grammatyk|ortograf/)) subject='polski';
   else if(topicLow.match(/geografia|kontynent|klimat|rzeka|góry|kraj|stolica/)) subject='geografia';
