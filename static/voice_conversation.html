@@ -1366,7 +1366,7 @@ async function startSession(){
     setTimeout(async()=>{
       const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic})
+        body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic, voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
       });
       if(!cr.ok) return;
       const reader=cr.body.getReader();
@@ -1611,7 +1611,7 @@ function openCamera(){
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({text:'Wytlumacz co widzisz. Napisz TABLICE z min 5 punktami. [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]',image:b64,history:[]})
+            body:JSON.stringify({text:'Wytlumacz co widzisz. Napisz TABLICE z min 5 punktami. [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]',image:b64,history:[],voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
           });
           if(!r.ok) throw new Error('Blad '+r.status);
           const reader2=r.body.getReader();
