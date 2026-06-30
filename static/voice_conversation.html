@@ -1324,7 +1324,43 @@ function boardAddCorrection(wrong, correct){
 // SESSION
 let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 
+// Limit czasowy voice AI - 5 min dziennie free
+let _voiceTimer = null;
+let _voiceSecondsLeft = 300;
+
+function checkVoiceTimeLimit(){
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if(plan !== 'free') return true;
+  const today = new Date().toISOString().split('T')[0];
+  const key = 'eduvia_voice_seconds_'+today;
+  const used = parseInt(localStorage.getItem(key)||'0');
+  if(used >= 300){
+    alert('Wykorzystałeś 5 minut Voice AI dzisiaj. Kup Pro dla nieograniczonego dostępu!');
+    return false;
+  }
+  return true;
+}
+
+function startVoiceTimer(){
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if(plan !== 'free') return;
+  const today = new Date().toISOString().split('T')[0];
+  const key = 'eduvia_voice_seconds_'+today;
+  let used = parseInt(localStorage.getItem(key)||'0');
+  _voiceTimer = setInterval(()=>{
+    used++;
+    localStorage.setItem(key, used);
+    if(used >= 300){
+      clearInterval(_voiceTimer);
+      alert('Czas się skończył! Wykorzystałeś 5 minut Voice AI dzisiaj.');
+      endSession();
+    }
+  }, 1000);
+}
+
 async function startSession(){
+  if(!checkVoiceTimeLimit()) return;
+  startVoiceTimer();
   // Pobierz profil ucznia
   var _profile = window._userProfile || {};
   window._profileCtx = '';
