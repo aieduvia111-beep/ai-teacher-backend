@@ -1653,7 +1653,7 @@ function openCamera(){
         try{
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({text:'Wytlumacz co widzisz. Napisz TABLICE z min 5 punktami. [TABLICA: punkt1 | punkt2 | punkt3 | punkt4 | punkt5]',image:b64,history:[],voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
+            body:JSON.stringify({text:'Spojrz na zdjecie. Krotko (1-2 zdania) powiedz co widzisz (np. sprawdzian z biologii, 5 pytan o grzyby) i zapytaj uczennia z ktorym konkretnie pytaniem lub zagadnieniem potrzebuje pomocy. Zapamietaj DOKLADNIE tresc wszystkich pytan zebys mogl do nich wracac. Napisz TABLICE z trescia wszystkich zadan/pytan z zdjecia (min 3 punkty). [TABLICA: punkt1 | punkt2 | punkt3]',image:b64,history:hist.slice(-8),voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
           });
           if(!r.ok) throw new Error('Blad '+r.status);
           const reader2=r.body.getReader();
@@ -1672,6 +1672,11 @@ function openCamera(){
                   if(msg.emocja) setAvatarEmotion(msg.emocja);
                   boardTyping=false;boardQueue=[];
                   window._camTabl = msg.tablica||null;
+                  // Zapisz do historii zeby AI pamietalo tresc zdjecia w kolejnych pytaniach
+                  if(msg.text){
+                    hist.push({role:'user', content:'[Wyslalem zdjecie zadania/sprawdzianu]'});
+                    hist.push({role:'assistant', content: msg.text + (msg.tablica ? ' Tresc zadan: '+msg.tablica : '')});
+                  }
                 }
                 if(msg.type==='audio'&&msg.audio){
                   if(msg.index===0&&window._camTabl){
