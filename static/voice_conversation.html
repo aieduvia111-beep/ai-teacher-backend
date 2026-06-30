@@ -995,6 +995,7 @@ function getPlanBadgeHTML(plan) {
       <span class="vo-dot" id="voDot"></span>
     </div>
     <span class="vo-state" id="voState">GOTOWY</span>
+    <span class="vo-state" id="voTimer" style="color:rgba(167,139,250,.7);"></span>
     <button class="vo-end" onclick="endSes()">&#x2715; Zakończ</button>
   </div>
 
@@ -1350,6 +1351,11 @@ function startVoiceTimer(){
   _voiceTimer = setInterval(()=>{
     used++;
     localStorage.setItem(key, used);
+    const left = Math.max(0, 300-used);
+    const mins = Math.floor(left/60);
+    const secs = left%60;
+    const timerEl = document.getElementById('voTimer');
+    if(timerEl) timerEl.textContent = mins+':'+(secs<10?'0':'')+secs+' pozostało';
     if(used >= 300){
       clearInterval(_voiceTimer);
       alert('Czas się skończył! Wykorzystałeś 5 minut Voice AI dzisiaj.');
