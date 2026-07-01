@@ -34,6 +34,15 @@ DANE:
 - Czas dziennie: {safe_min} minut
 - Dodatkowe info: {request.additional_info or "brak"}
 
+POZIOM UCZNIA - KRYTYCZNE:
+Poziom: {request.level}
+- klasa 1-3 = bardzo proste, konkretne przyklady z zycia, bez abstrakcji
+- klasa 4-6 = proste, przyklady z zycia codziennego
+- klasa 7-8 = sredni poziom, wprowadzaj abstrakcje
+- liceum = zaawansowany, pelna teoria i wzory
+- matura = bardzo zaawansowany, zadania maturalne
+DOSTOSUJ trudnosc, jezyk i zadania do tego poziomu!
+
 ZASADY (KRYTYCZNE):
 0. ZAKAZ: nie pisz numerow stron ani nazw podrecznikow - uczen moze nie miec tego samego podrecznika!
 1. Kazdy dzien = INNY, KONKRETNY podtemat z dziedziny {request.topic}
