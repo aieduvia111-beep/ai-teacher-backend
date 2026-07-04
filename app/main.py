@@ -122,7 +122,7 @@ except Exception as e:
     print(f"❌ brain: {e}")
 
 try:
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")), name="static")
     print("✅ static OK")
 except Exception as e:
     print(f"⚠️ static: {e}")
