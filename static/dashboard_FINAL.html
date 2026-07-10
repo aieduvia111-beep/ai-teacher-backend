@@ -1152,5 +1152,33 @@ if('Notification' in window && 'serviceWorker' in navigator){
 }
 </script>
 
+<script>
+(function () {
+  var STORAGE_KEY = "eduvia_welcome_seen_v1";
+  if (localStorage.getItem(STORAGE_KEY)) return;
+
+  function showWelcomeMessage() {
+    if (document.getElementById("welcomePopup")) return;
+    if (localStorage.getItem(STORAGE_KEY)) return;
+
+    var popup = document.createElement("div");
+    popup.id = "welcomePopup";
+    popup.style.cssText = "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;";
+    popup.innerHTML = '<div style="background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;padding:32px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 0 60px rgba(124,106,255,0.15);"><div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:Syne,sans-serif;font-weight:800;font-size:1.2em;color:#a78bfa;">16</div><div style="font-family:Syne,sans-serif;font-size:1.15em;font-weight:800;color:#eeeef5;margin-bottom:10px;">Cześć, jestem twórcą Eduvii</div><p style="color:#8888a0;font-size:.85em;line-height:1.65;margin-bottom:10px;">Mam <strong style="color:#a78bfa;">16 lat</strong> i sam, po godzinach, buduję tę aplikację, żeby pomóc innym uczniom w nauce.</p><p style="color:#8888a0;font-size:.85em;line-height:1.65;margin-bottom:22px;">Jeśli trafisz na błąd — z góry przepraszam. Bardzo się staram, i zawsze postaram się to naprawić.</p><button id="welcomeCloseBtn" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);color:#fff;font-family:Syne,sans-serif;font-weight:700;font-size:.9em;cursor:pointer;">Rozumiem, zaczynajmy</button></div>';
+
+    document.body.appendChild(popup);
+    document.getElementById("welcomeCloseBtn").addEventListener("click", function () {
+      localStorage.setItem(STORAGE_KEY, "1");
+      popup.remove();
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", showWelcomeMessage);
+  } else {
+    showWelcomeMessage();
+  }
+})();
+</script>
 </body>
 </html>
