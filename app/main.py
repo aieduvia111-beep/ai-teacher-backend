@@ -29,6 +29,8 @@ from .openai_exam import (
 
 
 app = FastAPI(title="AI Teacher API", version="1.0.0")
+from app.limit_middleware import usage_limit_middleware
+app.middleware("http")(usage_limit_middleware)
 
 app.add_middleware(
     CORSMiddleware,

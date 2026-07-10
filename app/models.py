@@ -92,6 +92,7 @@ class User(Base):
     
     # Premium status
     is_premium = Column(Boolean, default=False)
+    daily_usage = Column(Text, default='{}')
     premium_until = Column(DateTime(timezone=True), nullable=True)
     
     # Timestamps
