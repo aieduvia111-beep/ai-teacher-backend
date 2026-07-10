@@ -10,6 +10,13 @@ import asyncio
 import concurrent.futures
 import httpx
 from ..config import settings
+from ..database import get_db
+from ..models import User
+from ..auth import get_current_user
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from datetime import date
+
 
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
@@ -38,6 +45,36 @@ except Exception as e:
     groq_client = None
     GROQ_AVAILABLE = False
     print(f"[VOICE] Groq fallback OpenAI: {e}")
+
+
+FREE_VOICE_SECONDS_PER_DAY = 5 * 60
+
+def check_voice_limit(user, db):
+    if user.is_premium:
+        return True, None
+    from datetime import date
+    today = date.today().isoformat()
+    if user.voice_usage_date != today:
+        user.voice_seconds_today = 0
+        user.voice_usage_date = today
+        db.commit()
+    remaining = FREE_VOICE_SECONDS_PER_DAY - (user.voice_seconds_today or 0)
+    if remaining <= 0:
+        return False, 0
+    return True, remaining
+
+def add_voice_usage(user, db, seconds):
+    if user.is_premium:
+        return
+    user.voice_seconds_today = (user.voice_seconds_today or 0) + int(seconds)
+    db.commit()
+
+def estimate_speech_seconds(text):
+    if not text:
+        return 0
+    return max(len(text) / 15.0, 1.0)
+
+LIMIT_REACHED_MESSAGE = "Wykorzystales juz dzisiejszy darmowy limit Voice AI (5 minut)."
 
 SYSTEM_PROMPT = """Jesteś Eduvia — charyzmatyczny, ciepły AI korepetytor. Mówisz naturalnie jak najlepszy nauczyciel prywatny. Jeśli znasz imię ucznia — zawsze zwracaj się do niego po imieniu. Jeśli znasz jego postępy — odwołuj się do nich naturalnie. ADAPTUJ poziom języka automatycznie. Gdy uczeń prosi "jak dla 6-latka" lub "prościej" — natychmiast mów bardzo prostym językiem przez całą resztę rozmowy.
 
@@ -112,8 +149,12 @@ async def transcribe_audio(data: dict):
 
 
 @router.post("/respond")
-async def get_ai_response(data: dict):
+async def get_ai_response(data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
+        allowed, remaining = check_voice_limit(current_user, db)
+        if not allowed:
+            return {"success": False, "text": LIMIT_REACHED_MESSAGE, "audio": None, "limit_reached": True}
+
         text = data.get("text", "")
         history = data.get("history", [])
         level = data.get("level", "")
@@ -192,6 +233,7 @@ async def get_ai_response(data: dict):
             for wrong, correct in matches:
                 corrections.append({"wrong": wrong, "correct": correct})
             ai_text = re.sub(r'\[CORRECTION: .+? -> .+?\]', '', ai_text).strip()
+        add_voice_usage(current_user, db, estimate_speech_seconds(clean_text))
         return {"success": True, "text": ai_text, "audio": audio_b64, "corrections": corrections}
     except Exception as e:
         print(f"[RESPOND ERROR] {e}")

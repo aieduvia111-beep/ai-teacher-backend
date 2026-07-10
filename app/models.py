@@ -93,6 +93,8 @@ class User(Base):
     # Premium status
     is_premium = Column(Boolean, default=False)
     daily_usage = Column(Text, default='{}')
+    voice_seconds_today = Column(Integer, default=0)
+    voice_usage_date = Column(String(10), nullable=True)
     premium_until = Column(DateTime(timezone=True), nullable=True)
     
     # Timestamps
