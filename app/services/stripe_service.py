@@ -160,22 +160,26 @@ class StripeService:
             db_sub.cancel_at_period_end = subscription.get('cancel_at_period_end', False)
 
             user = db.query(User).filter(User.id == db_sub.user_id).first()
+            new_premium_status = None
             if user:
                 if subscription['status'] in ('active', 'trialing'):
                     user.is_premium = True
                     user.premium_until = db_sub.current_period_end
-                    # ===== NAPRAWA #1 =====
-                    # Wczesniej brakowalo tego wywolania - SQL mowil "premium",
-                    # ale Firebase (ktore czyta apka) nigdy sie o tym nie dowiadywalo.
-                    _update_firebase_plan(user.firebase_uid, True)
+                    new_premium_status = True
                 else:
                     # status = past_due, unpaid, canceled, incomplete_expired itp.
                     # (dokladnie to sie dzieje gdy platnosc przy odnowieniu sie nie powiedzie)
                     user.is_premium = False
                     user.premium_until = None
-                    _update_firebase_plan(user.firebase_uid, False)  # to juz bylo OK
+                    new_premium_status = False
 
+            # Kolejnosc ma znaczenie: najpierw zapisujemy do SQL (zrodlo prawdy),
+            # dopiero PO udanym commit synchronizujemy Firebase. Gdyby robic to
+            # w odwrotnej kolejnosci, a zapis do SQL by sie nie powiodl - Firebase
+            # i SQL moglyby pokazywac sprzeczne dane.
             db.commit()
+            if user and new_premium_status is not None:
+                _update_firebase_plan(user.firebase_uid, new_premium_status)
             print(f"Subskrypcja zaktualizowana -> status: {subscription['status']}")
 
         return {"success": True, "message": "Subscription updated"}
@@ -199,15 +203,16 @@ class StripeService:
             if user:
                 user.is_premium = False
                 user.premium_until = None
-                # ===== NAPRAWA #2 (GLOWNA PRZYCZYNA ZGLOSZONEGO PROBLEMU) =====
-                # Tej linii wczesniej BRAKOWALO CALKOWICIE w tej funkcji.
-                # SQL poprawnie ustawial is_premium=False, ale Firebase
-                # (skad apka rzeczywiscie sprawdza dostep) NIGDY nie zostawal
-                # zaktualizowany - dlatego user po anulowaniu subskrypcji
-                # nadal mial dostep premium w aplikacji.
-                _update_firebase_plan(user.firebase_uid, False)
 
+            # ===== NAPRAWA (GLOWNA PRZYCZYNA ZGLOSZONEGO PROBLEMU) =====
+            # Wczesniej ten fragment w ogole nie aktualizowal Firebase - SQL
+            # poprawnie ustawial is_premium=False, ale Firebase (skad apka
+            # rzeczywiscie sprawdza dostep) nigdy sie o tym nie dowiadywal.
+            # Dodatkowo: najpierw zapisujemy do SQL, dopiero PO commit
+            # synchronizujemy Firebase (bezpieczniejsza kolejnosc).
             db.commit()
+            if user:
+                _update_firebase_plan(user.firebase_uid, False)
             print(f"User {db_sub.user_id} wrocil do FREE (subskrypcja usunieta)")
 
         return {"success": True, "message": "Subscription canceled"}
@@ -237,8 +242,8 @@ class StripeService:
             if user:
                 user.is_premium = False
                 user.premium_until = None
-                _update_firebase_plan(user.firebase_uid, False)
                 db.commit()
+                _update_firebase_plan(user.firebase_uid, False)
                 print(f"User {db_sub.user_id} odebrany dostep premium (nieudana platnosc)")
 
         return {"success": True, "message": "Payment failed handled"}
