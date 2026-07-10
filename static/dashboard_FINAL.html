@@ -1161,14 +1161,17 @@ if('Notification' in window && 'serviceWorker' in navigator){
     padding:2px;border-radius:calc(var(--r,16px) + 2px);
     background:linear-gradient(135deg,#7c6aff,#a78bfa,#22d3a0);
     max-width:400px;width:100%;
+    max-height:88vh;
     box-shadow:0 24px 70px -12px rgba(0,0,0,.6);
     animation:ed-in .3s cubic-bezier(.2,.9,.3,1.1);
+    display:flex;
   }
   #ed-card{
     position:relative;width:100%;
     background:linear-gradient(160deg,#0f0f18,#161622);
     border-radius:var(--r,16px);
     text-align:center;
+    overflow-y:auto;
   }
   @keyframes ed-in{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
@@ -1225,31 +1228,85 @@ if('Notification' in window && 'serviceWorker' in navigator){
   </div>
 </div>
 
-<script>
-(function () {
-  var STORAGE_KEY = "eduvia_age_disclosure_seen_v4";
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  if (!localStorage.getItem(STORAGE_KEY)) {
-    var overlay = document.getElementById("ed-overlay");
-    if (overlay) {
-      overlay.style.display = "flex";
-      // NAPRAWA: na telefonach, gdy <body> ma wlasne przewijanie (overflow-y:auto),
-      // position:fixed czasem nie dziala poprawnie (znany blad przegladarek mobilnych).
-      // Tymczasowo blokujemy przewijanie body, dopoki popup jest widoczny - to naprawia
-      // problem I dodatkowo jest dobra praktyka (tlo nie przewija sie pod modalem).
-      document.body.style.overflow = "hidden";
+// Ten komunikat pokazuje sie RAZ NA KONCIE (zapisane w Firebase przy koncie
+// uzytkownika), nie tylko raz na przegladarce/telefonie. Dzieki temu, jesli
+// ten sam uzytkownik zaloguje sie z innego urzadzenia, NIE zobaczy komunikatu
+// ponownie - bo sprawdzamy jego konto, nie pamiec przegladarki.
+
+const edFirebaseConfig = {
+  apiKey: "AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
+  authDomain: "eduvia-c69bc.firebaseapp.com",
+  projectId: "eduvia-c69bc",
+  storageBucket: "eduvia-c69bc.firebasestorage.app",
+  messagingSenderId: "613529563678",
+  appId: "1:613529563678:web:5028a3edfbd68969d4340f"
+};
+
+// Uzywamy juz istniejacej aplikacji Firebase, jesli inny skrypt na stronie
+// juz ja zainicjalizowal (zeby nie bylo bledu podwojnej inicjalizacji).
+const edApp = getApps().length ? getApp() : initializeApp(edFirebaseConfig);
+const edAuth = getAuth(edApp);
+const edDb = getFirestore(edApp);
+
+const ED_LOCAL_KEY = "eduvia_age_disclosure_seen_v4";
+let edCurrentUid = null;
+
+function edShowPopup() {
+  const overlay = document.getElementById("ed-overlay");
+  if (overlay) {
+    overlay.style.display = "flex";
+    // NAPRAWA: na telefonach, gdy <body> ma wlasne przewijanie (overflow-y:auto),
+    // position:fixed czasem nie dziala poprawnie (znany blad przegladarek mobilnych).
+    document.body.style.overflow = "hidden";
+  }
+}
+
+function edHidePopup() {
+  const overlay = document.getElementById("ed-overlay");
+  if (overlay) overlay.style.display = "none";
+  document.body.style.overflow = "";
+}
+
+onAuthStateChanged(edAuth, async (user) => {
+  if (!user) return;
+  edCurrentUid = user.uid;
+
+  // Szybki cache lokalny - jesli JUZ wiemy ze ten user go widzial (np. w tej
+  // samej sesji przegladania), nie musimy nawet pytac Firebase.
+  if (localStorage.getItem(ED_LOCAL_KEY + "_" + user.uid) === "1") return;
+
+  try {
+    const snap = await getDoc(doc(edDb, "users", user.uid));
+    const data = snap.exists() ? snap.data() : {};
+    if (!data.age_disclosure_seen) {
+      edShowPopup();
+    } else {
+      localStorage.setItem(ED_LOCAL_KEY + "_" + user.uid, "1");
     }
+  } catch (e) {
+    console.error("Nie udalo sie sprawdzic statusu komunikatu:", e);
   }
+});
 
-  var closeBtn = document.getElementById("ed-close-btn");
-  if (closeBtn) {
-    closeBtn.addEventListener("click", function () {
-      localStorage.setItem(STORAGE_KEY, "1");
-      document.getElementById("ed-overlay").style.display = "none";
-      document.body.style.overflow = "";
-    });
-  }
-})();
+const edCloseBtn = document.getElementById("ed-close-btn");
+if (edCloseBtn) {
+  edCloseBtn.addEventListener("click", async function () {
+    edHidePopup();
+    if (edCurrentUid) {
+      localStorage.setItem(ED_LOCAL_KEY + "_" + edCurrentUid, "1");
+      try {
+        await setDoc(doc(edDb, "users", edCurrentUid), { age_disclosure_seen: true }, { merge: true });
+      } catch (e) {
+        console.error("Nie udalo sie zapisac statusu komunikatu:", e);
+      }
+    }
+  });
+}
 </script>
 
 </body>
