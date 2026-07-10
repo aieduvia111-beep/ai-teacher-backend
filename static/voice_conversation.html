@@ -1329,6 +1329,17 @@ let hist = [], curAudio = null, ttsAbort = null, isSpeak = false;
 let _voiceTimer = null;
 let _voiceSecondsLeft = 300;
 
+
+function showVoiceLimitPopup(message){
+  const old = document.getElementById('voiceLimitPopup');
+  if (old) old.remove();
+  const popup = document.createElement('div');
+  popup.id = 'voiceLimitPopup';
+  popup.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;';
+  popup.innerHTML = '<div style="background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;padding:32px 28px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(124,106,255,0.15);"><div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="font-family:Syne,sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">Limit Voice AI wyczerpany</div><p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' + message + ' Kup <strong style="color:#a78bfa">Pro</strong> i rozmawiaj bez limitow!</p><button onclick="document.getElementById('voiceLimitPopup').remove()" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);color:#fff;font-family:Syne,sans-serif;font-weight:700;cursor:pointer;">Rozumiem</button></div>';
+  document.body.appendChild(popup);
+}
+
 function checkVoiceTimeLimit(){
   const plan = localStorage.getItem('eduvia_plan') || 'free';
   if(plan !== 'free') return true;
@@ -1336,7 +1347,7 @@ function checkVoiceTimeLimit(){
   const key = 'eduvia_voice_seconds_'+today;
   const used = parseInt(localStorage.getItem(key)||'0');
   if(used >= 300){
-    alert('Wykorzystałeś 5 minut Voice AI dzisiaj. Kup Pro dla nieograniczonego dostępu!');
+    showVoiceLimitPopup('Wykorzystałeś 5 minut Voice AI dzisiaj.');
     return false;
   }
   return true;
@@ -1358,7 +1369,7 @@ function startVoiceTimer(){
     if(timerEl) timerEl.textContent = mins+':'+(secs<10?'0':'')+secs;
     if(used >= 300){
       clearInterval(_voiceTimer);
-      alert('Czas się skończył! Wykorzystałeś 5 minut Voice AI dzisiaj.');
+      showVoiceLimitPopup('Czas się skończył!');
       endSes();
     }
   }, 1000);
