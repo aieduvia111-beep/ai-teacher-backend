@@ -1161,7 +1161,7 @@ if('Notification' in window && 'serviceWorker' in navigator){
     padding:2px;border-radius:calc(var(--r,16px) + 2px);
     background:linear-gradient(135deg,#7c6aff,#a78bfa,#22d3a0);
     max-width:400px;width:100%;
-    max-height:88vh;
+    max-height:calc(var(--ed-vh, 1vh) * 88);
     box-shadow:0 24px 70px -12px rgba(0,0,0,.6);
     animation:ed-in .3s cubic-bezier(.2,.9,.3,1.1);
     display:flex;
@@ -1256,12 +1256,17 @@ const edDb = getFirestore(edApp);
 const ED_LOCAL_KEY = "eduvia_age_disclosure_seen_v4";
 let edCurrentUid = null;
 
+// Ustawiamy prawdziwa wysokosc ekranu JUZ TERAZ, zanim jeszcze wiadomo czy
+// komunikat sie pokaze - zeby nie bylo "migniecia" zlym rozmiarem.
+document.documentElement.style.setProperty('--ed-vh', (window.innerHeight * 0.01) + 'px');
+window.addEventListener('resize', function () {
+  document.documentElement.style.setProperty('--ed-vh', (window.innerHeight * 0.01) + 'px');
+});
+
 function edShowPopup() {
   const overlay = document.getElementById("ed-overlay");
   if (overlay) {
     overlay.style.display = "flex";
-    // NAPRAWA: na telefonach, gdy <body> ma wlasne przewijanie (overflow-y:auto),
-    // position:fixed czasem nie dziala poprawnie (znany blad przegladarek mobilnych).
     document.body.style.overflow = "hidden";
   }
 }
