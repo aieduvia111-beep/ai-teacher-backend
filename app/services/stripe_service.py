@@ -27,8 +27,8 @@ def _update_firebase_plan(user_id: str, is_pro: bool):
         print(f"Blad aktualizacji Firebase: {e}")
 
 """
-💳 STRIPE SERVICE - Obsługa płatności
-Dzień 6: Integracja Stripe Payments
+Stripe SERVICE - Obsluga platnosci
+NAPRAWIONA WERSJA - dodana brakujaca synchronizacja Firebase
 """
 
 import stripe
@@ -39,177 +39,96 @@ from typing import Dict, Optional
 from ..config import settings
 from ..models import User, Subscription
 
-# Inicjalizacja Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class StripeService:
-    """Serwis do obsługi płatności Stripe"""
-    
+    """Serwis do obslugi platnosci Stripe"""
+
     @staticmethod
-    def create_checkout_session(
-        user_id: str,
-        email: str,
-        db: Session
-    ) -> Dict:
-        """
-        Tworzy sesję checkout Stripe
-        
-        Args:
-            user_id: ID użytkownika
-            email: Email użytkownika
-            db: Database session
-            
-        Returns:
-            Dict z URL do checkout
-        """
+    def create_checkout_session(user_id: str, email: str, db: Session) -> Dict:
         try:
-            print(f"💳 Tworzę checkout session dla user {user_id} ({email})")
-            
-            # Sprawdź czy user ma już Stripe Customer ID
+            print(f"Tworze checkout session dla user {user_id} ({email})")
+
             user = db.query(User).filter(User.firebase_uid == user_id).first()
-            
+
             if not user:
-                # Stwórz nowego usera jeśli nie istnieje
-                user = User(
-                    firebase_uid=user_id,
-                    email=email,
-                    is_premium=False
-                )
+                user = User(firebase_uid=user_id, email=email, is_premium=False)
                 db.add(user)
                 db.commit()
                 db.refresh(user)
-            
-            # Stwórz lub pobierz Stripe Customer
+
             if user.stripe_customer_id:
                 customer_id = user.stripe_customer_id
-                print(f"✅ Użytkownik ma już Stripe Customer: {customer_id}")
             else:
-                # Stwórz nowego customera w Stripe
-                customer = stripe.Customer.create(
-                    email=email,
-                    metadata={"user_id": user_id}
-                )
+                customer = stripe.Customer.create(email=email, metadata={"user_id": user_id})
                 customer_id = customer.id
-                
-                # Zapisz w bazie
                 user.stripe_customer_id = customer_id
                 db.commit()
-                
-                print(f"✅ Stworzono nowego Stripe Customer: {customer_id}")
-            
-            # Stwórz Checkout Session
+
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
                 payment_method_types=["card"],
-                line_items=[
-                    {
-                        "price": settings.STRIPE_PRICE_ID,
-                        "quantity": 1,
-                    }
-                ],
+                line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                 mode="subscription",
-                subscription_data={
-                    "trial_period_days": 7  # 🎁 7-day free trial
-                },
+                subscription_data={"trial_period_days": 7},
                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
-                metadata={
-                    "user_id": user_id
-                }
+                metadata={"user_id": user_id}
             )
-            
-            print(f"✅ Checkout session utworzona: {checkout_session.id}")
-            
-            return {
-                "success": True,
-                "checkout_url": checkout_session.url,
-                "session_id": checkout_session.id
-            }
-            
+
+            return {"success": True, "checkout_url": checkout_session.url, "session_id": checkout_session.id}
+
         except stripe.error.StripeError as e:
-            print(f"❌ Błąd Stripe: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            print(f"Blad Stripe: {e}")
+            return {"success": False, "error": str(e)}
         except Exception as e:
-            print(f"❌ Błąd: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    
+            print(f"Blad: {e}")
+            return {"success": False, "error": str(e)}
+
+
     @staticmethod
-    def handle_webhook(
-        payload: bytes,
-        sig_header: str,
-        db: Session
-    ) -> Dict:
-        """
-        Obsługuje webhooks ze Stripe
-        
-        Args:
-            payload: Raw request body
-            sig_header: Stripe signature header
-            db: Database session
-            
-        Returns:
-            Dict z rezultatem
-        """
+    def handle_webhook(payload: bytes, sig_header: str, db: Session) -> Dict:
         try:
-            # Weryfikuj webhook signature
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-            )
-            
-            print(f"🔔 Webhook otrzymany: {event['type']}")
-            
-            # Obsłuż różne typy eventów
+            event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
+            print(f"Webhook otrzymany: {event['type']}")
+
             if event['type'] == 'checkout.session.completed':
                 return StripeService._handle_checkout_completed(event, db)
-                
             elif event['type'] == 'customer.subscription.updated':
                 return StripeService._handle_subscription_updated(event, db)
-                
             elif event['type'] == 'customer.subscription.deleted':
                 return StripeService._handle_subscription_deleted(event, db)
-            
+            elif event['type'] == 'invoice.payment_failed':
+                return StripeService._handle_payment_failed(event, db)
+
             return {"success": True, "message": f"Event {event['type']} received"}
-            
+
         except ValueError as e:
-            print(f"❌ Invalid payload: {e}")
+            print(f"Invalid payload: {e}")
             return {"success": False, "error": "Invalid payload"}
-            
         except stripe.error.SignatureVerificationError as e:
-            print(f"❌ Invalid signature: {e}")
+            print(f"Invalid signature: {e}")
             return {"success": False, "error": "Invalid signature"}
-    
-    
+
+
     @staticmethod
     def _handle_checkout_completed(event: Dict, db: Session) -> Dict:
-        """Obsługuje zakończenie checkout - nowa subskrypcja"""
-        
+        """Obsluguje zakonczenie checkout - nowa subskrypcja"""
         session = event['data']['object']
-        user_id = session['metadata']['user_id']  # Firebase UID string
-        
-        print(f"✅ Checkout completed dla user {user_id}")
-        
-        # Pobierz szczegóły subskrypcji
+        user_id = session['metadata']['user_id']
+
         subscription_id = session['subscription']
         subscription = stripe.Subscription.retrieve(subscription_id)
-        
-        # Zaktualizuj usera
+
         user = db.query(User).filter(User.firebase_uid == user_id).first()
         if user:
             user.is_premium = True
             user.premium_until = datetime.fromtimestamp(subscription.current_period_end)
             db.commit()
-            _update_firebase_plan(user_id, True)
-            print(f"✅ User {user_id} ustawiony jako PREMIUM do {user.premium_until}")
-        
-        # Zapisz subskrypcję
+            _update_firebase_plan(user_id, True)  # <- JUZ BYLO OK
+            print(f"User {user_id} ustawiony jako PREMIUM do {user.premium_until}")
+
         db_subscription = Subscription(
             user_id=user_id,
             stripe_subscription_id=subscription.id,
@@ -221,120 +140,133 @@ class StripeService:
         )
         db.add(db_subscription)
         db.commit()
-        
-        print(f"✅ Subskrypcja zapisana w bazie")
-        
+
         return {"success": True, "message": "Subscription created"}
-    
-    
+
+
     @staticmethod
     def _handle_subscription_updated(event: Dict, db: Session) -> Dict:
-        """Obsługuje aktualizację subskrypcji"""
-        
+        """Obsluguje aktualizacje subskrypcji"""
         subscription = event['data']['object']
         stripe_sub_id = subscription['id']
-        
-        print(f"🔄 Aktualizacja subskrypcji {stripe_sub_id}")
-        
-        # Znajdź subskrypcję w bazie
+
         db_sub = db.query(Subscription).filter(
             Subscription.stripe_subscription_id == stripe_sub_id
         ).first()
-        
+
         if db_sub:
-            # Zaktualizuj status
             db_sub.status = subscription['status']
             db_sub.current_period_end = datetime.fromtimestamp(subscription['current_period_end'])
             db_sub.cancel_at_period_end = subscription.get('cancel_at_period_end', False)
-            
-            # Zaktualizuj usera
+
             user = db.query(User).filter(User.id == db_sub.user_id).first()
             if user:
                 if subscription['status'] in ('active', 'trialing'):
                     user.is_premium = True
                     user.premium_until = db_sub.current_period_end
+                    # ===== NAPRAWA #1 =====
+                    # Wczesniej brakowalo tego wywolania - SQL mowil "premium",
+                    # ale Firebase (ktore czyta apka) nigdy sie o tym nie dowiadywalo.
+                    _update_firebase_plan(user.firebase_uid, True)
                 else:
+                    # status = past_due, unpaid, canceled, incomplete_expired itp.
+                    # (dokladnie to sie dzieje gdy platnosc przy odnowieniu sie nie powiedzie)
                     user.is_premium = False
                     user.premium_until = None
-                    _update_firebase_plan(user.firebase_uid, False)
-            
+                    _update_firebase_plan(user.firebase_uid, False)  # to juz bylo OK
+
             db.commit()
-            print(f"✅ Subskrypcja zaktualizowana")
-        
+            print(f"Subskrypcja zaktualizowana -> status: {subscription['status']}")
+
         return {"success": True, "message": "Subscription updated"}
-    
-    
+
+
     @staticmethod
     def _handle_subscription_deleted(event: Dict, db: Session) -> Dict:
-        """Obsługuje anulowanie subskrypcji"""
-        
+        """Obsluguje anulowanie/wygasniecie subskrypcji"""
         subscription = event['data']['object']
         stripe_sub_id = subscription['id']
-        
-        print(f"❌ Anulowanie subskrypcji {stripe_sub_id}")
-        
-        # Znajdź subskrypcję
+
         db_sub = db.query(Subscription).filter(
             Subscription.stripe_subscription_id == stripe_sub_id
         ).first()
-        
+
         if db_sub:
             db_sub.status = 'canceled'
             db_sub.canceled_at = datetime.utcnow()
-            
-            # Zaktualizuj usera
+
             user = db.query(User).filter(User.id == db_sub.user_id).first()
             if user:
                 user.is_premium = False
                 user.premium_until = None
-            
+                # ===== NAPRAWA #2 (GLOWNA PRZYCZYNA ZGLOSZONEGO PROBLEMU) =====
+                # Tej linii wczesniej BRAKOWALO CALKOWICIE w tej funkcji.
+                # SQL poprawnie ustawial is_premium=False, ale Firebase
+                # (skad apka rzeczywiscie sprawdza dostep) NIGDY nie zostawal
+                # zaktualizowany - dlatego user po anulowaniu subskrypcji
+                # nadal mial dostep premium w aplikacji.
+                _update_firebase_plan(user.firebase_uid, False)
+
             db.commit()
-            print(f"✅ User {db_sub.user_id} wrócił do FREE")
-        
+            print(f"User {db_sub.user_id} wrocil do FREE (subskrypcja usunieta)")
+
         return {"success": True, "message": "Subscription canceled"}
-    
-    
+
+
     @staticmethod
-    def cancel_subscription(
-        user_id: int,
-        db: Session
-    ) -> Dict:
-        """Anuluje subskrypcję użytkownika"""
-        
+    def _handle_payment_failed(event: Dict, db: Session) -> Dict:
+        """
+        NOWA FUNKCJA - obsluguje nieudana platnosc (np. odrzucona karta przy odnowieniu).
+        Stripe NIE zawsze od razu usuwa subskrypcje po nieudanej platnosci - czasem
+        probuje ponowic obciazenie przez kilka dni (status 'past_due'). Zamiast czekac
+        az Stripe finalnie skasuje subskrypcje, od razu odbieramy dostep premium
+        w momencie pierwszej nieudanej platnosci - bezpieczniej dla Ciebie finansowo.
+        """
+        invoice = event['data']['object']
+        stripe_sub_id = invoice.get('subscription')
+
+        if not stripe_sub_id:
+            return {"success": True, "message": "Brak subscription_id w fakturze"}
+
+        db_sub = db.query(Subscription).filter(
+            Subscription.stripe_subscription_id == stripe_sub_id
+        ).first()
+
+        if db_sub:
+            user = db.query(User).filter(User.id == db_sub.user_id).first()
+            if user:
+                user.is_premium = False
+                user.premium_until = None
+                _update_firebase_plan(user.firebase_uid, False)
+                db.commit()
+                print(f"User {db_sub.user_id} odebrany dostep premium (nieudana platnosc)")
+
+        return {"success": True, "message": "Payment failed handled"}
+
+
+    @staticmethod
+    def cancel_subscription(user_id: int, db: Session) -> Dict:
+        """Anuluje subskrypcje uzytkownika (na koniec okresu rozliczeniowego)"""
         try:
-            # Znajdź aktywną subskrypcję
             subscription = db.query(Subscription).filter(
                 Subscription.user_id == user_id,
                 Subscription.status.in_(['active', 'trialing'])
             ).first()
-            
+
             if not subscription:
-                return {
-                    "success": False,
-                    "error": "Nie znaleziono aktywnej subskrypcji"
-                }
-            
-            # Anuluj w Stripe (na końcu okresu)
-            stripe.Subscription.modify(
-                subscription.stripe_subscription_id,
-                cancel_at_period_end=True
-            )
-            
-            # Zaktualizuj w bazie
+                return {"success": False, "error": "Nie znaleziono aktywnej subskrypcji"}
+
+            stripe.Subscription.modify(subscription.stripe_subscription_id, cancel_at_period_end=True)
+
             subscription.cancel_at_period_end = True
             db.commit()
-            
-            print(f"✅ Subskrypcja zostanie anulowana po końcu okresu")
-            
+
             return {
                 "success": True,
-                "message": "Subskrypcja zostanie anulowana po zakończeniu okresu rozliczeniowego",
+                "message": "Subskrypcja zostanie anulowana po zakonczeniu okresu rozliczeniowego",
                 "ends_at": subscription.current_period_end.isoformat()
             }
-            
+
         except Exception as e:
-            print(f"❌ Błąd anulowania: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            print(f"Blad anulowania: {e}")
+            return {"success": False, "error": str(e)}
