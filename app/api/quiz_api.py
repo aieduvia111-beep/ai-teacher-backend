@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
-from ..openai_exam import generate_quiz_from_image, generate_quiz_from_topic, fix_latex_in_quiz
+from ..openai_exam import generate_quiz_from_image, generate_quiz_from_topic
 import os, base64, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -67,7 +67,6 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
         f"INSTRUKCJA TRUDNOSCI: {diff_instruction}\n"
         f"{instrukcje_blok}\n"
         "ZASADY:\n"
-        "- Wzory matematyczne ZAWSZE w dolarach: liczby w LaTeX np. x^2 jako $x^2$, ulamki jako $\\frac{a}{b}$, pierwiastki jako $\\sqrt{x}$ - NIGDY bez dolarow\n"
         "- Pytania musza byc konkretne i merytoryczne - NIE ogolne\n"
         "- Odpowiedzi mylace - 3 bledne musza byc podobne do poprawnej\n"
         "- Urozmaicaj poprawna odpowiedz: 0,1,2,3 roznorodnie\n"
@@ -90,7 +89,6 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     s = raw.find('{'); e = raw.rfind('}')
     quiz_data = json.loads(raw[s:e+1])
     print(f"[Quiz-Topic+Instr] '{topic}' -> {len(quiz_data.get('questions',[]))} pytan")
-    quiz_data = fix_latex_in_quiz(quiz_data)
     return {"success": True, "quiz": quiz_data}
 
 def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
