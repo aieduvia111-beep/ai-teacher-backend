@@ -1083,7 +1083,7 @@ async function startQuiz(){
     }).catch(e=>{showPage('pageSetup');showErr('Błąd odczytu PDF: '+e.message);});
     return;
   }
-  if(!topic && !photos.length){err.textContent='Wpisz temat, dodaj zdjęcie lub wgraj PDF!';err.style.display='block';return;}
+  if(!topic && !photos.length){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
   window._lastTopic=topic;
   window._lastLevel=VALS.level||'liceum';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
