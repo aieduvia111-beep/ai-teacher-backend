@@ -382,6 +382,7 @@ async function startCheckout() {
     btn.disabled = false;
     btnText.textContent = 'Kup Pro';
     loader.style.display = 'none';
+    alert('BLAD DIAGNOSTYCZNY: ' + e.message + ' | currentUser: ' + JSON.stringify(currentUser));
     showToast('Blad polaczenia, sprobuj ponownie', 'error');
   }
 }
