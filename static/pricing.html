@@ -357,7 +357,33 @@ async function startCheckout() {
   btn.disabled = true;
   btnText.textContent = 'Przekierowuję...';
   loader.style.display = 'block';
-  window.location.href = PAYMENT_LINK;
+
+  try {
+    const checkoutRes = await fetch('https://eduvia-backend-2.onrender.com/api/v1/payments/create-checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        user_id: currentUser ? currentUser.uid : '',
+        email: currentUser ? currentUser.email : '',
+        affiliate_code: affCode || ''
+      })
+    });
+    const checkoutData = await checkoutRes.json();
+
+    if (checkoutData.success && checkoutData.checkout_url) {
+      window.location.href = checkoutData.checkout_url;
+    } else {
+      btn.disabled = false;
+      btnText.textContent = 'Kup Pro';
+      loader.style.display = 'none';
+      showToast('Blad platnosci: ' + (checkoutData.error || 'sprobuj ponownie'), 'error');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btnText.textContent = 'Kup Pro';
+    loader.style.display = 'none';
+    showToast('Blad polaczenia, sprobuj ponownie', 'error');
+  }
 }
 
 // Obsługa powrotu po płatności
@@ -367,13 +393,7 @@ async function startCheckout() {
     localStorage.setItem('eduvia_plan','pro');
     if(typeof window._fbSetPlan === 'function') window._fbSetPlan('pro');
     // Rejestruj sprzedaz afiliacyjna
-    const affCode = localStorage.getItem('eduvia_aff_code');
-    if(affCode){
-      fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/sale',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({code:affCode,amount:29.0,buyer_uid:localStorage.getItem('eduvia_uid')||''})
-      }).then(()=>localStorage.removeItem('eduvia_aff_code')).catch(()=>{});
-    }
+    localStorage.removeItem('eduvia_aff_code');
     showToast('🎉 Dziękujemy! Plan Pro aktywowany!', 'success');
     setTimeout(()=>{ window.location.href = 'dashboard_FINAL.html'; }, 2500);
   } else if(p.get('payment') === 'cancel'){
