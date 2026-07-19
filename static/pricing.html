@@ -363,8 +363,8 @@ async function startCheckout() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        user_id: currentUser ? currentUser.uid : '',
-        email: currentUser ? currentUser.email : '',
+        user_id: window._currentUser() ? window._currentUser().uid : '',
+        email: window._currentUser() ? window._currentUser().email : '',
         affiliate_code: affCode || ''
       })
     });
@@ -382,7 +382,6 @@ async function startCheckout() {
     btn.disabled = false;
     btnText.textContent = 'Kup Pro';
     loader.style.display = 'none';
-    alert('BLAD DIAGNOSTYCZNY: ' + e.message + ' | currentUser: ' + JSON.stringify(currentUser));
     showToast('Blad polaczenia, sprobuj ponownie', 'error');
   }
 }
