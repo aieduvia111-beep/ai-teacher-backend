@@ -22,6 +22,7 @@ class Settings:
     DATABASE_URL: str = os.getenv("SUPABASE_URL", os.getenv("DATABASE_URL", "postgresql://postgres:Eduvia2026!@db.rhbstanhiyicrjtrerld.supabase.co:5432/postgres"))
     
     # App
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://eduvia-backend-2.onrender.com/static")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "True") == "True"
     
