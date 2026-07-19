@@ -304,7 +304,7 @@ button:active{transform:scale(.95)!important;}
     <div class="sec">
       <div class="sec-lbl">Sesja</div>
 
-    <div class="config-card" style="margin-bottom:16px;">
+    <div class="config-card" id="partnerCard" style="margin-bottom:16px;display:none;">
       <div class="sec-hdr">
         <div class="sec-hdr-ic" style="background:rgba(34,211,160,.1);border-color:rgba(34,211,160,.2);"><svg viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <div class="sec-hdr-txt"><div class="sec-title">Program Partnerski</div><div class="sec-sub">Zarabiaj polecajac Eduvia</div></div>
@@ -477,7 +477,7 @@ async function loadPartnerStatus(){
     const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/by-user/'+uid);
     const d=await res.json();
     if(d.success&&d.code){
-      document.getElementById('partnerPanel').style.display='block';
+      document.getElementById('partnerCard').style.display='block';document.getElementById('partnerPanel').style.display='block';
       document.getElementById('partnerCode').textContent=d.code;
       document.getElementById('partnerSales').textContent=d.stats.sales||0;
       document.getElementById('partnerEarnings').textContent=(d.stats.earnings||0).toFixed(2)+' zl';
