@@ -1,5 +1,6 @@
 """🔐 AUTH - Proste hashowanie haseł + JWT"""
 from datetime import datetime, timedelta
+import os
 from typing import Optional
 import bcrypt
 from jose import JWTError, jwt
@@ -11,7 +12,7 @@ from .database import get_db
 from .models import User
 
 security = HTTPBearer()
-SECRET_KEY = "your-secret-key-change-in-production-min-32-chars"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production-min-32-chars")
 ALGORITHM = "HS256"
 
 def verify_password(plain: str, hashed: str) -> bool:
