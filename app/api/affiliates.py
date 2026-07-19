@@ -113,9 +113,14 @@ class AffiliateGenerate(BaseModel):
     user_id: str
     name: str
     email: str
+    admin_key: str = ""
 
 @router.post("/generate")
 async def generate_affiliate(req: AffiliateGenerate):
+    import os
+    ADMIN_KEY = os.environ.get("AFFILIATE_ADMIN_KEY", "")
+    if not ADMIN_KEY or req.admin_key != ADMIN_KEY:
+        return {"success": False, "error": "Brak uprawnien - ten endpoint wymaga klucza administratora"}
     try:
         db = get_db()
         import random, string
