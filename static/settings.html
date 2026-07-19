@@ -477,7 +477,7 @@ async function loadPartnerStatus(){
     const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/by-user/'+uid);
     const d=await res.json();
     if(d.success&&d.code){
-      document.getElementById('partnerCard').style.display='block';document.getElementById('partnerPanel').style.display='block';
+      // document.getElementById('partnerCard').style.display='block'; // sekcja calkowicie wylaczona
       document.getElementById('partnerCode').textContent=d.code;
       document.getElementById('partnerSales').textContent=d.stats.sales||0;
       document.getElementById('partnerEarnings').textContent=(d.stats.earnings||0).toFixed(2)+' zl';
