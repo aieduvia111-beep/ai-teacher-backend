@@ -420,6 +420,8 @@ def fix_latex_in_quiz(quiz_data):
         t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
         # Usun \text{...} - zamien na sam tekst bez komendy
         t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
+        if "\\\\" in t and "$" not in t:
+            t = "$" + t + "$"
         return t
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
