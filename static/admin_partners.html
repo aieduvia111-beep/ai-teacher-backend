@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Program Partnerski - Eduvia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07070d;--s1:#0f0f18;--s2:#161622;
+    --border:rgba(255,255,255,0.06);
+    --accent:#7c6aff;--accent2:#a78bfa;
+    --green:#22d3a0;--red:#f87171;
+    --text:#eeeef5;--muted:#8888a0;
+    --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--b);margin:0;padding:24px;min-height:100vh;}
+  .wrap{max-width:480px;margin:0 auto;}
+  h1{font-family:var(--h);font-size:1.3em;font-weight:800;margin-bottom:6px;}
+  .sub{color:var(--muted);font-size:.85em;margin-bottom:28px;}
+  .card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:16px;}
+  label{display:block;font-size:.78em;font-weight:600;color:var(--muted);margin-bottom:6px;margin-top:16px;}
+  label:first-child{margin-top:0;}
+  input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-family:var(--b);font-size:.9em;}
+  input:focus{outline:none;border-color:var(--accent);}
+  button{width:100%;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--accent),#5040c8);color:#fff;font-family:var(--h);font-size:.88em;font-weight:700;cursor:pointer;margin-top:20px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .status{margin-top:14px;font-size:.85em;padding:12px;border-radius:10px;display:none;}
+  .status.ok{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.25);color:var(--green);display:block;}
+  .status.err{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red);display:block;}
+  .lock-screen{max-width:340px;margin:80px auto;text-align:center;}
+  .lock-screen input{margin-top:16px;}
+</style>
+</head>
+<body>
+
+<div id="lockScreen" class="lock-screen">
+  <h1>🔒 Panel Admina</h1>
+  <p class="sub">Podaj klucz dostępu</p>
+  <input type="password" id="adminKeyInput" placeholder="Klucz administratora">
+  <button onclick="unlock()">Wejdź</button>
+  <div id="lockStatus" class="status err"></div>
+</div>
+
+<div id="mainPanel" class="wrap" style="display:none;">
+  <h1>Program Partnerski — Admin</h1>
+  <p class="sub">Dodaj nowego partnera i wygeneruj mu kod polecający (30% prowizji)</p>
+
+  <div class="card">
+    <label>Imię partnera</label>
+    <input type="text" id="name" placeholder="np. Nazwa kanału TikTok">
+
+    <label>Email partnera</label>
+    <input type="email" id="email" placeholder="partner@example.com">
+
+    <label>ID użytkownika (jeśli ma konto w Eduvii, opcjonalnie)</label>
+    <input type="text" id="userId" placeholder="uid z Firebase, albo zostaw puste">
+
+    <button id="genBtn" onclick="generateCode()">Wygeneruj kod</button>
+    <div id="genStatus" class="status"></div>
+  </div>
+
+  <div id="resultCard" class="card" style="display:none;">
+    <label>Kod partnera (przekaż mu ten kod)</label>
+    <div style="font-family:var(--h);font-size:1.6em;font-weight:800;color:var(--green);letter-spacing:.05em;" id="resultCode"></div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://eduvia-backend-2.onrender.com/api/v1/affiliates/generate";
+let adminKey = "";
+
+function unlock(){
+  const key = document.getElementById("adminKeyInput").value.trim();
+  if(!key){
+    const s = document.getElementById("lockStatus");
+    s.textContent = "Wpisz klucz.";
+    s.style.display = "block";
+    return;
+  }
+  adminKey = key;
+  document.getElementById("lockScreen").style.display = "none";
+  document.getElementById("mainPanel").style.display = "block";
+}
+
+async function generateCode(){
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const userId = document.getElementById("userId").value.trim() || ("manual_" + Date.now());
+  const btn = document.getElementById("genBtn");
+  const status = document.getElementById("genStatus");
+
+  if(!name || !email){
+    status.className = "status err";
+    status.textContent = "Podaj imię i email.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Generuję...";
+  status.style.display = "none";
+
+  try{
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ user_id: userId, name: name, email: email, admin_key: adminKey })
+    });
+    const data = await res.json();
+
+    if(data.success){
+      status.className = "status ok";
+      status.textContent = "Kod wygenerowany pomyślnie!";
+      document.getElementById("resultCode").textContent = data.code;
+      document.getElementById("resultCard").style.display = "block";
+      document.getElementById("name").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("userId").value = "";
+    } else {
+      status.className = "status err";
+      status.textContent = "Błąd: " + (data.error || "nieznany błąd");
+    }
+  }catch(e){
+    status.className = "status err";
+    status.textContent = "Błąd połączenia: " + e.message;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Wygeneruj kod";
+  }
+}
+</script>
+</body>
+</html>
