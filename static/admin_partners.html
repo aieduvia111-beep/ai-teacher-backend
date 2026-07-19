@@ -65,6 +65,25 @@
     <label>Kod partnera (przekaż mu ten kod)</label>
     <div style="font-family:var(--h);font-size:1.6em;font-weight:800;color:var(--green);letter-spacing:.05em;" id="resultCode"></div>
   </div>
+
+  <div class="card">
+    <label>Sprawdź zarobki partnera (wpisz jego kod)</label>
+    <input type="text" id="checkCode" placeholder="np. EDU4X7K2" style="text-transform:uppercase;">
+    <button onclick="checkEarnings()">Sprawdź zarobki</button>
+    <div id="earningsStatus" class="status"></div>
+    <div id="earningsResult" style="display:none;margin-top:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--s2);border-radius:10px;padding:14px;text-align:center;">
+          <div id="eSales" style="font-family:var(--h);font-size:1.5em;font-weight:800;"></div>
+          <div style="font-size:.7em;color:var(--muted);">Sprzedaży</div>
+        </div>
+        <div style="background:var(--s2);border-radius:10px;padding:14px;text-align:center;">
+          <div id="eEarnings" style="font-family:var(--h);font-size:1.5em;font-weight:800;color:var(--green);"></div>
+          <div style="font-size:.7em;color:var(--muted);">Do wypłaty</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -127,6 +146,40 @@ async function generateCode(){
   }finally{
     btn.disabled = false;
     btn.textContent = "Wygeneruj kod";
+  }
+}
+
+async function checkEarnings(){
+  const code = document.getElementById("checkCode").value.trim().toUpperCase();
+  const status = document.getElementById("earningsStatus");
+  const result = document.getElementById("earningsResult");
+
+  if(!code){
+    status.className = "status err";
+    status.textContent = "Wpisz kod.";
+    status.style.display = "block";
+    return;
+  }
+
+  try{
+    const res = await fetch("https://eduvia-backend-2.onrender.com/api/v1/affiliates/stats/" + code);
+    const data = await res.json();
+
+    if(data.success){
+      status.style.display = "none";
+      result.style.display = "block";
+      document.getElementById("eSales").textContent = data.stats.sales || 0;
+      document.getElementById("eEarnings").textContent = (data.stats.earnings || 0).toFixed(2) + " zł";
+    } else {
+      result.style.display = "none";
+      status.className = "status err";
+      status.textContent = "Kod nie istnieje.";
+      status.style.display = "block";
+    }
+  }catch(e){
+    status.className = "status err";
+    status.textContent = "Błąd połączenia: " + e.message;
+    status.style.display = "block";
   }
 }
 </script>
