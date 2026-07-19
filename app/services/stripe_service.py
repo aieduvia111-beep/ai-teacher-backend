@@ -46,7 +46,7 @@ class StripeService:
     """Serwis do obslugi platnosci Stripe"""
 
     @staticmethod
-    def create_checkout_session(user_id: str, email: str, db: Session) -> Dict:
+    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "") -> Dict:
         try:
             print(f"Tworze checkout session dla user {user_id} ({email})")
 
@@ -66,6 +66,22 @@ class StripeService:
                 user.stripe_customer_id = customer_id
                 db.commit()
 
+            checkout_kwargs = {}
+            checkout_metadata = {"user_id": user_id}
+            if affiliate_code:
+                code_clean = affiliate_code.upper().strip()
+                if _fdb:
+                    try:
+                        aff_doc = _fdb.collection('affiliates').document(code_clean).get()
+                        if aff_doc.exists and aff_doc.to_dict().get('active'):
+                            checkout_kwargs["discounts"] = [{"coupon": "AFFILIATE10"}]
+                            checkout_metadata["affiliate_code"] = code_clean
+                            print(f"Kod polecajacy {code_clean} zwalidowany, rabat zastosowany")
+                        else:
+                            print(f"Kod polecajacy {code_clean} nieprawidlowy lub nieaktywny")
+                    except Exception as _e:
+                        print(f"Blad walidacji kodu polecajacego: {_e}")
+
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
                 payment_method_types=["card"],
@@ -74,7 +90,8 @@ class StripeService:
                 subscription_data={"trial_period_days": 7},
                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
-                metadata={"user_id": user_id}
+                metadata=checkout_metadata,
+                **checkout_kwargs
             )
 
             return {"success": True, "checkout_url": checkout_session.url, "session_id": checkout_session.id}
@@ -140,6 +157,30 @@ class StripeService:
         )
         db.add(db_subscription)
         db.commit()
+
+        affiliate_code = session.get('metadata', {}).get('affiliate_code')
+        if affiliate_code and _fdb:
+            try:
+                amount = 26.10
+                commission = round(amount * 0.30, 2)
+                aff_ref = _fdb.collection('affiliates').document(affiliate_code)
+                aff_doc = aff_ref.get()
+                if aff_doc.exists:
+                    data = aff_doc.to_dict()
+                    aff_ref.update({
+                        "sales": data.get("sales", 0) + 1,
+                        "earnings": round(data.get("earnings", 0) + commission, 2)
+                    })
+                    _fdb.collection('affiliate_sales').add({
+                        "code": affiliate_code,
+                        "amount": amount,
+                        "commission": commission,
+                        "buyer_uid": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                    print(f"Prowizja {commission} zl naliczona dla kodu {affiliate_code}")
+            except Exception as _e:
+                print(f"Blad naliczania prowizji: {_e}")
 
         return {"success": True, "message": "Subscription created"}
 

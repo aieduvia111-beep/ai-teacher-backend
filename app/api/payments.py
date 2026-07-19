@@ -22,6 +22,7 @@ class CreateCheckoutRequest(BaseModel):
     """Request do stworzenia checkout session"""
     user_id: str
     email: str
+    affiliate_code: str = ""
 
 class CheckoutResponse(BaseModel):
     """Response z checkout URL"""
@@ -67,7 +68,8 @@ def create_checkout(
         result = StripeService.create_checkout_session(
             user_id=request.user_id,
             email=request.email,
-            db=db
+            db=db,
+            affiliate_code=request.affiliate_code
         )
         
         return result
