@@ -5,7 +5,15 @@ import os
 # Firebase Admin init
 try:
     if not firebase_admin._apps:
-        cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json'))
+        import json, base64
+        sa_b64 = os.environ.get('FIREBASE_KEY_B64')
+        sa_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+        if sa_b64:
+            cred = credentials.Certificate(json.loads(base64.b64decode(sa_b64).decode('utf-8')))
+        elif sa_json:
+            cred = credentials.Certificate(json.loads(sa_json))
+        else:
+            cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json'))
         firebase_admin.initialize_app(cred)
     _fdb = firestore.client()
 except Exception as _fe:
