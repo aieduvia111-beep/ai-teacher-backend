@@ -973,7 +973,10 @@ window.generatePlan=async function generatePlan(){
   try{
     var base='https://eduvia-backend-2.onrender.com';
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
-    var res=await fetch(base+'/api/v1/lessons/create-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:1,additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
+    var lessonController = new AbortController();
+    var lessonTimeoutId = setTimeout(function(){lessonController.abort();}, 120000);
+    var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:1,additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
+    clearTimeout(lessonTimeoutId);
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     var data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad generowania planu');
@@ -991,7 +994,8 @@ window.generatePlan=async function generatePlan(){
     document.getElementById('genBtn').disabled=false;
 
     var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
-    if(e.message){
+    if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
       else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
