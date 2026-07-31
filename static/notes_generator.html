@@ -990,8 +990,11 @@ async function generate(){
   if(!body.temat)body.temat=topicName;
   document.getElementById('formView').style.display='none';document.getElementById('loadingView').style.display='block';
   startProgress(photos.length>0);
+  const notesController = new AbortController();
+  const notesTimeoutId = setTimeout(()=>notesController.abort(), 120000);
   try{
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/notes-pdf/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/notes-pdf/generate',{signal:notesController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    clearTimeout(notesTimeoutId);
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('application/pdf')){
@@ -1005,13 +1008,15 @@ async function generate(){
       setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();},600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
+    clearTimeout(notesTimeoutId);
     clearInterval(stepTimer);
     ['st0','st1','st2','st3','st4'].forEach(s=>document.getElementById(s).style.opacity='1');
     document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';
     // Przyjazny komunikat bledu
     var msg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę.';
-    if(e.message && e.message.includes('Failed to fetch')) msg = 'Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
-    if(e.message && e.message.includes('timeout')) msg = 'Generowanie trwa zbyt długo. Spróbuj z krótszym tematem.';
+    if(e.name==='AbortError') msg = 'Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';
+    else if(e.message && e.message.includes('Failed to fetch')) msg = 'Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
+    else if(e.message && e.message.includes('timeout')) msg = 'Generowanie trwa zbyt długo. Spróbuj z krótszym tematem.';
     if(e.message && e.message.includes('limit')) msg = 'Przekroczyłeś dzienny limit notatek. Wróć jutro!';
     showErr(msg);
   }
