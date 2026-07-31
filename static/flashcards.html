@@ -71,6 +71,7 @@ body::after{
   display:flex;flex-direction:column;
   justify-content:center;align-items:center;
   padding:36px 30px;gap:14px;text-align:center;
+  overflow-y:auto;
 }
 
 /* FRONT — fioletowy jak quiz-cta */
@@ -345,8 +346,8 @@ function checkFlashcardsLimit(){
   const today = new Date().toISOString().split('T')[0];
   const key = 'eduvia_limit_flashcards_'+today;
   const used = parseInt(localStorage.getItem(key)||'0');
-  if(used >= 30){
-    showLimitPopup('flashcards', 30);
+  if(used >= 1){
+    showLimitPopup('flashcards', 1);
     return false;
   }
   localStorage.setItem(key, used+1);
