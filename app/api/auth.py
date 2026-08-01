@@ -18,6 +18,20 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class FCMTokenRequest(BaseModel):
+    email: EmailStr
+    fcm_token: str
+
+@router.post("/save-fcm-token")
+def save_fcm_token(req: FCMTokenRequest, db: Session = Depends(get_db)):
+    """Zapisuje token urzadzenia do wysylania powiadomien push"""
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Uzytkownik nie znaleziony")
+    user.fcm_token = req.fcm_token
+    db.commit()
+    return {"success": True}
+
 @router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == req.email).first():
