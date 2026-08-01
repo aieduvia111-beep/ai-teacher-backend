@@ -1248,6 +1248,12 @@ window.showError = function(msg) {
 
 window.animateCounter = animateCounter;
 </script>
+<script>
+window.addEventListener("popstate", function() {
+  window.location.href = "dashboard_FINAL.html";
+});
+history.pushState(null, "", window.location.href);
+</script>
 
 </body>
 </html>
