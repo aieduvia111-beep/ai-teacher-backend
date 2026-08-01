@@ -1070,10 +1070,10 @@ document.addEventListener('mousedown', () => { cur.style.width = '14px'; cur.sty
 document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style.height = '10px'; });
 
 // STATE
-let history = [], attachments = [], isThinking = false;
+let chatHistory = [], attachments = [], isThinking = false;
 try{
   const saved = localStorage.getItem('eduvia_chat_history');
-  if(saved){ history = JSON.parse(saved); }
+  if(saved){ chatHistory = JSON.parse(saved); }
 }catch(e){}
 
 
@@ -1540,7 +1540,7 @@ async function sendMessage() {
   const textAttachments = attachSnap.filter(a => !a.type.startsWith('image/')).map(a => `[Plik: ${a.file.name}]`).join('\n');
   const imgNote = imageUrls.length > 0 ? `[Uzytkownik wyslal zdjecie z zadaniami. ROZWIAZ KAZDE widoczne zadanie krok po kroku. Nie pomijaj zadnych. Kazde zadanie osobno z pelnym rozwiazaniem.]` : '';
   const fullText = [text, textAttachments, imgNote].filter(Boolean).join('\n');
-  history.push({ role: 'user', content: fullText });
+  chatHistory.push({ role: 'user', content: fullText });
 
   input.value = ''; input.style.height = 'auto';
   attachments = []; renderAttachments();
@@ -1556,7 +1556,7 @@ async function sendMessage() {
   toggleExplainLevels();
 
   try {
-    const response = await callAI(fullText, history, imageUrls);
+    const response = await callAI(fullText, chatHistory, imageUrls);
     const aiBubble = document.getElementById(thId);
     if (!aiBubble) throw new Error('Błąd renderowania');
     aiBubble.removeAttribute('id');
@@ -1730,7 +1730,7 @@ async function sendMessage() {
     }
 
     // Karta fiszek jesli user pytal o fiszki
-    const lastUserMsg = history.filter(m=>m.role==='user').slice(-1)[0];
+    const lastUserMsg = chatHistory.filter(m=>m.role==='user').slice(-1)[0];
     const lastText = lastUserMsg ? (lastUserMsg.content||lastUserMsg.text||'') : '';
     if(detectFlashcards(lastText)){
       const fcTopic = extractFlashcardTopic(lastText) || response.quiz_topic || response.title || '';
@@ -1754,8 +1754,8 @@ async function sendMessage() {
       }
     }
 
-    history.push({ role: 'assistant', content: response.text || '' });
-  try{ localStorage.setItem('eduvia_chat_history', JSON.stringify(history.slice(-20))); }catch(e){}
+    chatHistory.push({ role: 'assistant', content: response.text || '' });
+  try{ localStorage.setItem('eduvia_chat_history', JSON.stringify(chatHistory.slice(-20))); }catch(e){}
     // Finalny pass — po dodaniu WSZYSTKICH elementów
     setTimeout(() => renderLatex(aiGroup), 200);
     scrollDown();
@@ -2106,7 +2106,7 @@ function buildChart(data) {
 }
 
 function clearChat() {
-  history = []; attachments = []; renderAttachments();
+  chatHistory = []; attachments = []; renderAttachments();
   const msgs = document.getElementById('msgsArea'); msgs.innerHTML = '';
   const empty = document.createElement('div'); empty.className = 'empty-state'; empty.id = 'emptyState';
   empty.innerHTML = `
@@ -2301,7 +2301,7 @@ async function saveCurrentChat() {
         deviceId: getDeviceId(),
         label,
         html: msgs.innerHTML,
-        hist: JSON.stringify(history),
+        hist: JSON.stringify(chatHistory),
         ts: serverTimestamp()
       });
       currentChatId = docRef.id;
@@ -2309,7 +2309,7 @@ async function saveCurrentChat() {
       await updateDoc(doc(db, 'chats', currentChatId), {
         label,
         html: msgs.innerHTML,
-        hist: JSON.stringify(history),
+        hist: JSON.stringify(chatHistory),
         ts: serverTimestamp()
       });
     }
@@ -2371,8 +2371,8 @@ async function renderHistList() {
 function loadChat(ch) {
   saveCurrentChat();
   currentChatId = ch.id;
-  history = [];
-  try { history = JSON.parse(ch.hist || '[]'); } catch(e) {}
+  chatHistory = [];
+  try { chatHistory = JSON.parse(ch.hist || '[]'); } catch(e) {}
   const msgs = document.getElementById('msgsArea');
   const es = document.getElementById('emptyState');
   if (es) es.style.display = 'none';
@@ -2393,7 +2393,7 @@ async function deleteChat(id, e) {
 function newChat() {
   saveCurrentChat();
   currentChatId = null;
-  history = [];
+  chatHistory = [];
   const msgs = document.getElementById('msgsArea');
   msgs.innerHTML = '';
   const es = document.getElementById('emptyState');
