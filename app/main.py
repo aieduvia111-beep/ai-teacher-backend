@@ -171,11 +171,21 @@ except Exception as e:
 
 @app.get("/health")
 async def health():
+    db_status = "disconnected"
+    try:
+        from sqlalchemy import text
+        from .database import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)[:100]}"
+
     return {
         "status": "healthy",
         "openai_configured": bool(settings.OPENAI_API_KEY),
         "openai_key_preview": settings.OPENAI_API_KEY[:20] + "..." if settings.OPENAI_API_KEY else "MISSING",
-        "database": "connected"
+        "database": db_status
     }
 
 
