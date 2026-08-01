@@ -1449,15 +1449,14 @@ function _oldDetectFlashcards(text){
 // extractFlashcardTopic przeniesiona wyzej
 
 async function sendMessage() {
-  const isFlashcardRequest = detectFlashcards(document.getElementById("msgInput").value.trim()) && attachments.filter(a=>a.type.startsWith("image/")).length===0;
-  if(!isFlashcardRequest){
+  const input0 = document.getElementById("msgInput");
+  const text0 = input0.value.trim();
+  const isFlashcardRequest = detectFlashcards(text0) && attachments.filter(a=>a.type.startsWith("image/")).length===0;
+  const isFlashcardFlow = isFlashcardRequest || (_fcWaitingTopic && !detectFlashcards(text0));
+  if(!isFlashcardFlow){
     const _lim = await checkLimit("chat");
     if(!_lim.allowed) return;
     useLimit("chat");
-  } else {
-    const _limFc = await checkLimit("flashcards");
-    if(!_limFc.allowed) return;
-    useLimit("flashcards");
   }
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
@@ -1487,6 +1486,9 @@ async function sendMessage() {
       _fcWaitingTopic = true;
     } else {
       _fcWaitingTopic = null;
+      const _limFc1 = await checkLimit('flashcards');
+      if(!_limFc1.allowed) return;
+      useLimit('flashcards');
       showFcCard(msgs, aiGroup, topic);
     }
     scrollDown();
@@ -1505,6 +1507,9 @@ async function sendMessage() {
     const aiGroup = document.createElement('div');
     aiGroup.className = 'msg-group ai';
     aiGroup.innerHTML = '<div class="msg-meta ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>Eduvia AI</div>';
+    const _limFc2 = await checkLimit('flashcards');
+    if(!_limFc2.allowed) return;
+    useLimit('flashcards');
     showFcCard(msgs, aiGroup, text);
     scrollDown();
     return;
