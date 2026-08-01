@@ -5,6 +5,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, Dict
 import os
+import sentry_sdk
+
+sentry_sdk.init(
+    dsn="https://1c0ce09af391ac4be873092870db6091@o4511484097003520.ingest.de.sentry.io/4511836255420496",
+    send_default_pii=True,
+    traces_sample_rate=0.2,
+)
 
 # Ścieżka do folderu static
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
