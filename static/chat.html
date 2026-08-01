@@ -645,7 +645,8 @@ const LIMITS_FREE = {
   notes: 2,
   exam: 1,
   voice: 3,
-  lesson: 2
+  lesson: 2,
+  flashcards: 1
 };
 
 async function checkLimit(feature) {
@@ -1448,14 +1449,21 @@ function _oldDetectFlashcards(text){
 // extractFlashcardTopic przeniesiona wyzej
 
 async function sendMessage() {
-  const _lim = await checkLimit('chat');
-  if(!_lim.allowed) return;
-  useLimit('chat');
+  const isFlashcardRequest = detectFlashcards(document.getElementById("msgInput").value.trim()) && attachments.filter(a=>a.type.startsWith("image/")).length===0;
+  if(!isFlashcardRequest){
+    const _lim = await checkLimit("chat");
+    if(!_lim.allowed) return;
+    useLimit("chat");
+  } else {
+    const _limFc = await checkLimit("flashcards");
+    if(!_limFc.allowed) return;
+    useLimit("flashcards");
+  }
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
   
   // Przechwytuj fiszki
-  if(detectFlashcards(text) && attachments.filter(a=>a.type.startsWith('image/')).length===0){
+  if(isFlashcardRequest){
     const topic = extractFlashcardTopic(text);
     const msgs = document.getElementById('msgsArea');
     
