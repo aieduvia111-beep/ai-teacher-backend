@@ -129,6 +129,12 @@ try:
     print("✅ brain OK")
 except Exception as e:
     print(f"❌ brain: {e}")
+try:
+    from .api.notifications import router as notifications_router
+    app.include_router(notifications_router)
+    print("✅ notifications OK")
+except Exception as e:
+    print(f"❌ notifications: {e}")
 
 try:
     app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")), name="static")
