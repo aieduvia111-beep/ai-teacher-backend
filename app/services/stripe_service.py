@@ -207,7 +207,7 @@ class StripeService:
             db_sub.current_period_end = datetime.fromtimestamp(subscription['current_period_end'])
             db_sub.cancel_at_period_end = subscription.get('cancel_at_period_end', False)
 
-            user = db.query(User).filter(User.id == db_sub.user_id).first()
+            user = db.query(User).filter(User.firebase_uid == db_sub.user_id).first()
             new_premium_status = None
             if user:
                 if subscription['status'] in ('active', 'trialing'):
@@ -247,7 +247,7 @@ class StripeService:
             db_sub.status = 'canceled'
             db_sub.canceled_at = datetime.utcnow()
 
-            user = db.query(User).filter(User.id == db_sub.user_id).first()
+            user = db.query(User).filter(User.firebase_uid == db_sub.user_id).first()
             if user:
                 user.is_premium = False
                 user.premium_until = None
@@ -286,7 +286,7 @@ class StripeService:
         ).first()
 
         if db_sub:
-            user = db.query(User).filter(User.id == db_sub.user_id).first()
+            user = db.query(User).filter(User.firebase_uid == db_sub.user_id).first()
             if user:
                 user.is_premium = False
                 user.premium_until = None
