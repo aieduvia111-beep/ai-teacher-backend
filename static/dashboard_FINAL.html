@@ -1133,26 +1133,35 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 async function initPush(){
+  alert('DEBUG 1: initPush wystartowalo');
   try {
     const perm = await Notification.requestPermission();
-    if(perm !== 'granted') return;
+    alert('DEBUG 2: uprawnienie = ' + perm);
+    if(perm !== 'granted') { alert('DEBUG: przerwano, brak zgody'); return; }
     const messaging = getMessaging(app);
+    alert('DEBUG 3: messaging pobrany OK');
+    const swReg = await navigator.serviceWorker.register('/static/sw.js');
+    alert('DEBUG 4: service worker zarejestrowany OK');
     const token = await getToken(messaging, {
       vapidKey: 'BK5oMBm3JjcatbW05Yqi9S9FDXEjDwZnRxU4Hbm2qmF7JSLtaKCXvHZ3_-d1LsSDzXaRynr_OkTnWOMNWZNSWLw',
-      serviceWorkerRegistration: await navigator.serviceWorker.register('/static/sw.js')
+      serviceWorkerRegistration: swReg
     });
+    alert('DEBUG 5: token = ' + (token ? token.slice(0,25)+'...' : 'PUSTY!'));
     if(token){
       localStorage.setItem('eduvia_fcm_token', token);
       console.log('[FCM] Token:', token.slice(0,20)+'...');
       const uid = auth.currentUser ? auth.currentUser.uid : null;
+      alert('DEBUG 6: uid = ' + uid);
       if(uid){
-        fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token',{
+        const res = await fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token',{
           method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({uid:uid,fcm_token:token})
-        }).catch(e=>console.warn('[FCM] wyslanie tokenu:', e));
+        });
+        const data = await res.json();
+        alert('DEBUG 7: backend odpowiedzial = ' + JSON.stringify(data));
       }
     }
-  } catch(e){ console.warn('[FCM]', e); }
+  } catch(e){ alert('DEBUG BLAD: ' + e.message); console.warn('[FCM]', e); }
 }
 
 
