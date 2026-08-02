@@ -423,7 +423,15 @@ onAuthStateChanged(auth,async(user)=>{
     // Poczekaj chwilę na webhook Stripe, potem zaktualizuj Firebase
     setTimeout(async() => {
       try {
-        await setDoc(doc(db,'users',user.uid), { plan: 'pro' }, { merge: true });
+        const sessionId = urlParams.get('session_id');
+        if(sessionId){
+          const vres = await fetch('https://eduvia-backend-2.onrender.com/api/v1/payments/verify-session',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({session_id:sessionId})
+          });
+          const vdata = await vres.json();
+          if (!vdata.success) { console.warn('[Payment] weryfikacja nieudana:', vdata.error); return; }
+        }
         localStorage.setItem('eduvia_plan','pro');
         document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML('pro'));
         // Usuń parametr z URL
