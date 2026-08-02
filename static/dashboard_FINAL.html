@@ -1059,7 +1059,14 @@ alert('DEBUG-B: skrypt dotarl przed setTimeout');
 setTimeout(function() {
     alert('DEBUG-A: Notification in window = ' + ('Notification' in window) + ', permission = ' + (('Notification' in window) ? Notification.permission : 'BRAK API'));
     if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') { try { initPush(); } catch(e) { alert('BLAD WYWOLANIA: ' + e.message); } return; }
+    if (Notification.permission === 'granted') {
+      var dbg = document.createElement('div');
+      dbg.style.cssText = 'position:fixed;top:100px;left:10px;right:10px;background:red;color:white;padding:20px;z-index:99999;font-size:14px;white-space:pre-wrap;';
+      dbg.id = 'debugBox';
+      document.body.appendChild(dbg);
+      initPush().then(function(){ dbg.textContent += ' | initPush ZAKONCZONE OK'; }).catch(function(e){ dbg.textContent += ' | BLAD: ' + e.message; });
+      return;
+    }
     if (Notification.permission !== 'default') return;
     
     var prompt = document.createElement('div');
@@ -1134,35 +1141,36 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 async function initPush(){
-  alert('DEBUG 1: initPush wystartowalo');
+  function dlog(msg){ var b = document.getElementById('debugBox'); if(b) b.textContent += ' | ' + msg; }
+  dlog('DEBUG 1: start');
   try {
     const perm = await Notification.requestPermission();
-    alert('DEBUG 2: uprawnienie = ' + perm);
+    dlog('DEBUG2:perm='+perm);
     if(perm !== 'granted') { alert('DEBUG: przerwano, brak zgody'); return; }
     const messaging = getMessaging(app);
-    alert('DEBUG 3: messaging pobrany OK');
+    dlog('DEBUG3:msgOK');
     const swReg = await navigator.serviceWorker.register('/static/sw.js');
-    alert('DEBUG 4: service worker zarejestrowany OK');
+    dlog('DEBUG4:swOK');
     const token = await getToken(messaging, {
       vapidKey: 'BK5oMBm3JjcatbW05Yqi9S9FDXEjDwZnRxU4Hbm2qmF7JSLtaKCXvHZ3_-d1LsSDzXaRynr_OkTnWOMNWZNSWLw',
       serviceWorkerRegistration: swReg
     });
-    alert('DEBUG 5: token = ' + (token ? token.slice(0,25)+'...' : 'PUSTY!'));
+    dlog('DEBUG5:token='+(token?'TAK':'PUSTY'));
     if(token){
       localStorage.setItem('eduvia_fcm_token', token);
       console.log('[FCM] Token:', token.slice(0,20)+'...');
       const uid = auth.currentUser ? auth.currentUser.uid : null;
-      alert('DEBUG 6: uid = ' + uid);
+      dlog('DEBUG6:uid='+uid);
       if(uid){
         const res = await fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token',{
           method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({uid:uid,fcm_token:token})
         });
         const data = await res.json();
-        alert('DEBUG 7: backend odpowiedzial = ' + JSON.stringify(data));
+        dlog('DEBUG7:'+JSON.stringify(data));
       }
     }
-  } catch(e){ alert('DEBUG BLAD: ' + e.message); console.warn('[FCM]', e); }
+  } catch(e){ dlog('BLAD:'+e.message); console.warn('[FCM]', e); }
 }
 
 
