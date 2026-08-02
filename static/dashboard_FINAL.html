@@ -1055,8 +1055,8 @@ if('serviceWorker' in navigator){
 <script src="push.js"></script>
 
 <script>
-window.addEventListener('load', function() {
-  setTimeout(function() {
+alert('DEBUG-B: skrypt dotarl przed setTimeout');
+setTimeout(function() {
     alert('DEBUG-A: Notification in window = ' + ('Notification' in window) + ', permission = ' + (('Notification' in window) ? Notification.permission : 'BRAK API'));
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') { initPush(); return; }
@@ -1067,8 +1067,7 @@ window.addEventListener('load', function() {
     prompt.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="font-size:1.5em;">🔔</div><div><div style="font-family:Syne,sans-serif;font-weight:800;font-size:.95em;color:white;">Włącz przypomnienia</div><div style="font-size:.78em;color:#8888a0;">Codzienne powiadomienia o nauce!</div></div></div><div style="display:flex;gap:10px;"><button onclick="initPush().then(function(){if(true\'granted\' && window.showToast)showToast(\'Powiadomienia włączone! 🔔\',\'success\');}).finally(function(){document.getElementById(\'pushPrompt\').remove();});" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:12px;color:white;font-weight:700;cursor:pointer;">🔔 Włącz</button><button onclick="document.getElementById(\'pushPrompt\').remove();" style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#8888a0;cursor:pointer;">Nie teraz</button></div>';
     prompt.id = 'pushPrompt';
     document.body.appendChild(prompt);
-  }, 3000);
-});
+}, 3000);
 </script>
 
 
