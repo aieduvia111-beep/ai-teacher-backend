@@ -95,7 +95,7 @@ class StripeService:
                 payment_method_types=["card"],
                 line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                 mode="subscription",
-                                success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success",
+                                success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                 metadata=checkout_metadata,
                 **checkout_kwargs

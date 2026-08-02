@@ -10,6 +10,8 @@ from typing import Optional
 from ..database import get_db
 from ..services.stripe_service import StripeService
 from ..models import User, Subscription
+from ..services.stripe_service import _update_firebase_plan
+import stripe
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
@@ -39,6 +41,27 @@ class CancelSubscriptionRequest(BaseModel):
 # =============================================================================
 # ENDPOINTY
 # =============================================================================
+
+class VerifySessionRequest(BaseModel):
+    session_id: str
+
+@router.post("/verify-session")
+def verify_session(request: VerifySessionRequest):
+    """
+    Weryfikuje platnosc Stripe PO STRONIE SERWERA (bezpiecznie) i dopiero
+    po potwierdzeniu ustawia plan=pro w Firestore.
+    """
+    try:
+        session = stripe.checkout.Session.retrieve(request.session_id)
+        if session.payment_status != "paid":
+            return {"success": False, "error": "Platnosc nie zostala potwierdzona"}
+        firebase_uid = session.metadata.get("user_id")
+        if not firebase_uid:
+            return {"success": False, "error": "Brak identyfikatora uzytkownika w sesji"}
+        _update_firebase_plan(firebase_uid, True)
+        return {"success": True, "plan": "pro"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @router.post("/create-checkout")
 def create_checkout(
