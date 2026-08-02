@@ -1150,7 +1150,12 @@ async function initPush(){
     if(token){
       localStorage.setItem('eduvia_fcm_token', token);
       console.log('[FCM] Token:', token.slice(0,20)+'...');
-      const uid = auth.currentUser ? auth.currentUser.uid : null;
+      let uid = auth.currentUser ? auth.currentUser.uid : null;
+      if(!uid){
+        uid = await new Promise(function(resolve){
+          const unsub = onAuthStateChanged(auth, function(u){ unsub(); resolve(u ? u.uid : null); });
+        });
+      }
       
       if(uid){
         const res = await fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token',{
