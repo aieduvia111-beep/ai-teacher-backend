@@ -1161,6 +1161,10 @@ async function initPush(){
           body:JSON.stringify({uid:uid,fcm_token:token})
         });
         const data = await res.json();
+        var okbox = document.createElement('div');
+        okbox.style.cssText = 'position:fixed;top:100px;left:10px;right:10px;background:green;color:white;padding:20px;z-index:99999;font-size:13px;white-space:pre-wrap;';
+        okbox.textContent = 'STATUS: ' + res.status + ' | ODPOWIEDZ: ' + JSON.stringify(data);
+        document.body.appendChild(okbox);
         
       }
     }
