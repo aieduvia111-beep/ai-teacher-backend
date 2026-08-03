@@ -1008,12 +1008,18 @@ function math(raw){
   t=t.replace(/(?<![=$])([-−]\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
   t=t.replace(/(?<!\$)(\\left\[.*?\\right\][_^]?\{[^}]*\}\{[^}]*\})/g,'$$$1$$');
   if(typeof renderMathInElement==='undefined'){
-    // KaTeX nie zaladowany - zwroc tekst i sprobuj pozniej
-    setTimeout(()=>{
-      document.querySelectorAll('.question-text,.option,.feedback-explain').forEach(el=>{
-        if(el._rawMath) el.innerHTML=math(el._rawMath);
-      });
-    }, 500);
+    let _mathRetryCount = 0;
+    const _mathRetry = () => {
+      _mathRetryCount++;
+      if(typeof renderMathInElement!=='undefined'){
+        try{
+          renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\[',right:'\]',display:true},{left:'\(',right:'\)',display:false}],throwOnError:false,strict:false});
+        }catch(e){}
+      } else if(_mathRetryCount < 20){
+        setTimeout(_mathRetry, 200);
+      }
+    };
+    setTimeout(_mathRetry, 200);
     return t;
   }
   let el=document.createElement('span');el.textContent=t;el.style.cssText='position:absolute;left:-9999px;visibility:hidden;pointer-events:none;';
