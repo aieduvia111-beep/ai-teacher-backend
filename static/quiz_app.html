@@ -1001,7 +1001,7 @@ function math(raw){
   // Owij caly ciagly fragment matematyczny (od pierwszej komendy LaTeX
   // do konca zdania) - naprawia dlugie, zlozone wzory ktore wczesniej
   // byly dzielone na kawalki i renderowane tylko czesciowo.
-  t=t.replace(/(?<!\$)(\\(?:frac|sqrt|int|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|pi|theta|infty|text|sin|cos|tan|ln|log)[^.!?$]*?)(?=[.!?]|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
+  t=t.replace(/(?<!\$)([-−]?\\(?:frac|sqrt|int|iint|iiint|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|delta|Delta|epsilon|zeta|eta|sigma|Sigma|mu|nu|rho|tau|phi|Phi|chi|psi|omega|Omega|pi|theta|Theta|infty|text|sin|cos|tan|ln|log|vec|det|begin|end|binom|approx)(?:[^.!?$]|\.\d)*?)(?=[.!?](?!\d)|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|,\s*[a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
   if(typeof renderMathInElement==='undefined'){
     let _mathRetryCount = 0;
     const _mathRetry = () => {
