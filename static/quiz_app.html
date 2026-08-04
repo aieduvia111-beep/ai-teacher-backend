@@ -998,15 +998,10 @@ function math(raw){
   t=t.replace(/≠/g,'$\\neq$');
   t=t.replace(/→/g,'$\\to$');
   t=t.replace(/∞/g,'$\\infty$');
-  // Owij minus+frac bez dolarow
-  t=t.replace(/([-−])(\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$2$$');
-  // Owij wyrazenia LaTeX bez dolarow
-  t=t.replace(/(?<!\$)(\\frac\{[^{}]+\}\{[^{}]+\})(?!\$)/g,'$$$1$$');
-  t=t.replace(/(?<!\$)(\\sqrt\{[^{}]+\})(?!\$)/g,'$$$1$$');
-  t=t.replace(/(?<!\$)(\\int[_^][^$\s]+)(?!\$)/g,'$$$1$$');
-  // Owij frac i sqrt bez dolarow wszedzie
-  t=t.replace(/(?<![=$])([-−]\\frac\{[^{}]+\}\{[^{}]+\})/g,'$$$1$$');
-  t=t.replace(/(?<!\$)(\\left\[.*?\\right\][_^]?\{[^}]*\}\{[^}]*\})/g,'$$$1$$');
+  // Owij caly ciagly fragment matematyczny (od pierwszej komendy LaTeX
+  // do konca zdania) - naprawia dlugie, zlozone wzory ktore wczesniej
+  // byly dzielone na kawalki i renderowane tylko czesciowo.
+  t=t.replace(/(?<!\$)(\\(?:frac|sqrt|int|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|pi|theta|infty|text|sin|cos|tan|ln|log)[^.!?$]*?)(?=[.!?]|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
   if(typeof renderMathInElement==='undefined'){
     let _mathRetryCount = 0;
     const _mathRetry = () => {
