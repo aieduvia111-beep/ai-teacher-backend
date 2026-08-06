@@ -14,7 +14,7 @@ class Lesson(Base):
     __tablename__ = "lessons"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
+    user_id = Column(String(128), index=True)
     
     # Basic info
     title = Column(String(200), nullable=False)
@@ -96,6 +96,8 @@ class User(Base):
     voice_seconds_today = Column(Integer, default=0)
     voice_usage_date = Column(String(10), nullable=True)
     premium_until = Column(DateTime(timezone=True), nullable=True)
+    fcm_token = Column(String(255), nullable=True)
+    last_notification_sent = Column(DateTime(timezone=True), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

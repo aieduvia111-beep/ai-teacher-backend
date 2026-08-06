@@ -1,10 +1,13 @@
 from ..error_logger import log_error
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
 import json
 from openai import OpenAI
 from ..config import settings
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models import Lesson
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -19,7 +22,7 @@ class CreateLessonPlanRequest(BaseModel):
     additional_info: Optional[str] = ""
 
 @router.post("/create-plan")
-def create_lesson_plan(request: CreateLessonPlanRequest):
+def create_lesson_plan(request: CreateLessonPlanRequest, db: Session = Depends(get_db)):
     try:
         safe_days = min(max(int(request.total_days or 7), 1), 60)
         safe_min = min(max(int(request.minutes_per_day or 30), 10), 240)
@@ -95,18 +98,48 @@ Zwroc TYLKO JSON bez markdown:
         raw = raw.replace("```json", "").replace("```", "").strip()
         s = raw.find("{"); e = raw.rfind("}")
         plan = json.loads(raw[s:e+1])
-        return {"success": True, "lesson_id": None, "plan": plan}
+        review_schedule = []
+        for day_data in plan.get("days", []):
+            day_num = day_data.get("day")
+            topics = day_data.get("review_topics", [])
+            if not day_num or not topics:
+                continue
+            for offset in (2, 5):
+                review_day = day_num + offset
+                if review_day <= safe_days:
+                    review_schedule.append({"day": review_day, "review_of_day": day_num, "topics": topics})
+        plan["review_schedule"] = review_schedule
+
+        lesson_id = None
+        try:
+            db_lesson = Lesson(user_id=request.user_id, title=plan.get("title", request.topic), subject=request.subject, level=request.level, total_days=safe_days, minutes_per_day=safe_min, content=plan, current_day=1)
+            db.add(db_lesson)
+            db.commit()
+            db.refresh(db_lesson)
+            lesson_id = db_lesson.id
+        except Exception as db_err:
+            print(f"Blad zapisu planu do bazy: {db_err}")
+
+        return {"success": True, "lesson_id": lesson_id, "plan": plan}
 
     except Exception as e:
         return {"success": False, "error": str(e), "plan": {}}
 
 @router.get("/my-plans/{user_id}")
-def get_my_plans(user_id: int):
-    return {"success": True, "plans": []}
+def get_my_plans(user_id: str, db: Session = Depends(get_db)):
+    plans = db.query(Lesson).filter(Lesson.user_id == user_id).order_by(Lesson.id.desc()).all()
+    return {"success": True, "plans": [
+        {"id": p.id, "title": p.title, "subject": p.subject, "level": p.level,
+         "total_days": p.total_days, "current_day": p.current_day, "is_completed": p.is_completed}
+        for p in plans
+    ]}
 
 @router.get("/plan/{lesson_id}/{user_id}")
-def get_plan(lesson_id: int, user_id: int):
-    return {"success": False, "error": "Plan nie znaleziony"}
+def get_plan(lesson_id: int, user_id: str, db: Session = Depends(get_db)):
+    plan = db.query(Lesson).filter(Lesson.id == lesson_id, Lesson.user_id == user_id).first()
+    if not plan:
+        return {"success": False, "error": "Plan nie znaleziony"}
+    return {"success": True, "plan": plan.content, "current_day": plan.current_day, "is_completed": plan.is_completed}
 
 @router.post("/complete-day")
 def complete_day(request: dict):
