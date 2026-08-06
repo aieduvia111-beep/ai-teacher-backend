@@ -18,7 +18,7 @@ class CreateLessonPlanRequest(BaseModel):
     level: str
     total_days: Optional[int] = 7
     minutes_per_day: Optional[int] = 30
-    user_id: Optional[int] = 1
+    user_id: Optional[str] = None
     additional_info: Optional[str] = ""
 
 @router.post("/create-plan")
