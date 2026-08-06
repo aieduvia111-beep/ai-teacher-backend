@@ -1263,16 +1263,7 @@ window.animateCounter = animateCounter;
 </script>
 <script>
 window.addEventListener("popstate", function() {
-  var planResultVisible = document.getElementById("planResult") && document.getElementById("planResult").style.display === "block";
-  var viewDashActive = document.getElementById("viewDash") && document.getElementById("viewDash").classList.contains("active");
-  if (planResultVisible) {
-    showForm();
-    history.pushState(null, "", window.location.href);
-  } else if (!viewDashActive) {
-    showDash();
-  } else {
-    window.location.href = "dashboard_FINAL.html";
-  }
+  window.location.href = "dashboard_FINAL.html";
 });
 history.pushState(null, "", window.location.href);
 </script>
