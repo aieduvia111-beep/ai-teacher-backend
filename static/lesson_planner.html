@@ -981,7 +981,7 @@ window.generatePlan=async function generatePlan(){
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
     var lessonController = new AbortController();
     var lessonTimeoutId = setTimeout(function(){lessonController.abort();}, 120000);
-    var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:(currentUser?currentUser.uid:null),additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
+    var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:localStorage.getItem('eduvia_uid'),additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
     clearTimeout(lessonTimeoutId);
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     var data=await res.json();
