@@ -1967,6 +1967,12 @@ window.animateCounter=animateCounter;
 <script>
 // Android back button - wroc do dashboard
 window.addEventListener('popstate', function() {
+  var sesActive = document.getElementById('voSes') && document.getElementById('voSes').classList.contains('on');
+  if (sesActive) {
+    endSes();
+    history.pushState(null, '', window.location.href);
+    return;
+  }
   window.location.href = 'dashboard_FINAL.html';
 });
 history.pushState(null, '', window.location.href);
