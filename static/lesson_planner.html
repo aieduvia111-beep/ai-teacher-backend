@@ -236,6 +236,12 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .badge-green{background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.25);color:var(--green);}
 .badge-accent{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.25);color:var(--accent2);}
 .badge-gold{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--gold);}
+.review-banner{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(245,166,35,.04));border:1px solid rgba(245,166,35,.25);border-radius:16px;margin-bottom:16px;}
+.review-icon{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#fbbf24,#f5a623);box-shadow:0 0 20px 3px rgba(245,166,35,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.review-icon svg{width:20px;height:20px;stroke:white;}
+.review-title{font-family:var(--h);font-size:.85em;font-weight:800;color:var(--gold);margin-bottom:4px;}
+.review-item{font-size:.8em;color:var(--muted2);line-height:1.6;}
+.review-item strong{color:var(--text);}
 .day-card{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:16px 18px;margin-bottom:8px;transition:all .2s;}
 .day-done{border-color:rgba(34,211,160,.2);background:rgba(34,211,160,.03);}
 .day-card:hover{border-color:rgba(124,106,255,.25);}
@@ -1032,6 +1038,13 @@ function renderPlanResult(plan,subject,minutes,isExisting){
   var labels={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Język polski',angielski:'Angielski',geografia:'Geografia',informatyka:'Informatyka',inne:'Inne'};
   var html='<div class="plan-header"><div class="plan-title-txt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Plan gotowy</div>';
   html+='<div class="badge-row"><span class="badge badge-green">'+plan.days.length+' dni</span><span class="badge badge-accent">'+(labels[subject]||subject)+'</span><span class="badge badge-gold">'+minutes+' min/dzień</span></div></div>';
+  if(Array.isArray(plan.review_schedule) && plan.review_schedule.length>0){
+    html+='<div class="review-banner"><div class="review-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div><div class="review-title">🔄 Zaplanowane powtórki</div>';
+    plan.review_schedule.forEach(function(r){
+      html+='<div class="review-item">Dzień <strong>'+r.day+'</strong>: powtórz <strong>'+r.topics.join(', ')+'</strong> (z Dnia '+r.review_of_day+')</div>';
+    });
+    html+='</div></div>';
+  }
   // Grupuj po tygodniach jesli wiecej niz 7 dni
   var useWeeks = plan.days.length > 7;
   var currentWeek = -1;
