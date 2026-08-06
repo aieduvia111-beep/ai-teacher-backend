@@ -127,7 +127,7 @@ Zwroc TYLKO JSON bez markdown:
 
 @router.get("/my-plans/{user_id}")
 def get_my_plans(user_id: str, db: Session = Depends(get_db)):
-    plans = db.query(Lesson).filter(Lesson.user_id == user_id).order_by(Lesson.id.desc()).all()
+    plans = db.query(Lesson).filter(Lesson.user_id == user_id).order_by(Lesson.id.desc()).limit(20).all()
     return {"success": True, "plans": [
         {"id": p.id, "title": p.title, "subject": p.subject, "level": p.level,
          "total_days": p.total_days, "current_day": p.current_day, "is_completed": p.is_completed}
