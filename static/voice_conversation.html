@@ -428,14 +428,14 @@ button:active{transform:scale(.95)!important;}
 .ai-hero-card{background:linear-gradient(180deg,rgba(15,15,28,.95),rgba(7,7,18,.98));border:1px solid rgba(124,106,255,.2);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;}
 .ai-hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,106,255,.5),rgba(56,189,248,.3),transparent);}
 .ai-rings-wrap{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;}
-.ai-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.2);animation:rEx 3s ease-out infinite;}
+.ai-ring{position:absolute;border-radius:50%;border:2px solid rgba(124,106,255,.4);box-shadow:0 0 20px rgba(124,106,255,.2);animation:rEx 3s ease-out infinite;}
 .ai-ring:nth-child(1){width:90px;height:90px;animation-delay:0s;}
 .ai-ring:nth-child(2){width:118px;height:118px;animation-delay:1s;}
 .ai-ring:nth-child(3){width:148px;height:148px;animation-delay:2s;}
 @keyframes rEx{0%{opacity:.55;transform:scale(.88);}100%{opacity:0;transform:scale(1.04);}}
-.ai-orb{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 38% 35%,rgba(124,106,255,.45),rgba(56,189,248,.12),rgba(5,5,15,.95));border:1px solid rgba(124,106,255,.3);position:relative;animation:orbF 3.5s ease-in-out infinite;box-shadow:0 0 32px rgba(124,106,255,.22);}
+.ai-orb{width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#a78bfa,#7c6aff 40%,#22d3a0 90%);border:1px solid rgba(124,106,255,.3);position:relative;animation:orbF 3.5s ease-in-out infinite;box-shadow:0 0 50px 8px rgba(124,106,255,.6),0 0 80px 20px rgba(34,211,160,.25);}
 @keyframes orbF{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
-.ai-eye{width:11px;height:8px;background:#00ddff;border-radius:50%;position:absolute;box-shadow:0 0 12px #00ddff;animation:eyeB 5s ease-in-out infinite;}
+.ai-eye{width:13px;height:10px;background:#00ddff;border-radius:50%;position:absolute;box-shadow:0 0 18px #00ddff,0 0 30px rgba(0,221,255,.5);animation:eyeB 5s ease-in-out infinite;}
 .ai-eye.l{left:15px;top:25px;}.ai-eye.r{right:15px;top:25px;}
 @keyframes eyeB{0%,86%,100%{transform:scaleY(1);}93%{transform:scaleY(.08);}}
 .ai-mouth{width:20px;height:6px;border-radius:0 0 10px 10px;border:1.5px solid rgba(0,210,255,.5);border-top:none;position:absolute;bottom:16px;left:50%;transform:translateX(-50%);}
