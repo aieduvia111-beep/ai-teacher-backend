@@ -68,6 +68,8 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 .hero-name{font-family:var(--h);font-size:2em;font-weight:800;line-height:1.1;color:white;margin-bottom:10px;}
 .hero-nm{background:linear-gradient(110deg,#fff 20%,#a78bfa 55%,#22d3a0 90%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .hero-sub{font-size:.85em;color:var(--muted2);max-width:400px;line-height:1.6;font-style:italic;}
+.bg-star{position:absolute;border-radius:50%;background:white;pointer-events:none;animation:twinkle 3s ease-in-out infinite;}
+@keyframes twinkle{0%,100%{opacity:.15;}50%{opacity:.5;}}
 .hero-orb{position:relative;width:100px;height:100px;flex-shrink:0;}
 .orb-ring{position:absolute;border-radius:50%;border:1px solid rgba(124,106,255,.2);animation:orbSpin 12s linear infinite;}
 .r1{inset:0;animation-duration:12s;}
@@ -727,6 +729,10 @@ function getPlanBadgeHTML(plan) {
 
   <!-- HERO GREETING -->
   <section class="dash-hero">
+    <div class="bg-star" style="width:3px;height:3px;top:15px;right:120px;animation-delay:0s;"></div>
+    <div class="bg-star" style="width:2px;height:2px;top:55px;right:200px;animation-delay:1s;"></div>
+    <div class="bg-star" style="width:2px;height:2px;top:20px;right:60px;animation-delay:1.5s;"></div>
+    <div class="bg-star" style="width:4px;height:4px;top:90px;right:280px;animation-delay:2s;"></div>
     <div class="hero-left">
       <div class="hero-date" id="heroDate"></div>
       <h1 class="hero-name">Cześć, <span class="hero-nm">Jakub</span> 👋</h1>
