@@ -109,6 +109,9 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 .tool-card:hover .tc-glow{opacity:1;}
 .tc-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,var(--tc-bg,rgba(124,106,255,.06)),transparent 70%);opacity:0;transition:.25s;pointer-events:none;}
 .tc-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--tc-bg,rgba(124,106,255,.12));color:var(--tc-color,#a78bfa);border:1px solid var(--tc-border,rgba(124,106,255,.2));}
+.tc-icon{position:relative;}
+.tc-icon::after{content:'';position:absolute;inset:-6px;border-radius:16px;background:var(--tc-color,#a78bfa);opacity:.1;filter:blur(10px);z-index:-1;animation:tcPulse 2.5s ease-in-out infinite;}
+@keyframes tcPulse{0%,100%{opacity:.08;}50%{opacity:.22;}}
 .tc-body{flex:1;min-width:0;}
 .tc-name{font-family:var(--h);font-size:.9em;font-weight:800;color:white;margin-bottom:5px;}
 .tc-desc{font-size:.76em;color:var(--muted2);line-height:1.45;}
