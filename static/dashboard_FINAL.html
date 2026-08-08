@@ -1073,17 +1073,6 @@ if('serviceWorker' in navigator){
 <script src="push.js"></script>
 
 <script>
-setTimeout(function() {
-    return; // TYMCZASOWO WYLACZONE - powiadomienia jeszcze nie w pelni dzialaja, wrocimy do tego pozniej
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') { initPush(); return; }
-    if (Notification.permission !== 'default') return;
-    
-    var prompt = document.createElement('div');
-    prompt.style.cssText = 'position:fixed;top:56px;left:16px;right:16px;background:linear-gradient(145deg,#15151f,#0f0f18);border:1px solid rgba(124,106,255,.3);border-radius:22px;padding:18px;z-index:9999;box-shadow:0 12px 40px rgba(0,0,0,.5), 0 0 30px rgba(124,106,255,.12);';
-    prompt.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="font-size:1.5em;">🔔</div><div><div style="font-family:Syne,sans-serif;font-weight:800;font-size:.95em;color:white;">Włącz przypomnienia</div><div style="font-size:.78em;color:#8888a0;">Codzienne powiadomienia o nauce!</div></div></div><div style="display:flex;gap:10px;"><button onclick="initPush().then(function(){if(true\'granted\' && window.showToast)showToast(\'Powiadomienia włączone! 🔔\',\'success\');}).finally(function(){document.getElementById(\'pushPrompt\').remove();});" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:12px;color:white;font-weight:700;cursor:pointer;">🔔 Włącz</button><button onclick="document.getElementById(\'pushPrompt\').remove();" style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#8888a0;cursor:pointer;">Nie teraz</button></div>';
-    prompt.id = 'pushPrompt';
-    document.body.appendChild(prompt);
 }, 3000);
 </script>
 
