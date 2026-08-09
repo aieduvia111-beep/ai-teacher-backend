@@ -226,6 +226,11 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .cam-btn{--cbc:rgba(124,106,255,.06);--cbh:rgba(124,106,255,.4);}
 .gal-btn{--cbc:rgba(34,211,160,.05);--cbh:rgba(34,211,160,.4);}
 .cb-icon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+.cam-btn .cb-icon{position:relative;}
+.cam-btn .cb-icon::after{content:'';position:absolute;inset:-6px;border-radius:16px;background:#7c6aff;opacity:.1;filter:blur(10px);z-index:-1;animation:cbPulse 2.5s ease-in-out infinite;}
+.gal-btn .cb-icon{position:relative;}
+.gal-btn .cb-icon::after{content:'';position:absolute;inset:-6px;border-radius:16px;background:#22d3a0;opacity:.1;filter:blur(10px);z-index:-1;animation:cbPulse 2.5s ease-in-out infinite;}
+@keyframes cbPulse{0%,100%{opacity:.08;}50%{opacity:.22;}}
 .cam-btn .cb-icon{background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);}
 .gal-btn .cb-icon{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);}
 .cam-btn .cb-icon svg{stroke:var(--accent2);}
