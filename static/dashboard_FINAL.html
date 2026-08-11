@@ -1073,8 +1073,6 @@ if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 }
 </script>
-<script src="push.js"></script>
-
 <script>
 // ANIMACJA LICZNIKOW
 function animateCounter(el, target, duration) {
@@ -1137,43 +1135,77 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-async function initPush(){
-  
+// eduvia_uid zapisuje inny modul (logowanie) po zalogowaniu - ten modul
+// dziala w osobnym scope, wiec nie ma dostepu do jego zmiennej `auth`.
+function getUid(){
+  return new Promise(function(resolve){
+    const existing = localStorage.getItem('eduvia_uid');
+    if(existing){ resolve(existing); return; }
+    let tries = 0;
+    const iv = setInterval(function(){
+      const u = localStorage.getItem('eduvia_uid');
+      tries++;
+      if(u || tries > 20){ clearInterval(iv); resolve(u || null); }
+    }, 250);
+  });
+}
+
+async function registerPushToken(){
   try {
     const perm = await Notification.requestPermission();
-    
-    if(perm !== 'granted') return;
+    if(perm !== 'granted') return false;
+
     const messaging = getMessaging(app);
-    
     const swReg = await navigator.serviceWorker.register('/static/sw.js');
-    
     const token = await getToken(messaging, {
       vapidKey: 'BH9dZMA-qCCBc6rtDt4yZoBFerNcA2RnZhv0sYKs9pm5cNFM6-GML6kLzhIFWY-zCarIU7zZ_d7rtH9nTOqn2PY',
       serviceWorkerRegistration: swReg
     });
-    
-    if(token){
-      localStorage.setItem('eduvia_fcm_token', token);
-      console.log('[FCM] Token:', token.slice(0,20)+'...');
-      let uid = auth.currentUser ? auth.currentUser.uid : null;
-      if(!uid){
-        uid = await new Promise(function(resolve){
-          const unsub = onAuthStateChanged(auth, function(u){ unsub(); resolve(u ? u.uid : null); });
-        });
-      }
-      
-      if(uid){
-        const res = await fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({uid:uid,fcm_token:token})
-        });
-        const data = await res.json();
-        
-      }
-    }
-  } catch(e){ console.warn('[FCM]', e); }
+    if(!token) return false;
+
+    localStorage.setItem('eduvia_fcm_token', token);
+    const uid = await getUid();
+    if(!uid) return false;
+
+    await fetch('https://eduvia-backend-2.onrender.com/api/v1/notifications/save-token', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({uid: uid, fcm_token: token})
+    });
+    return true;
+  } catch(e){ console.warn('[FCM]', e); return false; }
 }
 
+function showPushPrompt(){
+  if(localStorage.getItem('eduvia_push_asked')) return;
+  if(!('Notification' in window) || Notification.permission !== 'default') return;
+
+  const prompt = document.createElement('div');
+  prompt.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;max-width:420px;margin:0 auto;background:linear-gradient(135deg,#0f0f18,#161622);border:1px solid rgba(124,106,255,.3);border-radius:20px;padding:20px;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.5);';
+  prompt.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="width:44px;height:44px;border-radius:12px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;">🔔</div><div><div style="font-family:Syne,sans-serif;font-weight:800;font-size:.95em;color:white;margin-bottom:3px;">Włącz przypomnienia</div><div style="font-size:.78em;color:#8888a0;line-height:1.4;">Otrzymuj codzienne powiadomienia o nauce!</div></div></div><div style="display:flex;gap:10px;"><button id="pushYes" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:12px;color:white;font-family:Syne,sans-serif;font-size:.85em;font-weight:700;cursor:pointer;">🔔 Włącz</button><button id="pushNo" style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#8888a0;font-family:Syne,sans-serif;font-size:.85em;cursor:pointer;">Nie teraz</button></div>';
+
+  // Doczepione do <html>, nie do <body> - <body> ma ustawiony CSS transform,
+  // ktory tworzy wlasny containing block i psuje position:fixed dla dzieci body.
+  document.documentElement.appendChild(prompt);
+
+  document.getElementById('pushYes').onclick = async () => {
+    prompt.remove();
+    localStorage.setItem('eduvia_push_asked', '1');
+    await registerPushToken();
+  };
+  document.getElementById('pushNo').onclick = () => {
+    prompt.remove();
+    localStorage.setItem('eduvia_push_asked', '1');
+  };
+}
+
+window.addEventListener('load', () => {
+  if('Notification' in window && Notification.permission === 'granted'){
+    registerPushToken();
+  } else {
+    setTimeout(showPushPrompt, 1500);
+  }
+});
 
 </script>
 

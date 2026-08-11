@@ -406,14 +406,6 @@ try:
 except Exception as e:
     print(f"whiteboard error: {e}")
 
-# ═══ PUSH NOTIFICATIONS ═══
-try:
-    from .api.push import router as push_router
-    app.include_router(push_router)
-    print("✅ push OK")
-except Exception as e:
-    print(f"❌ push: {e}")
-
 try:
     from .api.multiplayer import router as multiplayer_router
     app.include_router(multiplayer_router)

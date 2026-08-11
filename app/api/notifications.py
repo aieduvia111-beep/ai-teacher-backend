@@ -71,3 +71,54 @@ def send_test_notification(req: TestNotificationRequest):
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+# ═══ CODZIENNE PRZYPOMNIENIE (18:00, Europe/Warsaw) ═══
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+import random
+
+_DAILY_MESSAGES = [
+    ("📚 Czas na naukę!", "Twój streak czeka — zaloguj się i ucz się z AI!"),
+    ("🧠 Quiz czas!", "Sprawdź swoją wiedzę — wygeneruj quiz w 10 sekund!"),
+    ("🎓 Eduvia czeka!", "Nie przerywaj passy nauki. Ucz się dziś!"),
+    ("⚡ Zdobądź XP!", "Rozwiąż quiz i awansuj na wyższy poziom!"),
+    ("📝 Nowe notatki?", "Wrzuć zdjęcie i AI zrobi notatki w PDF!"),
+]
+
+
+def send_daily_reminder():
+    """Wysyla codzienne powiadomienie do wszystkich userow z zapisanym tokenem FCM."""
+    from firebase_admin import messaging
+
+    title, body = random.choice(_DAILY_MESSAGES)
+
+    try:
+        db = get_firestore()
+    except Exception as e:
+        print(f"[daily reminder] Brak Firestore: {e}")
+        return
+
+    sent, failed = 0, 0
+    for doc in db.collection('users').stream():
+        token = (doc.to_dict() or {}).get('fcmToken')
+        if not token:
+            continue
+        try:
+            messaging.send(messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                token=token,
+            ))
+            sent += 1
+        except Exception as e:
+            failed += 1
+            print(f"[daily reminder] Blad wysylki do {doc.id}: {e}")
+
+    print(f"[daily reminder] Wyslano {sent}, bledy {failed}")
+
+
+_scheduler = BackgroundScheduler(timezone=pytz.timezone('Europe/Warsaw'))
+_scheduler.add_job(send_daily_reminder, CronTrigger(hour=18, minute=0), id='daily_push_reminder', replace_existing=True)
+_scheduler.start()
+print("✅ Harmonogram powiadomien push uruchomiony - codziennie o 18:00")
