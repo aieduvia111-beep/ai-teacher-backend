@@ -400,13 +400,6 @@ except Exception as e:
     print(f"❌ whiteboard: {e}")
 
 try:
-    from .api.whiteboard import router as whiteboard_router
-    app.include_router(whiteboard_router)
-    print("whiteboard OK")
-except Exception as e:
-    print(f"whiteboard error: {e}")
-
-try:
     from .api.multiplayer import router as multiplayer_router
     app.include_router(multiplayer_router)
     print("✅ multiplayer OK")

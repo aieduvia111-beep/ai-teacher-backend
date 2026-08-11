@@ -16,6 +16,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production-
 ALGORITHM = "HS256"
 
 def verify_password(plain: str, hashed: str) -> bool:
+    if not hashed:
+        return False
     return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
 
 def get_password_hash(password: str) -> str:

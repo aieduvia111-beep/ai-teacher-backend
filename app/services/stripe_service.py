@@ -13,7 +13,7 @@ try:
         elif sa_json:
             cred = credentials.Certificate(json.loads(sa_json))
         else:
-            cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json'))
+            cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'app/eduvia-c69bc-firebase-adminsdk-fbsvc-be39724e72.json'))
         firebase_admin.initialize_app(cred)
     _fdb = firestore.client()
 except Exception as _fe:
