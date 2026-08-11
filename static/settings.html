@@ -195,6 +195,7 @@ button:active{transform:scale(.95)!important;}
         <div class="hero-info">
           <div class="hero-name" id="hName">Ładowanie...</div>
           <div class="hero-email" id="hEmail">...</div>
+          <div class="hero-email" id="hUid" style="opacity:.5;font-size:.75em;user-select:all;">...</div>
           <div class="badge free" id="hBadge">Free</div>
         </div>
       </div>
@@ -419,6 +420,7 @@ onAuthStateChanged(auth,async u=>{
   document.getElementById('av').textContent=name[0].toUpperCase();
   document.getElementById('hName').textContent=name;
   document.getElementById('hEmail').textContent=u.email||'';
+  document.getElementById('hUid').textContent='ID: '+u.uid;
   try{
     const s=await getDoc(doc(db,'users',u.uid));
     if(s.exists()){
