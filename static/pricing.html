@@ -359,9 +359,10 @@ async function startCheckout() {
   loader.style.display = 'block';
 
   try {
+    const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
     const checkoutRes = await fetch('https://eduvia-backend-2.onrender.com/api/v1/payments/create-checkout', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken},
       body: JSON.stringify({
         user_id: window._currentUser() ? window._currentUser().uid : '',
         email: window._currentUser() ? window._currentUser().email : '',

@@ -41,7 +41,7 @@ app.middleware("http")(usage_limit_middleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app|https://eduvia-backend-2\.onrender\.com|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

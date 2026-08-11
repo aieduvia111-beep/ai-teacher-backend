@@ -11,6 +11,7 @@ from ..database import get_db
 from ..services.stripe_service import StripeService
 from ..models import User, Subscription
 from ..services.stripe_service import _update_firebase_plan
+from ..firebase_auth import get_verified_firebase_user
 import stripe
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
@@ -32,11 +33,6 @@ class CheckoutResponse(BaseModel):
     checkout_url: Optional[str] = None
     session_id: Optional[str] = None
     error: Optional[str] = None
-
-class CancelSubscriptionRequest(BaseModel):
-    """Request do anulowania subskrypcji"""
-    user_id: str
-
 
 # =============================================================================
 # ENDPOINTY
@@ -66,18 +62,16 @@ def verify_session(request: VerifySessionRequest):
 @router.post("/create-checkout")
 def create_checkout(
     request: CreateCheckoutRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
 ):
     """
     💳 Tworzy Stripe Checkout Session
-    
-    Example:
-    POST /api/v1/payments/create-checkout
-    {
-        "user_id": "test_uid",
-        "email": "user@example.com"
-    }
-    
+
+    Wymaga naglowka: Authorization: Bearer <firebase_id_token>
+    user_id/email brane sa z zweryfikowanego tokenu, nie z body requestu
+    (zapobiega tworzeniu sesji platnosci w imieniu cudzego konta).
+
     Returns:
     {
         "success": true,
@@ -86,11 +80,13 @@ def create_checkout(
     }
     """
     try:
-        print(f"💳 Request checkout dla user {request.user_id}")
-        
+        verified_uid = firebase_user["uid"]
+        verified_email = firebase_user.get("email") or request.email
+        print(f"💳 Request checkout dla user {verified_uid}")
+
         result = StripeService.create_checkout_session(
-            user_id=request.user_id,
-            email=request.email,
+            user_id=verified_uid,
+            email=verified_email,
             db=db,
             affiliate_code=request.affiliate_code
         )
@@ -141,23 +137,21 @@ async def stripe_webhook(
 
 @router.post("/cancel-subscription")
 def cancel_subscription(
-    request: CancelSubscriptionRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
 ):
     """
-    ❌ Anuluje subskrypcję użytkownika
-    
-    Example:
-    POST /api/v1/payments/cancel-subscription
-    {
-        "user_id": 1
-    }
-    
+    ❌ Anuluje subskrypcję zalogowanego użytkownika
+
+    Wymaga naglowka: Authorization: Bearer <firebase_id_token>
+    Zawsze anuluje subskrypcje wlasciciela tokenu - nie da sie juz
+    podac cudzego user_id w body.
+
     Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego
     """
     try:
         result = StripeService.cancel_subscription(
-            user_id=request.user_id,
+            user_id=firebase_user["uid"],
             db=db
         )
         
@@ -171,17 +165,18 @@ def cancel_subscription(
         }
 
 
-@router.get("/subscription/{user_id}")
+@router.get("/subscription")
 def get_subscription(
-    user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
 ):
     """
-    📊 Pobiera informacje o subskrypcji użytkownika
-    
-    Example:
-    GET /api/v1/payments/subscription/1
-    
+    📊 Pobiera informacje o subskrypcji zalogowanego użytkownika
+
+    Wymaga naglowka: Authorization: Bearer <firebase_id_token>
+    Zwraca zawsze dane wlasciciela tokenu - nie da sie juz podejrzec
+    subskrypcji innego uzytkownika przez podanie jego ID w URL.
+
     Returns:
     {
         "success": true,
@@ -191,15 +186,16 @@ def get_subscription(
     }
     """
     try:
+        user_id = firebase_user["uid"]
         # Pobierz usera
-        user = db.query(User).filter(User.id == user_id).first()
-        
+        user = db.query(User).filter(User.firebase_uid == user_id).first()
+
         if not user:
             return {
                 "success": False,
                 "error": "User nie znaleziony"
             }
-        
+
         # Pobierz aktywną subskrypcję
         subscription = db.query(Subscription).filter(
             Subscription.user_id == user_id,
