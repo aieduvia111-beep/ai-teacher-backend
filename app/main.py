@@ -190,7 +190,6 @@ async def health():
     return {
         "status": "healthy",
         "openai_configured": bool(settings.OPENAI_API_KEY),
-        "openai_key_preview": settings.OPENAI_API_KEY[:20] + "..." if settings.OPENAI_API_KEY else "MISSING",
         "database": db_status
     }
 
