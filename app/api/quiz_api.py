@@ -1,10 +1,12 @@
 from ..error_logger import log_error
 """QUIZ API - generowanie quizu z obrazka, tematu lub pliku PDF/DOCX"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
 from ..openai_exam import generate_quiz_from_image, generate_quiz_from_topic
+from ..firebase_auth import require_feature_limit
+from ..models import User
 import os, base64, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -120,7 +122,7 @@ def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
     return ""
 
 @router.post("/generate")
-async def quiz_from_image(req: QuizImageRequest):
+async def quiz_from_image(req: QuizImageRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
         result = await generate_quiz_from_image(req.image, req.num_questions, req.difficulty)
         if not result["success"]:
@@ -136,7 +138,7 @@ async def quiz_from_image(req: QuizImageRequest):
         return {"success": False, "error": str(e)}
 
 @router.post("/generate-topic")
-async def quiz_from_topic(req: QuizTopicRequest):
+async def quiz_from_topic(req: QuizTopicRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
         wlasne = (req.wlasne_instrukcje or "").strip()
         print(f"[Quiz-Topic] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
@@ -151,7 +153,7 @@ async def quiz_from_topic(req: QuizTopicRequest):
         return {"success": False, "error": str(e)}
 
 @router.post("/generate-file")
-async def quiz_from_file(req: QuizFileRequest):
+async def quiz_from_file(req: QuizFileRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
         loop = asyncio.get_event_loop()
         text = await loop.run_in_executor(

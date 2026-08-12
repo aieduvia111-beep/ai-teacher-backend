@@ -1,11 +1,13 @@
 from ..error_logger import log_error
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
 from ..exam_pdf_generator import ExamGenerator
 from ..openai_vision import analyze_image_with_gpt4_vision
+from ..firebase_auth import require_feature_limit
+from ..models import User
 import os, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -62,7 +64,7 @@ async def _extract_topic_from_images(images: list) -> str:
     return json.loads(txt[s:e+1])
 
 @router.post("/generate")
-async def generate_exam(req: ExamRequest):
+async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_limit("exam"))):
     try:
         os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

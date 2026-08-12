@@ -389,6 +389,7 @@ const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",auth
 const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
+window._currentUser = () => currentUser;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
@@ -1013,7 +1014,8 @@ async function generate(){
   const notesController = new AbortController();
   const notesTimeoutId = setTimeout(()=>notesController.abort(), 120000);
   try{
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/notes-pdf/generate',{signal:notesController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
+    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/notes-pdf/generate',{signal:notesController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
     clearTimeout(notesTimeoutId);
     if(!res.ok)throw new Error('Błąd serwera '+res.status);
     const ct=res.headers.get('content-type')||'';

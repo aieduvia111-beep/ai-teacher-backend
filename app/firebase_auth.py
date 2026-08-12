@@ -4,9 +4,14 @@ import json
 import os
 
 import firebase_admin
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
+from sqlalchemy.orm import Session
+
+from .database import get_db
+from .models import User
+from .usage_limits import LIMIT_MESSAGES, check_and_use_limit
 
 
 def _ensure_firebase_app():
@@ -45,3 +50,43 @@ def get_verified_firebase_user(authorization: str = Header(None)) -> dict:
         raise HTTPException(status_code=401, detail="Nieprawidlowy lub wygasly token logowania")
 
     return decoded
+
+
+def get_current_app_user(
+    firebase_user: dict = Depends(get_verified_firebase_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Dependency FastAPI: zwraca (lub tworzy) rekord User w SQL dla zweryfikowanego
+    uzytkownika Firebase. Uzywane tam, gdzie trzeba sledzic dzienne limity uzycia."""
+    uid = firebase_user["uid"]
+    user = db.query(User).filter(User.firebase_uid == uid).first()
+    if not user:
+        email = firebase_user.get("email") or f"{uid}@firebase.local"
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.firebase_uid = uid
+        else:
+            user = User(firebase_uid=uid, email=email, is_premium=False)
+            db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def require_feature_limit(feature: str):
+    """Zwraca dependency FastAPI, ktora wymaga logowania I sprawdza dzienny limit
+    darmowego planu dla danej funkcji (np. 'chat', 'quiz', 'notes', 'exam')."""
+
+    def _dependency(
+        user: User = Depends(get_current_app_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        allowed, _remaining = check_and_use_limit(user, db, feature)
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=LIMIT_MESSAGES.get(feature, "Wykorzystales dzisiejszy darmowy limit."),
+            )
+        return user
+
+    return _dependency

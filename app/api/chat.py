@@ -1,5 +1,5 @@
 from ..error_logger import log_error
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
@@ -7,6 +7,8 @@ from typing import List, Dict, Optional
 import json
 from datetime import datetime
 from app.config import settings
+from app.firebase_auth import require_feature_limit
+from app.models import User
 import urllib.parse
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
@@ -128,7 +130,7 @@ def _build_response(ai_data: dict, user_message: str) -> dict:
 
 
 @router.post("/message")
-async def chat_message(req: ChatRequest):
+async def chat_message(req: ChatRequest, user: User = Depends(require_feature_limit("chat"))):
     """HTTP endpoint - przyjmuje historię rozmowy i zwraca odpowiedź AI"""
     try:
         # Buduj historię

@@ -374,6 +374,7 @@ const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",auth
 const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
+window._currentUser = () => currentUser;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
@@ -928,7 +929,8 @@ async function scanImage(){
   const subject=document.getElementById('subject').value;
   const mode=document.getElementById('mode').value;
   try{
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
+    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     const data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad analizy');

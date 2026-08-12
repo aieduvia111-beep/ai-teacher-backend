@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from ..openai_vision import (
@@ -7,6 +7,8 @@ from ..openai_vision import (
     vision_analyze_diagram,
     solve_homework_vision
 )
+from ..firebase_auth import require_feature_limit
+from ..models import User
 
 router = APIRouter(prefix="/api/v1/vision", tags=["Vision"])
 
@@ -17,7 +19,7 @@ class VisionRequest(BaseModel):
     prompt: Optional[str] = None
 
 @router.post("/analyze")
-async def analyze(request: VisionRequest):
+async def analyze(request: VisionRequest, user: User = Depends(require_feature_limit("vision"))):
     try:
         result = await analyze_image_with_gpt4_vision(request.image, request.prompt)
         return {"success": True, "analysis": result}
@@ -25,7 +27,7 @@ async def analyze(request: VisionRequest):
         return {"success": False, "analysis": "", "error": str(e)}
 
 @router.post("/analyze-math")
-async def analyze_math(request: VisionRequest):
+async def analyze_math(request: VisionRequest, user: User = Depends(require_feature_limit("vision"))):
     try:
         result = await vision_analyze_homework(request.image)
         return {"success": True, "analysis": result}
@@ -33,7 +35,7 @@ async def analyze_math(request: VisionRequest):
         return {"success": False, "analysis": "", "error": str(e)}
 
 @router.post("/analyze-diagram")
-async def analyze_diagram(request: VisionRequest):
+async def analyze_diagram(request: VisionRequest, user: User = Depends(require_feature_limit("vision"))):
     try:
         result = await vision_analyze_diagram(request.image)
         return {"success": True, "analysis": result}
@@ -41,7 +43,7 @@ async def analyze_diagram(request: VisionRequest):
         return {"success": False, "analysis": "", "error": str(e)}
 
 @router.post("/solve")
-async def solve(request: VisionRequest):
+async def solve(request: VisionRequest, user: User = Depends(require_feature_limit("vision"))):
     try:
         result = await solve_homework_vision(
             image_base64=request.image,

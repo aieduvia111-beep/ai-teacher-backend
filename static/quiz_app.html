@@ -421,6 +421,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 let currentUser = null;
+window._currentUser = () => currentUser;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
@@ -1082,7 +1083,9 @@ async function startQuiz(){
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
     var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 120000);
-    fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
+    (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+    return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
+    })
     .then(function(r){clearTimeout(quizTimeoutId1);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
     .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
     .catch(function(e){clearTimeout(quizTimeoutId1);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
@@ -1099,7 +1102,9 @@ async function startQuiz(){
   if(window._pdfB64 && !topic){
     err.textContent='';err.style.display='none';
     showPage('pageLoading');
-    fetch(BASE+'/api/v1/pdf/quiz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_base64:window._pdfB64})})
+    (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+    return fetch(BASE+'/api/v1/pdf/quiz',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({pdf_base64:window._pdfB64})});
+    })
     .then(r=>r.json()).then(d=>{
       if(!d.success) throw new Error(d.detail||'Błąd PDF');
       const pdfTopic = window._pdfName ? window._pdfName.replace('.pdf','') : 'PDF';
@@ -1116,7 +1121,9 @@ async function startQuiz(){
   showPage('pageLoading');
   var quizController2 = new AbortController();
   var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 120000);
-  fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})})
+  (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+  return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
+  })
   .then(function(r){clearTimeout(quizTimeoutId2);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
   .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
   .catch(function(e){clearTimeout(quizTimeoutId2);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';

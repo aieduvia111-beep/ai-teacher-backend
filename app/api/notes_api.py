@@ -1,11 +1,13 @@
 from ..error_logger import log_error
 """NOTES API - generowanie PDF z tematu LUB zdjecia (1 lub wiele)"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
 from ..notes_pdf_generator import PremiumNotesGenerator
+from ..firebase_auth import require_feature_limit
+from ..models import User
 import os, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -27,7 +29,7 @@ def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int =
     return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje)
 
 @router.post("/generate")
-async def generate_notes_pdf(req: NotesRequest):
+async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_feature_limit("notes"))):
     try:
         os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

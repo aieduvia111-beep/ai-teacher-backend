@@ -1,7 +1,9 @@
 import fitz
 import base64
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from ..firebase_auth import require_feature_limit
+from ..models import User
 
 router = APIRouter()
 
@@ -31,7 +33,7 @@ from groq import Groq
 import os
 
 @router.post("/quiz")
-async def quiz_from_pdf(req: PDFRequest):
+async def quiz_from_pdf(req: PDFRequest, user: User = Depends(require_feature_limit("quiz"))):
     """Szybki quiz z PDF przez Groq LLaMA"""
     try:
         # 1. Wyciagnij tekst
@@ -78,7 +80,7 @@ Tekst:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quiz-text")
-async def quiz_from_text(req: PDFRequest):
+async def quiz_from_text(req: PDFRequest, user: User = Depends(require_feature_limit("quiz"))):
     """Quiz z tekstu PDF przez GPT-4o"""
     try:
         data = base64.b64decode(req.pdf_base64)
