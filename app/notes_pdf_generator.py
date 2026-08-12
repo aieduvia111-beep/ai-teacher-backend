@@ -1306,15 +1306,24 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 f" {wlasne_instrukcje.strip()}"
                 f" Dostosuj CALA notatke do tych wskazowek."
             )
-        r = self.client.chat.completions.create(
-            model="gpt-4o" if wlasne_instrukcje and wlasne_instrukcje.strip() else "gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7, max_tokens=max_tok,
-        )
-        return self._robust_json_parse(r.choices[0].message.content.strip())
+        last_error = None
+        for attempt in range(2):
+            try:
+                r = self.client.chat.completions.create(
+                    model="gpt-4o" if wlasne_instrukcje and wlasne_instrukcje.strip() else "gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7, max_tokens=max_tok,
+                )
+                data = self._robust_json_parse(r.choices[0].message.content.strip())
+                if data.get('sekcje') or data.get('kluczowe_pojecia'):
+                    return data
+                last_error = ValueError("AI zwrocilo pusta notatke (brak sekcji tresci)")
+            except Exception as e:
+                last_error = e
+        raise last_error if last_error else ValueError("Nie udalo sie wygenerowac tresci notatki")
 
     def _build_content_pages(self, data: dict) -> bytes:
         S = self.styles; W = PW - 80; story = []

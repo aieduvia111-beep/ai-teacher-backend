@@ -886,28 +886,35 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
             wlasne_instrukcje_blok=blok
         )
-        r = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content":
-                    "Jestes nauczycielem tworzacym sprawdziany. "
-                    "Odpowiadasz TYLKO czystym JSON. Zero backticks. "
-                    "KRYTYCZNE: poziom trudnosci MUSI byc scisle przestrzegany. "
-                    "Znaki nowej linii w stringach jako \\n."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5, max_tokens=5500,
-        )
-        raw = r.choices[0].message.content.strip()
-        raw = self._fix_json(raw)
-        try:
-            return json.loads(raw)
-        except:
+        last_error = None
+        for attempt in range(2):
             try:
-                m = re.search(r'\{.*\}', raw, re.DOTALL)
-                return json.loads(m.group(0)) if m else {}
-            except:
-                return {}
+                r = self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content":
+                            "Jestes nauczycielem tworzacym sprawdziany. "
+                            "Odpowiadasz TYLKO czystym JSON. Zero backticks. "
+                            "KRYTYCZNE: poziom trudnosci MUSI byc scisle przestrzegany. "
+                            "Znaki nowej linii w stringach jako \\n."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.5, max_tokens=5500,
+                )
+                raw = r.choices[0].message.content.strip()
+                raw = self._fix_json(raw)
+                try:
+                    data = json.loads(raw)
+                except:
+                    m = re.search(r'\{.*\}', raw, re.DOTALL)
+                    data = json.loads(m.group(0)) if m else {}
+                if data.get('sekcje'):
+                    return data
+                last_error = ValueError("AI zwrocilo pusty sprawdzian (brak sekcji z pytaniami)")
+            except Exception as e:
+                last_error = e
+        print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
+        return {}
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,
