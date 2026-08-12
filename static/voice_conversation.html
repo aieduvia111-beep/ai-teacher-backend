@@ -474,6 +474,7 @@ const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",auth
 const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
+window._currentUser = () => currentUser;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
@@ -1495,8 +1496,9 @@ async function startSession(){
     boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
     // AI sam zaczyna gdy jest temat
     setTimeout(async()=>{
+      const _idToken0=window._currentUser()?await window._currentUser().getIdToken():'';
       const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken0},
         body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic, voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
       });
       if(!cr.ok) return;
@@ -1602,8 +1604,9 @@ async function process(){
       r.readAsDataURL(blob);
     });
 
+    const _idToken1=window._currentUser()?await window._currentUser().getIdToken():'';
     const sr = await fetch(BACKEND_URL+'/api/v1/voice/transcribe', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken1},
       body: JSON.stringify({audio: audioB64})
     });
     if(!sr.ok) throw new Error('STT '+sr.status);
@@ -1616,7 +1619,7 @@ async function process(){
     window._tShown=false;
     // Streaming TTS
     const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken1},
       body: JSON.stringify({text: userTxt, history: hist.slice(-8), profile_context: (window._profileCtx||''), level: selLevel, subject: selSubject, topic: document.getElementById('sessionTopic')?.value?.trim()||'', voice_id: localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'}),
     });
     if(!cr.ok) throw new Error('GPT '+cr.status);
@@ -1740,8 +1743,9 @@ function openCamera(){
         boardClear();
         boardClear(); boardWriteSection('⏳ Analizuję zdjęcie...', null);
         try{
+          const _idToken2=window._currentUser()?await window._currentUser().getIdToken():'';
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
-            method:'POST',headers:{'Content-Type':'application/json'},
+            method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken2},
             body:JSON.stringify({text:'Spojrz na zdjecie. Krotko (1-2 zdania) powiedz co widzisz (np. sprawdzian z biologii, 5 pytan o grzyby) i zapytaj uczennia z ktorym konkretnie pytaniem lub zagadnieniem potrzebuje pomocy. Zapamietaj DOKLADNIE tresc wszystkich pytan zebys mogl do nich wracac. Napisz TABLICE z trescia wszystkich zadan/pytan z zdjecia (min 3 punkty). [TABLICA: punkt1 | punkt2 | punkt3]',image:b64,history:hist.slice(-8),voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
           });
           if(!r.ok) throw new Error('Blad '+r.status);

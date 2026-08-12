@@ -1,6 +1,6 @@
 from ..error_logger import log_error
 """VOICE CONVERSATION API - Groq STT + GPT-4o + ElevenLabs TTS"""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from openai import OpenAI
 import base64
 import re
@@ -13,6 +13,7 @@ from ..config import settings
 from ..database import get_db
 from ..models import User
 from ..auth import get_current_user
+from ..firebase_auth import get_current_app_user
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from datetime import date
@@ -107,7 +108,7 @@ BŁĘDY: [CORRECTION: złe -> dobre]
 Odpowiadaj w języku ucznia."""
 
 @router.post("/transcribe")
-async def transcribe_audio(data: dict):
+async def transcribe_audio(data: dict, current_user: User = Depends(get_current_app_user)):
     try:
         audio_b64 = data.get("audio", "")
         if not audio_b64:
@@ -306,7 +307,11 @@ def call_tts(text: str, emotion: str = "neutral"):
 
 
 @router.post("/respond/stream")
-async def respond_stream(data: dict):
+async def respond_stream(data: dict, current_user: User = Depends(get_current_app_user), db: Session = Depends(get_db)):
+    allowed, remaining = check_voice_limit(current_user, db)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=LIMIT_REACHED_MESSAGE)
+
     selected_voice = data.get("voice_id", "Xb7hH8MSUJpSbSDYk0k2")
     text = data.get("text","").strip()
     history = data.get("history", [])
@@ -353,6 +358,7 @@ async def respond_stream(data: dict):
     em = _re2.search(r'\[EMOCJA: ([^\]]+)\]',ai_text)
     if em: emocja = em.group(1).strip().lower()
     clean = _re2.sub(r'\[TABLICA:[^\]]*\]|\[EMOCJA:[^\]]*\]|\[CORRECTION:[^\]]*\]','',ai_text).strip()
+    add_voice_usage(current_user, db, estimate_speech_seconds(clean))
     corrections = []
     for m in _re2.finditer(r'\[CORRECTION: ([^-]+) -> ([^\]]+)\]',ai_text):
         corrections.append({"wrong":m.group(1).strip(),"correct":m.group(2).strip()})
