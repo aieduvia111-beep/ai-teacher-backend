@@ -73,6 +73,11 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
         "- Odpowiedzi mylace - 3 bledne musza byc podobne do poprawnej\n"
         "- Urozmaicaj poprawna odpowiedz: 0,1,2,3 roznorodnie\n"
         "- Wyjasnienie musi tlumaczyc DLACZEGO ta odpowiedz jest poprawna\n"
+        "- WZORY MATEMATYCZNE: znak $...$ uzywaj TYLKO wokol czystych wyrazen "
+        "matematycznych (liczby, zmienne, symbole, dzialania) - NIGDY nie wstawiaj "
+        "polskich slow (np. 'i', 'lub', 'oraz', 'gdy') do srodka $...$, pisz je jako "
+        "zwykly tekst POZA wzorem. "
+        "POPRAWNIE: \"$x = 2$ i $x = 3$\". BLEDNIE: \"$x = 2 i x = 3$\".\n"
         "Odpowiedz TYLKO w formacie JSON (bez markdown):\n"
         '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
         '    {{\n      "question": "Tresc pytania?",\n'

@@ -551,6 +551,9 @@ WZORY MATEMATYCZNE - KRYTYCZNE:
 - ZAWSZE \\frac{{ nie rac{{ nie \\rac{{
 - NIE uzywaj \\underbrace \\usepackage ani innych komend z \\u na poczatku
 - NIE uzywaj cudzyslowow wewnatrz tekstu pytan
+- NIGDY nie wstawiaj polskich slow (np. "i", "lub", "oraz", "gdy") do srodka $...$ -
+  pisz je jako zwykly tekst POZA wzorem. POPRAWNIE: "$x = 2$ i $x = 3$".
+  BLEDNIE: "$x = 2 i x = 3$" (slowo "i" wewnatrz wzoru wyglada wtedy jak zmienna).
 
 FORMAT (TYLKO JSON):
 {{
