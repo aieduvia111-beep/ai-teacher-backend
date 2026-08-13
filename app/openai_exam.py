@@ -418,6 +418,10 @@ def fix_latex_in_quiz(quiz_data):
         # Napraw ext{ -> \text{
         t = t.replace("\\ext{", "\\text{")
         t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
+        # Napraw imes -> \times (backslash+t z \times bywa "zjadany" jak tabulator)
+        # UWAGA: \b nie dziala miedzy litera a cyfra (np. "4imes1"), stad lookahead na litere
+        t = t.replace("\\imes", "\\times")
+        t = re_module.sub(r"(?<![a-zA-Z\\])imes(?![a-zA-Z])", r"\\times", t)
         # Usun \text{...} - zamien na sam tekst bez komendy
         t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
         if "\\\\" in t and "$" not in t:
