@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
-from ..openai_exam import generate_quiz_from_image, generate_quiz_from_topic
+from ..openai_exam import (
+    generate_quiz_from_image, generate_quiz_from_topic,
+    sanitize_latex_json_backslashes, fix_latex_in_quiz,
+)
 from ..firebase_auth import require_feature_limit
 from ..models import User
 import os, base64, json
@@ -94,7 +97,9 @@ async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, 
     raw = resp.choices[0].message.content.strip()
     raw = raw.replace('```json', '').replace('```', '').strip()
     s = raw.find('{'); e = raw.rfind('}')
-    quiz_data = json.loads(raw[s:e+1])
+    raw = sanitize_latex_json_backslashes(raw[s:e+1])
+    quiz_data = json.loads(raw)
+    quiz_data = fix_latex_in_quiz(quiz_data)
     print(f"[Quiz-Topic+Instr] '{topic}' -> {len(quiz_data.get('questions',[]))} pytan")
     return {"success": True, "quiz": quiz_data}
 
@@ -204,7 +209,9 @@ WAZNE: correct to INDEX (0-3) poprawnej odpowiedzi w tablicy options. Urozmaicaj
         raw = resp.choices[0].message.content.strip()
         raw = raw.replace('```json', '').replace('```', '').strip()
         s = raw.find('{'); e = raw.rfind('}')
-        quiz_data = json.loads(raw[s:e+1])
+        raw = sanitize_latex_json_backslashes(raw[s:e+1])
+        quiz_data = json.loads(raw)
+        quiz_data = fix_latex_in_quiz(quiz_data)
 
         print(f"[Quiz-File] '{req.document_name}' -> {len(quiz_data.get('questions',[]))} pytan")
         return {"success": True, "quiz": quiz_data}

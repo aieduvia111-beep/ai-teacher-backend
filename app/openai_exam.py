@@ -2,8 +2,72 @@ from openai import AsyncOpenAI
 from .config import settings
 from typing import List, Dict, Optional
 import json
+import re as _re_sanitize
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+_LATEX_CMDS_AT_RISK = [
+    # \t... (backslash+t bywa "zjadany" jako tabulator)
+    'times', 'text', 'tan', 'theta', 'tau', 'triangle', 'to', 'top', 'tilde',
+    # \b... (backslash+b bywa "zjadany" jako backspace)
+    'beta', 'bar', 'binom', 'bmod', 'boxed', 'bullet',
+    # \f... (backslash+f bywa "zjadany" jako formfeed)
+    'frac', 'forall', 'flat',
+    # \n... (backslash+n bywa "zjadany" jako nowa linia)
+    'neq', 'nabla', 'notin', 'nu',
+    # \r... (backslash+r bywa "zjadany" jako powrot karetki)
+    'rho', 'rightarrow',
+    # inne czeste, ktore i tak warto podwoic zawczasu
+    'sqrt', 'cdot', 'div', 'sum', 'int', 'left', 'right', 'alpha', 'gamma',
+    'delta', 'pi', 'infty', 'leq', 'geq', 'approx', 'pm', 'mathrm',
+    'overline', 'over', 'vec', 'hat', 'dot', 'quad', 'qquad', 'ldots',
+    'sigma', 'omega', 'lambda', 'partial', 'prod', 'mu', 'phi', 'chi', 'psi',
+    'subset', 'cup', 'cap', 'exists', 'in',
+]
+
+
+def sanitize_latex_json_backslashes(raw: str) -> str:
+    """Naprawia surowy tekst JSON od GPT PRZED parsowaniem.
+
+    Problem: komendy LaTeX zaczynajace sie od liter b/f/n/r/t (np. \\times,
+    \\text, \\frac, \\triangle, \\rho) sa dla json.loads() nierozroznialne od
+    prawdziwych escape'ow JSON (\\t = tabulator, \\n = nowa linia, itd.) -
+    jesli GPT nie zdwoi backslasha (\\\\times zamiast \\times), parser po cichu
+    "zjada" litere b/f/n/r/t jako znak specjalny, zostawiajac reszte slowa
+    (np. "imes" zamiast "\\times").
+
+    Dwuetapowa naprawa (dziala na SUROWYM stringu, przed json.loads):
+    1. Kazda znana komenda LaTeX z pojedynczym backslashem -> podwojony
+       backslash (nie rusza juz poprawnie podwojonych).
+    2. Kazdy pozostaly pojedynczy backslash w stringach, ktory nie jest
+       poprawnym escape'em JSON (\\\\, \\", \\n, \\r, \\t, \\b, \\f, \\u) ->
+       tez podwojony (bezpieczny domyslny wybor).
+    """
+    for cmd in _LATEX_CMDS_AT_RISK:
+        # (?![a-zA-Z]) zamiast \b - \b nie dziala miedzy litera a cyfra
+        # (np. "\\to0"), a to bardzo czeste w tresci matematycznej.
+        raw = _re_sanitize.sub(r'(?<!\\)\\' + cmd + r'(?![a-zA-Z])', r'\\\\' + cmd, raw)
+
+    B = chr(92)
+    result, i, in_str = [], 0, False
+    while i < len(raw):
+        c = raw[i]
+        if not in_str:
+            if c == '"':
+                in_str = True
+            result.append(c); i += 1; continue
+        if c == '"':
+            in_str = False; result.append(c); i += 1; continue
+        if c == B:
+            nc = raw[i + 1] if i + 1 < len(raw) else ''
+            if nc in (B, '"', 'n', 'r', 't', 'b', 'f', 'u'):
+                result.append(c); result.append(nc); i += 2
+            else:
+                result.append(B); result.append(B); i += 1
+        else:
+            result.append(c); i += 1
+    return ''.join(result)
 
 async def generate_exam_from_image(
     image_data: str,
@@ -109,7 +173,7 @@ async def generate_exam_from_image(
             response_format={"type": "json_object"}
         )
         
-        result = response.choices[0].message.content
+        result = sanitize_latex_json_backslashes(response.choices[0].message.content)
         exam_data = json.loads(result)
         
         print(f"âœ… Sprawdzian wygenerowany: {exam_data.get('title', 'Bez tytuÅ‚u')}")
@@ -382,9 +446,10 @@ WAŻNE:
             response_format={"type": "json_object"}
         )
         
-        quiz_data = json.loads(response.choices[0].message.content)
+        raw_content = sanitize_latex_json_backslashes(response.choices[0].message.content)
+        quiz_data = json.loads(raw_content)
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
-        
+
         quiz_data = fix_latex_in_quiz(quiz_data)
         return {"success": True, "quiz": quiz_data}
         

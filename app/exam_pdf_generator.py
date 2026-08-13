@@ -809,8 +809,10 @@ class ExamGenerator:
                       'pm', 'text', 'mathrm', 'overline', 'over', 'vec',
                       'hat', 'bar', 'dot', 'quad', 'qquad', 'ldots']
         for cmd in latex_cmds:
-            # Zamień pojedynczy \cmd na \\cmd (unikaj podwójnego podwojenia)
-            raw = re.sub(r'(?<!\\)\\' + cmd + r'\b', r'\\\\' + cmd, raw)
+            # Zamień pojedynczy \cmd na \\cmd (unikaj podwójnego podwojenia).
+            # UWAGA: \b (word boundary) NIE dziala miedzy litera a cyfra (np. "4\times1"),
+            # bo obie strony sa \w - dlatego uzywamy negative lookahead zamiast \b.
+            raw = re.sub(r'(?<!\\)\\' + cmd + r'(?![a-zA-Z])', r'\\\\' + cmd, raw)
 
         # Napraw backslashe LaTeX — pozostałe
         B = chr(92)
