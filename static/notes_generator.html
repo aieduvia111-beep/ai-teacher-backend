@@ -390,6 +390,16 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 window._currentUser = () => currentUser;
+// WebView (natywna apka Android) nie obsluguje pobierania z blob: URL - most JS<->natywny
+// zapisuje plik przez FileProvider zamiast link.click() na blob URL.
+window.downloadViaNative = (window.AndroidNative && window.AndroidNative.downloadBlob) ? function(blob, filename, mimeType){
+  const reader = new FileReader();
+  reader.onloadend = function(){
+    const base64 = reader.result.split(',')[1];
+    window.AndroidNative.downloadBlob(base64, filename, mimeType || 'application/octet-stream');
+  };
+  reader.readAsDataURL(blob);
+} : null;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
@@ -1021,13 +1031,14 @@ async function generate(){
     const ct=res.headers.get('content-type')||'';
     if(ct.includes('application/pdf')){
       const blob=await res.blob(),url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
-      link.href=url;link.download=`Notatka_${topicName.replace(/\s+/g,'_')}.pdf`;finishProgress();
+      const dlFilename=`Notatka_${topicName.replace(/\s+/g,'_')}.pdf`;
+      link.href=url;link.download=dlFilename;finishProgress();
       // Zapisz do historii i XP
       saveNote(topicName);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
       localStorage.setItem('eduvia_xp',xp+50);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');link.click();renderStats();},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');if(window.downloadViaNative)window.downloadViaNative(blob,dlFilename,'application/pdf');else link.click();renderStats();},600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
   }catch(e){
     clearTimeout(notesTimeoutId);

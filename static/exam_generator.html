@@ -332,6 +332,16 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 window._currentUser = () => currentUser;
+// WebView (natywna apka Android) nie obsluguje pobierania z blob: URL - most JS<->natywny
+// zapisuje plik przez FileProvider zamiast link.click() na blob URL.
+window.downloadViaNative = (window.AndroidNative && window.AndroidNative.downloadBlob) ? function(blob, filename, mimeType){
+  const reader = new FileReader();
+  reader.onloadend = function(){
+    const base64 = reader.result.split(',')[1];
+    window.AndroidNative.downloadBlob(base64, filename, mimeType || 'application/octet-stream');
+  };
+  reader.readAsDataURL(blob);
+} : null;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
@@ -982,27 +992,35 @@ async function generate(){
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       localStorage.setItem('eduvia_xp',xp+120);
       // Pobierz oba pliki
-      const linkA=document.createElement('a');
-      linkA.href=URL.createObjectURL(blobA);
-      linkA.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantA.pdf`;
-      linkA.click();
-      setTimeout(()=>{
-        const linkB=document.createElement('a');
-        linkB.href=URL.createObjectURL(blobB);
-        linkB.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantB.pdf`;
-        linkB.click();
-      },1000);
+      const nameA=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantA.pdf`;
+      const nameB=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantB.pdf`;
+      if(window.downloadViaNative){
+        window.downloadViaNative(blobA,nameA,'application/pdf');
+        setTimeout(()=>window.downloadViaNative(blobB,nameB,'application/pdf'),1000);
+      }else{
+        const linkA=document.createElement('a');
+        linkA.href=URL.createObjectURL(blobA);
+        linkA.download=nameA;
+        linkA.click();
+        setTimeout(()=>{
+          const linkB=document.createElement('a');
+          linkB.href=URL.createObjectURL(blobB);
+          linkB.download=nameB;
+          linkB.click();
+        },1000);
+      }
       setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';renderStats();},600);
     } else {
       const blob=await fetchWariant(temat,numQ,wariant);
       const url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
-      link.href=url;link.download=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariant${wariant}.pdf`;
+      const dlFilename=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariant${wariant}.pdf`;
+      link.href=url;link.download=dlFilename;
       finishProgress();
       saveExam(temat,numQ);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       if(typeof window._fbSave==='function')window._fbSave('examHistory',{temat:temat||'Sprawdzian'},60);
       useLimit('exam');localStorage.setItem('eduvia_xp',xp+60);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';link.click();renderStats();},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';if(window.downloadViaNative)window.downloadViaNative(blob,dlFilename,'application/pdf');else link.click();renderStats();},600);
     }
   }catch(e){
     clearInterval(stepTimer);
