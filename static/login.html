@@ -407,7 +407,7 @@ window.doGoogle=async function(){
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,browserLocalPersistence,setPersistence,GoogleAuthProvider,signInWithPopup}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,updateProfile,onAuthStateChanged,browserLocalPersistence,setPersistence,GoogleAuthProvider,signInWithPopup,signInWithCredential}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
@@ -447,8 +447,33 @@ window.doReset=async function(){
   catch(e){load(false);err(eTxt(e.code));}
 };
 
+// Natywna apka Android (WebView) nie obsluguje window.open ani OAuth Google -
+// logowanie idzie przez most JS<->natywny (Credential Manager), patrz MainActivity.java.
+const isNativeAndroidApp = navigator.userAgent.includes('EduviaAndroidApp');
+
+window.onNativeGoogleSignIn=async function(idToken){
+  try{
+    const credential=GoogleAuthProvider.credential(idToken);
+    const r=await signInWithCredential(auth,credential);
+    await saveUser(r.user,r.user.displayName);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){
+    load(false);
+    err(eTxt(e.code));
+  }
+};
+
+window.onNativeGoogleSignInError=function(message){
+  load(false);
+  if(message!=='unknown'&&!/cancel/i.test(message||''))err('Logowanie przez Google nie powiodło się. Spróbuj ponownie.');
+};
+
 window.doGoogle=async function(){
   load(true,'Logowanie przez Google...');
+  if(isNativeAndroidApp && window.AndroidNative){
+    window.AndroidNative.signInWithGoogle();
+    return;
+  }
   try{
     const provider=new GoogleAuthProvider();
     const r=await signInWithPopup(auth,provider);
