@@ -463,6 +463,8 @@ window.doReset=async function(){
 // Natywna apka Android (WebView) nie obsluguje window.open ani OAuth Google -
 // logowanie idzie przez most JS<->natywny (Credential Manager), patrz MainActivity.java.
 const isNativeAndroidApp = navigator.userAgent.includes('EduviaAndroidApp');
+// iOS: WKWebView tag dodawany w WebView.swift (customUserAgent konczy sie na "PWAShell").
+const isNativeIosApp = navigator.userAgent.includes('PWAShell');
 
 window.onNativeGoogleSignIn=async function(idToken){
   try{
@@ -498,8 +500,30 @@ window.doGoogle=async function(){
   }
 };
 
+window.onNativeAppleSignIn=async function(idToken,fullName){
+  try{
+    const provider=new OAuthProvider('apple.com');
+    const credential=provider.credential({idToken:idToken});
+    const r=await signInWithCredential(auth,credential);
+    await saveUser(r.user,fullName||r.user.displayName);
+    window.location.href='dashboard_FINAL.html';
+  }catch(e){
+    load(false);
+    err(eTxt(e.code));
+  }
+};
+
+window.onNativeAppleSignInError=function(message){
+  load(false);
+  if(message!=='unknown'&&!/cancel/i.test(message||''))err('Logowanie przez Apple nie powiodło się. Spróbuj ponownie.');
+};
+
 window.doApple=async function(){
   load(true,'Logowanie przez Apple...');
+  if(isNativeIosApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.signInWithApple){
+    window.webkit.messageHandlers.signInWithApple.postMessage({});
+    return;
+  }
   try{
     const provider=new OAuthProvider('apple.com');
     provider.addScope('email');
