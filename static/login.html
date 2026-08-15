@@ -344,11 +344,19 @@ button:active{transform:scale(.95)!important;}
 // Wykryj czy Chrome jest zainstalowany i czy jest domyślna przeglądarka
 (function(){
   var ua = navigator.userAgent;
+
+  // Ten check dotyczy wylacznie Androida/TWA (Trusted Web Activity wymaga prawdziwego Chrome).
+  // Natywne apki (iOS WKWebView, natywny Android WebView) nie uzywaja TWA/Chrome w ogole,
+  // wiec navigator.vendor nigdy nie bedzie "Google Inc." i falszywie wywolywalby ten ekran.
+  var isNativeIosApp = ua.includes('PWAShell');
+  var isNativeAndroidApp = ua.includes('EduviaAndroidApp');
+  if(isNativeIosApp || isNativeAndroidApp) return;
+
   var isChrome = /Chrome/.test(ua) && /Google Inc/.test(navigator.vendor);
   var isSamsungBrowser = /SamsungBrowser/.test(ua);
   var isFirefox = /Firefox/.test(ua);
   var isEdge = /Edg/.test(ua);
-  
+
   // Jeśli nie Chrome lub Samsung Browser (który blokuje TWA)
   if(!isChrome || isSamsungBrowser){
     document.getElementById('chromeScreen').style.display='flex';
