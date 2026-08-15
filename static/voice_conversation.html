@@ -1456,6 +1456,16 @@ function startVoiceTimer(){
 
 async function startSession(){
   if(!checkVoiceTimeLimit()) return;
+
+  // Odblokowanie AudioContext w ramach bezposredniego klikniecia uzytkownika (wymog iOS Safari
+  // autoplay policy - kontekst utworzony/wznowiony poza user gesture zostaje "suspended" na stale
+  // i audio pozniej nigdy nie zabrzmi, mimo ze play() nie zglasza bledu). Ten sam kontekst jest
+  // pozniej reuzywany w playAudio()/playHmm() zamiast tworzenia nowego za kazdym razem.
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') await audioCtx.resume();
+  }catch(e){ console.error('AudioContext unlock failed:', e); }
+
   startVoiceTimer();
   // Pobierz profil ucznia
   var _profile = window._userProfile || {};
@@ -1531,11 +1541,10 @@ async function startSession(){
 // NAGRYWANIE \u2014 push-to-talk
 // Ludzkie dzwi\u0119ki AI
 const _hmm = ['hmm','mhm','aha','rozumiem','no tak','okej'];
-let _hmmCtx = null;
 function playHmm(){
   try{
-    if(!_hmmCtx) _hmmCtx = new(window.AudioContext||window.webkitAudioContext)();
-    const ctx = _hmmCtx;
+    if(!audioCtx) audioCtx = new(window.AudioContext||window.webkitAudioContext)();
+    const ctx = audioCtx;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
@@ -1550,7 +1559,7 @@ function playHmm(){
     gain.gain.linearRampToValueAtTime(0, ctx.currentTime+0.35);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime+0.35);
-  }catch(e){}
+  }catch(e){ console.error('playHmm failed:', e); }
 }
 
 function startRec(){
@@ -1714,19 +1723,22 @@ async function playAudio(b64){
   const url = URL.createObjectURL(blob);
   curAudio = new Audio(url);
 
-  // Lip sync przez AudioContext analyser
+  // Lip sync przez AudioContext analyser - reuzywamy jeden globalny audioCtx odblokowany
+  // w startSession() (user gesture), zamiast tworzyc nowy kontekst za kazdym razem (na iOS
+  // kontekst utworzony poza klikneciem zostaje "suspended" i audio sie nie odtwarza).
   try{
-    const actx = new(window.AudioContext||window.webkitAudioContext)();
-    const src = actx.createMediaElementSource(curAudio);
-    const an = actx.createAnalyser(); an.fftSize=512;
-    src.connect(an); an.connect(actx.destination);
+    if(!audioCtx) audioCtx = new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') await audioCtx.resume();
+    const src = audioCtx.createMediaElementSource(curAudio);
+    const an = audioCtx.createAnalyser(); an.fftSize=512;
+    src.connect(an); an.connect(audioCtx.destination);
     startLipSync(an);
-  } catch(e){}
+  } catch(e){ console.error('Audio context/lip-sync error:', e); }
 
   await new Promise(res=>{
     curAudio.onended = ()=>{ URL.revokeObjectURL(url); res(); };
     curAudio.onerror = ()=>{ URL.revokeObjectURL(url); res(); };
-    curAudio.play().catch(()=>res());
+    curAudio.play().catch(e=>{ console.error('Audio playback failed:', e); res(); });
   });
 
   isSpeak = false; curAudio = null;
