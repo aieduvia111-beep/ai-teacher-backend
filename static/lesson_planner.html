@@ -1241,7 +1241,7 @@ function renderTags(){
 // ── CURSOR ────────────────────────────────────────
 (function(){
   var c=document.getElementById('cur'),r=document.getElementById('ring');
-  if(!c||!r)return;
+  if(!c||!r||('ontouchstart' in window))return;
   var mx=0,my=0,cx=0,cy=0,rx=0,ry=0;
   document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
   (function loop(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;rx+=(mx-rx)*.08;ry+=(my-ry)*.08;c.style.left=cx+'px';c.style.top=cy+'px';r.style.left=rx+'px';r.style.top=ry+'px';requestAnimationFrame(loop);})();
