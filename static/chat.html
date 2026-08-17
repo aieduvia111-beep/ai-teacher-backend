@@ -1071,13 +1071,18 @@ function navTo(filename) {
   window.location.href = filename;
 }
 
-// CURSOR
-const cur = document.getElementById('cur'), curR = document.getElementById('curR');
-let mx = 0, my = 0, rx = 0, ry = 0;
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cur.style.left = mx + 'px'; cur.style.top = my + 'px'; });
-(function animCur() { rx += (mx - rx) * .12; ry += (my - ry) * .12; curR.style.left = rx + 'px'; curR.style.top = ry + 'px'; requestAnimationFrame(animCur); })();
-document.addEventListener('mousedown', () => { cur.style.width = '14px'; cur.style.height = '14px'; });
-document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style.height = '10px'; });
+// CURSOR - tylko na urzadzeniach z prawdziwa mysza. Na dotykowych (telefon/TWA/WebView/iOS)
+// elementy sa i tak ukryte przez CSS (.cursor,.cursor-ring{display:none}), ale petla
+// requestAnimationFrame dzialala bezwarunkowo w nieskonczonosc na kazdym urzadzeniu -
+// niepotrzebne ciagle obciazenie glownego watku/klatek na mobile.
+if (!('ontouchstart' in window)) {
+  const cur = document.getElementById('cur'), curR = document.getElementById('curR');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cur.style.left = mx + 'px'; cur.style.top = my + 'px'; });
+  (function animCur() { rx += (mx - rx) * .12; ry += (my - ry) * .12; curR.style.left = rx + 'px'; curR.style.top = ry + 'px'; requestAnimationFrame(animCur); })();
+  document.addEventListener('mousedown', () => { cur.style.width = '14px'; cur.style.height = '14px'; });
+  document.addEventListener('mouseup', () => { cur.style.width = '10px'; cur.style.height = '10px'; });
+}
 
 // STATE
 let chatHistory = [], attachments = [], isThinking = false;
