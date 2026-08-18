@@ -38,28 +38,50 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 
-/* ═══ LAYOUT ═══ */
-.onb-wrap{position:relative;z-index:2;max-width:460px;margin:0 auto;padding:32px 20px 40px;display:flex;flex-direction:column;min-height:100vh;}
-.onb-header{display:flex;align-items:center;gap:10px;margin-bottom:26px;}
+/* ═══ HEADER (stały pasek, jak login.html) ═══ */
+.onb-hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;display:flex;align-items:center;background:rgba(7,7,13,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .brand-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.95em;color:white;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.18);flex-shrink:0;}
-.brand-name{font-family:var(--h);font-weight:700;font-size:1em;letter-spacing:-.01em;}
-.brand-name .ai-part{color:var(--accent2);}
-.brand-name .ai-dot{color:var(--accent2);font-size:.6em;vertical-align:super;}
+.brand-name{font-family:var(--h);font-weight:800;font-size:.95em;color:white;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;}
 
-.onb-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:26px 22px;box-shadow:0 0 0 1px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03);flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+/* ═══ LAYOUT: split na desktopie (>=900px), jedna kolumna na mobile/tablet ═══ */
+.onb-main{position:relative;z-index:2;display:flex;min-height:100vh;padding-top:68px;}
+
+.onb-left{flex:1;display:none;align-items:center;justify-content:center;padding:60px 40px;}
+.onb-left-inner{max-width:380px;}
+.onb-hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);font-size:.72em;font-weight:600;color:var(--accent2);margin-bottom:20px;letter-spacing:.02em;}
+.onb-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(34,211,160,.6);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.onb-hero-title{font-family:var(--h);font-size:2.15em;font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:16px;}
+.onb-hero-title .grad{background:linear-gradient(130deg,var(--accent),var(--accent2) 55%,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.onb-hero-sub{font-size:.92em;color:var(--muted2);line-height:1.75;font-weight:300;margin-bottom:44px;}
+
+.onb-right{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:24px 20px 40px;}
+.onb-wrap{width:100%;max-width:420px;}
+
+@media(min-width:900px){
+  .onb-left{display:flex;}
+  .onb-right{flex:none;width:500px;padding:40px 60px 40px 0;align-items:center;}
+}
+
+
+.onb-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:26px 22px;box-shadow:0 0 0 1px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03);display:flex;flex-direction:column;position:relative;overflow:hidden;animation:cardIn .5s cubic-bezier(.16,1,.3,1) both;}
 .onb-card::before{content:'';position:absolute;top:-60%;right:-30%;width:280px;height:280px;background:radial-gradient(circle,rgba(124,106,255,.12),transparent 70%);pointer-events:none;}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.98);}to{opacity:1;transform:none;}}
 
-.onb-screen{display:none;flex-direction:column;flex:1;position:relative;z-index:1;}
+.onb-screen{display:none;flex-direction:column;position:relative;z-index:1;}
 .onb-screen.active{display:flex;animation:fadeUp .45s cubic-bezier(.22,1,.36,1) both;}
 
 .onb-greet{font-size:.95em;color:var(--green);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .onb-title{font-family:var(--h);font-size:1.7em;font-weight:800;line-height:1.22;margin-bottom:8px;color:var(--text);}
+@media(max-width:400px){
+  .onb-title{font-size:1.4em;}
+}
 .onb-sub{color:var(--muted2);font-size:.9em;margin-bottom:22px;line-height:1.4;}
 
 /* ═══ EKRAN 1a: LISTA ETAPOW (duze poziome karty) ═══ */
 .stage-list{display:flex;flex-direction:column;gap:10px;}
 .stage-card{display:flex;align-items:center;gap:14px;padding:15px 16px;background:var(--s2);border:1.5px solid var(--border);border-radius:16px;cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);text-align:left;width:100%;color:var(--muted2);font-family:var(--h);}
-.stage-card:hover{border-color:var(--border-hi);transform:translateY(-2px);background:var(--s3);}
+.stage-card:hover{border-color:var(--border-hi);transform:translateY(-2px) scale(1.02);background:var(--s3);}
 .stage-card.active{background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.1));border-color:var(--accent);box-shadow:0 0 0 1px rgba(124,106,255,.35),0 10px 32px rgba(124,106,255,.35),inset 0 1px 0 rgba(255,255,255,.1);transform:translateY(-1px);}
 .stage-icon{width:46px;height:46px;border-radius:13px;background:var(--s3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted2);transition:all .25s;}
 .stage-icon svg{width:22px;height:22px;stroke:currentColor;}
@@ -76,7 +98,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 
 .class-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 .class-card{padding:16px 8px;background:var(--s2);border:1.5px solid var(--border);border-radius:15px;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;color:var(--muted2);font-family:var(--h);}
-.class-card:hover{border-color:var(--border-hi);transform:translateY(-2px);background:var(--s3);}
+.class-card:hover{border-color:var(--border-hi);transform:translateY(-2px) scale(1.02);background:var(--s3);}
 .class-card.active{background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.1));border-color:var(--accent);box-shadow:0 0 0 1px rgba(124,106,255,.35),0 10px 28px rgba(124,106,255,.32),inset 0 1px 0 rgba(255,255,255,.1);}
 .class-card-icon{width:38px;height:38px;border-radius:11px;background:var(--s3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;color:var(--muted2);transition:all .2s;}
 .class-card-icon svg{width:19px;height:19px;stroke:currentColor;}
@@ -85,12 +107,15 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .class-card.active .class-card-label{color:var(--text);}
 
 /* ═══ EKRAN 2: PRZEDMIOTY ═══ */
-.subj-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-.subj-btn{padding:16px 10px;background:var(--s2);border:1.5px solid var(--border);border-radius:15px;color:var(--muted2);font-family:var(--h);font-size:.85em;font-weight:700;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
-.subj-btn:hover{border-color:var(--border-hi);color:var(--text);transform:translateY(-2px);background:var(--s3);}
+.subj-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.subj-btn{padding:13px 8px;background:var(--s2);border:1.5px solid var(--border);border-radius:15px;color:var(--muted2);font-family:var(--h);font-size:.82em;font-weight:700;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+@media(min-width:380px){
+  .subj-grid{grid-template-columns:repeat(3,1fr);}
+}
+.subj-btn:hover{border-color:var(--border-hi);color:var(--text);transform:translateY(-2px) scale(1.02);background:var(--s3);}
 .subj-btn.active{background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.1));border-color:var(--accent);color:var(--text);box-shadow:0 0 0 1px rgba(124,106,255,.35),0 10px 28px rgba(124,106,255,.32),inset 0 1px 0 rgba(255,255,255,.1);}
-.subj-icon{width:42px;height:42px;border-radius:12px;background:var(--s3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;color:var(--muted2);transition:all .2s;}
-.subj-icon svg{width:21px;height:21px;stroke:currentColor;}
+.subj-icon{width:36px;height:36px;border-radius:11px;background:var(--s3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;color:var(--muted2);transition:all .2s;}
+.subj-icon svg{width:18px;height:18px;stroke:currentColor;}
 .subj-btn.active .subj-icon{background:rgba(124,106,255,.3);border-color:rgba(124,106,255,.55);color:var(--accent2);box-shadow:0 0 16px rgba(124,106,255,.55);}
 .subj-btn[data-accent="green"] .subj-icon{color:var(--green);}
 .subj-btn[data-accent="green"].active .subj-icon{color:var(--green);background:rgba(34,211,160,.18);border-color:rgba(34,211,160,.5);box-shadow:0 0 16px rgba(34,211,160,.5);}
@@ -107,7 +132,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .cal-weekdays span{font-family:var(--h);font-size:.6em;font-weight:700;color:var(--muted);letter-spacing:.04em;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-family:var(--b);font-size:.85em;color:var(--text);cursor:pointer;transition:all .18s;border:1.5px solid transparent;}
-.cal-day:hover:not(.muted){background:rgba(124,106,255,.14);}
+.cal-day:hover:not(.muted){background:rgba(124,106,255,.14);transform:scale(1.08);}
 .cal-day.muted{color:var(--muted);cursor:default;opacity:.4;}
 .cal-day.today{border-color:rgba(124,106,255,.45);color:var(--accent2);font-weight:700;}
 .cal-day.selected{background:linear-gradient(135deg,var(--accent),#5040c8);color:white;font-weight:700;box-shadow:0 0 18px rgba(124,106,255,.65),inset 0 1px 0 rgba(255,255,255,.2);}
@@ -118,7 +143,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .onb-skip{background:rgba(34,211,160,.07);border:1.5px solid rgba(34,211,160,.3);color:var(--green);font-family:var(--b);font-size:.85em;font-weight:600;cursor:pointer;text-align:center;padding:12px;width:100%;border-radius:13px;transition:all .2s;margin-bottom:6px;}
 .onb-skip:hover{background:rgba(34,211,160,.13);border-color:rgba(34,211,160,.5);}
 
-.onb-spacer{flex:1;min-height:16px;}
+.onb-spacer{height:20px;}
 
 .onb-dots{display:flex;justify-content:center;gap:8px;margin:16px 0 16px;}
 .onb-dot{width:8px;height:8px;border-radius:50%;background:var(--border-hi);transition:all .3s cubic-bezier(.22,1,.36,1);}
@@ -131,10 +156,56 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .onb-next:not(:disabled):active{transform:translateY(0) scale(.98);}
 .onb-next svg{width:16px;height:16px;stroke:currentColor;}
 
-.onb-loading{display:none;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:16px;}
+.onb-loading{display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:60px 20px;}
 .onb-loading.active{display:flex;animation:fadeUp .3s ease both;}
 .onb-spinner{width:42px;height:42px;border:3px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .85s linear infinite;box-shadow:0 0 24px rgba(124,106,255,.3);}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* ═══ CONFETTI (identyczny mechanizm co w quiz_app.html) ═══ */
+.confetti-piece{position:fixed;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:1000;animation:confettiFall linear forwards;}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
+/* ═══ NIZSZE VIEWPORTY (laptopy, tablet poziomo) - musi byc NA KONCU
+   arkusza, zeby wygrac ze zwyklymi (bezwarunkowymi) regulami powyzej
+   przy tej samej specyficznosci selektora. Scisniecie odstepow
+   pionowych, zeby przycisk "Dalej" zmiescil sie bez przewijania. ═══ */
+@media(max-height:820px){
+  .onb-main{padding-top:36px;}
+  .onb-hdr{padding:7px 24px;}
+  .onb-right{padding-top:10px;padding-bottom:10px;}
+  .onb-card{padding:12px 18px;}
+  .onb-greet{margin-bottom:3px;font-size:.85em;}
+  .onb-title{font-size:1.2em;margin-bottom:2px;line-height:1.15;}
+  .onb-sub{margin-bottom:7px;font-size:.8em;}
+  .onb-spacer{height:4px;}
+  .onb-dots{margin:6px 0;}
+  .stage-list{gap:4px;}
+  .stage-card{padding:6px 10px;gap:9px;}
+  .stage-icon{width:26px;height:26px;border-radius:8px;}
+  .stage-icon svg{width:13px;height:13px;}
+  .stage-label{font-size:.85em;}
+  .class-grid,.subj-grid{gap:5px;}
+  .class-card{padding:7px 6px;gap:4px;}
+  .class-card-icon{width:24px;height:24px;}
+  .class-card-icon svg{width:12px;height:12px;}
+  .class-card-label{font-size:.78em;}
+  .subj-btn{padding:7px 6px;gap:4px;font-size:.76em;}
+  .subj-icon{width:24px;height:24px;}
+  .subj-icon svg{width:12px;height:12px;}
+  .onb-next{padding:9px;font-size:.85em;}
+  .onb-skip{padding:8px;margin-bottom:3px;}
+  .cal-widget{padding:10px;margin-bottom:6px;}
+  .cal-nav{margin-bottom:6px;}
+  .cal-nav-btn{width:26px;height:26px;}
+  .cal-day{font-size:.75em;}
+  .cal-weekdays{margin-bottom:4px;}
+}
+@media(min-width:900px) and (max-height:820px){
+  .onb-left{padding:20px 40px;}
+  .onb-hero-title{font-size:1.7em;margin-bottom:8px;}
+  .onb-hero-sub{margin-bottom:16px;}
+  .onb-hero-badge{margin-bottom:10px;}
+}
 </style>
 </head>
 <body>
@@ -142,11 +213,21 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 <div class="aurora"><div class="ab a1"></div><div class="ab a2"></div></div>
 <div class="starfield" id="starfield"></div>
 
-<div class="onb-wrap">
-  <div class="onb-header">
-    <div class="brand-icon">E</div>
-    <div class="brand-name">Eduvia <span class="ai-part">AI<span class="ai-dot">•</span></span></div>
+<header class="onb-hdr">
+  <div class="brand-name"><div class="brand-icon">E</div>Eduvia</div>
+</header>
+
+<main class="onb-main">
+  <div class="onb-left">
+    <div class="onb-left-inner">
+      <div class="onb-hero-badge"><span class="onb-badge-dot"></span>Personalizacja AI</div>
+      <h2 class="onb-hero-title">Dopasujemy naukę<br>do <span class="grad">Ciebie</span></h2>
+      <p class="onb-hero-sub">Kilka pytań o Twój poziom, ulubiony przedmiot i termin sprawdzianu — resztę Eduvia AI dopasuje automatycznie.</p>
+    </div>
   </div>
+
+  <div class="onb-right">
+  <div class="onb-wrap">
 
   <div class="onb-card">
 
@@ -244,7 +325,9 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
     </div>
 
   </div>
-</div>
+  </div>
+  </div>
+</main>
 
 <script>
 // Kilka migoczących gwiazdek w tle - ten sam wzorzec co .bg-star w reszcie apki
@@ -263,6 +346,41 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
     field.appendChild(s);
   }
 })();
+
+/* ═══════════════════════════════════════════════════
+   POSTEP ANKIETY W localStorage - jesli user zamknie apke
+   w trakcie (np. przypadkowo, albo przelaczy sie na cos
+   innego), po powrocie wraca dokladnie tam gdzie skonczyl,
+   zamiast zaczynac od nowa. Czyszczone dopiero po udanym
+   zakonczeniu (finishOnboarding).
+   ═══════════════════════════════════════════════════ */
+var ONB_STORAGE_KEY = 'eduvia_onboarding_progress';
+
+var _savedProgress = null;
+try {
+  var _rawProgress = localStorage.getItem(ONB_STORAGE_KEY);
+  if (_rawProgress) _savedProgress = JSON.parse(_rawProgress);
+} catch (e) {
+  _savedProgress = null;
+}
+
+function saveOnboardingProgress(step){
+  try {
+    localStorage.setItem(ONB_STORAGE_KEY, JSON.stringify({
+      step: step,
+      selectedStage: typeof selectedStage !== 'undefined' ? selectedStage : null,
+      selectedLevel: typeof selectedLevel !== 'undefined' ? selectedLevel : null,
+      selectedSubject: typeof selectedSubject !== 'undefined' ? selectedSubject : null,
+      selectedExamDate: (typeof selectedExamDate !== 'undefined' && selectedExamDate) ? isoFromDate(selectedExamDate) : null
+    }));
+  } catch (e) {
+    // localStorage niedostepny (tryb prywatny itp.) - ankieta dziala dalej, po prostu bez wznawiania
+  }
+}
+
+function clearOnboardingProgress(){
+  try { localStorage.removeItem(ONB_STORAGE_KEY); } catch (e) {}
+}
 
 /* ═══════════════════════════════════════════════════
    EKRAN 1: POZIOM - wlasny, duzy dwuetapowy wybor
@@ -302,6 +420,7 @@ function renderStageList(){
     card.addEventListener('click', function(){
       selectedStage = st.key;
       showClassView(st);
+      saveOnboardingProgress(1);
     });
     list.appendChild(card);
   });
@@ -343,6 +462,7 @@ function renderClassGrid(stage){
       card.classList.add('active');
       selectedLevel = value;
       document.getElementById('btnNext1').disabled = false;
+      saveOnboardingProgress(1);
     });
     grid.appendChild(card);
   });
@@ -370,10 +490,11 @@ var selectedSubject = null;
 
 function initSubjectGrid(){
   var grid = document.getElementById('subjGrid');
+  grid.innerHTML = '';
   SUBJECTS.forEach(function(s){
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'subj-btn';
+    btn.className = 'subj-btn' + (selectedSubject === s.key ? ' active' : '');
     if (s.accent) btn.dataset.accent = s.accent;
     btn.innerHTML = '<div class="subj-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + s.icon + '</svg></div><span>' + s.label + '</span>';
     btn.addEventListener('click', function(){
@@ -381,6 +502,7 @@ function initSubjectGrid(){
       btn.classList.add('active');
       selectedSubject = s.key;
       document.getElementById('btnNext2').disabled = false;
+      saveOnboardingProgress(2);
     });
     grid.appendChild(btn);
   });
@@ -430,6 +552,7 @@ function renderCalendar(){
         selectedExamDate = cellDate;
         renderCalendar();
         updateSelectedLabel();
+        saveOnboardingProgress(3);
       });
       grid.appendChild(d);
     })(day);
@@ -464,6 +587,45 @@ function isoFromDate(d){
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+/* Wznowienie ankiety z localStorage - wywolane PO wszystkich renderStageList()/
+   initSubjectGrid()/renderCalendar() powyzej, zeby ustawienie zmiennych
+   selectedX i ponowne (idempotentne) odrenderowanie odzwierciedlilo
+   przywrocony wybor. */
+function restoreOnboardingProgress(){
+  if (!_savedProgress) return;
+  var step = _savedProgress.step || 1;
+
+  if (_savedProgress.selectedStage) {
+    selectedStage = _savedProgress.selectedStage;
+    var stageObj = null;
+    window.EduviaLevelPicker.STAGES.forEach(function(st){ if (st.key === selectedStage) stageObj = st; });
+    if (_savedProgress.selectedLevel && stageObj) {
+      selectedLevel = _savedProgress.selectedLevel;
+      showClassView(stageObj);
+      document.getElementById('btnNext1').disabled = false;
+    } else if (stageObj) {
+      renderStageList();
+    }
+  }
+
+  if (_savedProgress.selectedSubject) {
+    selectedSubject = _savedProgress.selectedSubject;
+    initSubjectGrid();
+    document.getElementById('btnNext2').disabled = false;
+  }
+
+  if (_savedProgress.selectedExamDate) {
+    var parts = _savedProgress.selectedExamDate.split('-').map(Number);
+    selectedExamDate = new Date(parts[0], parts[1] - 1, parts[2]);
+    calViewDate = new Date(selectedExamDate.getFullYear(), selectedExamDate.getMonth(), 1);
+    renderCalendar();
+    updateSelectedLabel();
+  }
+
+  goStep(step);
+}
+restoreOnboardingProgress();
+
 /* ═══════════════════════════════════════════════════
    NAWIGACJA + ZAPIS DO BACKENDU
    ═══════════════════════════════════════════════════ */
@@ -471,15 +633,36 @@ function goStep(n){
   for (var i = 1; i <= 3; i++) {
     document.getElementById('screen' + i).classList.toggle('active', i === n);
   }
+  saveOnboardingProgress(n);
 }
 
 var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
   : 'https://eduvia-backend-2.onrender.com';
 
+// Identyczny mechanizm co confetti() w quiz_app.html - tak samo kolory, tak samo timing.
+function confetti(){
+  var c = ['#7c6aff', '#22d3a0', '#f5a623', '#f87171', '#a78bfa', '#fff'];
+  for (var i = 0; i < 60; i++) {
+    (function(i){
+      setTimeout(function(){
+        var el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.cssText = 'left:' + Math.random() * 100 + 'vw;top:-10px;background:' + c[Math.floor(Math.random() * c.length)] + ';animation-duration:' + (1.5 + Math.random() * 2) + 's;';
+        document.body.appendChild(el);
+        setTimeout(function(){ el.remove(); }, 3500);
+      }, i * 40);
+    })(i);
+  }
+}
+
+function wait(ms){ return new Promise(function(resolve){ setTimeout(resolve, ms); }); }
+
 async function finishOnboarding(skippedDate){
   for (var i = 1; i <= 3; i++) document.getElementById('screen' + i).classList.remove('active');
   document.getElementById('loadingScreen').classList.add('active');
+  confetti();
+  clearOnboardingProgress();
 
   var examDateVal = skippedDate ? '' : (selectedExamDate ? isoFromDate(selectedExamDate) : '');
   var payload = {
@@ -487,6 +670,12 @@ async function finishOnboarding(skippedDate){
     favorite_subject: selectedSubject,
   };
   if (examDateVal) payload.exam_date = examDateVal;
+
+  // Minimalny czas na ekranie ladowania, zeby confetti bylo widoczne -
+  // bez tego, przy szybkim zapisie (np. lokalnie) strona potrafi
+  // przekierowac zanim wiekszosc confetti zdazy sie w ogole pojawic
+  // (elementy sa tworzone stopniowo przez setTimeout).
+  var minDelay = wait(1400);
 
   try {
     var user = window._onbCurrentUser;
@@ -503,6 +692,8 @@ async function finishOnboarding(skippedDate){
   } catch(e) {
     console.warn('[Onboarding] backend niedostepny (offline / lokalny test bez serwera):', e);
   }
+
+  await minDelay;
 
   window.location.href = 'dashboard_FINAL.html';
 }
