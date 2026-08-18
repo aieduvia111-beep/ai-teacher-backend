@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eduvia — Witaj!</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#7c6aff">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
+<script src="animations.js"></script>
+<style>
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
+  --border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.11);
+  --accent:#7c6aff;--accent2:#a78bfa;--ag:rgba(124,106,255,0.3);
+  --green:#22d3a0;--gg:rgba(34,211,160,0.3);
+  --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
+  --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;position:relative;overflow-x:hidden;}
+
+/* ═══ TŁO: GWIAZDKI + AURORA (jak reszta apki) ═══ */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;filter:blur(110px);animation:afloat 14s ease-in-out infinite;}
+.a1{width:600px;height:600px;background:radial-gradient(circle,rgba(124,106,255,.18),transparent 70%);top:-200px;right:-100px;}
+.a2{width:460px;height:460px;background:radial-gradient(circle,rgba(34,211,160,.08),transparent 70%);bottom:-100px;left:-100px;animation-delay:5s;}
+@keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
+.starfield{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.bg-star{position:absolute;border-radius:50%;background:white;pointer-events:none;animation:twinkle 3s ease-in-out infinite;}
+@keyframes twinkle{0%,100%{opacity:.15;}50%{opacity:.65;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ═══ LAYOUT ═══ */
+.onb-wrap{position:relative;z-index:2;max-width:520px;margin:0 auto;padding:32px 20px 48px;display:flex;flex-direction:column;min-height:100vh;}
+.onb-header{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+.brand-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.95em;color:white;box-shadow:0 0 24px rgba(124,106,255,.4),inset 0 1px 0 rgba(255,255,255,.15);flex-shrink:0;}
+.brand-name{font-family:var(--h);font-weight:700;font-size:.95em;letter-spacing:-.01em;}
+
+.onb-step-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:100px;font-family:var(--h);font-size:.68em;font-weight:700;color:var(--accent2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:18px;width:fit-content;}
+
+.onb-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:20px;padding:28px 24px;box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);flex:1;display:flex;flex-direction:column;}
+
+.onb-screen{display:none;flex-direction:column;flex:1;}
+.onb-screen.active{display:flex;animation:fadeUp .4s ease both;}
+
+.onb-greet{font-size:.95em;color:var(--green);font-weight:700;margin-bottom:10px;}
+.onb-title{font-family:var(--h);font-size:1.55em;font-weight:800;line-height:1.25;margin-bottom:8px;background:linear-gradient(110deg,#fff,var(--accent2) 60%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.onb-sub{color:var(--muted2);font-size:.9em;margin-bottom:22px;}
+
+#onbLevelPicker{margin-bottom:8px;}
+
+.subj-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:8px;}
+.subj-btn{min-width:0;padding:14px 8px;background:var(--s2);border:1px solid var(--border);border-radius:13px;color:var(--muted2);font-family:var(--h);font-size:.8em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;white-space:normal;}
+.subj-btn:hover{border-color:var(--border-hi);color:var(--text);transform:translateY(-1px);}
+.subj-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);color:var(--accent2);box-shadow:0 0 16px rgba(124,106,255,.15);}
+.subj-mono{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.85em;color:white;flex-shrink:0;}
+.subj-btn.active .subj-mono{box-shadow:0 0 14px rgba(124,106,255,.5);}
+
+.onb-date-wrap{position:relative;margin-bottom:14px;}
+.onb-date-wrap input[type=date]{width:100%;padding:14px 16px;background:var(--s2);border:1px solid var(--border-hi);border-radius:13px;color:var(--text);font-family:var(--b);font-size:.95em;color-scheme:dark;transition:all .2s;}
+.onb-date-wrap input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,255,.12);}
+.onb-skip{background:none;border:none;color:var(--green);font-family:var(--b);font-size:.85em;font-weight:600;cursor:pointer;text-align:center;padding:10px;width:100%;transition:opacity .2s;}
+.onb-skip:hover{opacity:.75;}
+
+.onb-spacer{flex:1;}
+
+.onb-dots{display:flex;justify-content:center;gap:8px;margin:18px 0 16px;}
+.onb-dot{width:8px;height:8px;border-radius:50%;background:var(--border-hi);transition:all .25s;}
+.onb-dot.active{background:var(--accent2);width:22px;border-radius:5px;box-shadow:0 0 8px rgba(124,106,255,.5);}
+.onb-dot.done{background:var(--green);}
+
+.onb-next{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5040c8);border:none;border-radius:13px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 6px 24px rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;gap:8px;}
+.onb-next:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+.onb-next:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(124,106,255,.4);}
+.onb-next svg{width:16px;height:16px;stroke:currentColor;}
+
+.onb-loading{display:none;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:14px;}
+.onb-loading.active{display:flex;}
+.onb-spinner{width:40px;height:40px;border:3px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .85s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="aurora"><div class="ab a1"></div><div class="ab a2"></div></div>
+<div class="starfield" id="starfield"></div>
+
+<div class="onb-wrap">
+  <div class="onb-header">
+    <div class="brand-icon">E</div>
+    <div class="brand-name">Eduvia AI</div>
+  </div>
+
+  <div class="onb-card">
+
+    <!-- EKRAN 1: KLASA -->
+    <div class="onb-screen active" id="screen1">
+      <div class="onb-step-badge">Krok 1 z 3</div>
+      <div class="onb-greet">Cześć! 👋</div>
+      <h1 class="onb-title">Jaki jest Twój<br>poziom nauki?</h1>
+      <p class="onb-sub">Dopasujemy treści do Ciebie</p>
+      <div id="onbLevelPicker"></div>
+      <div class="onb-spacer"></div>
+      <div class="onb-dots">
+        <span class="onb-dot active" id="dot1"></span>
+        <span class="onb-dot" id="dot2"></span>
+        <span class="onb-dot" id="dot3"></span>
+      </div>
+      <button class="onb-next" id="btnNext1" disabled onclick="goStep(2)">
+        Dalej
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <!-- EKRAN 2: PRZEDMIOT -->
+    <div class="onb-screen" id="screen2">
+      <div class="onb-step-badge">Krok 2 z 3</div>
+      <h1 class="onb-title">Jaki przedmiot<br>Cię interesuje najbardziej?</h1>
+      <p class="onb-sub">Wybierz przedmiot, żebyśmy mogli pokazywać Ci najlepsze treści</p>
+      <div class="subj-grid" id="subjGrid"></div>
+      <div class="onb-spacer"></div>
+      <div class="onb-dots">
+        <span class="onb-dot done" id="dot1b"></span>
+        <span class="onb-dot active" id="dot2b"></span>
+        <span class="onb-dot" id="dot3b"></span>
+      </div>
+      <button class="onb-next" id="btnNext2" disabled onclick="goStep(3)">
+        Dalej
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <!-- EKRAN 3: DATA EGZAMINU -->
+    <div class="onb-screen" id="screen3">
+      <div class="onb-step-badge">Krok 3 z 3</div>
+      <h1 class="onb-title">Kiedy masz<br>najbliższy sprawdzian?</h1>
+      <p class="onb-sub">Pomoże nam to lepiej zaplanować Twoją naukę</p>
+      <div class="onb-date-wrap">
+        <input type="date" id="examDateInput">
+      </div>
+      <button class="onb-skip" onclick="finishOnboarding(true)">Pomiń to pytanie</button>
+      <div class="onb-spacer"></div>
+      <div class="onb-dots">
+        <span class="onb-dot done" id="dot1c"></span>
+        <span class="onb-dot done" id="dot2c"></span>
+        <span class="onb-dot active" id="dot3c"></span>
+      </div>
+      <button class="onb-next" id="btnNext3" onclick="finishOnboarding(false)">
+        Rozpocznij naukę
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <!-- ŁADOWANIE (zapis do backendu) -->
+    <div class="onb-loading" id="loadingScreen">
+      <div class="onb-spinner"></div>
+      <div style="color:var(--muted2);font-size:.9em;">Personalizujemy Twoją naukę...</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Kilka migoczących gwiazdek w tle - ten sam wzorzec co .bg-star w reszcie apki
+(function(){
+  var field = document.getElementById('starfield');
+  var n = 24;
+  for (var i = 0; i < n; i++) {
+    var s = document.createElement('div');
+    s.className = 'bg-star';
+    var size = (Math.random() * 2 + 1.5).toFixed(1);
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.top = (Math.random() * 100) + '%';
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.animationDelay = (Math.random() * 3).toFixed(1) + 's';
+    field.appendChild(s);
+  }
+})();
+
+const SUBJECTS = [
+  {key:'matematyka', label:'Matematyka', mono:'Mat'},
+  {key:'fizyka', label:'Fizyka', mono:'Fiz'},
+  {key:'chemia', label:'Chemia', mono:'Che'},
+  {key:'biologia', label:'Biologia', mono:'Bio'},
+  {key:'historia', label:'Historia', mono:'Hist'},
+  {key:'polski', label:'Język polski', mono:'Pol'},
+  {key:'geografia', label:'Geografia', mono:'Geo'},
+  {key:'informatyka', label:'Informatyka', mono:'Inf'},
+  {key:'angielski', label:'Angielski', mono:'Ang'},
+  {key:'inne', label:'Inne', mono:'...'},
+];
+
+let selectedLevel = null;
+let selectedSubject = null;
+
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker) return;
+  window.EduviaLevelPicker.render('onbLevelPicker', {
+    onChange: function(value){
+      selectedLevel = value;
+      document.getElementById('btnNext1').disabled = false;
+    }
+  });
+}
+initLevelPicker();
+
+function initSubjectGrid(){
+  const grid = document.getElementById('subjGrid');
+  SUBJECTS.forEach(function(s){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'subj-btn';
+    btn.innerHTML = '<div class="subj-mono">' + s.mono + '</div><span>' + s.label + '</span>';
+    btn.addEventListener('click', function(){
+      Array.prototype.forEach.call(grid.children, function(c){ c.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedSubject = s.key;
+      document.getElementById('btnNext2').disabled = false;
+    });
+    grid.appendChild(btn);
+  });
+}
+initSubjectGrid();
+
+function goStep(n){
+  for(let i=1;i<=3;i++){
+    document.getElementById('screen'+i).classList.toggle('active', i===n);
+  }
+}
+
+const BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8000'
+  : 'https://eduvia-backend-2.onrender.com';
+
+async function finishOnboarding(skippedDate){
+  const card = document.querySelector('.onb-card');
+  for(let i=1;i<=3;i++) document.getElementById('screen'+i).classList.remove('active');
+  document.getElementById('loadingScreen').classList.add('active');
+
+  const examDateVal = skippedDate ? '' : (document.getElementById('examDateInput').value || '');
+  const payload = {
+    education_level: selectedLevel,
+    favorite_subject: selectedSubject,
+  };
+  if (examDateVal) payload.exam_date = examDateVal;
+
+  try {
+    const user = window._onbCurrentUser;
+    const token = user ? await user.getIdToken() : '';
+    const res = await fetch(BASE + '/users/onboarding', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(function(){ return {success:false}; });
+    if (!data.success) {
+      console.warn('[Onboarding] zapis nieudany:', data.error || res.status);
+    }
+  } catch(e) {
+    console.warn('[Onboarding] backend niedostepny (offline / lokalny test bez serwera):', e);
+  }
+
+  window.location.href = 'dashboard_FINAL.html';
+}
+</script>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth=getAuth(app);
+onAuthStateChanged(auth, function(user){
+  if(!user){ window.location.href = 'login.html'; return; }
+  window._onbCurrentUser = user;
+});
+</script>
+
+</body>
+</html>

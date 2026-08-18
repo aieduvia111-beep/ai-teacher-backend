@@ -1316,7 +1316,9 @@ window.addEventListener('DOMContentLoaded',function(){
   let params=new URLSearchParams(window.location.search);
   let topic=params.get('topic');
   let subjectParam=params.get('subject');
+  let levelParam=params.get('level');
   if(subjectParam){ document.getElementById('subject').value=subjectParam; }
+  if(levelParam){ VALS.level=levelParam; initLevelPicker(); }
   if(topic){
     let input=document.getElementById('topic');input.value=decodeURIComponent(topic);
     input.style.boxShadow='0 0 0 3px rgba(124,106,255,.35)';setTimeout(function(){input.style.boxShadow='';},2000);

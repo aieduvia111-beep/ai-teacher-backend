@@ -60,17 +60,11 @@
     }
   ];
 
-  function haptic() {
-    if (typeof window._haptic === 'function') {
-      window._haptic('tap');
-      return;
-    }
-    // TODO iOS: navigator.vibrate() nie dziala w Safari ani w natywnej apce
-    // iOS (eduvia-ios to czysty Swift/WKWebView bez Capacitora) - wymaga
-    // osobnego natywnego mostu przez WKScriptMessageHandler. Patrz
-    // docs/plan-konkretne-klasy.md, sekcja 5, "Opcjonalny dodatek dla iOS".
-    if (navigator.vibrate) navigator.vibrate(50);
-  }
+  // Haptyka NIE jest obsługiwana tutaj - strony ładujące animations.js
+  // już mają globalny listener (window._haptic + wibracja na każdy klik
+  // przycisku, patrz static/animations.js), więc dublowałby wibrację na
+  // klik. Strony bez animations.js (jak dawniej voice_conversation.html)
+  // powinny je dołączyć, zamiast każdy komponent wynajdywał to na nowo.
 
   function findStage(stageKey) {
     for (var i = 0; i < STAGES.length; i++) {
@@ -152,7 +146,6 @@
           chip.classList.add('active');
         }
         chip.addEventListener('click', function () {
-          haptic();
           Array.prototype.forEach.call(classRow.children, function (c) {
             c.classList.remove('active');
           });
@@ -190,7 +183,6 @@
         st.icon + '</svg><span>' + st.label + '</span>';
       if (current.stageKey === st.key) btn.classList.add('active');
       btn.addEventListener('click', function () {
-        haptic();
         selectStage(st.key);
       });
       stageGrid.appendChild(btn);

@@ -80,6 +80,15 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 /* ═══ SECTION LABEL ═══ */
 .sec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
 
+/* ═══ PROFIL UCZNIA (ankieta onboardingowa) ═══ */
+.profile-sec{margin-bottom:28px;}
+.profile-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+.profile-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:var(--r2);padding:16px 18px;display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);transition:all .2s;}
+a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3);border-color:rgba(124,106,255,.35);}
+.profile-card-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.profile-card-title{font-family:var(--h);font-weight:700;font-size:.88em;margin-bottom:3px;}
+.profile-card-sub{font-size:.78em;color:var(--muted2);}
+
 /* ═══ QUICK ACTIONS ═══ */
 .quick-sec{}
 .quick-row{display:flex;gap:12px;}
@@ -405,6 +414,7 @@ let currentUser=null;
 onAuthStateChanged(auth,async(user)=>{
   if(!user){window.location.href='login.html';return;}
   currentUser=user;
+  loadStudentProfile(user);
   localStorage.setItem('eduvia_uid',user.uid);
   const snap=await getDoc(doc(db,'users',user.uid));
   if(!snap.exists()){
@@ -451,6 +461,70 @@ onAuthStateChanged(auth,async(user)=>{
     }, 3000);
   }
 });
+// Backend eduvia (profil ucznia z ankiety onboardingowej) - localhost
+// wykrywany automatycznie, zeby testy lokalne nigdy nie trafialy na
+// produkcyjny serwer.
+const DASH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':'https://eduvia-backend-2.onrender.com';
+const DASH_SUBJECT_LABELS={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Język polski',geografia:'Geografia',informatyka:'Informatyka',angielski:'Angielski',inne:'Inne'};
+
+function daysUntil(isoDateStr){
+  const parts=isoDateStr.split('-').map(Number);
+  const target=new Date(parts[0],parts[1]-1,parts[2]);
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  target.setHours(0,0,0,0);
+  return Math.round((target-today)/86400000);
+}
+
+async function loadStudentProfile(user){
+  try{
+    const token=await user.getIdToken();
+    const res=await fetch(DASH_BASE+'/users/me',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(!data.success)return;
+    const profile=data.profile;
+    let html='';
+
+    if(!profile.onboarding_completed){
+      html+='<a href="onboarding.html" class="profile-card">'
+        +'<div class="profile-card-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">'
+        +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+        +'</div><div><div class="profile-card-title">Dokończ ankietę</div>'
+        +'<div class="profile-card-sub">Powiedz nam, na jakim jesteś poziomie — dopasujemy treści</div></div></a>';
+    } else {
+      if(profile.education_level && profile.favorite_subject){
+        const subjLabel=DASH_SUBJECT_LABELS[profile.favorite_subject]||profile.favorite_subject;
+        const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)+'&subject='+encodeURIComponent(profile.favorite_subject);
+        html+='<a href="'+quizUrl+'" class="profile-card">'
+          +'<div class="profile-card-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">'
+          +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+          +'</div><div><div class="profile-card-title">Sugerowany Quiz</div>'
+          +'<div class="profile-card-sub">'+subjLabel+' · '+profile.education_level_label+'</div></div></a>';
+      }
+      if(profile.exam_date){
+        const days=daysUntil(profile.exam_date);
+        let label;
+        if(days<0)label='Sprawdzian już minął';
+        else if(days===0)label='Sprawdzian dziś!';
+        else if(days===1)label='Sprawdzian jutro';
+        else label='Za '+days+' dni sprawdzian';
+        html+='<div class="profile-card" style="cursor:default;">'
+          +'<div class="profile-card-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">'
+          +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+          +'</div><div><div class="profile-card-title">'+label+'</div>'
+          +'<div class="profile-card-sub">Twój najbliższy sprawdzian</div></div></div>';
+      }
+    }
+
+    if(html){
+      document.getElementById('profileCards').innerHTML=html;
+      document.getElementById('profileSec').style.display='';
+    }
+  }catch(e){
+    console.warn('[Dashboard] nie udalo sie pobrac profilu ucznia:',e);
+  }
+}
+
 window._fbSave=async function(collection,data,xp){
   if(!currentUser)return;
   try{
@@ -797,6 +871,12 @@ function getPlanBadgeHTML(plan) {
         </svg>
       </div>
     </div>
+  </section>
+
+  <!-- PROFIL UCZNIA (ankieta onboardingowa) -->
+  <section class="profile-sec" id="profileSec" style="display:none;">
+    <div class="sec-label">🎯 Dla Ciebie</div>
+    <div class="profile-cards" id="profileCards"></div>
   </section>
 
   <!-- QUICK ACTIONS -->
