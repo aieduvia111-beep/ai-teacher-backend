@@ -14,6 +14,7 @@ from ..database import get_db
 from ..models import User
 from ..auth import get_current_user
 from ..firebase_auth import get_current_app_user
+from ..level_config import describe_level, is_known_level
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from datetime import date
@@ -162,15 +163,9 @@ async def get_ai_response(data: dict, current_user: User = Depends(get_current_u
         subject = data.get("subject", "")
         if not text:
             return {"success": False, "text": "", "error": "Brak tekstu"}
-        level_map = {
-            "podstawowka": "Mow jak do dziecka 12 lat. Przyklad: zamiast 'fotosynteza to konwersja energii' powiedz 'rosliny jedzą slonce'. Uzyj slow: super, fajne, wiesz co. Max 2 krotkie zdania.",
-            "liceum": "Uzyj terminologii: chlorofil, ATP, CO2, glukoza, chloroplasty. Wyjasniaj mechanizmy. 2-3 zdania.",
-            "matura": "matura - schematy maturalne",
-            "studia": "studia - pelna formalizacja"
-        }
         system = SYSTEM_PROMPT
-        if level and level in level_map:
-            system = system + "\n\nKRYTYCZNE: " + level_map[level] + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
+        if level and is_known_level(level):
+            system = system + "\n\nKRYTYCZNE: " + describe_level(level) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
         if subject:
             system += f"\nPRZEDMIOT: {subject}"
         topic = data.get("topic", "")

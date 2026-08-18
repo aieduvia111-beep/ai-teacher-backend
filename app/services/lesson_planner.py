@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from ..config import settings
 from ..models import Lesson
+from ..level_config import describe_level
 from .spaced_repetition import SpacedRepetitionEngine
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -46,13 +47,6 @@ class LessonPlannerAI:
             Dict z planem nauki
         """
         
-        level_map = {
-            "podstawowka": "ucznia podstawÃ³wki (kl. 4-8)",
-            "gimnazjum": "ucznia gimnazjum",
-            "liceum": "ucznia liceum",
-            "studia": "studenta (poziom akademicki)"
-        }
-        
         total_time = total_days * minutes_per_day
         days_to_gen = min(total_days, 14)
         
@@ -60,7 +54,7 @@ class LessonPlannerAI:
 
 PARAMETRY:
 - Przedmiot: {subject}
-- Poziom: {level_map.get(level, 'liceum')}
+- Poziom: {describe_level(level)}
 - Dni: {days_to_gen}
 - Czas: {minutes_per_day} min/dzien
 """ + (f"- Dodatkowe: {additional_info}\n" if "additional_info" else "") + f"""

@@ -17,6 +17,8 @@ from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
 
+from .level_config import describe_level
+
 def _txt_png(tekst, w_pt, fontsize=9, color='#1A1A2E', bg='#FFFFFF',
              bold=False, align='left'):
     """Renderuje tekst jako PNG przez matplotlib - gwarantuje polskie znaki."""
@@ -1051,10 +1053,10 @@ def _czy_wymaga_obliczen(temat: str) -> bool:
     return False
 
 SIZE_CONFIG = {
-    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4, styl='POZIOM: DZIECKO (10-latek). Pisz jak bajkarz - krotkie zdania, duzo porownań do codziennych rzeczy (zabawa, jedzenie, sport). Slowa naukowe zastepuj prostymi opisami. Przyklady z zycia dziecka. Pytania w quizie opisowe bez obliczen. NIE generuj timeline ani mapy myslowej.'),
-    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5, styl='POZIOM: LICEUM. Pisz jak dobry nauczyciel - konkretnie i na temat. Uzyj terminologii naukowej z wyjasnieniem. Przyklady z egzaminow maturalnych. Quiz z typowymi zadaniami maturalnymi.'),
-    4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6, styl='POZIOM: STUDIA. Pisz akademicko - pelna terminologia, wyprowadzenia krok po kroku, dowody twierdzen. Przyklady z egzaminow uczelnianych. Quiz z trudnymi zadaniami problemowymi.'),
-    5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7, styl='POZIOM: EKSPERT. Pisz na poziomie naukowym - pelna formalizacja matematyczna, powiazania z innymi dziedzinami, niuanse i wyjatki od regul, najnowsze badania. Quiz z najtrudniejszymi zadaniami olimpijskimi.')
+    2: dict(n_pojecia='3-4', n_sekcje=2, n_bledy=2, n_quiz=3, n_zapamietaj=4),
+    3: dict(n_pojecia='4-5', n_sekcje=3, n_bledy=3, n_quiz=4, n_zapamietaj=5),
+    4: dict(n_pojecia='5-6', n_sekcje=4, n_bledy=3, n_quiz=5, n_zapamietaj=6),
+    5: dict(n_pojecia='6-7', n_sekcje=5, n_bledy=4, n_quiz=6, n_zapamietaj=7)
 }
 
 # ============================================================
@@ -1290,9 +1292,8 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
 - geografia ze skala/procentami -> mozesz uzyc obliczen
 - jesli watpisz -> pisz opisowo bez obliczen
 """
-        styl_info = f"\nSTYL: {cfg.get('styl', '')}"
-        cfg_clean = {k:v for k,v in cfg.items() if k != 'styl'}
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg_clean)
+        styl_info = f"\nSTYL: dostosuj jezyk i ton do poziomu ucznia - {describe_level(klasa)}"
+        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg)
         max_tok = {2: 2800, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "

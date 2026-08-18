@@ -4,6 +4,7 @@ import json
 import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ..config import settings
+from ..level_config import describe_level
 
 router = APIRouter(prefix="/api/v1/realtime", tags=["realtime"])
 
@@ -61,9 +62,8 @@ async def realtime_ws(ws: WebSocket):
                         msg = json.loads(data)
                         if msg.get("type") == "context.update":
                             ctx = msg.get("context", {})
-                            level_map = {"podstawowka":"szkola podstawowa","liceum":"liceum","matura":"matura","studia":"studia"}
                             extra = ""
-                            if ctx.get("level"): extra += f"\nPOZIOM: {level_map.get(ctx['level'], ctx['level'])}"
+                            if ctx.get("level"): extra += f"\nPOZIOM: {describe_level(ctx['level'], fallback=None)}"
                             if ctx.get("subject"): extra += f"\nPRZEDMIOT: {ctx['subject']}"
                             if ctx.get("topic"): extra += f"\nTEMAT: {ctx['topic']}"
                             if extra:

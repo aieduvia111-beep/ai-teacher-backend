@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
+from ..level_config import describe_level
 import json
 
 router = APIRouter(prefix="/api/v1/whiteboard", tags=["whiteboard"])
@@ -20,13 +21,6 @@ class ExplainRequest(BaseModel):
     topic: str
     level: str = "liceum"
 
-LEVEL_DESC = {
-    "kid": "dla dziecka w wieku 10-13 lat — BARDZO prosty język, analogie z życia codziennego, krótkie zdania, bez skomplikowanych terminów",
-    "liceum": "poziom liceum — pełne definicje, wzory matematyczne, przykłady obliczeń krok po kroku",
-    "matura": "poziom matura — definicje słownikowe, wszystkie wzory i prawa, przykłady zadań maturalnych z rozwiązaniem, tipy egzaminacyjne",
-    "studia": "poziom studencki — pełna teoria, wyprowadzenia wzorów, zaawansowane zastosowania, notacja matematyczna"
-}
-
 SYSTEM_PROMPT = """Jesteś AI nauczycielem który tłumaczy jak najlepszy korepetytor.
 Twoja narracja MUSI brzmieć jak prawdziwy nauczyciel mówiący do ucznia - ciepło, konkretnie, z entuzjazmem.
 Przykład DOBREJ narracji: "Dobra, zaczynamy od podstaw. Ułamek zwykły to po prostu liczba zapisana jako a przez b. Czyli na przykład trzy czwarte - trójka na górze to licznik, czwórka na dole to mianownik. Proste, prawda?"
@@ -39,7 +33,7 @@ ZASADY:
 - Odpowiadasz TYLKO jako JSON bez markdown, bez komentarzy."""
 
 def build_whiteboard_prompt(topic: str, level: str, tempo: str = "srednia", extra: str = "") -> str:
-    level_desc = LEVEL_DESC.get(level, LEVEL_DESC["liceum"])
+    level_desc = describe_level(level)
     extra_txt = f"\nDodatkowe instrukcje od ucznia: {extra}" if extra else ""
     
     TEMPO_MAP = {
@@ -100,7 +94,7 @@ Wygeneruj {n_steps} kroków dla "{topic}". {tempo_desc} Każdy krok Y o 240px wy
 
 
 def build_vision_prompt(level: str, extra: str = "") -> str:
-    level_desc = LEVEL_DESC.get(level, LEVEL_DESC["liceum"])
+    level_desc = describe_level(level)
     extra_txt = f"\nDodatkowe instrukcje: {extra}" if extra else ""
     return f"""Przeanalizuj to zdjęcie zadania/materiału edukacyjnego i wytłumacz je {level_desc}.{extra_txt}
 Najpierw zidentyfikuj temat, potem wytłumacz krok po kroku rozwiązanie lub pojęcia.
@@ -166,7 +160,7 @@ async def explain_element(req: ExplainRequest):
     from openai import OpenAI
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     
-    level_desc = LEVEL_DESC.get(req.level, LEVEL_DESC["liceum"])
+    level_desc = describe_level(req.level)
     
     prompt = f"""Uczeń kliknął element na tablicy edukacyjnej i chce dokładniejszego wyjaśnienia.
 

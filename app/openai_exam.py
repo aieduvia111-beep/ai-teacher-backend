@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI
 from .config import settings
+from .level_config import describe_level
 from typing import List, Dict, Optional
 import json
 import re as _re_sanitize
@@ -299,13 +300,6 @@ async def generate_notes_from_topic(
     ðŸ“ Generuje notatki z podanego tematu (bez obrazka)
     """
     try:
-        level_prompts = {
-            "podstawowka": "WyjaÅ›nij jak dla ucznia podstawÃ³wki (kl. 4-8) - prosto, z przykÅ‚adami z Å¼ycia.",
-            "gimnazjum": "WyjaÅ›nij jak dla ucznia gimnazjum - Å›redni poziom szczegÃ³Å‚owoÅ›ci.",
-            "liceum": "WyjaÅ›nij jak dla ucznia liceum - wiÄ™cej teorii i wzorÃ³w.",
-            "studia": "Akademicki poziom - szczegÃ³Å‚owo, z zaawansowanymi konceptami."
-        }
-        
         style_prompts = {
             "academic": "SzczegÃ³Å‚owe notatki z definicjami, wzorami i przykÅ‚adami.",
             "simple": "ZwiÄ™zÅ‚e punkty - tylko najwaÅ¼niejsze informacje.",
@@ -317,7 +311,7 @@ StwÃ³rz KOMPLETNE, PROFESJONALNE NOTATKI na temat: "{topic}"
 
 WYMAGANIA:
 - Przedmiot: {subject}
-- Poziom: {level_prompts.get(level, level_prompts['liceum'])}
+- Poziom: {describe_level(level)}
 - Styl: {style_prompts.get(style, style_prompts['academic'])}
 {f'- Dodatkowe szczegÃ³Å‚y: {details}' if details else ''}
 
@@ -567,13 +561,6 @@ async def generate_quiz_from_topic(
 ) -> Dict:
     """ðŸŽ“ Generuje quiz z podanego tematu"""
     try:
-        level_map = {
-            "podstawowka": "dla ucznia podstawÃ³wki",
-            "gimnazjum": "dla ucznia gimnazjum",
-            "liceum": "dla ucznia liceum",
-            "studia": "akademicki poziom"
-        }
-        
         # Budujemy opis poziomu + trudności razem
         combo_map = {
             ("podstawowka", "easy"):   "Klasa 4-5 szkoły podstawowej. Dodawanie ułamków, proste równania x+3=7, procenty do 100%.",
