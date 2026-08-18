@@ -276,3 +276,42 @@ def describe_level(level: str, fallback: str = DEFAULT_LEVEL) -> str:
     if fallback is None:
         return level
     return LEVEL_DESC.get(fallback, level)
+
+
+_STAGE_LABELS = {
+    "podstawowka": "Podstawówka",
+    "liceum": "Liceum",
+    "technikum": "Technikum",
+    "matura": "Matura",
+    "studia": "Studia",
+}
+_MATURA_CLASS_LABELS = {"podstawowa": "Podstawowa", "rozszerzona": "Rozszerzona"}
+
+
+def label_for_level(level: str) -> str:
+    """Krótka, czytelna dla człowieka etykieta poziomu (np. "Klasa 2 liceum",
+    "Matura rozszerzona", "Rok 3 studiów") - do wyświetlenia w UI (profil,
+    Dashboard), w odróżnieniu od describe_level(), które zwraca długi opis
+    do promptu AI. Odpowiednik EduviaLevelPicker.describeLevelLabel() z
+    static/level_picker.js - musi dawać identyczne etykiety.
+    """
+    if not level:
+        return ""
+    key = ALIASES.get(level, level)
+    for stage, stage_label in _STAGE_LABELS.items():
+        if key == stage:
+            return stage_label
+        prefix = stage + "_"
+        if key.startswith(prefix):
+            cls = key[len(prefix):]
+            if stage == "podstawowka":
+                return f"Klasa {cls} podstawówki"
+            if stage == "liceum":
+                return f"Klasa {cls} liceum"
+            if stage == "technikum":
+                return f"Klasa {cls} technikum"
+            if stage == "studia":
+                return f"Rok {cls} studiów"
+            if stage == "matura":
+                return "Matura " + _MATURA_CLASS_LABELS.get(cls, cls).lower()
+    return level
