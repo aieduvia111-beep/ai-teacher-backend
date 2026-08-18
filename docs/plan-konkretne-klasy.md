@@ -346,3 +346,137 @@ niskie ryzyko niespójności z resztą aplikacji.
   reszty — mechanizm już istnieje, potrzeba tylko podpięcia go pod
   przyciski ankiety (Android+TWA zadziała od razu, iOS wymaga
   świadomości ograniczenia lub osobnego zadania na natywny most).
+
+---
+
+## Etap 2 — postęp
+
+**Zrobione i wypchnięte (backend, `app/level_config.py`):**
+1. `LEVEL_DESC` rozszerzony o 24 konkretne poziomy: `podstawowka_1..8`,
+   `liceum_1..4`, `technikum_1..5`, `matura_podstawowa`/`matura_rozszerzona`,
+   `studia_1..5` — każdy z opisem dopasowanym do wieku i programu
+   nauczania (np. „klasa 1 SP” = liczenie do 20 bez terminologii,
+   „klasa 8 SP” = przygotowanie do egzaminu ósmoklasisty).
+2. Klucze mają format `{etap}_{numer}` (dla matury: `matura_podstawowa`/
+   `matura_rozszerzona` zamiast numeru) — to ustalony kontrakt na
+   przyszłość, gotowy do użycia przez frontend, gdy powstanie picker
+   klas (patrz propozycja w sekcji „Otwarte pytania” poniżej).
+3. Wsteczna kompatybilność: stare kategorie bez numeru
+   (`podstawowka`/`liceum`/`technikum`/`matura`/`studia`) nadal działają
+   — każda opisana jako „środek zakresu” danego etapu (konkretna
+   kotwica trudności, nie rozmyta średnia z całego zakresu). Dodano też
+   brakujący dotąd koszyk `technikum` (używany w `quiz_app.html` jako
+   osobna wartość przycisku, ale bez własnego opisu — dziś cicho spadał
+   na opis liceum).
+
+### 3. Spójność przycisków wyboru poziomu w `static/`
+
+Sprawdzono wszystkie miejsca z selektorem poziomu edukacji. **Nie ma
+jednego wspólnego wzorca** — znaleziono co najmniej **4 różne warianty
+wizualne i 5 różnych nazw klas CSS**, mimo że wszystkie wyglądają "prawie
+tak samo" na pierwszy rzut oka.
+
+| Plik | Mechanizm | Klasa CSS przycisku/kontenera | Atrybuty danych | Funkcja JS | Ikony | Kolor stanu „aktywny” | Opcje |
+|---|---|---|---|---|---|---|---|
+| `quiz_app.html` | przyciski | `.sel-btn` / `.grid-2` | `data-g` / `data-v` | `sel(this,'level')` | brak | fiolet (`--accent2`, `rgba(124,106,255,.12)`) | Podstawówka / Liceum / **Technikum** / Studia (bez Matury) |
+| `exam_generator.html` | przyciski | `.sel-btn` / `.grid-2` (**ta sama nazwa klasy co quiz, inne wartości CSS**) | `data-group` / `data-val` (inne nazwy niż quiz) | `select(this,'klasa')` | tak (16px svg) | **niebieski** (`--blue #38bdf8`) | Podstawówka / Liceum-Tech. / Matura / Studia (bez Technikum osobno) |
+| `notes_generator.html` | przyciski | `.level-btn` / `.level-grid` (**inna nazwa klasy niż quiz i exam**) | `data-val` (bez `data-group`) | `setLevel(this)` | tak (15px svg) | fiolet (zgodny z quiz) | Podstawówka / Liceum-Tech. / Matura / Studia |
+| `lesson_planner.html` | natywny `<select>` | `.fi.fi-sel` | — | brak (odczyt `.value`) | brak | (natywny wygląd przeglądarki) | Podstawówka / Liceum / Matura / Studia |
+| `whiteboard.html` | natywny `<select>` | `.wb-inp` (**jeszcze inna nazwa**) | — | brak | brak | (natywny wygląd przeglądarki) | Podstawówka (`value="kid"` — niespójny klucz) / Liceum / Matura / Studia |
+| `voice_conversation.html` | *(patrz niżej — brak działającego pickera)* | `.sel-btn` (jak quiz) + osierocone `.level-btn` (dwie sprzeczne definicje w tym samym pliku, linie 162 i 416) | — | `setLevel(btn)` zdefiniowana, ale **niewywoływana z żadnego przycisku w HTML** | — | — | — |
+| `chat.html` (popup wyboru poziomu fiszek) | przyciski generowane w JS (`innerHTML`) | `.fc-level-btn` (**5. odrębna nazwa**) | brak (wartość wpisana wprost w `onclick`) | `goFlashcards(...)` (nawigacja, nie stan) | tak (14px svg) | **zielony** (`--green`, `rgba(34,211,160,...)`) | Podstawówka / Liceum / Studia (bez Matury i Technikum) |
+| `dashboard_FINAL.html` | — | — | — | — | — | — | **Brak selektora poziomu edukacji** — „poziom” na dashboardzie to ranga gamifikacji XP (Uczeń/Zak/.../Legenda), inne pojęcie, nie dotyczy tej zmiany |
+
+**Najważniejsze konkretne różnice:**
+
+1. **Ten sam kolor aktywnego stanu w 2 plikach, inny w 2 kolejnych.**
+   Fiolet (`quiz_app.html`, `notes_generator.html`) vs niebieski
+   (`exam_generator.html`) vs zielony (`chat.html`, popup fiszek). Trzy
+   różne akcenty koloru dla identycznej funkcjonalnie decyzji „wybierz
+   poziom”.
+2. **Ta sama nazwa klasy `.sel-btn` w `quiz_app.html` i
+   `exam_generator.html`, ale z different wartościami CSS** (padding
+   `11px 7px` vs `12px 8px`, font-size `.78em` vs `.76em`, bez ikon vs z
+   ikonami) — więc identyczna nazwa nie oznacza identycznego wyglądu.
+   Jednocześnie `notes_generator.html` używa zupełnie innej nazwy klasy
+   (`.level-btn`) dla wizualnie niemal identycznego przycisku co w
+   `exam_generator.html`.
+3. **Różne zestawy opcji.** `quiz_app.html` ma Technikum jako osobną
+   opcję i nie ma Matury; `exam_generator.html`/`notes_generator.html`
+   mają Maturę i łączą Liceum z Technikum w jedną opcję; `chat.html` nie
+   ma ani Matury, ani Technikum. Uczeń może więc mieć wybraną „Maturę” w
+   Sprawdzianach, ale ta sama koncepcja nie istnieje w Quizie.
+4. **Dwa różne mechanizmy UI w ogóle**: custom przyciski (4 pliki) vs
+   natywny `<select>` (`lesson_planner.html`, `whiteboard.html`) — różny
+   wygląd, różna dostępność (accessibility), różne zachowanie na
+   urządzeniach mobilnych (natywny dropdown otwiera systemowe UI, custom
+   przyciski nie).
+5. **Niespójny klucz danych**: `whiteboard.html` wysyła `"kid"` zamiast
+   `"podstawowka"` dla tej samej opcji „Podstawówka” co wszędzie indziej
+   (obsłużone już aliasem w `level_config.py` z Etapu 1, ale to źródło
+   niespójności w samym froncie zostaje, dopóki `whiteboard.html` nie
+   zostanie zaktualizowany).
+6. **`voice_conversation.html` nie ma dziś działającego pickera wcale.**
+   Zmienna `selLevel` jest zainicjowana na sztywno `'liceum'`
+   (`voice_conversation.html:1073`) i nigdzie na stronie nie ma
+   `<button>` wywołującego `setLevel(this)` — funkcja i przynajmniej
+   jedna z dwóch konkurujących definicji CSS `.level-btn` (linie 162 i
+   416, druga nadpisuje pierwszą w kaskadzie) to osierocony kod bez
+   podpiętego UI. Rozmowa głosowa dziś **zawsze** działa tak, jakby
+   uczeń wybrał liceum, niezależnie od rzeczywistego poziomu — to nie
+   tylko niespójność stylu, to brakująca funkcjonalność.
+7. **Niespójna etykieta sekcji**: `exam_generator.html`,
+   `notes_generator.html` i `lesson_planner.html` poprzedzają selektor
+   tą samą ikoną i tekstem „Poziom edukacji”/„Poziom” z ikonką
+   sygnału; `quiz_app.html` i `whiteboard.html` mają samą etykietę
+   tekstową bez ikony.
+
+### 4. Propozycja jednego wspólnego komponentu (opis, bez implementacji)
+
+Nie proponuję jeszcze kodu w `static/` — to opis do zatwierdzenia przed
+Etapem 3.
+
+**Dwuetapowy wybór (Etap → Klasa)**, bo płaska lista 24 przycisków na
+raz byłaby nieczytelna:
+
+1. **Krok 1 — wybór etapu**: rząd/siatka dużych „kart” z ikoną:
+   Podstawówka / Liceum / Technikum / Matura / Studia. Jeden, ujednolicony
+   wygląd (patrz niżej), używany identycznie we wszystkich funkcjach.
+2. **Krok 2 — wybór klasy w ramach etapu**: po kliknięciu etapu rozwija
+   się rząd mniejszych „kapsuł” z numerem — 1-8 dla podstawówki, 1-4 dla
+   liceum, 1-5 dla technikum, „Podstawowa”/„Rozszerzona” dla matury, 1-5
+   („Rok 1”...„Rok 5”) dla studiów.
+
+**Jeden zestaw nazw klas CSS** (propozycja, do potwierdzenia nazewnictwa):
+`.lvl-stage-grid` / `.lvl-stage-btn` (krok 1), `.lvl-class-row` /
+`.lvl-class-chip` (krok 2) — zamiast dzisiejszych pięciu różnych nazw
+(`.sel-btn`, `.level-btn`, `.fc-level-btn`, `.fi.fi-sel`, `.wb-inp`).
+
+**Jeden kolor akcentu**: rekomendacja — fiolet (`--accent2`
+`rgba(124,106,255,...)`), bo to już podstawowy kolor marki w reszcie
+apki (używany w 2 z 4 dzisiejszych wariantów) i bo niebieski/zielony w
+`exam_generator.html`/`chat.html` wyglądają jak przypadkowy wybór, nie
+świadoma decyzja projektowa.
+
+**Jeden wspólny plik JS** (np. nowy `static/level_picker.js`, ładowany
+obok `animations.js`) z jedną funkcją, np.
+`renderLevelPicker(containerId, {value, onChange})`, którą każda strona
+wywołuje identycznie zamiast trzymać własną kopię HTML przycisków +
+własną funkcję `sel()`/`select()`/`setLevel()`. Emitowane wartości mają
+być dokładnie kluczami z `app/level_config.py` (`podstawowka_5`,
+`liceum_2`, `matura_rozszerzona`, `studia_3`...) — backend jest już na
+to gotowy (Etap 2), więc nie potrzeba żadnego tłumaczenia parametrów po
+stronie API.
+
+**Haptyka przy okazji**: skoro i tak centralizujemy komponent, warto
+wpiąć `window._haptic('ok')` (mechanizm już istnieje, patrz sekcja 5
+wyżej) raz, w środku `renderLevelPicker()`, zamiast dodawać go osobno w
+5+ miejscach.
+
+**Kolejność wdrożenia (do potwierdzenia, nie decyzja ostateczna)**:
+najpierw naprawić `voice_conversation.html` (dziś brak działającego
+pickera to funkcjonalna dziura, nie tylko niespójność stylu), potem
+ujednolicić pozostałe 5 plików z przyciskami/select-ami, na końcu
+`chat.html` (inny wzorzec interakcji — popup nawigacyjny, nie pole
+formularza — może zostać uproszczony do tego samego komponentu lub
+świadomie zostawiony jako wyjątek, do decyzji).
