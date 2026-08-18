@@ -22,6 +22,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
+from .level_config import describe_level
 
 # ============================================================
 # CZCIONKI
@@ -115,6 +116,7 @@ Tworzysz PROFESJONALNY SPRAWDZIAN.
 
 PARAMETRY:
 - POZIOM UCZNIA: {klasa}
+- SZCZEGOLOWY OPIS POZIOMU: {poziom_opis}
 - TEMAT: {temat}
 - TRUDNOSC: {trudnosc}
 - LICZBA PYTAN: {liczba_pytan}
@@ -884,7 +886,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         else:
             blok = typ_instrukcja
         prompt = EXAM_PROMPT.format(
-            temat=temat, klasa=klasa,
+            temat=temat, klasa=klasa, poziom_opis=describe_level(klasa),
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
             wlasne_instrukcje_blok=blok
         )

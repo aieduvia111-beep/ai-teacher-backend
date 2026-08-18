@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -699,7 +701,7 @@ function getPlanBadgeHTML(plan) {
       <div class="card">
         <div class="field"><span class="field-label">Temat quizu</span><div class="input-wrap"><input type="text" id="topic" placeholder="np. Fotosynteza, Równania kwadratowe..." autocomplete="off"></div></div>
         <div class="field"><span class="field-label">Przedmiot</span><div class="input-wrap"><select id="subject"><option value="matematyka">Matematyka</option><option value="fizyka">Fizyka</option><option value="chemia">Chemia</option><option value="biologia">Biologia</option><option value="historia">Historia</option><option value="polski">Język polski</option><option value="geografia">Geografia</option><option value="informatyka">Informatyka</option><option value="angielski">Angielski</option><option value="inne">Inne</option></select></div></div>
-        <div class="field"><span class="field-label">Poziom</span><div class="grid-2"><button class="sel-btn" data-g="level" data-v="podstawowka" onclick="sel(this,'level')">Podstawówka</button><button class="sel-btn active" data-g="level" data-v="liceum" onclick="sel(this,'level')">Liceum</button><button class="sel-btn" data-g="level" data-v="technikum" onclick="sel(this,'level')">Technikum</button><button class="sel-btn" data-g="level" data-v="studia" onclick="sel(this,'level')">Studia</button></div></div>
+        <div class="field"><span class="field-label">Poziom</span><div id="quizLevelPicker"></div></div>
         <div class="field"><span class="field-label">Trudność</span><div class="grid-3"><button class="sel-btn" data-g="diff" data-v="easy" onclick="sel(this,'diff')"><span class="dot dot-easy"></span>Łatwa</button><button class="sel-btn active" data-g="diff" data-v="medium" onclick="sel(this,'diff')"><span class="dot dot-med"></span>Średnia</button><button class="sel-btn" data-g="diff" data-v="hard" onclick="sel(this,'diff')"><span class="dot dot-hard"></span>Trudna</button></div></div>
         <div class="field"><span class="field-label">Liczba pytań</span><div class="slider-wrap"><input type="range" id="numSlider" min="5" max="20" value="10" oninput="updateSlider(this)"><span class="slider-val" id="numVal">10</span></div></div>
         <div class="field">
@@ -998,7 +1000,7 @@ function startTimer(){
 function stopTimer(){clearInterval(_timerIv);}
 
 let quiz=null,questions=[],currentQ=0,answers=[],xp=0,streak=0,maxStreak=0,answered=false,isRetry=false,wrongIndexes=[];
-let VALS={level:'liceum',diff:'medium'};
+let VALS={level:'liceum_2',diff:'medium'};
 let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
 let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Nie poddawaj się!"];
 let XP_MAP={easy:10,medium:20,hard:35};
@@ -1048,6 +1050,14 @@ function math(raw){
 function setMath(el,text){if(el)el.innerHTML=math(text);}
 
 function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');VALS[group]=btn.dataset.v;}
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker || !document.getElementById('quizLevelPicker')) return;
+  window.EduviaLevelPicker.render('quizLevelPicker', {
+    value: VALS.level,
+    onChange: function(value){ VALS.level = value; }
+  });
+}
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
 function showPage(id){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById(id).classList.add('active');window.scrollTo(0,0);
@@ -1080,7 +1090,7 @@ async function startQuiz(){
   let wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
   if(photos.length>0){
     showPage('pageLoading');
-    window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
+    window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
     var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 120000);
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
@@ -1116,7 +1126,7 @@ async function startQuiz(){
   }
   if(!topic && !photos.length){err.textContent='Wpisz temat lub dodaj zdjęcie!';err.style.display='block';return;}
   window._lastTopic=topic;
-  window._lastLevel=VALS.level||'liceum';
+  window._lastLevel=VALS.level||'liceum_2';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
   var quizController2 = new AbortController();
@@ -1280,14 +1290,14 @@ function reviewAll(){
 
 function goToNotes(){
   const topic = (document.getElementById('topic') ? document.getElementById('topic').value : '') || (window._lastTopic||'');
-  const level = window._lastLevel || 'liceum';
+  const level = window._lastLevel || 'liceum_2';
   const subject = window._lastSubject || 'matematyka';
   if(topic){ localStorage.setItem('auto_notes_topic', topic); localStorage.setItem('auto_notes_level', level); localStorage.setItem('auto_notes_subject', subject); }
   window.location.href='notes_generator.html?auto=1';
 }
 function goToExam(){
   const topic = (document.getElementById('topic') ? document.getElementById('topic').value : '') || (window._lastTopic||'');
-  const level = window._lastLevel || 'liceum';
+  const level = window._lastLevel || 'liceum_2';
   if(topic){ localStorage.setItem('auto_exam_topic', topic); localStorage.setItem('auto_exam_level', level); }
   window.location.href='exam_generator.html?auto=1';
 }

@@ -11,6 +11,8 @@
 <meta name="theme-color" content="#7c6aff">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -641,12 +643,7 @@ button:active{transform:scale(.95)!important;}
       </div>
 
       <div class="wb-lbl">Poziom</div>
-      <select class="wb-inp" id="wbLevel">
-        <option value="kid">Podstawowka</option>
-        <option value="liceum" selected>Liceum</option>
-        <option value="matura">Matura</option>
-        <option value="studia">Studia</option>
-      </select>
+      <div id="wbLevelPicker"></div>
 
       <div class="wb-lbl">Zdjecie (opcjonalne)</div>
       <div class="wb-photo-row">
@@ -727,6 +724,15 @@ onAuthStateChanged(auth,u=>{if(!u){window.location.href='login.html';return;}cur
 <script>
 const BACKEND='https://eduvia-backend-2.onrender.com';
 let selMode='szybka',photoB64=null,steps=[],curSlide=0,voiceOn=true,synth=window.speechSynthesis;
+let wbLevel='liceum_2';
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker || !document.getElementById('wbLevelPicker')) return;
+  window.EduviaLevelPicker.render('wbLevelPicker', {
+    value: wbLevel,
+    onChange: function(value){ wbLevel = value; }
+  });
+}
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
 
 function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
 function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
@@ -744,7 +750,7 @@ async function startLesson(){
   try{
     const res=await fetch(BACKEND+'/api/v1/whiteboard/generate',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({topic:topic||'Rozwiaz zadanie ze zdjecia',level:document.getElementById('wbLevel').value,tempo:selMode,images:photoB64?[photoB64]:null})
+      body:JSON.stringify({topic:topic||'Rozwiaz zadanie ze zdjecia',level:wbLevel,tempo:selMode,images:photoB64?[photoB64]:null})
     });
     const data=await res.json();
     if(data.ok&&data.steps&&data.steps.length>0)steps=data.steps;
@@ -1158,7 +1164,7 @@ async function explainWord(word){
   popup.innerHTML=`<div class="wb-explain-hdr"><div class="wb-explain-word">${word}</div><button class="wb-explain-close" onclick="this.closest('.wb-explain').remove();return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="wb-explain-body" id="wbExpBody">Ladowanie...</div>`;
   document.body.appendChild(popup);
   try{
-    const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element_text:word,element_type:'word',topic:steps[curSlide]?.title||'',level:document.getElementById('wbLevel')?.value||'liceum',style:'Wytłumacz prosto, max 2 zdania, zacznij od To znaczy ze lub Chodzi o to ze'})});
+    const res=await fetch(BACKEND+'/api/v1/whiteboard/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element_text:word,element_type:'word',topic:steps[curSlide]?.title||'',level:wbLevel,style:'Wytłumacz prosto, max 2 zdania, zacznij od To znaczy ze lub Chodzi o to ze'})});
     const data=await res.json();
     const exp=data.explanation||'Brak wyjaśnienia.';
     const b=document.getElementById('wbExpBody');if(b)b.textContent=exp;

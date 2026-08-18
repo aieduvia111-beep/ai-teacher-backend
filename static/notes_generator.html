@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#7c6aff">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -156,13 +158,6 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .remove-img{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);border:none;border-radius:8px;color:white;padding:5px 10px;cursor:pointer;font-size:.78em;font-family:var(--b);transition:all .2s;display:flex;align-items:center;gap:5px;}
 .remove-img svg{width:11px;height:11px;stroke:white;}
 .remove-img:hover{background:rgba(248,113,113,.85);}
-
-/* LEVEL */
-.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.level-btn{padding:12px 8px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.level-btn svg{width:15px;height:15px;stroke:currentColor;}
-.level-btn:hover{border-color:var(--border-hi);color:var(--text);}
-.level-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.35);color:var(--accent2);}
 
 /* FEATURES */
 .features{display:flex;gap:7px;margin-bottom:20px;}
@@ -709,24 +704,7 @@ function getPlanBadgeHTML(plan) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Poziom edukacji
           </span>
-          <div class="level-grid">
-            <button class="level-btn" data-val="podstawowka" onclick="setLevel(this)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Podstawówka
-            </button>
-            <button class="level-btn active" data-val="liceum" onclick="setLevel(this)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-              Liceum / Tech.
-            </button>
-            <button class="level-btn" data-val="matura" onclick="setLevel(this)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              Matura
-            </button>
-            <button class="level-btn" data-val="studia" onclick="setLevel(this)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Studia
-            </button>
-          </div>
+          <div id="notesLevelPicker"></div>
         </div>
 
         <!-- SELEKTOR LICZBY KARTEK -->
@@ -960,7 +938,7 @@ function animCount(id,target){
 }
 
 // ═══ LOGIKA ═══
-let level='liceum', pages=4, numSections=3, photos=[], stepTimer=null;
+let level='liceum_2', pages=4, numSections=3, photos=[], stepTimer=null;
 
 const PAGES_INFO = {
   2: '<strong>Dla dziecka</strong> — prosto jak dla 10-latka, analogie z życia, bez trudnych słów',
@@ -979,7 +957,14 @@ function setPages(btn){
   document.getElementById('featTime').textContent = PAGES_TIME[pages];
 }
 
-function setLevel(btn){document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');level=btn.dataset.val;}
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker || !document.getElementById('notesLevelPicker')) return;
+  window.EduviaLevelPicker.render('notesLevelPicker', {
+    value: level,
+    onChange: function(value){ level = value; }
+  });
+}
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
 
 
 
@@ -1262,11 +1247,11 @@ window.addEventListener('load', function(){
   const params = new URLSearchParams(window.location.search);
   if(params.get('auto')==='1'){
     const topic = localStorage.getItem('auto_notes_topic');
-    const level = localStorage.getItem('auto_notes_level');
+    const autoLevel = localStorage.getItem('auto_notes_level');
     if(topic){
       localStorage.removeItem('auto_notes_topic');
       document.getElementById('temat').value = topic;
-      if(level){ window._autoLevel = level; window.level = level; }
+      if(autoLevel){ level = autoLevel; if(typeof initLevelPicker==='function') initLevelPicker(); }
       const subj = localStorage.getItem('auto_notes_subject');
       if(subj){ 
         localStorage.removeItem('auto_notes_subject');

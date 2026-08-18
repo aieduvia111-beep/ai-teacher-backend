@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#7c6aff">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -156,13 +158,6 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .remove-img{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);border:none;border-radius:8px;color:white;padding:5px 10px;cursor:pointer;font-size:.78em;font-family:var(--b);transition:all .2s;display:flex;align-items:center;gap:5px;}
 .remove-img svg{width:11px;height:11px;stroke:white;}
 .remove-img:hover{background:rgba(248,113,113,.85);}
-
-/* LEVEL */
-.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.level-btn{padding:12px 8px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.level-btn svg{width:15px;height:15px;stroke:currentColor;}
-.level-btn:hover{border-color:var(--border-hi);color:var(--text);}
-.level-btn.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.35);color:var(--accent2);}
 
 /* FEATURES */
 .features{display:flex;gap:7px;margin-bottom:20px;}
@@ -336,9 +331,6 @@ button:active{transform:scale(.95)!important;}
 .start-btn:hover,.generate-btn:hover,.btn-primary:hover,.gen-btn:hover,.submit-btn:hover{transform:translateY(-2px)!important;box-shadow:0 10px 28px rgba(124,106,255,.35)!important;}
 
 .card,.glass,.form-panel,.config-card{animation:cardIn .35s cubic-bezier(.22,1,.36,1) both;}
-.sel-btn{transition:all .2s cubic-bezier(.34,1.56,.64,1)!important;}
-.sel-btn:hover{transform:translateY(-2px)!important;}
-.sel-btn.active{transform:scale(1.02)!important;}
 
 .nl{transition:all .18s cubic-bezier(.34,1.56,.64,1)!important;}
 .nl:hover{transform:translateX(3px)!important;}
@@ -384,13 +376,6 @@ button:active{transform:scale(.95)!important;}
 .input-wrap select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,255,.1);}
 .input-wrap select option{background:#131320;}
 
-/* SEL-BTN i GRID jak quiz */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.sel-btn{padding:11px 7px;background:var(--s2);border:1px solid var(--border);border-radius:11px;color:var(--muted2);font-family:var(--h);font-size:.78em;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;}
-.sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
-.sel-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);color:var(--accent2);}
-.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
-
 /* VOICE PREVIEW CARD */
 .voice-preview-card{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:16px;margin:16px 0 20px;display:flex;flex-direction:column;gap:12px;}
 .vpc-row{display:flex;align-items:flex-start;gap:12px;}
@@ -413,9 +398,6 @@ button:active{transform:scale(.95)!important;}
 .input-wrap input{background:rgba(255,255,255,.04);border:1px solid rgba(124,106,255,.2);border-radius:12px;color:#e8e0ff;font-size:.9em;padding:13px 16px;transition:all .25s;}
 .input-wrap input:focus{border-color:rgba(124,106,255,.5);background:rgba(124,106,255,.06);box-shadow:0 0 0 3px rgba(124,106,255,.1);}
 .input-wrap input::placeholder{color:rgba(255,255,255,.2);}
-.level-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:rgba(255,255,255,.5);font-weight:600;font-size:.82em;padding:11px;transition:all .2s cubic-bezier(.34,1.56,.64,1);}
-.level-btn:hover{border-color:rgba(124,106,255,.3);color:rgba(255,255,255,.8);transform:scale(1.02);}
-.level-btn.active{background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(79,63,207,.15));border-color:rgba(124,106,255,.4);color:#a78bfa;box-shadow:0 0 16px rgba(124,106,255,.15);}
 .chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:100px;color:rgba(255,255,255,.45);font-size:.75em;padding:6px 14px;transition:all .18s;}
 .chip:hover{border-color:rgba(124,106,255,.3);color:rgba(255,255,255,.8);}
 .chip.active{background:rgba(124,106,255,.15);border-color:rgba(124,106,255,.4);color:#a78bfa;box-shadow:0 0 10px rgba(124,106,255,.12);}
@@ -773,7 +755,12 @@ function getPlanBadgeHTML(plan) {
       </div>
 
       <div class="field">
-
+        <span class="field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Poziom
+        </span>
+        <div id="voiceLevelPicker"></div>
+      </div>
 
       <div class="field">
         <span class="field-label">
@@ -1070,7 +1057,7 @@ const IS_MOB = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth <=
 const BACKEND_URL = 'https://eduvia-backend-2.onrender.com';
 const WS_URL = BACKEND_URL.replace('https://','wss://').replace('http://','ws://') + '/api/v1/realtime/ws';
 
-let selLevel = 'liceum', selSubject = 'Dowolny', selLang = 'polski';
+let selLevel = 'liceum_2', selSubject = 'Dowolny', selLang = 'polski';
 let sessionActive = false, errTmr = null;
 let rtWs = null; // Realtime WebSocket
 let micStream = null, camStream = null, audioCtx = null;
@@ -1496,8 +1483,8 @@ async function startSession(){
 
   // Kontekst dla AI
   const topic = document.getElementById('sessionTopic')?.value?.trim() || '';
-  const lvMap = {podstawowka:'szkola podstawowa',liceum:'liceum',matura:'matura',studia:'studia'};
-  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+(lvMap[selLevel]||selLevel)+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie.';
+  const lvLabel = window.EduviaLevelPicker ? window.EduviaLevelPicker.describeLevelLabel(selLevel) : selLevel;
+  const ctx = 'Jestes Eduvia AI - nauczyciel. Poziom: '+lvLabel+'. Przedmiot: '+selSubject+(topic?'. Temat: '+topic:'')+'. Odpowiadaj krotko (2-4 zdania), po polsku, naturalnie.';
   hist = [{role:'system', content: ctx}];
 
   boardClear();
@@ -1843,11 +1830,14 @@ function setLang(btn){
   btn.classList.add('active');
   selLang = btn.dataset.lang;
 }
-function setLevel(btn){
-  document.querySelectorAll('.sel-btn[data-val]').forEach(b=>{if(b.closest('.grid-2'))b.classList.remove('active');});
-  btn.classList.add('active');
-  selLevel = btn.dataset.val;
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker || !document.getElementById('voiceLevelPicker')) return;
+  window.EduviaLevelPicker.render('voiceLevelPicker', {
+    value: selLevel,
+    onChange: function(value){ selLevel = value; }
+  });
 }
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
 function setChip(btn, val){
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');

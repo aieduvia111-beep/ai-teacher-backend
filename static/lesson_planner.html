@@ -11,6 +11,8 @@
 <title>Eduvia — Plan Nauki</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css">
+<script src="level_picker.js"></script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -734,12 +736,7 @@ function getPlanBadgeHTML(plan) {
             </div>
             <div class="field" style="margin-bottom:0;">
               <div class="field-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Poziom</div>
-              <select class="fi fi-sel" id="fLevel">
-                <option value="podstawowka">Podstawówka</option>
-                <option value="liceum" selected>Liceum</option>
-                <option value="matura">Matura</option>
-                <option value="studia">Studia</option>
-              </select>
+              <div id="lessonLevelPicker"></div>
             </div>
           </div>
           <div class="field">
@@ -936,6 +933,17 @@ function renderDash(){
   document.getElementById('aiTips').innerHTML=idx.map(function(i){return'<div class="ai-tip"><div class="ai-tip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="ai-tip-text"><strong>'+TIPS[i].t+'</strong><br>'+TIPS[i].d+'</div></div>';}).join('');
 }
 
+// ── POZIOM ──────────────────────────────────────
+var lessonLevel='liceum_2';
+function initLevelPicker(){
+  if(!window.EduviaLevelPicker || !document.getElementById('lessonLevelPicker')) return;
+  window.EduviaLevelPicker.render('lessonLevelPicker', {
+    value: lessonLevel,
+    onChange: function(value){ lessonLevel = value; }
+  });
+}
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
+
 // ── CALENDAR ──────────────────────────────────────
 var calDate=new Date();
 function renderCal(){
@@ -987,7 +995,7 @@ window.generatePlan=async function generatePlan(){
   err.classList.remove('show');
   if(!topics.length){document.getElementById('errTxt').textContent='Wpisz przynajmniej jeden temat.';err.classList.add('show');return;}
   var subject=document.getElementById('fSubject').value;
-  var level=document.getElementById('fLevel').value;
+  var level=lessonLevel;
   var examDate=document.getElementById('fDate').value;
   var minutes=document.getElementById('fMin').value;
   var extra=document.getElementById('fExtra').value;

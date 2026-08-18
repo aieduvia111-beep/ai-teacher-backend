@@ -1,0 +1,62 @@
+/* ============================================================
+   Eduvia — wspólny komponent wyboru poziomu nauki (Etap -> Klasa)
+   Używany identycznie w: quiz_app.html, exam_generator.html,
+   notes_generator.html, lesson_planner.html, voice_conversation.html,
+   whiteboard.html, onboarding.html.
+
+   Zakłada, że strona hosta już definiuje w :root zmienne:
+   --s2, --border, --border-hi, --text, --muted, --muted2,
+   --accent2, --h (font nagłówków), --b (font tekstu).
+   Wszystkie te strony mają identyczny zestaw zmiennych już dziś.
+   ============================================================ */
+
+.lvl-picker{display:flex;flex-direction:column;gap:10px;}
+
+.lvl-stage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;}
+
+.lvl-stage-btn{
+  min-width:0;padding:13px 6px;background:var(--s2);border:1px solid var(--border);
+  border-radius:13px;color:var(--muted2);font-family:var(--h);
+  font-size:.74em;font-weight:700;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  text-align:center;white-space:normal;overflow-wrap:break-word;
+}
+.lvl-stage-btn svg{width:18px;height:18px;stroke:currentColor;flex-shrink:0;}
+.lvl-stage-btn:hover{border-color:var(--border-hi);color:var(--text);transform:translateY(-1px);}
+.lvl-stage-btn.active{
+  background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);
+  color:var(--accent2);box-shadow:0 0 16px rgba(124,106,255,.15);
+}
+
+.lvl-class-wrap{
+  max-height:0;opacity:0;overflow:hidden;
+  transition:max-height .32s ease,opacity .25s ease,margin-top .32s ease;
+}
+.lvl-class-wrap.open{max-height:420px;opacity:1;margin-top:2px;}
+
+.lvl-class-label{
+  font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px;
+}
+
+.lvl-class-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:7px;}
+
+.lvl-class-chip{
+  min-width:0;padding:9px 5px;background:var(--s2);border:1px solid var(--border);
+  border-radius:10px;color:var(--muted2);font-family:var(--h);
+  font-size:.73em;font-weight:700;cursor:pointer;transition:all .18s;
+  text-align:center;white-space:normal;overflow-wrap:break-word;line-height:1.25;
+}
+.lvl-class-chip:hover{border-color:var(--border-hi);color:var(--text);}
+.lvl-class-chip.active{
+  background:rgba(124,106,255,.14);border-color:rgba(124,106,255,.45);
+  color:var(--accent2);box-shadow:0 0 10px rgba(124,106,255,.15);
+}
+
+/* Podsumowanie aktualnego wyboru - opcjonalny wiersz pod pickerem,
+   uzywany np. w ankiecie onboardingowej. */
+.lvl-summary{
+  font-family:var(--b);font-size:.8em;color:var(--muted2);
+  display:flex;align-items:center;gap:6px;margin-top:2px;
+}
+.lvl-summary strong{color:var(--accent2);font-weight:700;}
