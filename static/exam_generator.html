@@ -350,6 +350,14 @@ onAuthStateChanged(auth, async (user) => {
   localStorage.setItem('eduvia_uid', user.uid);
   const snap = await getDoc(doc(db, 'users', user.uid));
   if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+  // Poziom zapisany w ankiecie onboardingowej - stosujemy automatycznie,
+  // chyba ze auto-wypelnianie z quiz_app.html (?auto=1) juz cos ustawilo.
+  if (window.EduviaLevelPicker && !window._levelFromLink) {
+    window.EduviaLevelPicker.applyUserProfileLevel({
+      user: user,
+      onLevel: function(level){ if(!window._levelFromLink && window.vals){ window.vals.klasa = level; initLevelPicker(); } }
+    });
+  }
 });
 window._fbSave = async function(collection, data, xp) {
   if (!currentUser) return;
@@ -907,7 +915,7 @@ document.addEventListener('click',e=>{if(!document.getElementById('przedmiotWrap
 function select(btn,group){document.querySelectorAll(`[data-group="${group}"]`).forEach(b=>b.classList.remove('active'));btn.classList.add('active');vals[group]=btn.dataset.val;}
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('examLevelPicker')) return;
-  window.EduviaLevelPicker.render('examLevelPicker', {
+  window.EduviaLevelPicker.renderCompact('examLevelPicker', {
     value: vals.klasa,
     onChange: function(value){ vals.klasa = value; }
   });
@@ -984,6 +992,11 @@ async function generate(){
       finishProgress();
       saveExam(temat,numQ);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+      // NAPRAWIONE: ta galaz (wariant A+B) w ogole nie wolala _fbSave -
+      // +120 XP dolaczalo sie tylko lokalnie, nigdy do Firestore. Efekt:
+      // user widzial wyzszy pasek XP niz to co bylo faktycznie zapisane
+      // w chmurze (i co liczylo sie np. do rankingu graczy).
+      if(typeof window._fbSave==='function')window._fbSave('examHistory',{temat:temat||'Sprawdzian (A+B)'},120);
       localStorage.setItem('eduvia_xp',xp+120);
       // Pobierz oba pliki
       const nameA=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariantA.pdf`;
@@ -1236,7 +1249,7 @@ window.addEventListener('load', function(){
       const el = document.getElementById('temat');
       if(el) el.value = topic;
       const lvl = localStorage.getItem('auto_exam_level');
-      if(lvl && window.vals){ window.vals.klasa = lvl; if(typeof initLevelPicker==='function') initLevelPicker(); }
+      if(lvl && window.vals){ window.vals.klasa = lvl; if(typeof initLevelPicker==='function') initLevelPicker(); window._levelFromLink=true; }
       const subj = localStorage.getItem('auto_exam_subject');
       if(subj && window.vals){
         const subjectMap = {

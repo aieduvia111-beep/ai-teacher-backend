@@ -63,7 +63,7 @@ async def realtime_ws(ws: WebSocket):
                         if msg.get("type") == "context.update":
                             ctx = msg.get("context", {})
                             extra = ""
-                            if ctx.get("level"): extra += f"\nPOZIOM: {describe_level(ctx['level'], fallback=None)}"
+                            if ctx.get("level"): extra += f"\nPOZIOM: {describe_level(ctx['level'], fallback=None, subject=ctx.get('subject'))}"
                             if ctx.get("subject"): extra += f"\nPRZEDMIOT: {ctx['subject']}"
                             if ctx.get("topic"): extra += f"\nTEMAT: {ctx['topic']}"
                             if extra:

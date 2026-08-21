@@ -886,7 +886,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         else:
             blok = typ_instrukcja
         prompt = EXAM_PROMPT.format(
-            temat=temat, klasa=klasa, poziom_opis=describe_level(klasa),
+            temat=temat, klasa=klasa, poziom_opis=describe_level(klasa, subject=przedmiot),
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
             wlasne_instrukcje_blok=blok
         )

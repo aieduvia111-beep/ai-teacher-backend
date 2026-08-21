@@ -442,7 +442,14 @@ async function saveUser(u,name){
 
 // Backend eduvia (ankieta onboardingowa) - localhost wykrywany automatycznie,
 // zeby testy lokalne nigdy nie trafialy na produkcyjny serwer.
-const AUTH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':'https://eduvia-backend-2.onrender.com';
+// NAPRAWIONE: samo sprawdzanie "localhost"/"127.0.0.1" nie lapalo testow z
+// telefonu w tej samej sieci WiFi (adres typu 192.168.x.x) - taki hostname
+// nie pasowal do zadnego przypadku, wiec cichutko lecial do PRODUKCJI zamiast
+// lokalnego serwera. location.origin poprawnie oddaje adres, z ktorego strona
+// FAKTYCZNIE zostala zaladowana (dziala tak samo dla localhost, 127.0.0.1 i
+// adresu w sieci lokalnej), bez zgadywania.
+const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const AUTH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 
 async function redirectAfterAuth(user){
   try{

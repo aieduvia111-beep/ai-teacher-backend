@@ -60,3 +60,52 @@
   display:flex;align-items:center;gap:6px;margin-top:2px;
 }
 .lvl-summary strong{color:var(--accent2);font-weight:700;}
+
+/* ============================================================
+   Kompaktowy tryb (renderCompact) - jeden przycisk + rozwijany
+   panel, uzywany zamiast pelnego .lvl-picker na stronach narzedzi
+   (quiz/notatki/sprawdziany/voice/plan nauki), gdzie poziom
+   zwykle jest juz auto-wypelniony z ankiety i nie potrzeba calego
+   dwuetapowego widoku za kazdym razem. Wariant B: ikona inline,
+   bez dodatkowego tla - ten sam wzorzec co linki w bocznym menu.
+   ============================================================ */
+.lvl-compact-wrap{position:relative;}
+
+.lvl-compact-btn{
+  display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;
+  background:var(--s2);border:1.5px solid var(--border);border-radius:14px;
+  cursor:pointer;text-align:left;font-family:var(--b);transition:all .2s;
+}
+.lvl-compact-btn:hover{border-color:var(--accent);background:var(--s3,var(--s2));}
+.lvl-compact-btn.open{border-color:var(--accent);}
+.lvl-compact-icon{width:18px;height:18px;color:var(--accent2);flex-shrink:0;stroke:currentColor;}
+.lvl-compact-txt{flex:1;font-weight:700;font-size:.92em;color:var(--text);}
+.lvl-compact-txt.placeholder{color:var(--muted2);font-weight:500;}
+.lvl-compact-chev{color:var(--muted2);transition:transform .2s;flex-shrink:0;}
+.lvl-compact-btn.open .lvl-compact-chev{transform:rotate(180deg);}
+
+.lvl-compact-panel{
+  position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:40;
+  background:var(--s2);border:1.5px solid var(--border-hi);border-radius:16px;
+  padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.45);
+}
+
+.lvl-stage-row{display:flex;gap:6px;margin-bottom:8px;}
+.lvl-stage-chip{
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 2px;border-radius:10px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  cursor:pointer;color:var(--muted2);transition:all .15s;font-family:var(--h);
+}
+.lvl-stage-chip svg{width:15px;height:15px;stroke:currentColor;flex-shrink:0;}
+.lvl-stage-chip span{font-size:.6em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lvl-stage-chip:hover{border-color:var(--border-hi);color:var(--text);}
+.lvl-stage-chip.active{background:rgba(124,106,255,.12);border-color:var(--accent);color:var(--accent2);}
+
+.lvl-class-row-compact{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.lvl-class-chip-compact{
+  min-width:0;padding:9px 2px;border-radius:9px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;text-align:center;
+  cursor:pointer;transition:all .15s;white-space:normal;overflow-wrap:break-word;line-height:1.2;
+}
+.lvl-class-chip-compact:hover{border-color:var(--accent);color:var(--text);}
+.lvl-class-chip-compact.active{background:var(--accent);border-color:var(--accent);color:#fff;}

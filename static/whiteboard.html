@@ -715,10 +715,30 @@ button:active{transform:scale(.95)!important;}
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// NAPRAWIONE: brakowalo importu Firestore w tym pliku, wiec window._fbSave
+// nigdy tu nie istnial - XP z tablicy (teraz naprawione, patrz showXPStreak)
+// zapisywalo by sie TYLKO lokalnie, nigdy do chmury (ten sam typ bledu co
+// odcieta pula w lesson_planner.html).
+import{getFirestore,doc,updateDoc,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app);
+const db=getFirestore(app);
 let currentUser=null;
-onAuthStateChanged(auth,u=>{if(!u){window.location.href='login.html';return;}currentUser=u;});
+onAuthStateChanged(auth,u=>{
+  if(!u){window.location.href='login.html';return;}
+  currentUser=u;
+  if(window.EduviaLevelPicker && window.applyAutoLevel){
+    window.EduviaLevelPicker.applyUserProfileLevel({ user: u, onLevel: window.applyAutoLevel });
+  }
+});
+window._fbSave=async function(collection,data,xp){
+  if(!currentUser)return;
+  try{
+    const upd={[collection]:arrayUnion({...data,timestamp:new Date().toISOString()})};
+    if(xp)upd.xp=increment(xp);
+    await updateDoc(doc(db,'users',currentUser.uid),upd);
+  }catch(e){console.log('FB err:',e);}
+};
 </script>
 
 <script>
@@ -733,6 +753,9 @@ function initLevelPicker(){
   });
 }
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
+// wbLevel zyje w tym klasycznym <script>, niewidoczne z <script type="module">
+// (Firebase auth) - stad ten maly setter wystawiony na window.
+window.applyAutoLevel = function(lvl){ wbLevel = lvl; initLevelPicker(); };
 
 function mOpen(){document.getElementById('mDrawer').classList.add('open');document.getElementById('mOverlay').classList.add('open');}
 function mClose(){document.getElementById('mDrawer').classList.remove('open');document.getElementById('mOverlay').classList.remove('open');}
@@ -1058,7 +1081,15 @@ function finalizeText(el, raw){
 
 // ═══ XP STREAK ═══
 function showXPStreak(){
-  const xp=10+Math.floor(Math.random()*6);
+  // NAPRAWIONE: ten popup pokazywal losowe "+10 do +15 XP", ale NIGDY
+  // nigdzie tego nie zapisywal (brak localStorage/Firestore) - tablica
+  // przyznawala 0 realnego XP mimo wizualnej obietnicy. Teraz +10 XP na
+  // krok jest realne i zapisane (stala wartosc, nie losowa - zeby liczba
+  // na popupie zawsze zgadzala sie z tym co faktycznie zostalo doliczone).
+  const xp=10;
+  const _wbxp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+  localStorage.setItem('eduvia_xp',_wbxp+xp);
+  if(typeof window._fbSave==='function')window._fbSave('whiteboardHistory',{topic:(steps[curSlide]&&steps[curSlide].title)||'Tablica AI'},xp);
   const pop=document.getElementById('wbXpPop');
   const num=document.getElementById('wbXpNum');
   if(!pop||!num)return;

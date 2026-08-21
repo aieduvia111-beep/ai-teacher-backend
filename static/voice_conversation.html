@@ -464,6 +464,9 @@ onAuthStateChanged(auth, async (user) => {
   localStorage.setItem('eduvia_uid', user.uid);
   const snap = await getDoc(doc(db, 'users', user.uid));
   if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+  if (window.EduviaLevelPicker && window.applyAutoLevel) {
+    window.EduviaLevelPicker.applyUserProfileLevel({ user: user, onLevel: window.applyAutoLevel });
+  }
 });
 window._fbSave = async function(collection, data, xp) {
   if (!currentUser) return;
@@ -1802,12 +1805,22 @@ function openCamera(){
 }
 
 function endSes(){
+  // NAPRAWIONE: Voice AI dotad nie przyznawal ZERO XP mimo ze uzywal
+  // realnej sesji rozmowy. Przyznajemy +15 XP, ale TYLKO jesli sesja
+  // faktycznie mial jakas wymiane (hist niepuste) - zeby otwarcie i od
+  // razu zamkniecie mikrofonu nie liczylo sie jak ukonczona lekcja.
+  const _hadExchange = sessionActive && hist && hist.length > 0;
   sessionActive = false;
   if(curAudio){ curAudio.pause(); curAudio=null; }
   if(ttsAbort){ ttsAbort.abort(); ttsAbort=null; }
   micStream?.getTracks().forEach(t=>t.stop()); micStream=null;
   camStream?.getTracks().forEach(t=>t.stop()); camStream=null;
   isRec=false; isProc=false; isSpeak=false; hist=[];
+  if(_hadExchange){
+    const _vxp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+    localStorage.setItem('eduvia_xp',_vxp+15);
+    if(typeof window._fbSave==='function')window._fbSave('voiceHistory',{topic:'Sesja Voice AI'},15);
+  }
 
   g('voSes').classList.remove('on');
   g('voDot').classList.remove('on');
@@ -1833,12 +1846,15 @@ function setLang(btn){
 }
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('voiceLevelPicker')) return;
-  window.EduviaLevelPicker.render('voiceLevelPicker', {
+  window.EduviaLevelPicker.renderCompact('voiceLevelPicker', {
     value: selLevel,
     onChange: function(value){ selLevel = value; }
   });
 }
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
+// selLevel zyje w tym klasycznym <script>, niewidoczne z <script type="module">
+// (Firebase auth) - stad ten maly setter wystawiony na window.
+window.applyAutoLevel = function(lvl){ selLevel = lvl; initLevelPicker(); };
 function setChip(btn, val){
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');

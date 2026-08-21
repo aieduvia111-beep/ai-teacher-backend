@@ -311,7 +311,7 @@ StwÃ³rz KOMPLETNE, PROFESJONALNE NOTATKI na temat: "{topic}"
 
 WYMAGANIA:
 - Przedmiot: {subject}
-- Poziom: {describe_level(level)}
+- Poziom: {describe_level(level, subject=subject)}
 - Styl: {style_prompts.get(style, style_prompts['academic'])}
 {f'- Dodatkowe szczegÃ³Å‚y: {details}' if details else ''}
 
@@ -456,6 +456,58 @@ WAŻNE:
 
 import re as re_module
 
+# Polskie laczniki/czasowniki, ktore MUSZA zostac poza $...$ (inaczej KaTeX
+# czyta je jako sklejone zmienne, np. "lub" -> l*u*b, "wynosi" -> w*y*n*o*s*i).
+# Dzielimy po nich tekst i opakowujemy w $...$ tylko fragmenty MIEDZY nimi,
+# ktore zawieraja LaTeX. Rozszerzone o czasowniki typowe w zdaniach z wynikiem
+# liczbowym ("X wynosi ..."), nie tylko czyste spojniki.
+_LATEX_CONNECTOR_RE = re_module.compile(
+    r'\s+(lub|i|oraz|albo|gdy|dla|wynosi|wynoszą|jest równ[ea]|są równe|to)\s+'
+)
+# Znajduje JUZ poprawnie opakowane wzory $...$ - te zostawiamy calkowicie
+# nietkniete, opakowujemy tylko to co lezy MIEDZY nimi (poza istniejacymi
+# dolarami). Bez tego np. "Rozwiaz rownanie $\log_2(x)=3$" (poprawne, tylko
+# przedrostek "Rozwiaz rownanie " jest poza wzorem) bylo blednie traktowane
+# jako "nie w pelni opakowane" (bo caly string nie zaczynal sie od $) i
+# dostawalo DODATKOWY dolar na obu koncach: "$Rozwiaz rownanie $...$$".
+_EXISTING_DOLLAR_RE = re_module.compile(r'\$[^$]*\$')
+
+def _wrap_plain_segment(segment):
+    """Opakowuje w $...$ fragmenty z komendami LaTeX w TEKSCIE BEZ zadnych
+    istniejacych dolarow - z podzialem na polskich lacznikach jak wyzej."""
+    if '\\' not in segment:
+        return segment
+    parts = _LATEX_CONNECTOR_RE.split(segment)
+    out = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            out.append(' ' + part + ' ')
+            continue
+        stripped = part.strip()
+        if stripped and '\\' in stripped:
+            leading = part[:len(part) - len(part.lstrip())]
+            trailing = part[len(part.rstrip()):]
+            out.append(leading + '$' + stripped + '$' + trailing)
+        else:
+            out.append(part)
+    return ''.join(out)
+
+def _wrap_naked_latex(t):
+    """Opakowuje w $...$ fragmenty zawierajace komendy LaTeX (\\frac, \\pm...),
+    ktore model zwrocil bez dolarow. Najpierw wydziela JUZ poprawnie opakowane
+    $...$ (te zostaja bez zmian), a dopiero potem naprawia to, co zostalo
+    poza nimi - zeby nie podwajac dolarow przy czesciowo opakowanym tekscie."""
+    if not t or '\\' not in t:
+        return t
+    delimited = _EXISTING_DOLLAR_RE.findall(t)
+    plain_parts = _EXISTING_DOLLAR_RE.split(t)
+    out = []
+    for i, plain in enumerate(plain_parts):
+        out.append(_wrap_plain_segment(plain))
+        if i < len(delimited):
+            out.append(delimited[i])
+    return ''.join(out)
+
 def fix_latex_in_quiz(quiz_data):
     """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
     def fix(t):
@@ -483,8 +535,13 @@ def fix_latex_in_quiz(quiz_data):
         t = re_module.sub(r"(?<![a-zA-Z\\])imes(?![a-zA-Z])", r"\\times", t)
         # Usun \text{...} - zamien na sam tekst bez komendy
         t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
-        if "\\\\" in t and "$" not in t:
-            t = "$" + t + "$"
+        # Opakuj "nagie" wzory LaTeX w $...$, jesli model zapomnial dolarow.
+        # UWAGA: poprzedni warunek sprawdzal podwojny backslash ("\\\\" w
+        # zrodle Pythona = dwa literalne znaki \\), a po json.loads() wzor
+        # ma TYLKO pojedynczy backslash (\frac) - warunek nigdy sie nie
+        # spelnial i "nagie" wzory (np. w opcjach odpowiedzi z ulamkami)
+        # trafialy na frontend bez dolarow, wiec KaTeX ich nie renderowal.
+        t = _wrap_naked_latex(t)
         return t
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
@@ -535,21 +592,35 @@ WAŻNE:
 """
         response = await client.chat.completions.create(
             model="gpt-4o",
-            messages=[{{"role": "user", "content": prompt}}],
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=2000,
             temperature=0.3
         )
-        
+
         import json as _json, re as _re
         raw = response.choices[0].message.content
-        match = _re.search(r'\{{.*\}}', raw, _re.DOTALL)
+        # NAPRAWIONE (kilka bledow na raz):
+        # 1. Podwojne klamry {{ }} POZA f-stringiem promptu (linie ponizej
+        #    byly zwyklym kodem Pythona, nie f-stringiem) - kazde uzycie
+        #    "{{...}}" tworzylo w Pythonie ZBIOR zawierajacy slownik, co
+        #    zawsze rzucalo "TypeError: unhashable type: 'dict'". Ta funkcja
+        #    nigdy nie dzialala - kazde wywolanie (generowanie quizu z PDF)
+        #    konczylo sie bledem, jeszcze zanim doszlo do OpenAI.
+        # 2. Brakowalo sanitize_latex_json_backslashes() (patrz
+        #    generate_quiz_from_topic - identyczny problem z "\neq" itp.
+        #    mylonym z escape'em JSON \n).
+        # 3. fix_latex_in_quiz() oczekuje SLOWNIKA z kluczem "questions",
+        #    a dostawal samą listę pytań - warunek "questions" in quiz_data
+        #    byl wiec zawsze falszywy i naprawa LaTeX nigdy sie nie wykonywala.
+        raw = sanitize_latex_json_backslashes(raw)
+        match = _re.search(r'\{.*\}', raw, _re.DOTALL)
         if not match:
-            return {{"success": False, "error": "Błąd parsowania"}}
+            return {"success": False, "error": "Błąd parsowania"}
         data = _json.loads(match.group())
-        questions = fix_latex_in_quiz(data.get("questions", []))
-        return {{"success": True, "quiz": {{"title": data.get("title","Quiz z PDF"), "questions": questions}}}}
+        data = fix_latex_in_quiz(data)
+        return {"success": True, "quiz": {"title": data.get("title", "Quiz z PDF"), "questions": data.get("questions", [])}}
     except Exception as e:
-        return {{"success": False, "error": str(e)}}
+        return {"success": False, "error": str(e)}
 
 async def generate_quiz_from_topic(
     topic: str,
@@ -561,22 +632,19 @@ async def generate_quiz_from_topic(
 ) -> Dict:
     """ðŸŽ“ Generuje quiz z podanego tematu"""
     try:
-        # Budujemy opis poziomu + trudności razem
-        combo_map = {
-            ("podstawowka", "easy"):   "Klasa 4-5 szkoły podstawowej. Dodawanie ułamków, proste równania x+3=7, procenty do 100%.",
-            ("podstawowka", "medium"): "Klasa 6-7 szkoły podstawowej. Równania liniowe, potęgi, proste geometria.",
-            ("podstawowka", "hard"):   "Klasa 8 szkoły podstawowej. Układy równań 2x2, twierdzenie Pitagorasa, pierwiastki.",
-            ("liceum", "easy"):        "Liceum klasa 1. Funkcja liniowa, równania kwadratowe, trygonometria podstawowa.",
-            ("liceum", "medium"):      "Liceum klasa 2-3. Pochodne, logarytmy, ciągi, geometria analityczna.",
-            ("liceum", "hard"):        "Matura rozszerzona. Całki, kombinatoryka, dowody, zaawansowane trygonometria.",
-            ("technikum", "easy"):     "Technikum klasa 1-2. Algebra, funkcje, podstawy statystyki.",
-            ("technikum", "medium"):   "Technikum klasa 3. Rachunek różniczkowy w zastosowaniach technicznych.",
-            ("technikum", "hard"):     "Technikum klasa 4. Zaawansowana matematyka techniczna, całki oznaczone.",
-            ("studia", "easy"):        "Studia rok 1 semestr 1. Granice, pochodne wyższego rzędu, podstawy algebry liniowej.",
-            ("studia", "medium"):      "Studia rok 2. Całki wielokrotne, szeregi Taylora, przestrzenie wektorowe, macierze.",
-            ("studia", "hard"):        "Studia zaawansowane / magisterskie. Równania różniczkowe cząstkowe, analiza funkcjonalna, topologia.",
-        }
-        poziom_opis = combo_map.get((level, difficulty), f"poziom {level}, trudnosc {difficulty}")
+        # Opis poziomu z centralnego level_config.py (z zakresem materialu
+        # dla konkretnego przedmiotu, jesli mamy go w SUBJECT_SCOPE).
+        #
+        # NAPRAWIONE: wczesniej byl tu wlasny, niezalezny "combo_map"
+        # kluczowany PO KOSZYKACH OGOLNYCH ("liceum", "podstawowka"...),
+        # ktory nigdy nie pasowal do konkretnych klas wysylanych przez
+        # frontend (np. "liceum_3") - kazde wywolanie cicho spadalo na
+        # bezuzyteczny fallback "poziom liceum_3, trudnosc medium", bez
+        # zadnego realnego zakresu materialu. describe_level() rozumie
+        # zarowno koszyki ogolne jak i konkretne klasy.
+        difficulty_map = {"easy": "łatwy", "medium": "średni", "hard": "trudny"}
+        poziom_opis = describe_level(level, subject=subject)
+        trudnosc_opis = difficulty_map.get(difficulty, difficulty)
 
         # Wlasne instrukcje
         instrukcje_blok = ""
@@ -594,6 +662,7 @@ PARAMETRY:
 - Przedmiot: {subject}
 - Liczba pytań: {num_questions}
 - DOKŁADNY POZIOM: {poziom_opis}
+- Trudność: {trudnosc_opis}
 {instrukcje_blok}
 KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO pytania o ten temat.
 Poziom okresla trudnosc i jezyk pytan, NIE zmienia tematu.
@@ -632,12 +701,6 @@ ZASADY:
 - TYLKO JSON"""
         
         print(f"ðŸŽ“ Quiz: {topic} ({num_questions} pytaÅ„)...")
-        
-        difficulty_map = {
-            "easy": "łatwy",
-            "medium": "średni",
-            "hard": "trudny"
-        }
 
         system = (
             "Jestes generatorem quizow edukacyjnych. Zwracasz TYLKO poprawny JSON.\n"
@@ -666,6 +729,14 @@ ZASADY:
         )
         
         raw = response.choices[0].message.content
+        # NAPRAWIONE: brakowalo tu sanitize_latex_json_backslashes() (juz
+        # uzywanego w generate_exam_from_image/generate_quiz_from_image).
+        # Bez tego np. "\neq" (pojedynczy backslash) jest dla json.loads()
+        # NIEODROZNIALNE od poprawnego escape'a JSON \n (nowa linia) - parser
+        # PO CICHU (bez wyjatku, wiec "Proba 1" zawsze "sie udawala") zjadal
+        # "\n" jako prawdziwa nowa linie, zostawiajac samo "eq" - w quizie
+        # wychodzilo to jako zlamane "$a \n eq 1$" zamiast "$a \neq 1$".
+        raw = sanitize_latex_json_backslashes(raw)
         # Proba 1: bezposrednio
         try:
             quiz_data = json.loads(raw)

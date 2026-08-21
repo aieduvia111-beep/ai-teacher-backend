@@ -165,7 +165,7 @@ async def get_ai_response(data: dict, current_user: User = Depends(get_current_u
             return {"success": False, "text": "", "error": "Brak tekstu"}
         system = SYSTEM_PROMPT
         if level and is_known_level(level):
-            system = system + "\n\nKRYTYCZNE: " + describe_level(level) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
+            system = system + "\n\nKRYTYCZNE: " + describe_level(level, subject=subject or None) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
         if subject:
             system += f"\nPRZEDMIOT: {subject}"
         topic = data.get("topic", "")

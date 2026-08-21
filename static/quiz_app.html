@@ -437,6 +437,15 @@ onAuthStateChanged(auth, async (user) => {
     const xpEl = document.querySelector('.xp-pts');
     if (xpEl) xpEl.textContent = (d.xp||0) + ' XP';
   }
+  // Poziom zapisany w ankiecie onboardingowej - stosujemy go automatycznie,
+  // chyba ze user przyszedl z konkretnym linkiem (?level=...) z Dashboardu,
+  // ktory ma pierwszenstwo.
+  if (window.EduviaLevelPicker && !window._levelFromLink) {
+    window.EduviaLevelPicker.applyUserProfileLevel({
+      user: user,
+      onLevel: function(level){ if(!window._levelFromLink && window.applyAutoLevel){ window.applyAutoLevel(level); } }
+    });
+  }
 });
 
 window._fbSaveQuiz = async function(title, correct, total, xpEarned) {
@@ -1052,12 +1061,16 @@ function setMath(el,text){if(el)el.innerHTML=math(text);}
 function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');VALS[group]=btn.dataset.v;}
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('quizLevelPicker')) return;
-  window.EduviaLevelPicker.render('quizLevelPicker', {
+  window.EduviaLevelPicker.renderCompact('quizLevelPicker', {
     value: VALS.level,
     onChange: function(value){ VALS.level = value; }
   });
 }
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
+// VALS zyje w tym klasycznym <script>, niewidoczne z <script type="module">
+// (Firebase auth) - stad ten maly setter wystawiony na window, zeby
+// auto-wypelnianie zapisanym poziomem mialo jak dotknac VALS.
+window.applyAutoLevel = function(lvl){ VALS.level = lvl; initLevelPicker(); };
 function showPage(id){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById(id).classList.add('active');window.scrollTo(0,0);
@@ -1317,16 +1330,35 @@ window.addEventListener('DOMContentLoaded',function(){
   let topic=params.get('topic');
   let subjectParam=params.get('subject');
   let levelParam=params.get('level');
+  let autostartParam=params.get('autostart');
   if(subjectParam){ document.getElementById('subject').value=subjectParam; }
-  if(levelParam){ VALS.level=levelParam; initLevelPicker(); }
+  if(levelParam){ VALS.level=levelParam; initLevelPicker(); window._levelFromLink=true; }
   if(topic){
     let input=document.getElementById('topic');input.value=decodeURIComponent(topic);
-    input.style.boxShadow='0 0 0 3px rgba(124,106,255,.35)';setTimeout(function(){input.style.boxShadow='';},2000);
-    let t=topic.toLowerCase();
-    let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
-    for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
-    // Auto-start quizu jesli temat podany z URL
-    setTimeout(function(){ startQuiz(); }, 600);
+    // Przy autostart=1 (przyjscie z Dashboardu, Sugerowany Quiz) user ma
+    // NIE zobaczyc formularza ustawien wcale - od razu ekran ladowania,
+    // wiec pomijamy podswietlenie pola (i tak nikt go nie zdazy zobaczyc).
+    if(!autostartParam){
+      input.style.boxShadow='0 0 0 3px rgba(124,106,255,.35)';setTimeout(function(){input.style.boxShadow='';},2000);
+    }
+    // Zgadywanie przedmiotu po tresci tematu - TYLKO gdy subjectParam nie
+    // zostal juz jawnie podany w URL (Dashboard/Sugerowany Quiz zawsze go
+    // podaje wprost - zgadywanie po slowach kluczowych mogloby to nadpisac
+    // bledna wartoscia).
+    if(!subjectParam){
+      let t=topic.toLowerCase();
+      let sm={matematyka:['równanie','funkcja','pochodna','całka','geometria','trygon'],fizyka:['energia','prędkość','siła','atom','ruch'],biologia:['fotosynteza','komórka','dna','ewolucja'],chemia:['reakcja','pierwiastek','mol'],historia:['historia','wojna','rewolucja'],angielski:['english','grammar','tense']};
+      for(let s in sm){if(sm[s].some(function(k){return t.includes(k);})){document.getElementById('subject').value=s;break;}}
+    }
+    if(autostartParam){
+      // Natychmiast ekran ladowania - user nie widzi formularza wcale.
+      showPage('pageLoading');
+      startQuiz();
+    } else {
+      // Auto-start quizu jesli temat podany z URL (np. z Chat AI) - krotki
+      // flash na polu tematu, zeby bylo widac co sie dzieje, potem start.
+      setTimeout(function(){ startQuiz(); }, 600);
+    }
   }
 });
 

@@ -54,7 +54,7 @@ class LessonPlannerAI:
 
 PARAMETRY:
 - Przedmiot: {subject}
-- Poziom: {describe_level(level)}
+- Poziom: {describe_level(level, subject=subject)}
 - Dni: {days_to_gen}
 - Czas: {minutes_per_day} min/dzien
 """ + (f"- Dodatkowe: {additional_info}\n" if "additional_info" else "") + f"""

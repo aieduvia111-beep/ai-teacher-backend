@@ -32,9 +32,6 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .a1{width:600px;height:600px;background:radial-gradient(circle,rgba(124,106,255,.2),transparent 70%);top:-200px;right:-100px;}
 .a2{width:460px;height:460px;background:radial-gradient(circle,rgba(34,211,160,.1),transparent 70%);bottom:-100px;left:-100px;animation-delay:5s;}
 @keyframes afloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-25px) scale(1.06)}66%{transform:translate(-18px,18px) scale(.94)}}
-.starfield{position:fixed;inset:0;pointer-events:none;z-index:0;}
-.bg-star{position:absolute;border-radius:50%;background:white;pointer-events:none;animation:twinkle 3s ease-in-out infinite;}
-@keyframes twinkle{0%,100%{opacity:.15;}50%{opacity:.75;}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 
@@ -169,6 +166,15 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
    arkusza, zeby wygrac ze zwyklymi (bezwarunkowymi) regulami powyzej
    przy tej samej specyficznosci selektora. Scisniecie odstepow
    pionowych, zeby przycisk "Dalej" zmiescil sie bez przewijania. ═══ */
+@media(min-height:821px) and (max-height:960px){
+  /* Posredni poziom - np. laptop 1440x900 z ekranem 3 (kalendarz) mial
+     ~53px pionowego przelewania (scrollHeight 953 > viewport 900), za
+     mocne zeby ignorowac, za slabe zeby ciagnac cala agresywna kompakcje
+     ponizej (ta jest dla realnie ciasnych ekranow jak 1024x768). */
+  .onb-main{padding-top:48px;}
+  .onb-right{padding:16px 20px 24px;}
+  .onb-card{padding:18px 22px;}
+}
 @media(max-height:820px){
   .onb-main{padding-top:36px;}
   .onb-hdr{padding:7px 24px;}
@@ -211,7 +217,6 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 <body>
 
 <div class="aurora"><div class="ab a1"></div><div class="ab a2"></div></div>
-<div class="starfield" id="starfield"></div>
 
 <header class="onb-hdr">
   <div class="brand-name"><div class="brand-icon">E</div>Eduvia</div>
@@ -330,23 +335,6 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 </main>
 
 <script>
-// Kilka migoczących gwiazdek w tle - ten sam wzorzec co .bg-star w reszcie apki
-(function(){
-  var field = document.getElementById('starfield');
-  var n = 30;
-  for (var i = 0; i < n; i++) {
-    var s = document.createElement('div');
-    s.className = 'bg-star';
-    var size = (Math.random() * 2.2 + 1.4).toFixed(1);
-    s.style.width = size + 'px';
-    s.style.height = size + 'px';
-    s.style.top = (Math.random() * 100) + '%';
-    s.style.left = (Math.random() * 100) + '%';
-    s.style.animationDelay = (Math.random() * 3).toFixed(1) + 's';
-    field.appendChild(s);
-  }
-})();
-
 /* ═══════════════════════════════════════════════════
    POSTEP ANKIETY W localStorage - jesli user zamknie apke
    w trakcie (np. przypadkowo, albo przelaczy sie na cos
@@ -636,8 +624,12 @@ function goStep(n){
   saveOnboardingProgress(n);
 }
 
+// NAPRAWIONE: sam string "localhost"/"127.0.0.1" nie lapal testow z telefonu
+// w tej samej sieci WiFi (192.168.x.x) - lecialo cichutko do produkcji.
+var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
 var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
+  : _isPrivateLAN ? location.origin
   : 'https://eduvia-backend-2.onrender.com';
 
 // Identyczny mechanizm co confetti() w quiz_app.html - tak samo kolory, tak samo timing.
@@ -704,9 +696,26 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app);
-onAuthStateChanged(auth, function(user){
+onAuthStateChanged(auth, async function(user){
   if(!user){ window.location.href = 'login.html'; return; }
   window._onbCurrentUser = user;
+
+  // Zabezpieczenie NA SAMEJ stronie ankiety: login.html juz nie przekierowuje
+  // tu usera, ktory ukonczyl ankiete, ale to nie chroni przed wejsciem na
+  // onboarding.html bezposrednio (zakladka, wpisany URL, przycisk "wstecz").
+  // Sprawdzamy wiec flage jeszcze raz tutaj i odbijamy na dashboard, jesli
+  // user juz ma wypelniony profil - zeby nie pokazywac ankiety ponownie.
+  try{
+    var token = await user.getIdToken();
+    var res = await fetch(window.BASE + '/users/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    var data = await res.json();
+    if(data && data.success && data.profile && data.profile.onboarding_completed){
+      window.location.href = 'dashboard_FINAL.html';
+      return;
+    }
+  }catch(e){
+    console.warn('[Onboarding] nie udalo sie sprawdzic statusu ankiety, pokazuje formularz:', e);
+  }
 });
 </script>
 

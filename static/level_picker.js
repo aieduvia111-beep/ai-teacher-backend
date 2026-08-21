@@ -197,11 +197,172 @@
     }
   }
 
+  // Kompaktowy tryb: jeden przycisk (ikona + etykieta + strzalka) +
+  // rozwijany panel z etapem i klasa w jednym widoku (bez ekranu
+  // posredniego jak w pelnym .lvl-picker). Uzywany na stronach
+  // narzedzi, gdzie poziom zwykle jest juz auto-wypelniony z ankiety
+  // i user tylko sporadycznie chce go zmienic.
+  var PLACEHOLDER_ICON = '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 3 2 6 2s6-1 6-2v-5"/>';
+
+  function renderCompact(container, opts) {
+    opts = opts || {};
+    var el = typeof container === 'string' ? document.getElementById(container) : container;
+    if (!el) return;
+
+    var current = decodeKey(opts.value);
+    el.classList.add('lvl-compact');
+    el.innerHTML = '';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'lvl-compact-wrap';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lvl-compact-btn';
+
+    var panel = document.createElement('div');
+    panel.style.display = 'none';
+
+    function updateBtn() {
+      var st = findStage(current.stageKey);
+      var hasValue = !!(current.stageKey && current.classKey);
+      var iconSvg = st ? st.icon : PLACEHOLDER_ICON;
+      var label = hasValue
+        ? describeLevelLabel(encodeKey(current.stageKey, current.classKey))
+        : (opts.placeholder || 'Wybierz poziom');
+      btn.innerHTML =
+        '<svg class="lvl-compact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + iconSvg + '</svg>' +
+        '<span class="lvl-compact-txt' + (hasValue ? '' : ' placeholder') + '">' + label + '</span>' +
+        '<svg class="lvl-compact-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    }
+
+    function renderPanel() {
+      panel.className = 'lvl-compact-panel';
+      panel.innerHTML = '';
+
+      var stageRow = document.createElement('div');
+      stageRow.className = 'lvl-stage-row';
+      STAGES.forEach(function (st) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'lvl-stage-chip';
+        if (current.stageKey === st.key) chip.classList.add('active');
+        chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + st.icon + '</svg><span>' + st.label + '</span>';
+        chip.addEventListener('click', function () {
+          if (current.stageKey !== st.key) current.classKey = null;
+          current.stageKey = st.key;
+          renderPanel();
+        });
+        stageRow.appendChild(chip);
+      });
+      panel.appendChild(stageRow);
+
+      if (current.stageKey) {
+        var st2 = findStage(current.stageKey);
+        var classRow = document.createElement('div');
+        classRow.className = 'lvl-class-row-compact';
+        st2.classes.forEach(function (cls) {
+          var c = document.createElement('button');
+          c.type = 'button';
+          c.className = 'lvl-class-chip-compact';
+          c.textContent = cls.label;
+          if (current.classKey === cls.key) c.classList.add('active');
+          c.addEventListener('click', function () {
+            current.classKey = cls.key;
+            var value = encodeKey(current.stageKey, cls.key);
+            updateBtn();
+            closePanel();
+            if (typeof opts.onChange === 'function') opts.onChange(value, describeLevelLabel(value));
+          });
+          classRow.appendChild(c);
+        });
+        panel.appendChild(classRow);
+      }
+    }
+
+    function onDocClick(e) {
+      if (!wrap.contains(e.target)) closePanel();
+    }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closePanel();
+    }
+    function openPanel() {
+      renderPanel();
+      panel.style.display = '';
+      btn.classList.add('open');
+      document.addEventListener('mousedown', onDocClick, true);
+      document.addEventListener('keydown', onKeyDown, true);
+    }
+    function closePanel() {
+      panel.style.display = 'none';
+      btn.classList.remove('open');
+      document.removeEventListener('mousedown', onDocClick, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    }
+
+    btn.addEventListener('click', function () {
+      if (panel.style.display === 'none') openPanel(); else closePanel();
+    });
+
+    updateBtn();
+    wrap.appendChild(btn);
+    wrap.appendChild(panel);
+    el.appendChild(wrap);
+
+    // Pozwala odswiezyc etykiete przycisku po auto-wypelnieniu z ankiety
+    // bez pelnego re-renderu calego widgetu (patrz applyAutoLevel na
+    // stronach narzedzi).
+    el._lvlCompactSetValue = function (value) {
+      current = decodeKey(value);
+      updateBtn();
+      if (panel.style.display !== 'none') renderPanel();
+    };
+  }
+
+  // Backend eduvia - localhost wykrywany automatycznie, zeby testy
+  // lokalne nigdy nie trafialy na produkcyjny serwer.
+  // NAPRAWIONE: sam string "localhost"/"127.0.0.1" nie lapal testow z
+  // telefonu w tej samej sieci WiFi (192.168.x.x) - lecialo do produkcji,
+  // wiec auto-wypelnianie poziomu z ankiety cicho nie dzialalo na telefonie.
+  var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+  var PROFILE_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000'
+    : _isPrivateLAN ? location.origin
+    : 'https://eduvia-backend-2.onrender.com';
+
+  // Pobiera zapisany w ankiecie onboardingowej poziom ucznia i - jesli
+  // istnieje - stosuje go (przez callback onLevel). Uzywane na kazdej
+  // z 6 stron narzedzi (quiz/sprawdziany/notatki/plan nauki/voice/
+  // tablica), zeby user NIE musial za kazdym razem recznie wybierac
+  // poziomu, jesli juz go raz podal w ankiecie. Nie robi nic (cicho),
+  // jesli user nie jest zalogowany, ankiety nie wypelnil, albo backend
+  // jest niedostepny - picker zostaje wtedy na swojej domyslnej wartosci.
+  function applyUserProfileLevel(opts) {
+    opts = opts || {};
+    if (!opts.user) return Promise.resolve(null);
+    return opts.user.getIdToken().then(function (token) {
+      return fetch(PROFILE_BASE + '/users/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      if (data && data.success && data.profile && data.profile.education_level) {
+        if (typeof opts.onLevel === 'function') opts.onLevel(data.profile.education_level, data.profile);
+        return data.profile;
+      }
+      return null;
+    }).catch(function (e) {
+      console.warn('[EduviaLevelPicker] nie udalo sie pobrac zapisanego profilu ucznia:', e);
+      return null;
+    });
+  }
+
   window.EduviaLevelPicker = {
     render: render,
+    renderCompact: renderCompact,
     describeLevelLabel: describeLevelLabel,
     encodeKey: encodeKey,
     decodeKey: decodeKey,
+    applyUserProfileLevel: applyUserProfileLevel,
     STAGES: STAGES
   };
 })();

@@ -401,6 +401,14 @@ onAuthStateChanged(auth, async (user) => {
   localStorage.setItem('eduvia_uid', user.uid);
   const snap = await getDoc(doc(db, 'users', user.uid));
   if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+  // Poziom zapisany w ankiecie onboardingowej - stosujemy automatycznie,
+  // chyba ze auto-wypelnianie z quiz_app.html (?auto=1) juz cos ustawilo.
+  if (window.EduviaLevelPicker && !window._levelFromLink) {
+    window.EduviaLevelPicker.applyUserProfileLevel({
+      user: user,
+      onLevel: function(lvl){ if(!window._levelFromLink && window.applyAutoLevel){ window.applyAutoLevel(lvl); } }
+    });
+  }
 });
 window._fbSave = async function(collection, data, xp) {
   if (!currentUser) return;
@@ -959,12 +967,15 @@ function setPages(btn){
 
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('notesLevelPicker')) return;
-  window.EduviaLevelPicker.render('notesLevelPicker', {
+  window.EduviaLevelPicker.renderCompact('notesLevelPicker', {
     value: level,
     onChange: function(value){ level = value; }
   });
 }
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
+// level zyje w tym klasycznym <script>, niewidoczne z <script type="module">
+// (Firebase auth) - stad ten maly setter wystawiony na window.
+window.applyAutoLevel = function(lvl){ level = lvl; initLevelPicker(); };
 
 
 
@@ -1019,9 +1030,13 @@ async function generate(){
       const dlFilename=`Notatka_${topicName.replace(/\s+/g,'_')}.pdf`;
       link.href=url;link.download=dlFilename;finishProgress();
       // Zapisz do historii i XP
+      // NAPRAWIONE: lokalnie doliczalo +50, ale do Firestore synchronizowalo
+      // tylko +30 - rozjazd miedzy tym co user widzial a tym co bylo w
+      // chmurze (i co liczylo sie np. do rankingu). Oba miejsca musza
+      // uzywac tej samej wartosci.
       saveNote(topicName);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
-      if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},30);
+      if(typeof window._fbSave==='function')window._fbSave('notesHistory',{topic:topicName||'Notatka'},50);
       localStorage.setItem('eduvia_xp',xp+50);
       setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';useLimit('notes');if(window.downloadViaNative)window.downloadViaNative(blob,dlFilename,'application/pdf');else link.click();renderStats();},600);
     }else{const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
@@ -1251,7 +1266,7 @@ window.addEventListener('load', function(){
     if(topic){
       localStorage.removeItem('auto_notes_topic');
       document.getElementById('temat').value = topic;
-      if(autoLevel){ level = autoLevel; if(typeof initLevelPicker==='function') initLevelPicker(); }
+      if(autoLevel){ level = autoLevel; if(typeof initLevelPicker==='function') initLevelPicker(); window._levelFromLink=true; }
       const subj = localStorage.getItem('auto_notes_subject');
       if(subj){ 
         localStorage.removeItem('auto_notes_subject');

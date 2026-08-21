@@ -384,6 +384,9 @@ onAuthStateChanged(auth,async(user)=>{
       badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
     },100);
   }
+  if(window.EduviaLevelPicker && window.applyAutoLevel){
+    window.EduviaLevelPicker.applyUserProfileLevel({ user: user, onLevel: window.applyAutoLevel });
+  }
 });
 window._fbSave=async function(collection,data,xp){
   if(!currentUser)return;
@@ -937,11 +940,14 @@ function renderDash(){
 var lessonLevel='liceum_2';
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('lessonLevelPicker')) return;
-  window.EduviaLevelPicker.render('lessonLevelPicker', {
+  window.EduviaLevelPicker.renderCompact('lessonLevelPicker', {
     value: lessonLevel,
     onChange: function(value){ lessonLevel = value; }
   });
 }
+// lessonLevel zyje w tym klasycznym <script>, niewidoczne z <script type="module">
+// (Firebase auth) - stad ten maly setter wystawiony na window.
+window.applyAutoLevel = function(lvl){ lessonLevel = lvl; initLevelPicker(); };
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initLevelPicker); } else { initLevelPicker(); }
 
 // ── CALENDAR ──────────────────────────────────────
@@ -1020,6 +1026,14 @@ window.generatePlan=async function generatePlan(){
     finishProgress();
     var plan={id:Date.now(),topic:topicStr,subject:subject,level:level,examDate:examDate,minutes:parseInt(minutes),days:buildDays(data.plan,td)};
     S.plans.push(plan);S.xp+=50;save();
+    // NAPRAWIONE: to XP dolaczalo sie tylko do lokalnej, odcietej puli
+    // (ai_xp/lesson_plans) - niewidocznej dla Dashboardu, drzewa wiedzy i
+    // rankingu, ktore wszystkie czytaja wspolna pule eduvia_xp/users.
+    // Dopisujemy wiec teraz TAKZE do wspolnej puli, zachowujac lokalny
+    // licznik S.xp (uzywany do UI na tej stronie) bez zmian.
+    var sharedXp=parseInt(localStorage.getItem('eduvia_xp')||'0');
+    localStorage.setItem('eduvia_xp',sharedXp+50);
+    if(typeof window._fbSave==='function')window._fbSave('lessonPlansHistory',{topic:topicStr||'Plan nauki'},50);
     setTimeout(function(){
       document.getElementById('loadingView').style.display='none';
       renderPlanResult(plan,subject,minutes);
@@ -1164,6 +1178,12 @@ window.markDone=function markDone(planId,dayIdx){
   var today=new Date().toISOString().split('T')[0];
   S.activity[today]=(S.activity[today]||0)+plan.minutes;
   save();
+  // NAPRAWIONE: patrz komentarz przy generowaniu planu wyzej - to samo
+  // dopisanie do wspolnej puli eduvia_xp/users, zeby ukonczone dni planu
+  // liczyly sie tez w Dashboardzie/drzewie/rankingu.
+  var sharedXpDone=parseInt(localStorage.getItem('eduvia_xp')||'0');
+  localStorage.setItem('eduvia_xp',sharedXpDone+20);
+  if(typeof window._fbSave==='function')window._fbSave('lessonPlansHistory',{topic:'Ukończony dzień planu'},20);
   // Zmien przycisk na "Zrobione"
   var btn=document.querySelector('[onclick="markDone('+planId+','+dayIdx+')"]');
   if(btn){
