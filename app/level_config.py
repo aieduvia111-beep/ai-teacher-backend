@@ -294,7 +294,13 @@ SUBJECT_SCOPE = {
         "informatyka": "arkusze kalkulacyjne - podstawy, bezpieczeństwo w sieci",
     },
     "podstawowka_7": {
-        "matematyka": "równania liniowe z jedną niewiadomą, wyrażenia algebraiczne, statystyka opisowa",
+        "matematyka": (
+            "równania liniowe z jedną niewiadomą (w tym z nawiasami i ułamkami), wyrażenia "
+            "algebraiczne - redukcja wyrazów podobnych, mnożenie sum algebraicznych, "
+            "statystyka opisowa - średnia, mediana, dominanta. PRZYKŁAD TRUDNEGO ZADANIA: "
+            "'Rozwiąż równanie 3(2x-1)-5=2(x+4).' - z wymnażaniem nawiasów po obu stronach, "
+            "NIE 'x+2=5'."
+        ),
         "polski": "lektury (np. \"Kamienie na szaniec\"), style wypowiedzi, mowa zależna",
         "angielski": "strona bierna - wprowadzenie, słownictwo maturalne - podstawy",
         "fizyka": "wprowadzenie - ruch, siła, energia, proste zjawiska fizyczne",
@@ -305,7 +311,14 @@ SUBJECT_SCOPE = {
         "informatyka": "podstawy programowania tekstowego, bazy danych - wprowadzenie",
     },
     "podstawowka_8": {
-        "matematyka": "układy równań, twierdzenie Pitagorasa, symetrie, bryły - przygotowanie do egzaminu ósmoklasisty",
+        "matematyka": (
+            "układy równań (metoda podstawiania i przeciwnych współczynników), twierdzenie "
+            "Pitagorasa i jego zastosowania, symetrie, bryły (pole i objętość graniastosłupów, "
+            "ostrosłupów) - przygotowanie do egzaminu ósmoklasisty na poziomie realnych "
+            "arkuszy CKE. PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż układ równań: 2x+3y=12, "
+            "x-y=1, a następnie sprawdź otrzymane rozwiązanie.' - pełny układ dwóch "
+            "równań, NIE 'ile to 2+2'."
+        ),
         "polski": "lektury maturalne - wprowadzenie, rozprawka egzaminacyjna, streszczenie",
         "angielski": "przygotowanie do egzaminu ósmoklasisty - wszystkie sprawności językowe",
         "fizyka": "elektryczność, optyka, przygotowanie do egzaminu ósmoklasisty",
@@ -323,7 +336,15 @@ SUBJECT_SCOPE = {
         # pojecie funkcji/funkcje liniowe maja byc zrealizowane w I polroczu
         # klasy 1, funkcja kwadratowa do konca klasy 1 - wczesniej mialem to
         # bledne w klasach 2-3 (za pozno wzgledem oficjalnego rozkladu).
-        "matematyka": "zbiory liczbowe, potęgi i pierwiastki, funkcja liniowa, logarytmy, funkcja kwadratowa, proporcjonalność odwrotna",
+        "matematyka": (
+            "zbiory liczbowe, potęgi i pierwiastki, funkcja liniowa, logarytmy, "
+            "funkcja kwadratowa - postać ogólna/kanoniczna/iloczynowa, wzory Viète'a, "
+            "równania i nierówności kwadratowe, równania i nierówności kwadratowe "
+            "z parametrem, zadania optymalizacyjne z parabolą, proporcjonalność odwrotna. "
+            "PRZYKŁAD TRUDNEGO ZADANIA (tak trudne mają być zadania, NIE łatwiejsze): "
+            "'Dla jakich wartości parametru m równanie x²-(m+1)x+m=0 ma dwa różne "
+            "pierwiastki dodatnie?' - to NIE jest poziom 'rozwiąż x²=4'."
+        ),
         "polski": "starożytność i średniowiecze (Biblia, Iliada, pieśni)",
         "angielski": "poziom B1, gramatyka rozszerzona, słownictwo tematyczne maturalne",
         "fizyka": "kinematyka i dynamika - poziom podstawowy",
@@ -334,7 +355,16 @@ SUBJECT_SCOPE = {
         "informatyka": "algorytmy i podstawy programowania (Python), systemy liczbowe",
     },
     "liceum_2": {
-        "matematyka": "trygonometria, ciągi arytmetyczne i geometryczne, planimetria",
+        "matematyka": (
+            "trygonometria - tożsamości trygonometryczne, wykresy funkcji trygonometrycznych, "
+            "równania trygonometryczne; ciągi arytmetyczne i geometryczne - wzór ogólny, "
+            "suma n wyrazów, zastosowania (np. procent składany); planimetria - twierdzenie "
+            "sinusów i cosinusów, pola figur, okręgi wpisane i opisane. "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'W trójkącie kąt α=60°, boki przy tym kącie mają "
+            "długość 5 i 8. Oblicz pole trójkąta i długość trzeciego boku.' - wymaga "
+            "twierdzenia cosinusów i wzoru na pole z sinusem, NIE prostego 'oblicz pole "
+            "prostokąta'."
+        ),
         "polski": "renesans, barok, oświecenie (Kochanowski, \"Pan Tadeusz\" - wprowadzenie)",
         "angielski": "poziom B1/B2, strona bierna, mowa zależna",
         "fizyka": "praca, energia, moc, termodynamika",
@@ -345,7 +375,16 @@ SUBJECT_SCOPE = {
         "informatyka": "bazy danych, struktury danych, algorytmy zaawansowane",
     },
     "liceum_3": {
-        "matematyka": "funkcje wykładnicze, wprowadzenie do rachunku prawdopodobieństwa, stereometria",
+        "matematyka": (
+            "funkcje wykładnicze - własności, wykresy, równania i nierówności wykładnicze; "
+            "wprowadzenie do rachunku prawdopodobieństwa - klasyczna definicja "
+            "prawdopodobieństwa, prawdopodobieństwo warunkowe; stereometria - graniastosłupy, "
+            "ostrosłupy, bryły obrotowe, przekroje brył. "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'W urnie jest 5 kul białych i 3 czarne. Losujemy bez "
+            "zwracania dwie kule. Oblicz prawdopodobieństwo, że obie są tego samego koloru.' "
+            "- wymaga prawdopodobieństwa warunkowego/łącznego, NIE 'rzucasz monetą, jakie "
+            "prawdopodobieństwo orła'."
+        ),
         "polski": "romantyzm i pozytywizm (Mickiewicz, Słowacki, \"Lalka\")",
         "angielski": "poziom B2, słownictwo abstrakcyjne, przygotowanie do matury ustnej",
         "fizyka": "elektrostatyka, prąd elektryczny, magnetyzm",
@@ -356,7 +395,15 @@ SUBJECT_SCOPE = {
         "informatyka": "sieci komputerowe, bezpieczeństwo danych, projektowanie aplikacji",
     },
     "liceum_4": {
-        "matematyka": "powtórka całego materiału, kombinatoryka i prawdopodobieństwo, pochodne i całki (zakres rozszerzony), typowe zadania maturalne",
+        "matematyka": (
+            "powtórka całego materiału liceum; kombinatoryka i prawdopodobieństwo - "
+            "permutacje, kombinacje, wariacje, schemat Bernoulliego; pochodne i całki "
+            "(zakres rozszerzony) - reguła łańcuchowa, badanie przebiegu funkcji, ekstrema, "
+            "całki oznaczone i pola pod wykresem; typowe zadania maturalne z pełnym zakresu. "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'Zbadaj monotoniczność i wyznacz ekstrema funkcji "
+            "f(x)=x³-3x²+2 oraz naszkicuj jej wykres.' - pełne badanie funkcji z pochodną, "
+            "NIE 'oblicz pochodną z x²'."
+        ),
         "polski": "Młoda Polska i współczesność (Wyspiański, literatura XX/XXI w.), powtórka maturalna",
         "angielski": "przygotowanie maturalne - pisanie rozprawek, matura ustna",
         "fizyka": "fizyka jądrowa i atomowa, fale, powtórka maturalna",
@@ -374,7 +421,13 @@ SUBJECT_SCOPE = {
         # jak dla liceum, ale dostosowuje ten sam kierunek korekty (funkcja
         # kwadratowa i logarytmy przesuniete wczesniej wzgledem mojej
         # pierwotnej, zbyt pozniej wersji).
-        "matematyka": "zbiory liczbowe, potęgi i pierwiastki, funkcja liniowa, funkcja kwadratowa - wprowadzenie",
+        "matematyka": (
+            "zbiory liczbowe, potęgi i pierwiastki, funkcja liniowa, funkcja kwadratowa - "
+            "postać ogólna i kanoniczna, rozwiązywanie równań kwadratowych (delta). "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż równanie 2x²-5x+3=0 i sprawdź znak "
+            "wyróżnika przed obliczeniem pierwiastków.' - z pełnym wzorem i deltą, NIE "
+            "'rozwiąż x²=9'."
+        ),
         "polski": "starożytność i średniowiecze - wprowadzenie",
         "angielski": "poziom A2/B1, słownictwo ogólne i zawodowe - podstawy",
         "fizyka": "kinematyka - podstawy, zastosowania praktyczne",
@@ -385,7 +438,12 @@ SUBJECT_SCOPE = {
         "informatyka": "podstawy programowania i obsługi komputera w zawodzie",
     },
     "technikum_2": {
-        "matematyka": "logarytmy, wprowadzenie do trygonometrii, elementy geometrii analitycznej",
+        "matematyka": (
+            "logarytmy - własności i równania logarytmiczne, wprowadzenie do trygonometrii, "
+            "elementy geometrii analitycznej (równanie prostej, odległość punktów). "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż równanie log₂(x+1)+log₂(x-1)=3.' - z "
+            "dziedziną i własnościami logarytmów, NIE 'oblicz log 100'."
+        ),
         "polski": "renesans i oświecenie - zarys",
         "angielski": "poziom B1, słownictwo zawodowe rozszerzone",
         "fizyka": "dynamika, praca i energia - zastosowania techniczne",
@@ -396,7 +454,13 @@ SUBJECT_SCOPE = {
         "informatyka": "bazy danych - podstawy, programowanie strukturalne",
     },
     "technikum_3": {
-        "matematyka": "pełna trygonometria, ciągi arytmetyczne i geometryczne, planimetria",
+        "matematyka": (
+            "pełna trygonometria - tożsamości i równania, ciągi arytmetyczne i "
+            "geometryczne - wzór ogólny i suma n wyrazów, planimetria - twierdzenie "
+            "sinusów i cosinusów. PRZYKŁAD TRUDNEGO ZADANIA: 'Ciąg arytmetyczny ma a₃=7 "
+            "i a₇=19. Wyznacz a₁, różnicę r oraz sumę pierwszych 20 wyrazów.' - NIE 'podaj "
+            "kolejny wyraz ciągu 2,4,6,8'."
+        ),
         "polski": "romantyzm i pozytywizm - zarys",
         "angielski": "poziom B1/B2, korespondencja zawodowa",
         "fizyka": "termodynamika, elektryczność - zastosowania techniczne",
@@ -407,7 +471,12 @@ SUBJECT_SCOPE = {
         "informatyka": "sieci komputerowe - podstawy",
     },
     "technikum_4": {
-        "matematyka": "logarytmy, ciągi arytmetyczne i geometryczne, funkcje wykładnicze, stereometria",
+        "matematyka": (
+            "logarytmy, ciągi arytmetyczne i geometryczne, funkcje wykładnicze - równania "
+            "i nierówności, stereometria - graniastosłupy i ostrosłupy. PRZYKŁAD TRUDNEGO "
+            "ZADANIA: 'Rozwiąż nierówność 3^(2x-1) > 27.' - z zamianą na wspólną podstawę i "
+            "porównaniem wykładników, NIE '3 do potęgi 2 to ile'."
+        ),
         "polski": "Młoda Polska - zarys, przygotowanie do matury",
         "angielski": "poziom B2, przygotowanie maturalne",
         "fizyka": "elektromagnetyzm - zastosowania techniczne",
@@ -418,7 +487,13 @@ SUBJECT_SCOPE = {
         "informatyka": "projektowanie systemów, bezpieczeństwo danych",
     },
     "technikum_5": {
-        "matematyka": "powtórka całego materiału, rachunek prawdopodobieństwa, typowe zadania maturalne",
+        "matematyka": (
+            "powtórka całego materiału, rachunek prawdopodobieństwa - kombinacje i schemat "
+            "Bernoulliego, typowe zadania maturalne z pełnego zakresu podstawowego. "
+            "PRZYKŁAD TRUDNEGO ZADANIA: 'Rzucamy 5 razy symetryczną monetą. Oblicz "
+            "prawdopodobieństwo otrzymania dokładnie 3 orłów.' - schemat Bernoulliego z "
+            "obliczeniem, NIE 'jakie prawdopodobieństwo orła przy jednym rzucie'."
+        ),
         "polski": "literatura współczesna, powtórka maturalna",
         "angielski": "przygotowanie maturalne i do egzaminu zawodowego",
         "fizyka": "powtórka maturalna",
@@ -431,12 +506,27 @@ SUBJECT_SCOPE = {
 
     # ---------- MATURA ----------
     "matura_podstawowa": {
-        "matematyka": "pełny zakres podstawowy: funkcje, geometria, statystyka, typowe zadania z arkusza CKE",
+        "matematyka": (
+            "pełny zakres podstawowy: funkcje liniowe i kwadratowe, ciągi, trygonometria, "
+            "planimetria i stereometria, elementy statystyki i prawdopodobieństwa - poziom "
+            "i format typowego arkusza CKE poziom podstawowy. PRZYKŁAD TRUDNEGO ZADANIA: "
+            "'Dane są punkty A=(-2,1) i B=(4,5). Wyznacz równanie prostej prostopadłej do "
+            "AB, przechodzącej przez środek odcinka AB.' - typowe zadanie z arkusza CKE, "
+            "NIE 'oblicz odległość dwóch punktów na osi liczbowej'."
+        ),
         "polski": "wszystkie epoki literackie, rozprawka maturalna, część ustna",
         "angielski": "poziom B1, wszystkie sprawności językowe, typowy arkusz maturalny",
     },
     "matura_rozszerzona": {
-        "matematyka": "pełny zakres rozszerzony: pochodne, całki, kombinatoryka, dowody geometryczne",
+        "matematyka": (
+            "pełny zakres rozszerzony: pochodne i badanie przebiegu funkcji, całki oznaczone "
+            "i nieoznaczone, kombinatoryka i prawdopodobieństwo, dowody geometryczne, "
+            "równania i nierówności z wartością bezwzględną, ciągi rekurencyjne - poziom i "
+            "format arkusza CKE poziom rozszerzony. PRZYKŁAD TRUDNEGO ZADANIA: 'Wykaż, że "
+            "dla dowolnego trójkąta ostrokątnego wpisanego w okrąg o promieniu R, pole "
+            "trójkąta wyraża się wzorem P=2R²sinAsinBsinC.' - dowód na poziomie "
+            "rozszerzonym, NIE 'oblicz pole trójkąta o podanych bokach'."
+        ),
         "polski": "pogłębiona interpretacja, kontekst historycznoliteracki, wypracowanie na poziomie rozszerzonym",
         "angielski": "poziom B2/C1, tłumaczenia, rozprawka na poziomie rozszerzonym",
         "fizyka": "pełny zakres maturalny - mechanika, elektromagnetyzm, fizyka współczesna",
@@ -504,8 +594,23 @@ def describe_level(level: str, fallback: str = DEFAULT_LEVEL, subject: str = Non
     if subject:
         scope = SUBJECT_SCOPE.get(key, {}).get(subject)
         if scope:
-            return f"{base} Zakres materiału z przedmiotu ({subject}): {scope}."
-    return base
+            base = f"{base} Zakres materiału z przedmiotu ({subject}): {scope.rstrip('.')}."
+
+    # Globalna klauzula trudnosci - dodawana zawsze, niezaleznie od
+    # przedmiotu. Powod: uzytkownicy zglaszali, ze generowane
+    # zadania byly za latwe wzgledem realnego poziomu danej klasy
+    # (np. "rownania kwadratowe" na poziomie przedszkolaka zamiast
+    # liceum). Dopisujemy to raz tutaj, bo describe_level() jest
+    # jedynym wspolnym punktem wstrzykiwania opisu poziomu do Quiz,
+    # Sprawdzian i Notatki - dzieki temu nie trzeba tego powtarzac w
+    # kazdym miejscu generowania osobno.
+    return (
+        f"{base} WAŻNE: To NIE może być zbyt łatwe. Zadania muszą "
+        f"odpowiadać PRAWDZIWEMU poziomowi trudności podręcznika/egzaminu "
+        f"dla tej klasy, a NIE uproszczonej wersji dla młodszych uczniów. "
+        f"Jeśli wahasz się między łatwiejszym a trudniejszym wariantem "
+        f"zadania - wybierz trudniejszy."
+    )
 
 
 _STAGE_LABELS = {
