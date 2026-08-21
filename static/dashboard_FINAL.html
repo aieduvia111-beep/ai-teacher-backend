@@ -528,10 +528,15 @@ onAuthStateChanged(auth, async (user) => {
   localStorage.setItem('eduvia_xp', xp);
   if (typeof window.renderLevelUI === 'function') window.renderLevelUI(xp);
 
-  // Aktualizuj streak
-  if (typeof data.streak === 'number') localStorage.setItem('eduvia_streak', data.streak);
-  const streakEl = document.getElementById('hsStreak');
-  if (streakEl && typeof data.streak === 'number') streakEl.textContent = data.streak;
+  // Streak: pole "streak" w Firestore jest tylko inicjalizowane na 0 przy
+  // zakladaniu konta i NIGDZIE w calej apce nigdy nie jest zwiekszane
+  // (sprawdzone grepem po static/ - zero wywolan increment(streak) czy
+  // podobnych) - polegac na nim tutaj oznaczaloby NADPISANIE poprawnie
+  // liczonego, dzialajacego licznika lokalnego (klasyczny skrypt "XP /
+  // STREAK / POZIOM" nizej) zawsze zerem. Zamiast tego zostawiamy licznik
+  // lokalny jako jedyne realne zrodlo - dziala poprawnie, ale tylko na
+  // tym urzadzeniu/przegladarce (nie synchronizuje sie miedzy urzadzeniami,
+  // bo backend nigdy go nie zapisuje).
 
   // Aktualizuj imie i avatar
   const nameEl = document.querySelector('.hero-nm');
