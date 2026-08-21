@@ -157,7 +157,8 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 
 /* ═══ LEVEL RING ═══ */
 .level-ring-wrap{position:relative;width:132px;height:132px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.level-ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+.level-ring-track-svg{width:100%;height:100%;transform:rotate(-90deg);}
+.level-ring-crown{width:18px;height:18px;}
 .level-ring-fill{transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);}
 .level-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;}
 .level-ring-crown{color:#a78bfa;margin-bottom:1px;flex-shrink:0;}
@@ -189,6 +190,40 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 /* ═══ SPRAWDZIAN - odliczanie ═══ */
 .exam-count-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;animation:cardIn .4s cubic-bezier(.22,1,.36,1) .05s both;transition:.2s;}
 .exam-count-card:hover{border-color:rgba(34,211,160,.35);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3);}
+.ec-edit-btn{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;z-index:2;}
+.ec-edit-btn:hover{background:rgba(34,211,160,.12);border-color:rgba(34,211,160,.3);color:var(--green);transform:scale(1.06);}
+.exam-status-card{flex-direction:column;align-items:center;flex-wrap:nowrap;justify-content:center;text-align:center;gap:14px;padding:26px 24px;}
+.ec-status-title{font-family:var(--h);font-weight:800;font-size:1.02em;color:#fff;}
+.ec-add-btn{display:flex;align-items:center;gap:6px;padding:11px 20px;border-radius:100px;background:linear-gradient(135deg,var(--accent),#5040c8);color:#fff;border:none;font-family:var(--h);font-weight:700;font-size:.82em;cursor:pointer;transition:.2s;box-shadow:0 0 20px var(--ag);}
+.ec-add-btn:hover{transform:translateY(-2px);box-shadow:0 0 28px rgba(124,106,255,.5);}
+.exam-picker-card{flex-direction:column;align-items:stretch;flex-wrap:nowrap;justify-content:flex-start;gap:12px;}
+.mcal-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin:0 auto;}
+.mcal-close{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75em;transition:.2s;flex-shrink:0;}
+.mcal-close:hover{color:var(--text);border-color:var(--border-hi);background:rgba(255,255,255,.1);}
+.ec-topic-input{width:100%;max-width:380px;margin:0 auto;padding:10px 14px;border-radius:12px;background:var(--s2);border:1px solid var(--border-hi);color:var(--text);font-family:var(--b);font-size:.85em;outline:none;transition:.2s;box-sizing:border-box;}
+.ec-topic-input:focus{border-color:var(--accent);}
+.mcal-widget{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:12px 10px;width:100%;max-width:380px;margin:0 auto;box-sizing:border-box;}
+.mcal-day{max-width:52px;max-height:52px;margin:0 auto;}
+.mcal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.mcal-nav-btn{width:26px;height:26px;border-radius:8px;background:var(--s3);border:1px solid var(--border-hi);color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;}
+.mcal-nav-btn:hover{color:var(--text);border-color:var(--accent);background:rgba(124,106,255,.12);}
+.mcal-month-label{font-family:var(--h);font-weight:700;font-size:.82em;}
+.mcal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:5px;}
+.mcal-weekdays span{font-family:var(--h);font-size:.55em;font-weight:700;color:var(--muted);letter-spacing:.03em;}
+.mcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.mcal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:var(--b);font-size:.72em;color:var(--text);cursor:pointer;transition:.15s;border:1.5px solid transparent;}
+.mcal-day:hover:not(.muted):not(.past){background:rgba(124,106,255,.14);transform:scale(1.08);}
+.mcal-day.muted{color:var(--muted);cursor:default;opacity:.35;}
+.mcal-day.past{color:var(--muted);cursor:not-allowed;opacity:.3;}
+.mcal-day.today{border-color:rgba(124,106,255,.45);color:var(--accent2);font-weight:700;}
+.mcal-day.selected{background:linear-gradient(135deg,var(--accent),#5040c8);color:#fff;font-weight:700;box-shadow:0 0 14px rgba(124,106,255,.5),inset 0 1px 0 rgba(255,255,255,.2);}
+.ec-picker-actions{display:flex;gap:10px;width:100%;max-width:380px;margin:0 auto;}
+.ec-picker-cancel{flex:1;padding:11px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);color:var(--muted2);font-family:var(--h);font-weight:700;font-size:.82em;cursor:pointer;transition:.2s;}
+.ec-picker-cancel:hover{background:rgba(255,255,255,.09);color:var(--text);}
+.ec-picker-save{flex:1;padding:11px;border-radius:12px;background:linear-gradient(135deg,var(--green),#189e77);border:none;color:#04140f;font-family:var(--h);font-weight:800;font-size:.82em;cursor:pointer;transition:.2s;}
+.ec-picker-save:disabled{opacity:.4;cursor:not-allowed;}
+.ec-picker-save:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 0 20px rgba(34,211,160,.35);}
+.ec-picker-error{color:var(--red);font-size:.78em;}
 .ec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .ec-title{font-family:var(--h);font-size:1em;font-weight:800;color:#fff;margin-bottom:4px;}
 .ec-date{font-size:.8em;color:var(--muted2);display:flex;align-items:center;gap:6px;}
@@ -667,6 +702,9 @@ function startExamCountdown(isoDateStr){
       if (_examCountdownIv) clearInterval(_examCountdownIv);
       if (dEl) dEl.textContent = '00'; if (hEl) hEl.textContent = '00';
       if (mEl) mEl.textContent = '00'; if (sEl) sEl.textContent = '00';
+      // Termin wlasnie minal (zegar doszedl do zera) - przelacz karte
+      // na "Jak poszedl sprawdzian?" zamiast zostawiac zamrozone 00:00:00:00.
+      _showExamView('passed');
       return;
     }
     const days = Math.floor(diff / 86400000);
@@ -681,13 +719,165 @@ function startExamCountdown(isoDateStr){
   _examCountdownIv = setInterval(tick, 1000);
 }
 
+// ═══ ZMIANA / DODANIE KOLEJNEGO TERMINU SPRAWDZIANU ═══
+// 4 widoki w jednej sekcji (aktywny/minal/pusty/wybor daty), przelaczane
+// przez pokazanie jednego i schowanie pozostalych trzech.
+let _dashUser = null;       // ustawiane w loadStudentProfile - potrzebne do getIdToken() przy zapisie
+let _dashProfile = null;    // profil z /users/me - potrzebne education_level (wymagane pole przy zapisie)
+let _examViewBeforePicker = 'empty';
+
+function _showExamView(view){
+  const views = {active:'ecActiveView', passed:'ecPassedView', empty:'ecEmptyView', picker:'ecPickerView'};
+  Object.keys(views).forEach((k) => {
+    const el = document.getElementById(views[k]);
+    if (el) el.style.display = (k === view) ? '' : 'none';
+  });
+  const editBtn = document.getElementById('ecEditBtn');
+  if (editBtn) editBtn.style.display = (view === 'active') ? '' : 'none';
+}
+
+const MCAL_MONTHS_GEN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+const MCAL_MONTHS_NOM = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+const MCAL_WEEKDAYS = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'];
+let _mcalViewDate = new Date();
+let _mcalSelectedDate = null;
+
+function renderDashCal(){
+  const y = _mcalViewDate.getFullYear(), m = _mcalViewDate.getMonth();
+  const lbl = document.getElementById('mcalMonthLabel');
+  if (lbl) lbl.textContent = MCAL_MONTHS_NOM[m] + ' ' + y;
+
+  const firstOfMonth = new Date(y, m, 1);
+  let startOffset = firstOfMonth.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+
+  const grid = document.getElementById('mcalGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  for (let i = startOffset - 1; i >= 0; i--) {
+    const pd = document.createElement('div');
+    pd.className = 'mcal-day muted';
+    pd.textContent = daysInPrevMonth - i;
+    grid.appendChild(pd);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cellDate = new Date(y, m, day);
+    const d = document.createElement('div');
+    d.className = 'mcal-day';
+    d.textContent = day;
+    const isPast = cellDate.getTime() < today.getTime();
+    if (isPast) {
+      d.classList.add('past');
+    } else {
+      if (cellDate.getTime() === today.getTime()) d.classList.add('today');
+      if (_mcalSelectedDate && cellDate.getTime() === _mcalSelectedDate.getTime()) d.classList.add('selected');
+      d.addEventListener('click', () => {
+        _mcalSelectedDate = cellDate;
+        renderDashCal();
+        const saveBtn = document.getElementById('ecPickerSaveBtn');
+        if (saveBtn) saveBtn.disabled = false;
+        const errEl = document.getElementById('ecPickerError');
+        if (errEl) errEl.style.display = 'none';
+      });
+    }
+    grid.appendChild(d);
+  }
+  const totalCells = startOffset + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let j = 1; j <= remaining; j++) {
+    const nd = document.createElement('div');
+    nd.className = 'mcal-day muted';
+    nd.textContent = j;
+    grid.appendChild(nd);
+  }
+}
+window.dashCalChangeMonth = function(delta){
+  _mcalViewDate = new Date(_mcalViewDate.getFullYear(), _mcalViewDate.getMonth() + delta, 1);
+  renderDashCal();
+};
+
+window.openExamPicker = function(){
+  const activeVisible = document.getElementById('ecActiveView').style.display !== 'none';
+  _examViewBeforePicker = activeVisible ? 'active' : (document.getElementById('ecPassedView').style.display !== 'none' ? 'passed' : 'empty');
+  // Przy "Zmien termin" na juz aktywnym odliczaniu - od razu podswietl
+  // TERAZNIEJSZA date w kalendarzu i otworz na jej miesiacu, zamiast
+  // zaczynac od pustego wyboru (user modyfikuje istniejacy termin, nie
+  // zaczyna od zera).
+  if (_examViewBeforePicker === 'active' && _dashProfile && _dashProfile.exam_date) {
+    const parts = _dashProfile.exam_date.split('-').map(Number);
+    _mcalSelectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
+    _mcalViewDate = new Date(parts[0], parts[1] - 1, 1);
+  } else {
+    _mcalSelectedDate = null;
+    _mcalViewDate = new Date();
+  }
+  const topicInput = document.getElementById('ecTopicInput');
+  if (topicInput) topicInput.value = localStorage.getItem('eduvia_exam_title') || '';
+  const saveBtn = document.getElementById('ecPickerSaveBtn');
+  if (saveBtn) saveBtn.disabled = !_mcalSelectedDate;
+  const errEl = document.getElementById('ecPickerError');
+  if (errEl) errEl.style.display = 'none';
+  renderDashCal();
+  _showExamView('picker');
+};
+window.closeExamPicker = function(){
+  _showExamView(_examViewBeforePicker);
+};
+
+window.saveNewExamDate = async function(){
+  if (!_mcalSelectedDate || !_dashUser) return;
+  const errEl = document.getElementById('ecPickerError');
+  const saveBtn = document.getElementById('ecPickerSaveBtn');
+  const isoDate = _mcalSelectedDate.getFullYear() + '-' + String(_mcalSelectedDate.getMonth() + 1).padStart(2, '0') + '-' + String(_mcalSelectedDate.getDate()).padStart(2, '0');
+  const topicVal = (document.getElementById('ecTopicInput').value || '').trim().slice(0, 60);
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Zapisuję…'; }
+  try {
+    const token = await _dashUser.getIdToken();
+    // Ta sama endpointa i to samo pole co ankieta onboardingowa (exam_date) -
+    // wiec NADPISUJE poprzedni termin, apka zawsze pokazuje ten ostatnio ustawiony.
+    // education_level jest wymagany przez ten endpoint - wysylamy istniejacy,
+    // zeby go przypadkiem nie wyzerowac.
+    const res = await fetch(DASH_BASE + '/users/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ education_level: _dashProfile.education_level, exam_date: isoDate })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Nie udało się zapisać terminu.');
+    _dashProfile = data.profile;
+
+    // Ewentualny temat/przedmiot - nie ma dla niego pola w bazie (tylko
+    // ogolny favorite_subject z ankiety, nie per-sprawdzian), wiec trzymamy
+    // go lokalnie na tym urzadzeniu zamiast dopisywac nowe pole do schematu.
+    if (topicVal) localStorage.setItem('eduvia_exam_title', topicVal);
+    else localStorage.removeItem('eduvia_exam_title');
+
+    document.getElementById('ecTitle').textContent = topicVal || 'Sprawdzian';
+    const D = ["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"];
+    document.getElementById('ecDateTxt').textContent = D[_mcalSelectedDate.getDay()] + ', ' + _mcalSelectedDate.getDate() + ' ' + MCAL_MONTHS_GEN[_mcalSelectedDate.getMonth()] + ' ' + _mcalSelectedDate.getFullYear();
+    document.getElementById('ecClock').style.display = '';
+    startExamCountdown(isoDate);
+    _showExamView('active');
+  } catch (e) {
+    if (errEl) { errEl.textContent = 'Nie udało się zapisać: ' + e.message; errEl.style.display = ''; }
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Zapisz termin'; }
+  }
+};
+
 async function loadStudentProfile(user){
   try{
+    _dashUser=user;
     const token=await user.getIdToken();
     const res=await fetch(DASH_BASE+'/users/me',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
     if(!data.success)return;
     const profile=data.profile;
+    _dashProfile=profile;
 
     const nsSec=document.getElementById('nextStepSec');
     const nsCard=document.getElementById('nextStepCard');
@@ -720,21 +910,29 @@ async function loadStudentProfile(user){
         nsCard.href=quizUrl;
         nsSec.style.display='';
       }
-      if(profile.exam_date){
-        const days=daysUntil(profile.exam_date);
-        const ecSec=document.getElementById('examCountSec');
-        if(ecSec){
-          document.getElementById('ecTitle').textContent = days<0?'Sprawdzian już minął':(days===0?'Sprawdzian jest dziś!':'Sprawdzian');
+      // Karta sprawdzianu ma teraz 4 widoki (aktywny/minal/pusty/wybor daty)
+      // - sekcja jest wiec widoczna zawsze po ukonczeniu ankiety, nawet bez
+      // ustawionej daty, zeby user mial gdzie ja dodac (patrz openExamPicker).
+      const ecSec=document.getElementById('examCountSec');
+      if(ecSec){
+        ecSec.style.display='';
+        if(profile.exam_date){
+          const days=daysUntil(profile.exam_date);
+          const customTitle=localStorage.getItem('eduvia_exam_title');
+          document.getElementById('ecTitle').textContent = customTitle || (days===0?'Sprawdzian jest dziś!':'Sprawdzian');
           const D=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"],M=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
           const parts=profile.exam_date.split('-').map(Number);
           const dObj=new Date(parts[0],parts[1]-1,parts[2]);
           document.getElementById('ecDateTxt').textContent=D[dObj.getDay()]+', '+dObj.getDate()+' '+M[dObj.getMonth()]+' '+dObj.getFullYear();
           if(days>=0){
+            document.getElementById('ecClock').style.display='';
             startExamCountdown(profile.exam_date);
+            _showExamView('active');
           } else {
-            document.getElementById('ecClock').style.display='none';
+            _showExamView('passed');
           }
-          ecSec.style.display='';
+        } else {
+          _showExamView('empty');
         }
       }
     }
@@ -993,7 +1191,7 @@ function getPlanBadgeHTML(plan) {
 
     <!-- 3. OKRAGLY WSKAZNIK POZIOMU (korona + Poziom N + nazwa) -->
     <div class="level-ring-wrap" aria-hidden="true">
-      <svg viewBox="0 0 132 132">
+      <svg class="level-ring-track-svg" viewBox="0 0 132 132">
         <defs>
           <linearGradient id="levelRingGrad" x1="0" y1="0" x2="132" y2="132" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stop-color="var(--accent)"/>
@@ -1031,8 +1229,10 @@ function getPlanBadgeHTML(plan) {
 
   <!-- 6. KARTA SPRAWDZIANU - prawdziwe, tykajace odliczanie. Klikalna ->
        Plan Nauki (przygotowanie do sprawdzianu = harmonogram nauki). -->
-  <section class="exam-count-sec" id="examCountSec" style="display:none;">
-    <a href="lesson_planner.html" class="exam-count-card" style="text-decoration:none;color:inherit;">
+  <section class="exam-count-sec" id="examCountSec" style="display:none;position:relative;">
+
+    <!-- Widok A: aktywny, tykajacy termin -->
+    <a href="lesson_planner.html" class="exam-count-card" id="ecActiveView" style="text-decoration:none;color:inherit;">
       <div class="ec-info">
         <div class="ec-label">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1054,6 +1254,55 @@ function getPlanBadgeHTML(plan) {
         <div class="ec-unit"><div class="ec-unit-val" id="ecSecs">00</div><div class="ec-unit-lbl">sek</div></div>
       </div>
     </a>
+    <button type="button" class="ec-edit-btn" id="ecEditBtn" title="Zmień termin sprawdzianu" onclick="openExamPicker()" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+    </button>
+
+    <!-- Widok B: termin minal -->
+    <div class="exam-count-card exam-status-card" id="ecPassedView" style="display:none;">
+      <div class="ec-status-title">Jak poszedł sprawdzian? 🎉</div>
+      <button type="button" class="ec-add-btn" onclick="openExamPicker()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Dodaj kolejny termin
+      </button>
+    </div>
+
+    <!-- Widok C: brak ustawionego terminu -->
+    <div class="exam-count-card exam-status-card" id="ecEmptyView" style="display:none;">
+      <div class="ec-status-title">Nie masz zaplanowanego sprawdzianu</div>
+      <button type="button" class="ec-add-btn" onclick="openExamPicker()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Dodaj termin
+      </button>
+    </div>
+
+    <!-- Widok D: kompaktowy wybor daty (wbudowany kalendarz, styl z ankiety) -->
+    <div class="exam-count-card exam-picker-card" id="ecPickerView" style="display:none;">
+      <div class="mcal-header">
+        <div class="ec-label" style="margin-bottom:0;">📅 Nowy termin sprawdzianu</div>
+        <button type="button" class="mcal-close" onclick="closeExamPicker()" title="Zamknij">✕</button>
+      </div>
+      <input type="text" id="ecTopicInput" class="ec-topic-input" placeholder="Temat / przedmiot (opcjonalnie)" maxlength="60">
+      <div class="mcal-widget">
+        <div class="mcal-nav">
+          <button type="button" class="mcal-nav-btn" onclick="dashCalChangeMonth(-1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="mcal-month-label" id="mcalMonthLabel"></div>
+          <button type="button" class="mcal-nav-btn" onclick="dashCalChangeMonth(1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="mcal-weekdays"><span>PN</span><span>WT</span><span>ŚR</span><span>CZ</span><span>PT</span><span>SO</span><span>ND</span></div>
+        <div class="mcal-grid" id="mcalGrid"></div>
+      </div>
+      <div class="ec-picker-error" id="ecPickerError" style="display:none;"></div>
+      <div class="ec-picker-actions">
+        <button type="button" class="ec-picker-cancel" onclick="closeExamPicker()">Anuluj</button>
+        <button type="button" class="ec-picker-save" id="ecPickerSaveBtn" onclick="saveNewExamDate()" disabled>Zapisz termin</button>
+      </div>
+    </div>
+
   </section>
 
   <!-- 7. SIATKA 6 NARZEDZI (kompaktowa, 3 kolumny) -->
