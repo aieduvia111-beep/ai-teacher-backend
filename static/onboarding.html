@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Eduvia — Witaj!</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;position:relative;overflow-x:hidden;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;position:relative;overflow-x:hidden;}
 
 /* ═══ TŁO: GWIAZDKI + AURORA (jak reszta apki) ═══ */
 .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
@@ -38,12 +38,12 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 @keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 
 /* ═══ HEADER (stały pasek, jak login.html) ═══ */
-.onb-hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;display:flex;align-items:center;background:rgba(7,7,13,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+.onb-hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;padding-top:calc(16px + env(safe-area-inset-top));display:flex;align-items:center;background:rgba(7,7,13,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .brand-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.95em;color:white;box-shadow:0 0 24px rgba(124,106,255,.45),inset 0 1px 0 rgba(255,255,255,.18);flex-shrink:0;}
 .brand-name{font-family:var(--h);font-weight:800;font-size:.95em;color:white;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;}
 
 /* ═══ LAYOUT: split na desktopie (>=900px), jedna kolumna na mobile/tablet ═══ */
-.onb-main{position:relative;z-index:2;display:flex;min-height:100vh;padding-top:68px;}
+.onb-main{position:relative;z-index:2;display:flex;min-height:100vh;min-height:100dvh;padding-top:68px;padding-top:calc(68px + env(safe-area-inset-top));}
 
 .onb-left{flex:1;display:none;align-items:center;justify-content:center;padding:60px 40px;}
 .onb-left-inner{max-width:380px;}
@@ -160,13 +160,13 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
      ~53px pionowego przelewania (scrollHeight 953 > viewport 900), za
      mocne zeby ignorowac, za slabe zeby ciagnac cala agresywna kompakcje
      ponizej (ta jest dla realnie ciasnych ekranow jak 1024x768). */
-  .onb-main{padding-top:48px;}
+  .onb-main{padding-top:48px;padding-top:calc(48px + env(safe-area-inset-top));}
   .onb-right{padding:16px 20px 24px;}
   .onb-card{padding:18px 22px;}
 }
 @media(max-height:820px){
-  .onb-main{padding-top:36px;}
-  .onb-hdr{padding:7px 24px;}
+  .onb-main{padding-top:36px;padding-top:calc(36px + env(safe-area-inset-top));}
+  .onb-hdr{padding:7px 24px;padding-top:calc(7px + env(safe-area-inset-top));}
   .onb-right{padding-top:10px;padding-bottom:10px;}
   .onb-card{padding:12px 18px;}
   .onb-greet{margin-bottom:3px;font-size:.85em;}

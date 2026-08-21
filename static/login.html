@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Eduvia — Zaloguj się</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7c6aff">
@@ -21,7 +21,7 @@
   --gg:rgba(34,211,160,.5);
 }
 html,body{min-height:100%;height:100%;}
-body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;}
 
 
 /* CHROME REQUIRED SCREEN */
@@ -56,7 +56,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 @keyframes pRise{0%{opacity:0;transform:translateY(0) scale(0);}15%{opacity:.5;}85%{opacity:.1;}100%{opacity:0;transform:translateY(-500px) scale(.2);}}
 
 /* HEADER */
-.hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(6,6,15,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+.hdr{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 28px;padding-top:calc(18px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;background:rgba(6,6,15,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);}
 .brand-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.95em;color:white;box-shadow:0 0 24px rgba(124,106,255,.4),inset 0 1px 0 rgba(255,255,255,.15);position:relative;overflow:hidden;}
 .brand-icon::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);}
@@ -66,7 +66,7 @@ body::before{content:'';position:fixed;inset:0;opacity:.035;background-image:url
 .plans-link:hover{border-color:rgba(124,106,255,.3);color:var(--accent2);}
 
 /* MAIN LAYOUT */
-.main{flex:1;display:flex;min-height:100vh;padding-top:72px;position:relative;z-index:2;}
+.main{flex:1;display:flex;min-height:100vh;min-height:100dvh;padding-top:72px;padding-top:calc(72px + env(safe-area-inset-top));position:relative;z-index:2;}
 
 /* LEFT SIDE */
 .left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;display:none;}
