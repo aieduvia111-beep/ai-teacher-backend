@@ -155,6 +155,94 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 @keyframes xpshine{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
 .xpbar-label{font-size:.62em;color:var(--muted);margin-top:6px;}
 
+/* ═══ LEVEL RING ═══ */
+.level-ring-wrap{position:relative;width:132px;height:132px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.level-ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+.level-ring-fill{transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);}
+.level-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;}
+.level-ring-crown{color:#a78bfa;margin-bottom:1px;flex-shrink:0;}
+.level-ring-num{font-family:var(--h);font-weight:800;font-size:1.05em;color:#fff;line-height:1.15;}
+.level-ring-name{font-family:var(--h);font-weight:700;font-size:.64em;letter-spacing:.04em;color:var(--green);}
+
+/* ═══ XP PANEL (restyled hero-stats, pelna szerokosc) ═══ */
+.hero-stats{width:100%;justify-content:space-between;}
+.hs-item{gap:9px;}
+.hs-item-text{display:flex;flex-direction:column;gap:1px;}
+.hero-xpbar{max-width:100%;}
+.xpbar-track{height:10px;}
+
+/* ═══ NASTEPNY KROK ═══ */
+.next-step-card{
+  background:linear-gradient(135deg,rgba(124,106,255,.09),rgba(7,7,13,.4) 70%);
+  border:1px solid rgba(124,106,255,.2);border-radius:22px;padding:22px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;
+}
+.ns-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.ns-title{font-family:var(--h);font-size:1.05em;font-weight:800;color:#fff;margin-bottom:4px;}
+.ns-desc{font-size:.82em;color:var(--muted2);margin-bottom:12px;}
+.ns-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.ns-chip{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);font-size:.72em;color:var(--muted2);font-weight:600;}
+.ns-arrow-btn{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--accent),#5b4fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;box-shadow:0 0 24px var(--ag);text-decoration:none;transition:.2s;}
+.ns-arrow-btn:hover{transform:scale(1.06);box-shadow:0 0 32px rgba(124,106,255,.55);}
+
+/* ═══ SPRAWDZIAN - odliczanie ═══ */
+.exam-count-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;animation:cardIn .4s cubic-bezier(.22,1,.36,1) .05s both;}
+.ec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.ec-title{font-family:var(--h);font-size:1em;font-weight:800;color:#fff;margin-bottom:4px;}
+.ec-date{font-size:.8em;color:var(--muted2);display:flex;align-items:center;gap:6px;}
+.ec-clock{display:flex;align-items:center;gap:9px;}
+.ec-unit{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:2em;}
+.ec-unit-val{font-family:var(--h);font-weight:800;font-size:1.3em;color:var(--green);text-align:center;}
+.ec-unit-lbl{font-size:.58em;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;}
+.ec-colon{font-family:var(--h);font-weight:800;font-size:1.1em;color:var(--muted);align-self:flex-start;margin-top:.15em;}
+
+/* ═══ TOOLS GRID KOMPAKTOWY (3 kolumny, jak w mockupie) ═══ */
+.tools-grid-compact{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.tool-card-c{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px 14px;border-radius:16px;text-decoration:none;background:var(--s1);border:1px solid var(--border);position:relative;overflow:hidden;transition:.2s;animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;}
+.tool-card-c:hover{border-color:var(--tc-color,rgba(124,106,255,.35));transform:translateY(-3px) scale(1.01);box-shadow:0 12px 32px rgba(0,0,0,.35);}
+.tool-card-c .tc-icon{width:38px;height:38px;border-radius:11px;}
+.tool-card-c .tc-icon svg{width:18px;height:18px;}
+.tc-name-c{font-family:var(--h);font-size:.8em;font-weight:800;color:#fff;overflow-wrap:anywhere;}
+.tool-card-c{overflow:visible;}
+.tc-desc-c{font-size:.68em;color:var(--muted2);line-height:1.3;}
+.tool-card-c:nth-child(1){animation-delay:.05s;}.tool-card-c:nth-child(2){animation-delay:.1s;}.tool-card-c:nth-child(3){animation-delay:.15s;}.tool-card-c:nth-child(4){animation-delay:.2s;}.tool-card-c:nth-child(5){animation-delay:.25s;}.tool-card-c:nth-child(6){animation-delay:.3s;}
+
+/* ═══ TWOJE POSTEPY ═══ */
+.progress-sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.progress-range-sel{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;background:var(--s1);border:1px solid var(--border-hi);font-size:.75em;color:var(--muted2);font-weight:600;}
+.progress-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.progress-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:16px 18px;animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;}
+.pc-label{font-size:.75em;color:var(--muted2);margin-bottom:6px;}
+.pc-value-row{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.pc-value{font-family:var(--h);font-size:1.35em;font-weight:800;color:#fff;}
+.pc-delta{font-size:.72em;font-weight:700;display:flex;align-items:center;gap:2px;}
+.pc-delta.up{color:var(--green);}
+.pc-delta.down{color:var(--red);}
+.pc-delta.flat{color:var(--muted);}
+.pc-chart{width:100%;height:44px;display:block;}
+
+@media(max-width:1280px){
+  .next-step-card{padding:18px!important;border-radius:18px!important;flex-wrap:wrap!important;}
+  .exam-count-card{padding:16px 18px!important;border-radius:18px!important;}
+  .ec-clock{width:100%!important;justify-content:space-between!important;}
+  .level-ring-wrap{width:108px!important;height:108px!important;flex-shrink:0;}
+  .level-ring-crown{width:15px!important;height:15px!important;}
+  .level-ring-num{font-size:.82em!important;white-space:nowrap;}
+  .level-ring-name{font-size:.58em!important;}
+  .tools-grid-compact{gap:8px!important;}
+  .tool-card-c{padding:13px 10px!important;border-radius:14px!important;gap:8px!important;}
+  .tool-card-c .tc-icon{width:34px!important;height:34px!important;}
+  .tool-card-c .tc-icon svg{width:16px!important;height:16px!important;}
+  .tc-name-c{font-size:.74em!important;}
+  .tc-desc-c{font-size:.62em!important;}
+  .progress-cards{gap:8px!important;}
+  .progress-card{padding:14px!important;border-radius:14px!important;}
+}
+@media(max-width:360px){
+  .ns-arrow-btn{width:44px!important;height:44px!important;border-radius:13px!important;}
+}
+
 /* ═══ CURSOR (desktop) ═══ */
 .cursor{width:10px;height:10px;background:var(--accent2);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .1s;}
 .cursor-ring{width:28px;height:28px;border:1px solid rgba(167,139,250,.4);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:left .12s,top .12s;}
@@ -199,20 +287,26 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
     height:auto!important;
   }
   .dash-hero{
-    flex-direction:column!important;
+    flex-direction:row!important;
     align-items:flex-start!important;
-    gap:16px!important;
-    padding:20px!important;
+    gap:12px!important;
+    padding:18px!important;
     border-radius:18px!important;
   }
-  .hero-name{font-size:1.5em!important;}
+  .hero-left{flex:1;min-width:0;}
+  .hero-name{font-size:1.3em!important;}
   .hero-orb{display:none!important;}
   .quick-row{gap:8px!important;}
   .quick-btn{padding:11px 10px!important;font-size:.75em!important;border-radius:11px!important;gap:6px!important;}
   .quick-btn svg{width:15px!important;height:15px!important;}
   .tools-grid{grid-template-columns:1fr!important;gap:10px!important;}
   .tool-card{padding:16px!important;border-radius:14px!important;}
-  .hero-stats{flex-wrap:wrap!important;gap:8px!important;width:100%!important;padding:10px 12px!important;}
+  .hero-stats{flex-wrap:nowrap!important;gap:2px!important;width:100%!important;padding:9px 8px!important;}
+  .hs-item{gap:5px!important;}
+  .hs-icon{width:22px!important;height:22px!important;font-size:.72em!important;flex-shrink:0;}
+  .hs-icon svg{width:11px!important;height:11px!important;}
+  .hs-val{font-size:.74em!important;white-space:nowrap;}
+  .hs-lbl{font-size:.56em!important;white-space:nowrap;}
   .hs-sep{display:none!important;}
   .hero-xpbar{max-width:100%!important;}
   .tc-icon{width:40px!important;height:40px!important;border-radius:10px!important;}
@@ -300,38 +394,6 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 .m-nb.active{transform:translateY(-2px);}
 
 
-/* LEADERBOARD */
-.leaderboard-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:20px;overflow:hidden;position:relative;}
-.leaderboard-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(124,106,255,.08),transparent 70%);pointer-events:none;}
-.lb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-.lb-title{font-family:var(--h);font-size:.85em;font-weight:800;color:white;display:flex;align-items:center;gap:8px;}
-.lb-refresh{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;color:var(--muted);}
-.lb-refresh:hover{background:rgba(124,106,255,.1);color:#a78bfa;transform:rotate(180deg);}
-.lb-list{display:flex;flex-direction:column;gap:6px;}
-.lb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid transparent;transition:.2s;animation:lbIn .35s cubic-bezier(.22,1,.36,1) both;}
-.lb-item.me{background:linear-gradient(135deg,rgba(124,106,255,.1),rgba(34,211,160,.05));border-color:rgba(124,106,255,.25);box-shadow:0 0 20px rgba(124,106,255,.08);}
-.lb-item:hover{background:rgba(255,255,255,.05);}
-.lb-medal{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.8em;font-weight:800;flex-shrink:0;}
-.lb-medal.gold{background:linear-gradient(135deg,rgba(245,166,35,.2),rgba(245,166,35,.05));border:1px solid rgba(245,166,35,.3);color:#f5a623;box-shadow:0 0 12px rgba(245,166,35,.15);}
-.lb-medal.silver{background:linear-gradient(135deg,rgba(170,170,170,.2),rgba(170,170,170,.05));border:1px solid rgba(170,170,170,.3);color:#aaa;}
-.lb-medal.bronze{background:linear-gradient(135deg,rgba(205,127,50,.2),rgba(205,127,50,.05));border:1px solid rgba(205,127,50,.3);color:#cd7f32;}
-.lb-medal.other{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--muted);}
-.lb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--h);font-weight:800;font-size:.82em;color:white;flex-shrink:0;border:2px solid rgba(255,255,255,.1);}
-.lb-info{flex:1;min-width:0;}
-.lb-name{font-size:.83em;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lb-name .me-badge{font-size:.7em;background:rgba(124,106,255,.2);border:1px solid rgba(124,106,255,.3);color:#a78bfa;padding:1px 6px;border-radius:100px;margin-right:5px;font-family:var(--h);font-weight:700;}
-.lb-level{font-size:.67em;color:var(--muted2);margin-top:1px;}
-.lb-xp-wrap{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;}
-.lb-xp{font-family:var(--h);font-size:.82em;font-weight:800;color:#a78bfa;}
-.lb-xp-lbl{font-size:.6em;color:var(--muted);margin-top:1px;}
-.lb-loading,.lb-empty{text-align:center;padding:20px;color:var(--muted);font-size:.82em;}
-.lb-divider{height:1px;background:var(--border);margin:6px 0;}
-.lb-mypos{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(124,106,255,.06);border:1px dashed rgba(124,106,255,.2);margin-top:6px;}
-.lb-mypos-txt{font-size:.78em;color:var(--muted2);flex:1;}
-.lb-mypos-xp{font-family:var(--h);font-size:.78em;font-weight:800;color:#a78bfa;}
-@keyframes lbIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
-.lb-item:nth-child(1){animation-delay:.05s;}.lb-item:nth-child(2){animation-delay:.1s;}.lb-item:nth-child(3){animation-delay:.15s;}.lb-item:nth-child(4){animation-delay:.2s;}.lb-item:nth-child(5){animation-delay:.25s;}
-
 
 /* SKELETON LOADING */
 .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skeletonAnim 1.5s infinite;border-radius:8px;}
@@ -357,6 +419,72 @@ const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",auth
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Rysuje mini-wykres liniowy (SVG polyline + gradient pod spodem) w viewBox 0 0 200 44.
+function renderMiniChart(svgId, values, strokeVar){
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const max = Math.max(1, ...values);
+  const n = values.length;
+  const stepX = n > 1 ? 200 / (n - 1) : 200;
+  const pts = values.map((v, i) => {
+    const x = i * stepX;
+    const y = 40 - (v / max) * 34;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const gradId = svgId + 'Grad';
+  svg.innerHTML =
+    '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" style="stop-color:' + strokeVar + ';stop-opacity:.35"/>' +
+    '<stop offset="100%" style="stop-color:' + strokeVar + ';stop-opacity:0"/>' +
+    '</linearGradient></defs>' +
+    '<polygon points="0,44 ' + pts + ' 200,44" fill="url(#' + gradId + ')"/>' +
+    '<polyline points="' + pts + '" fill="none" style="stroke:' + strokeVar + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+function setDelta(elId, curr, prev){
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (prev <= 0 && curr <= 0) { el.textContent = '—'; el.className = 'pc-delta flat'; return; }
+  if (prev <= 0) { el.textContent = '↑ nowe'; el.className = 'pc-delta up'; return; }
+  const pct = Math.round((curr - prev) / prev * 100);
+  if (pct > 0) { el.textContent = '↑ ' + pct + '%'; el.className = 'pc-delta up'; }
+  else if (pct < 0) { el.textContent = '↓ ' + Math.abs(pct) + '%'; el.className = 'pc-delta down'; }
+  else { el.textContent = '0%'; el.className = 'pc-delta flat'; }
+}
+
+// Liczy zdarzenia z prawdziwych znacznikow czasu (timestamp) ze WSZYSTKICH
+// historii (Quiz/Notatki/Sprawdziany/Voice/Plan nauki/Tablica) w oknie [days]
+// dni konczacym sie na endDate - zwraca tablice N liczb (jeden dzien = jedna pozycja).
+function countByDayBins(timestamps, days, endDate){
+  const bins = new Array(days).fill(0);
+  const end = new Date(endDate); end.setHours(0, 0, 0, 0);
+  timestamps.forEach((ts) => {
+    const d = new Date(ts);
+    if (isNaN(d)) return;
+    d.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((end - d) / 86400000);
+    if (diffDays >= 0 && diffDays < days) bins[days - 1 - diffDays]++;
+  });
+  return bins;
+}
+
+// XP nie ma zapisanej historii "ile zdobyto danego dnia" (Firestore trzyma
+// tylko biezaca sume) - wiec robimy wlasny, PRAWDZIWY dziennik: przy kazdej
+// wizycie zapisujemy aktualne XP pod dzisiejsza data. Trend jest wiec realny
+// od momentu wdrozenia tej funkcji - starsze dni (sprzed niej) po prostu nie
+// maja jeszcze danych, zamiast pokazywac zmyslona historie.
+function recordDailyXPSnapshot(xp){
+  const key = 'eduvia_xp_daily_log';
+  let log = {};
+  try { log = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
+  const todayKey = new Date().toISOString().slice(0, 10);
+  log[todayKey] = xp;
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  Object.keys(log).forEach((d) => { if (d < cutoff) delete log[d]; });
+  localStorage.setItem(key, JSON.stringify(log));
+  return log;
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
 
@@ -364,17 +492,16 @@ onAuthStateChanged(auth, async (user) => {
   const snap = await getDoc(doc(db, 'users', user.uid));
   const data = snap.exists() ? snap.data() : {};
 
-  // Aktualizuj XP
+  // Aktualizuj XP + poziom + pierscien (funkcja wspoldzielona z pierwszym,
+  // szybkim malowaniem z localStorage - patrz skrypt "XP / STREAK / POZIOM").
   const xp = data.xp || 0;
   localStorage.setItem('eduvia_xp', xp);
-  const xpEl = document.querySelector('.xpbar-fill');
-  const xpLvl = Math.floor(xp / 500) + 1;
-  const xpInLevel = xp % 500;
-  if (xpEl) xpEl.style.width = (xpInLevel/500*100) + '%';
+  if (typeof window.renderLevelUI === 'function') window.renderLevelUI(xp);
 
   // Aktualizuj streak
-  const streakEl = document.getElementById('streakCount');
-  if (streakEl) streakEl.textContent = (data.streak || 0) + ' dni';
+  if (typeof data.streak === 'number') localStorage.setItem('eduvia_streak', data.streak);
+  const streakEl = document.getElementById('hsStreak');
+  if (streakEl && typeof data.streak === 'number') streakEl.textContent = data.streak;
 
   // Aktualizuj imie i avatar
   const nameEl = document.querySelector('.hero-nm');
@@ -385,8 +512,15 @@ onAuthStateChanged(auth, async (user) => {
     if (user.photoURL) { el.src = user.photoURL; el.style.display='block'; }
   });
 
+  // Skutecznosc (%) - prawdziwa, z sum correct/total calej historii quizow.
+  const quizHist = data.quizHistory || [];
+  let sumCorrect = 0, sumTotal = 0;
+  quizHist.forEach((q) => { sumCorrect += (q.correct || 0); sumTotal += (q.total || 0); });
+  const accEl = document.getElementById('hsAccuracy');
+  if (accEl) accEl.textContent = sumTotal > 0 ? Math.round(sumCorrect / sumTotal * 100) + '%' : '—';
+
   // Statystyki
-  const quizCount = (data.quizHistory||[]).length;
+  const quizCount = quizHist.length;
   const notesCount = (data.notesHistory||[]).length;
   const examCount = (data.examHistory||[]).length;
 
@@ -396,6 +530,46 @@ onAuthStateChanged(auth, async (user) => {
   if (nEl) nEl.textContent = notesCount;
   const eEl = document.getElementById('statExam');
   if (eEl) eEl.textContent = examCount;
+
+  // ═══ TWOJE POSTEPY (2 wykresy, 7 dni, prawdziwe dane) ═══
+  const now = new Date();
+  const allTs = [];
+  ['quizHistory','notesHistory','examHistory','voiceHistory','lessonPlansHistory','whiteboardHistory'].forEach((k) => {
+    (data[k] || []).forEach((it) => { if (it && it.timestamp) allTs.push(it.timestamp); });
+  });
+  const actLast7 = countByDayBins(allTs, 7, now);
+  const prevEnd = new Date(now); prevEnd.setDate(prevEnd.getDate() - 7);
+  const actPrev7 = countByDayBins(allTs, 7, prevEnd);
+  const actLast7Sum = actLast7.reduce((a, b) => a + b, 0);
+  const actPrev7Sum = actPrev7.reduce((a, b) => a + b, 0);
+  const pcActVal = document.getElementById('pcActVal');
+  if (pcActVal) pcActVal.textContent = actLast7Sum.toLocaleString('pl-PL');
+  setDelta('pcActDelta', actLast7Sum, actPrev7Sum);
+  renderMiniChart('pcActChart', actLast7.length ? actLast7 : [0], 'var(--green)');
+
+  // XP: dziennik lokalny (patrz recordDailyXPSnapshot) - realny trend od
+  // pierwszego uruchomienia tej funkcji, bez zmyslania starszej historii.
+  const xpLog = recordDailyXPSnapshot(xp);
+  const xpDays = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    xpDays.push(d.toISOString().slice(0, 10));
+  }
+  let lastKnown = null;
+  const xpSeries = xpDays.map((dk) => {
+    if (xpLog[dk] != null) { lastKnown = xpLog[dk]; return xpLog[dk]; }
+    return lastKnown != null ? lastKnown : xp;
+  });
+  const firstKnownIdx = xpDays.findIndex((dk) => xpLog[dk] != null);
+  const xpWindowGain = firstKnownIdx >= 0 ? Math.max(0, xp - xpLog[xpDays[firstKnownIdx]]) : 0;
+  const pcXPVal = document.getElementById('pcXPVal');
+  if (pcXPVal) pcXPVal.textContent = xpWindowGain.toLocaleString('pl-PL');
+  const pcXPDeltaEl = document.getElementById('pcXPDelta');
+  if (pcXPDeltaEl) {
+    if (firstKnownIdx > 0) { pcXPDeltaEl.textContent = '↑ ostatnie ' + (7 - firstKnownIdx) + ' dni'; pcXPDeltaEl.className = 'pc-delta up'; }
+    else { pcXPDeltaEl.textContent = 'zbieramy dane…'; pcXPDeltaEl.className = 'pc-delta flat'; }
+  }
+  renderMiniChart('pcXPChart', xpSeries, 'var(--accent2)');
 
   // Przycisk wylogowania
   window.logoutUser = async () => {
@@ -476,6 +650,36 @@ function daysUntil(isoDateStr){
   return Math.round((target-today)/86400000);
 }
 
+// Prawdziwe, tykajace co sekunde odliczanie DD:GG:MM:SS do polnocy dnia
+// sprawdzianu (profil trzyma tylko date, bez godziny - polnoc jest wiec
+// jedynym jednoznacznym, nie-zmyslonym punktem odniesienia).
+let _examCountdownIv = null;
+function startExamCountdown(isoDateStr){
+  const parts = isoDateStr.split('-').map(Number);
+  const target = new Date(parts[0], parts[1]-1, parts[2], 0, 0, 0);
+  const dEl=document.getElementById('ecDays'), hEl=document.getElementById('ecHours'),
+        mEl=document.getElementById('ecMins'), sEl=document.getElementById('ecSecs');
+  const pad=(n)=>String(Math.max(0,n)).padStart(2,'0');
+  function tick(){
+    const diff = target - new Date();
+    if (diff <= 0) {
+      if (_examCountdownIv) clearInterval(_examCountdownIv);
+      if (dEl) dEl.textContent = '00'; if (hEl) hEl.textContent = '00';
+      if (mEl) mEl.textContent = '00'; if (sEl) sEl.textContent = '00';
+      return;
+    }
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    if (dEl) dEl.textContent = pad(days); if (hEl) hEl.textContent = pad(hours);
+    if (mEl) mEl.textContent = pad(mins); if (sEl) sEl.textContent = pad(secs);
+  }
+  tick();
+  if (_examCountdownIv) clearInterval(_examCountdownIv);
+  _examCountdownIv = setInterval(tick, 1000);
+}
+
 async function loadStudentProfile(user){
   try{
     const token=await user.getIdToken();
@@ -483,42 +687,49 @@ async function loadStudentProfile(user){
     const data=await res.json();
     if(!data.success)return;
     const profile=data.profile;
-    let html='';
+
+    const nsSec=document.getElementById('nextStepSec');
+    const nsCard=document.getElementById('nextStepCard');
 
     if(!profile.onboarding_completed){
-      html+='<a href="onboarding.html" class="profile-card">'
-        +'<div class="profile-card-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">'
-        +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-        +'</div><div><div class="profile-card-title">Dokończ ankietę</div>'
-        +'<div class="profile-card-sub">Powiedz nam, na jakim jesteś poziomie — dopasujemy treści</div></div></a>';
+      if(nsSec&&nsCard){
+        document.getElementById('nsTitle').textContent='Dokończ ankietę';
+        document.getElementById('nsDesc').textContent='Powiedz nam, na jakim jesteś poziomie — dopasujemy treści';
+        document.getElementById('nsChipSubject').style.display='none';
+        document.getElementById('nsChipLevel').style.display='none';
+        nsCard.href='onboarding.html';
+        nsSec.style.display='';
+      }
     } else {
-      if(profile.education_level && profile.favorite_subject){
-        const subjLabel=DASH_SUBJECT_LABELS[profile.favorite_subject]||profile.favorite_subject;
-        const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)+'&subject='+encodeURIComponent(profile.favorite_subject);
-        html+='<a href="'+quizUrl+'" class="profile-card">'
-          +'<div class="profile-card-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">'
-          +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-          +'</div><div><div class="profile-card-title">Sugerowany Quiz</div>'
-          +'<div class="profile-card-sub">'+subjLabel+' · '+profile.education_level_label+'</div></div></a>';
+      if(profile.education_level&&nsSec&&nsCard){
+        const subjLabel=profile.favorite_subject?(DASH_SUBJECT_LABELS[profile.favorite_subject]||profile.favorite_subject):null;
+        const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)+(profile.favorite_subject?'&subject='+encodeURIComponent(profile.favorite_subject):'');
+        document.getElementById('nsTitle').textContent=subjLabel?('Quiz: '+subjLabel):'Nowy Quiz';
+        document.getElementById('nsDesc').textContent='Dopasowany do Twojego poziomu — sprawdź wiedzę i zdobądź XP';
+        const chipSubj=document.getElementById('nsChipSubject'), chipLvl=document.getElementById('nsChipLevel');
+        if(subjLabel){chipSubj.textContent='📐 '+subjLabel;chipSubj.style.display='';}else{chipSubj.style.display='none';}
+        chipLvl.textContent='📶 '+(profile.education_level_label||profile.education_level);
+        chipLvl.style.display='';
+        nsCard.href=quizUrl;
+        nsSec.style.display='';
       }
       if(profile.exam_date){
         const days=daysUntil(profile.exam_date);
-        let label;
-        if(days<0)label='Sprawdzian już minął';
-        else if(days===0)label='Sprawdzian dziś!';
-        else if(days===1)label='Sprawdzian jutro';
-        else label='Za '+days+' dni sprawdzian';
-        html+='<div class="profile-card" style="cursor:default;">'
-          +'<div class="profile-card-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">'
-          +'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-          +'</div><div><div class="profile-card-title">'+label+'</div>'
-          +'<div class="profile-card-sub">Twój najbliższy sprawdzian</div></div></div>';
+        const ecSec=document.getElementById('examCountSec');
+        if(ecSec){
+          document.getElementById('ecTitle').textContent = days<0?'Sprawdzian już minął':(days===0?'Sprawdzian jest dziś!':'Sprawdzian');
+          const D=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"],M=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+          const parts=profile.exam_date.split('-').map(Number);
+          const dObj=new Date(parts[0],parts[1]-1,parts[2]);
+          document.getElementById('ecDateTxt').textContent=D[dObj.getDay()]+', '+dObj.getDate()+' '+M[dObj.getMonth()]+' '+dObj.getFullYear();
+          if(days>=0){
+            startExamCountdown(profile.exam_date);
+          } else {
+            document.getElementById('ecClock').style.display='none';
+          }
+          ecSec.style.display='';
+        }
       }
-    }
-
-    if(html){
-      document.getElementById('profileCards').innerHTML=html;
-      document.getElementById('profileSec').style.display='';
     }
   }catch(e){
     console.warn('[Dashboard] nie udalo sie pobrac profilu ucznia:',e);
@@ -533,96 +744,6 @@ window._fbSave=async function(collection,data,xp){
     await updateDoc(doc(db,'users',currentUser.uid),upd);
   }catch(e){console.log('FB err:',e);}
 };
-
-// LEADERBOARD
-import{collection,query,orderBy,limit,getDocs}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const LEVELS_LB=[{min:0,name:'Uczen'},{min:100,name:'Zak'},{min:250,name:'Student'},{min:500,name:'Scholar'},{min:900,name:'Ekspert'},{min:1500,name:'Mistrz'},{min:2500,name:'Geniusz'},{min:4000,name:'Legenda'}];
-function getLvl(xp){for(let i=LEVELS_LB.length-1;i>=0;i--){if(xp>=LEVELS_LB[i].min)return LEVELS_LB[i].name;}return 'Uczen';}
-const colors=['#7c6aff,#a78bfa','#22d3a0,#38bdf8','#f5a623,#f472b6','#f87171,#fb923c','#4ade80,#22d3a0'];
-const rankClass=['gold','silver','bronze'];
-const medals=['1','2','3'];
-
-async function loadLeaderboard(){
-  const list=document.getElementById('lbList');
-  if(!list)return;
-  list.innerHTML='<div class="lb-loading">Ladowanie rankingu...</div>';
-  try{
-    const q=query(collection(db,'users'),orderBy('xp','desc'),limit(10));
-    const snap=await getDocs(q);
-    if(snap.empty){list.innerHTML='<div class="lb-empty">Brak danych rankingu</div>';return;}
-    
-    const avatarColors=[
-      'linear-gradient(135deg,#7c6aff,#a78bfa)',
-      'linear-gradient(135deg,#22d3a0,#38bdf8)',
-      'linear-gradient(135deg,#f5a623,#f472b6)',
-      'linear-gradient(135deg,#f87171,#fb923c)',
-      'linear-gradient(135deg,#4ade80,#22d3a0)',
-    ];
-    const medalCls=['gold','silver','bronze'];
-    
-    let html='';
-    let rank=1;
-    let myRank=null;
-    let myXp=0;
-    
-    // Znajdz moja pozycje
-    snap.forEach(d=>{
-      if(currentUser&&d.id===currentUser.uid){myRank=rank;myXp=d.data().xp||0;}
-      rank++;
-    });
-    
-    rank=1;
-    let shown=0;
-    snap.forEach(d=>{
-      if(shown>=5)return;
-      const data=d.data();
-      const xp=data.xp||0;
-      const email=data.email||'';
-      // Ukryj email - pokaz tylko pierwsza litere i domene
-      const rawName=data.displayName||email.split('@')[0]||'Uzytkownik';
-      // Zanonimizuj - pokaz tylko inicjal + ****
-      const name=rawName.charAt(0).toUpperCase()+'***';
-      const isMe=currentUser&&d.id===currentUser.uid;
-      // Dla siebie pokaz prawdziwe imie
-      const displayName=isMe?(data.displayName||email.split('@')[0]||'Ty'):name;
-      const cls=rank<=3?medalCls[rank-1]:'other';
-      const color=avatarColors[(rank-1)%avatarColors.length];
-      const meBadge=isMe?'<span class="me-badge">Ty</span>':'';
-      
-      html+=`<div class="lb-item ${isMe?'me':''}">
-        <div class="lb-medal ${cls}">${rank}</div>
-        <div class="lb-avatar" style="background:${color}">${displayName.charAt(0).toUpperCase()}</div>
-        <div class="lb-info">
-          <div class="lb-name">${meBadge}${displayName}</div>
-          <div class="lb-level">${getLvl(xp)}</div>
-        </div>
-        <div class="lb-xp-wrap">
-          <div class="lb-xp">${xp.toLocaleString('pl-PL')}</div>
-          <div class="lb-xp-lbl">XP</div>
-        </div>
-      </div>`;
-      rank++;
-      shown++;
-    });
-    
-    // Dodaj moja pozycje jesli nie jestem w top 5
-    if(myRank&&myRank>5){
-      html+='<div class="lb-divider"></div>';
-      html+=`<div class="lb-mypos"><div class="lb-mypos-txt">Twoja pozycja: #${myRank}</div><div class="lb-mypos-xp">${myXp.toLocaleString('pl-PL')} XP</div></div>`;
-    }
-    
-    list.innerHTML=html;
-  }catch(e){list.innerHTML='<div class="lb-empty">Blad ladowania rankingu</div>';}
-}
-
-// Przycisk odswierz
-document.addEventListener('DOMContentLoaded',function(){
-  var btn=document.getElementById('lbRefreshBtn');
-  if(btn)btn.addEventListener('click',loadLeaderboard);
-});
-
-setTimeout(loadLeaderboard,1500);
 
 </script>
 <script>
@@ -805,7 +926,9 @@ function getPlanBadgeHTML(plan) {
 <!-- MAIN -->
 <main class="main">
 
-  <!-- HERO GREETING -->
+  <!-- 1. HEADER: patrz m-hdr (mobile) / sidebar (desktop) powyzej - bez zmian -->
+
+  <!-- 2+3+4. HERO: powitanie + pierscien poziomu + panel XP -->
   <section class="dash-hero">
     <div class="bg-star" style="width:3px;height:3px;top:15px;right:120px;animation-delay:0s;"></div>
     <div class="bg-star" style="width:2px;height:2px;top:55px;right:200px;animation-delay:1s;"></div>
@@ -820,28 +943,34 @@ function getPlanBadgeHTML(plan) {
       <h1 class="hero-name">Cześć, <span class="hero-nm">Jakub</span> 👋</h1>
       <p class="hero-sub" id="heroQuote">Ładuję cytat...</p>
 
-      <!-- STATS ROW -->
+      <!-- XP PANEL: 3 kolumny + separator + pasek postepu -->
       <div class="hero-stats">
         <div class="hs-item">
           <div class="hs-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </div>
-          <div class="hs-val" id="hsXP" style="color:#a78bfa;">0 XP</div>
-          <div class="hs-lbl">łącznie</div>
+          <div class="hs-item-text">
+            <div class="hs-val" id="hsXP" style="color:#a78bfa;">0 XP</div>
+            <div class="hs-lbl">łącznie</div>
+          </div>
         </div>
         <div class="hs-sep"></div>
         <div class="hs-item">
           <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">🔥</div>
-          <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
-          <div class="hs-lbl">dni z rzędu</div>
+          <div class="hs-item-text">
+            <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
+            <div class="hs-lbl">dni z rzędu</div>
+          </div>
         </div>
         <div class="hs-sep"></div>
         <div class="hs-item">
           <div class="hs-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </div>
-          <div class="hs-val" id="hsLevel" style="color:#22d3a0;">Poziom 1</div>
-          <div class="hs-lbl" id="hsLevelName">Uczeń</div>
+          <div class="hs-item-text">
+            <div class="hs-val" id="hsAccuracy" style="color:#22d3a0;">—</div>
+            <div class="hs-lbl">skuteczność</div>
+          </div>
         </div>
       </div>
 
@@ -854,147 +983,162 @@ function getPlanBadgeHTML(plan) {
         <div class="xpbar-label" id="hsXPNext">0 / 100 XP do następnego poziomu</div>
       </div>
     </div>
-    <div class="hero-orb" aria-hidden="true">
-      <div class="orb-ring r1"></div>
-      <div class="orb-ring r2"></div>
-      <div class="orb-core">
-        <svg viewBox="0 0 44 44" fill="none" width="28" height="28">
-          <path d="M22 2C22 2 23.6 14 22 22C20.4 14 22 2 22 2Z" fill="url(#og1)"/>
-          <path d="M22 42C22 42 20.4 30 22 22C23.6 30 22 42 22 42Z" fill="url(#og1)"/>
-          <path d="M42 22C42 22 30 23.6 22 22C30 20.4 42 22 42 22Z" fill="url(#og2)"/>
-          <path d="M2 22C2 22 14 20.4 22 22C14 23.6 2 22 2 22Z" fill="url(#og2)"/>
-          <circle cx="22" cy="22" r="2.5" fill="white" opacity=".9"/>
-          <defs>
-            <linearGradient id="og1" x1="22" y1="2" x2="22" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c6aff"/></linearGradient>
-            <linearGradient id="og2" x1="2" y1="22" x2="42" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#22d3a0"/></linearGradient>
-          </defs>
-        </svg>
+
+    <!-- 3. OKRAGLY WSKAZNIK POZIOMU (korona + Poziom N + nazwa) -->
+    <div class="level-ring-wrap" aria-hidden="true">
+      <svg viewBox="0 0 132 132">
+        <defs>
+          <linearGradient id="levelRingGrad" x1="0" y1="0" x2="132" y2="132" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="var(--accent)"/>
+            <stop offset="100%" stop-color="var(--green)"/>
+          </linearGradient>
+        </defs>
+        <circle cx="66" cy="66" r="56" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/>
+        <circle id="levelRingFg" class="level-ring-fill" cx="66" cy="66" r="56" fill="none" stroke="url(#levelRingGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+      </svg>
+      <div class="level-ring-center">
+        <svg class="level-ring-crown" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 17.5h14l1.4-8.7-4.9 3.4L12 5.3 8.5 12.2l-4.9-3.4L5 17.5z"/><rect x="5" y="18.8" width="14" height="2" rx="1"/></svg>
+        <div class="level-ring-num" id="ringLevelNum">Poziom 1</div>
+        <div class="level-ring-name" id="ringLevelName">Uczeń</div>
       </div>
     </div>
   </section>
 
-  <!-- PROFIL UCZNIA (ankieta onboardingowa) -->
-  <section class="profile-sec" id="profileSec" style="display:none;">
-    <div class="sec-label">🎯 Dla Ciebie</div>
-    <div class="profile-cards" id="profileCards"></div>
+  <!-- 5. NASTEPNY KROK (sugerowany quiz z ankiety) -->
+  <section class="next-step-sec" id="nextStepSec" style="display:none;">
+    <a href="#" class="next-step-card" id="nextStepCard" style="text-decoration:none;color:inherit;">
+      <div class="ns-info">
+        <div class="ns-label">✨ Następny krok</div>
+        <div class="ns-title" id="nsTitle">Quiz dopasowany do Ciebie</div>
+        <div class="ns-desc" id="nsDesc">Sprawdź wiedzę i zdobądź XP</div>
+        <div class="ns-chips">
+          <span class="ns-chip" id="nsChipSubject">📐 Przedmiot</span>
+          <span class="ns-chip" id="nsChipLevel">📶 Poziom</span>
+        </div>
+      </div>
+      <span class="ns-arrow-btn" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </span>
+    </a>
   </section>
 
-  <!-- QUICK ACTIONS -->
-  <section class="quick-sec">
-    <div class="sec-label">⚡ Szybki start</div>
-    <div class="quick-row">
-      <a href="chat.html" class="quick-btn qb-chat">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Zapytaj AI
-      </a>
-      <a href="quiz_app.html" class="quick-btn qb-quiz">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Nowy Quiz
-      </a>
-      <a href="notes_generator.html" class="quick-btn qb-notes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Notatka
-      </a>
+  <!-- 6. KARTA SPRAWDZIANU - prawdziwe, tykajace odliczanie -->
+  <section class="exam-count-sec" id="examCountSec" style="display:none;">
+    <div class="exam-count-card">
+      <div class="ec-info">
+        <div class="ec-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Najbliższy sprawdzian
+        </div>
+        <div class="ec-title" id="ecTitle">Sprawdzian</div>
+        <div class="ec-date" id="ecDate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="ecDateTxt">—</span>
+        </div>
+      </div>
+      <div class="ec-clock" id="ecClock">
+        <div class="ec-unit"><div class="ec-unit-val" id="ecDays">00</div><div class="ec-unit-lbl">dni</div></div>
+        <div class="ec-colon">:</div>
+        <div class="ec-unit"><div class="ec-unit-val" id="ecHours">00</div><div class="ec-unit-lbl">godz.</div></div>
+        <div class="ec-colon">:</div>
+        <div class="ec-unit"><div class="ec-unit-val" id="ecMins">00</div><div class="ec-unit-lbl">min</div></div>
+        <div class="ec-colon">:</div>
+        <div class="ec-unit"><div class="ec-unit-val" id="ecSecs">00</div><div class="ec-unit-lbl">sek</div></div>
+      </div>
     </div>
   </section>
 
-  <!-- TOOLS GRID -->
+  <!-- 7. SIATKA 6 NARZEDZI (kompaktowa, 3 kolumny) -->
   <section class="tools-sec">
     <div class="sec-label">🛠 Narzędzia AI</div>
-    <div class="tools-grid">
+    <div class="tools-grid-compact">
 
-      <a href="chat.html" class="tool-card tc-chat">
-        <div class="tc-glow"></div>
+      <a href="chat.html" class="tool-card-c tc-chat">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Chat AI</div>
-          <div class="tc-desc">Pytaj z każdego przedmiotu — matematyka, fizyka, historia i więcej</div>
+        <div>
+          <div class="tc-name-c">Chat AI</div>
+          <div class="tc-desc-c">Pytaj o wszystko</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
-      <a href="quiz_app.html" class="tool-card tc-quiz">
-        <div class="tc-glow"></div>
+      <a href="quiz_app.html" class="tool-card-c tc-quiz">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Quiz AI</div>
-          <div class="tc-desc">Sprawdź wiedzę — AI generuje pytania dopasowane do Twojego poziomu</div>
+        <div>
+          <div class="tc-name-c">Quiz AI</div>
+          <div class="tc-desc-c">Sprawdź wiedzę</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
-      <a href="notes_generator.html" class="tool-card tc-notes">
-        <div class="tc-glow"></div>
+      <a href="notes_generator.html" class="tool-card-c tc-notes">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Notatki AI</div>
-          <div class="tc-desc">Wpisz temat lub wrzuć zdjęcie — dostaniesz notatkę w PDF</div>
+        <div>
+          <div class="tc-name-c">Notatki AI</div>
+          <div class="tc-desc-c">Twórz notatki</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
-      <a href="exam_generator.html" class="tool-card tc-exam">
-        <div class="tc-glow"></div>
+      <a href="exam_generator.html" class="tool-card-c tc-exam">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Sprawdziany AI</div>
-          <div class="tc-desc">Wariant A i B gotowe do druku — z kluczem odpowiedzi</div>
+        <div>
+          <div class="tc-name-c">Sprawdziany</div>
+          <div class="tc-desc-c">Generuj testy</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
-      
-
-      <a href="voice_conversation.html" class="tool-card tc-voice">
-        <div class="tc-glow"></div>
+      <a href="voice_conversation.html" class="tool-card-c tc-voice">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Voice AI</div>
-          <div class="tc-desc">Rozmawiaj głosem — AI słucha, odpowiada i poprawia wymowę</div>
+        <div>
+          <div class="tc-name-c">Voice AI</div>
+          <div class="tc-desc-c">Mów i ucz się</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
-      <a href="lesson_planner.html" class="tool-card tc-plan">
-        <div class="tc-glow"></div>
+      <a href="lesson_planner.html" class="tool-card-c tc-plan">
         <div class="tc-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
-        <div class="tc-body">
-          <div class="tc-name">Plan Nauki</div>
-          <div class="tc-desc">Harmonogram celów, terminy egzaminów i śledzenie postępów</div>
+        <div>
+          <div class="tc-name-c">Plan Nauki</div>
+          <div class="tc-desc-c">Twój harmonogram</div>
         </div>
-        <div class="tc-arrow">→</div>
       </a>
 
     </div>
   </section>
 
-  <!-- MOTIVATIONAL FOOTER -->
-
-  <section class="leaderboard-sec">
-    <div class="sec-label">Ranking graczy</div>
-    <div class="leaderboard-card">
-      <div class="lb-header">
-        <div class="lb-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-          Top 5 tego tygodnia
+  <!-- 8. TWOJE POSTEPY: XP zdobyte + Aktywnosc (ostatnie 7 dni), wykresy z prawdziwych danych -->
+  <section class="progress-sec">
+    <div class="progress-sec-hdr">
+      <div class="sec-label" style="margin-bottom:0;">📈 Twoje postępy</div>
+      <div class="progress-range-sel">7 dni <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><polyline points="6 9 12 15 18 9"/></svg></div>
+    </div>
+    <div class="progress-cards">
+      <div class="progress-card">
+        <div class="pc-label">XP zdobyte</div>
+        <div class="pc-value-row">
+          <div class="pc-value" id="pcXPVal">0</div>
+          <div class="pc-delta flat" id="pcXPDelta">—</div>
         </div>
-        <div class="lb-refresh" id="lbRefreshBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        </div>
+        <svg class="pc-chart" id="pcXPChart" viewBox="0 0 200 44" preserveAspectRatio="none"></svg>
       </div>
-      <div class="lb-list" id="lbList"><div class="lb-loading">Ladowanie rankingu...</div></div>
+      <div class="progress-card">
+        <div class="pc-label">Aktywność</div>
+        <div class="pc-value-row">
+          <div class="pc-value" id="pcActVal">0</div>
+          <div class="pc-delta flat" id="pcActDelta">—</div>
+        </div>
+        <svg class="pc-chart" id="pcActChart" viewBox="0 0 200 44" preserveAspectRatio="none"></svg>
+      </div>
     </div>
   </section>
 
@@ -1072,7 +1216,7 @@ function getPlanBadgeHTML(plan) {
   document.querySelectorAll('.d-link').forEach(l=>l.addEventListener('click',mClose));
 })();
 
-// ═══ XP / STREAK / POZIOM ═══
+// ═══ XP / STREAK / POZIOM / PIERSCIEN ═══
 (function(){
   // Definicje poziomów
   const LEVELS=[
@@ -1085,6 +1229,7 @@ function getPlanBadgeHTML(plan) {
     {min:2500, max:4000, name:'Geniusz',     icon:'🚀'},
     {min:4000, max:9999, name:'Legenda',     icon:'👑'},
   ];
+  const RING_CIRC = 2 * Math.PI * 56; // r=56 w SVG pierscienia
 
   function getLevel(xp){
     for(let i=LEVELS.length-1;i>=0;i--){
@@ -1093,29 +1238,36 @@ function getPlanBadgeHTML(plan) {
     return {num:1,...LEVELS[0]};
   }
 
-  // Wczytaj dane z localStorage
-  const xp    = parseInt(localStorage.getItem('eduvia_xp')||'0');
-  const streak= parseInt(localStorage.getItem('eduvia_streak')||'0');
-  const lv    = getLevel(xp);
-  const nextXP= lv.max;
-  const pct   = Math.min(100, Math.round(((xp-lv.min)/(lv.max-lv.min))*100));
+  // Jedna funkcja renderujaca caly panel XP + pierscien poziomu - wywolywana
+  // od razu z localStorage (szybkie pierwsze malowanie) i ponownie przez
+  // modul Firebase gdy przyjdzie prawdziwe XP z Firestore (patrz onAuthStateChanged).
+  function renderLevelUI(xp){
+    const lv  = getLevel(xp);
+    const pct = Math.min(100, Math.round(((xp-lv.min)/(lv.max-lv.min))*100));
 
-  // Aktualizuj UI
-  const elXP    = document.getElementById('hsXP');
-  const elStr   = document.getElementById('hsStreak');
-  const elLv    = document.getElementById('hsLevel');
-  const elLvN   = document.getElementById('hsLevelName');
-  const elBar   = document.getElementById('hsXPBar');
-  const elNext  = document.getElementById('hsXPNext');
+    const elXP   = document.getElementById('hsXP');
+    const elBar  = document.getElementById('hsXPBar');
+    const elNext = document.getElementById('hsXPNext');
+    const elRNum = document.getElementById('ringLevelNum');
+    const elRName= document.getElementById('ringLevelName');
+    const elRFg  = document.getElementById('levelRingFg');
 
-  if(elXP)    elXP.textContent    = xp.toLocaleString('pl-PL')+' XP';
-  if(elStr)   elStr.textContent   = streak;
-  if(elLv)    elLv.textContent    = 'Poziom '+lv.num;
-  if(elLvN)   elLvN.textContent   = lv.icon+' '+lv.name;
-  if(elNext)  elNext.textContent  = xp+' / '+lv.max+' XP · poziom '+lv.num+' → '+(lv.num+1<9?lv.num+1:lv.num);
+    if(elXP)    elXP.textContent    = xp.toLocaleString('pl-PL')+' XP';
+    if(elNext)  elNext.textContent  = xp+' / '+lv.max+' XP · poziom '+lv.num+' → '+(lv.num+1<9?lv.num+1:lv.num);
+    if(elBar)   setTimeout(()=>{ elBar.style.width=pct+'%'; }, 200);
+    if(elRNum)  elRNum.textContent  = 'Poziom '+lv.num;
+    if(elRName) elRName.textContent = lv.name;
+    if(elRFg)   setTimeout(()=>{ elRFg.style.strokeDashoffset = String(RING_CIRC*(1-pct/100)); }, 200);
+  }
+  window.renderLevelUI = renderLevelUI;
 
-  // Animuj pasek po 200ms
-  if(elBar) setTimeout(()=>{ elBar.style.width=pct+'%'; }, 200);
+  // Pierwsze, szybkie malowanie z tego, co juz jest w localStorage
+  // (moze byc chwile nieaktualne do czasu odpowiedzi Firestore).
+  const xp0     = parseInt(localStorage.getItem('eduvia_xp')||'0');
+  const streak  = parseInt(localStorage.getItem('eduvia_streak')||'0');
+  renderLevelUI(xp0);
+  const elStr = document.getElementById('hsStreak');
+  if(elStr) elStr.textContent = streak;
 
   // Streak check — czy dziś już był
   const today = new Date().toDateString();
@@ -1137,13 +1289,6 @@ function getPlanBadgeHTML(plan) {
     // Jeśli przerwa > 1 dzień — streak się resetuje
     // (nie resetuj teraz, tylko przy następnym dniu bez aktywności)
   }
-
-  // Funkcja globalna do dodawania XP (dla innych stron)
-  window.eduviaAddXP = function(amount){
-    const cur = parseInt(localStorage.getItem('eduvia_xp')||'0');
-    localStorage.setItem('eduvia_xp', cur+amount);
-    localStorage.setItem('eduvia_last_day', new Date().toDateString());
-  };
 })();
 
 (function(){const D=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"],M=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"],d=new Date(),e=document.getElementById("mobDate");if(e)e.textContent=D[d.getDay()]+", "+d.getDate()+" "+M[d.getMonth()]+" "+d.getFullYear();})();
