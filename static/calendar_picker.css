@@ -1,0 +1,51 @@
+/* ============================================================
+   Eduvia — wspólny komponent kalendarza (wybór daty)
+   Używany przez: onboarding.html (Ekran 3, pełny rozmiar) i
+   dashboard_FINAL.html (karta sprawdzianu, wariant .cal-compact).
+
+   Style bazowe (.cal-*) są SKOPIOWANE 1:1 z oryginalnego kalendarza
+   ankiety onboardingowej - żeby oba miejsca wyglądały jak ten sam
+   komponent. .cal-compact tylko skaluje w dół (padding/czcionkę/
+   rozmiar dnia) i ogranicza szerokość - nie zmienia kolorów ani stylu.
+   ============================================================ */
+.cal-widget{background:var(--s2);border:1.5px solid var(--border-hi);border-radius:18px;padding:18px 16px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-nav-btn{width:32px;height:32px;border-radius:9px;background:var(--s3);border:1px solid var(--border-hi);color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
+.cal-nav-btn:hover{color:var(--text);border-color:var(--accent);background:rgba(124,106,255,.12);}
+.cal-nav-btn svg{width:15px;height:15px;stroke:currentColor;}
+.cal-month-label{font-family:var(--h);font-weight:700;font-size:.95em;}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:8px;}
+.cal-weekdays span{font-family:var(--h);font-size:.6em;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-family:var(--b);font-size:.85em;color:var(--text);cursor:pointer;transition:all .18s;border:1.5px solid transparent;}
+.cal-day:hover:not(.muted):not(.past){background:rgba(124,106,255,.14);transform:scale(1.08);}
+.cal-day.muted{color:var(--muted);cursor:default;opacity:.4;}
+.cal-day.past{color:var(--muted);cursor:not-allowed;opacity:.32;}
+.cal-day.today{border-color:rgba(124,106,255,.45);color:var(--accent2);font-weight:700;}
+.cal-day.selected{background:linear-gradient(135deg,var(--accent),#5040c8);color:white;font-weight:700;box-shadow:0 0 18px rgba(124,106,255,.65),inset 0 1px 0 rgba(255,255,255,.2);}
+.cal-selected{display:none;align-items:center;gap:8px;font-size:.85em;color:var(--muted2);padding:2px 2px 14px;}
+.cal-selected svg{width:15px;height:15px;stroke:var(--accent2);flex-shrink:0;}
+.cal-selected strong{color:var(--accent2);font-weight:700;}
+
+/* ═══ WARIANT KOMPAKTOWY (wbudowany w kartę, mniej miejsca niż pełny ekran) ═══ */
+.cal-widget.cal-compact{
+  padding:12px 10px;margin-bottom:0;border-radius:14px;
+  width:100%;max-width:380px;margin-left:auto;margin-right:auto;box-sizing:border-box;
+}
+.cal-compact .cal-nav{margin-bottom:10px;}
+.cal-compact .cal-nav-btn{width:26px;height:26px;border-radius:8px;}
+.cal-compact .cal-nav-btn svg{width:12px;height:12px;}
+.cal-compact .cal-month-label{font-size:.82em;}
+.cal-compact .cal-weekdays{margin-bottom:5px;}
+.cal-compact .cal-weekdays span{font-size:.55em;}
+.cal-compact .cal-grid{gap:2px;}
+.cal-compact .cal-day{border-radius:8px;font-size:.72em;max-width:52px;max-height:52px;margin:0 auto;}
+.cal-compact .cal-selected{font-size:.72em;padding:2px 2px 0;}
+
+@media(max-width:1280px){
+  .cal-widget{padding:10px;margin-bottom:6px;}
+  .cal-nav{margin-bottom:6px;}
+  .cal-nav-btn{width:26px;height:26px;}
+  .cal-day{font-size:.75em;}
+  .cal-weekdays{margin-bottom:4px;}
+}

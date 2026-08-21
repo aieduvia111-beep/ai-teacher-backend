@@ -11,7 +11,9 @@
 <meta name="theme-color" content="#7c6aff">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="level_picker.js"></script>
+<script src="calendar_picker.js"></script>
 <script src="animations.js"></script>
+<link rel="stylesheet" href="calendar_picker.css">
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -119,23 +121,10 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .subj-btn[data-accent="green"].active{border-color:var(--green);box-shadow:0 0 0 1px rgba(34,211,160,.35),0 10px 28px rgba(34,211,160,.28),inset 0 1px 0 rgba(255,255,255,.1);}
 
 /* ═══ EKRAN 3: KALENDARZ ═══ */
-.cal-widget{background:var(--s2);border:1.5px solid var(--border-hi);border-radius:18px;padding:18px 16px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);}
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-.cal-nav-btn{width:32px;height:32px;border-radius:9px;background:var(--s3);border:1px solid var(--border-hi);color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;}
-.cal-nav-btn:hover{color:var(--text);border-color:var(--accent);background:rgba(124,106,255,.12);}
-.cal-nav-btn svg{width:15px;height:15px;stroke:currentColor;}
-.cal-month-label{font-family:var(--h);font-weight:700;font-size:.95em;}
-.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:8px;}
-.cal-weekdays span{font-family:var(--h);font-size:.6em;font-weight:700;color:var(--muted);letter-spacing:.04em;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-family:var(--b);font-size:.85em;color:var(--text);cursor:pointer;transition:all .18s;border:1.5px solid transparent;}
-.cal-day:hover:not(.muted){background:rgba(124,106,255,.14);transform:scale(1.08);}
-.cal-day.muted{color:var(--muted);cursor:default;opacity:.4;}
-.cal-day.today{border-color:rgba(124,106,255,.45);color:var(--accent2);font-weight:700;}
-.cal-day.selected{background:linear-gradient(135deg,var(--accent),#5040c8);color:white;font-weight:700;box-shadow:0 0 18px rgba(124,106,255,.65),inset 0 1px 0 rgba(255,255,255,.2);}
-.cal-selected{display:none;align-items:center;gap:8px;font-size:.85em;color:var(--muted2);padding:2px 2px 14px;}
-.cal-selected svg{width:15px;height:15px;stroke:var(--accent2);flex-shrink:0;}
-.cal-selected strong{color:var(--accent2);font-weight:700;}
+/* Style .cal-* przeniesione do wspolnego pliku static/calendar_picker.css
+   (linkowany w <head>) - komponent teraz uzywany takze w karcie
+   sprawdzianu na Dashboardzie (wariant kompaktowy), zeby nie duplikowac
+   ani CSS ani logiki renderowania w dwoch miejscach. */
 
 .onb-skip{background:rgba(34,211,160,.07);border:1.5px solid rgba(34,211,160,.3);color:var(--green);font-family:var(--b);font-size:.85em;font-weight:600;cursor:pointer;text-align:center;padding:12px;width:100%;border-radius:13px;transition:all .2s;margin-bottom:6px;}
 .onb-skip:hover{background:rgba(34,211,160,.13);border-color:rgba(34,211,160,.5);}
@@ -200,11 +189,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
   .subj-icon svg{width:12px;height:12px;}
   .onb-next{padding:9px;font-size:.85em;}
   .onb-skip{padding:8px;margin-bottom:3px;}
-  .cal-widget{padding:10px;margin-bottom:6px;}
-  .cal-nav{margin-bottom:6px;}
-  .cal-nav-btn{width:26px;height:26px;}
-  .cal-day{font-size:.75em;}
-  .cal-weekdays{margin-bottom:4px;}
+  /* .cal-* responsywne style - patrz static/calendar_picker.css */
 }
 @media(min-width:900px) and (max-height:820px){
   .onb-left{padding:20px 40px;}
@@ -293,22 +278,9 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
       <h1 class="onb-title">Kiedy masz<br>najbliższy sprawdzian?</h1>
       <p class="onb-sub">Pomoże nam to lepiej zaplanować Twoją naukę</p>
 
-      <div class="cal-widget">
-        <div class="cal-nav">
-          <button type="button" class="cal-nav-btn" onclick="calChangeMonth(-1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <div class="cal-month-label" id="calMonthLabel"></div>
-          <button type="button" class="cal-nav-btn" onclick="calChangeMonth(1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
-        <div class="cal-weekdays">
-          <span>PN</span><span>WT</span><span>ŚR</span><span>CZ</span><span>PT</span><span>SO</span><span>ND</span>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-      </div>
-      <div class="cal-selected" id="calSelectedLabel"></div>
+      <!-- Renderowane przez wspolny komponent EduviaCalendar.render() -
+           patrz static/calendar_picker.js/.css -->
+      <div id="examCalContainer"></div>
 
       <button class="onb-skip" type="button" onclick="finishOnboarding(true)">Pomiń to pytanie</button>
       <div class="onb-spacer"></div>
@@ -359,7 +331,7 @@ function saveOnboardingProgress(step){
       selectedStage: typeof selectedStage !== 'undefined' ? selectedStage : null,
       selectedLevel: typeof selectedLevel !== 'undefined' ? selectedLevel : null,
       selectedSubject: typeof selectedSubject !== 'undefined' ? selectedSubject : null,
-      selectedExamDate: (typeof selectedExamDate !== 'undefined' && selectedExamDate) ? isoFromDate(selectedExamDate) : null
+      selectedExamDate: (typeof EduviaCalendar !== 'undefined') ? EduviaCalendar.getValue('examCalContainer') : null
     }));
   } catch (e) {
     // localStorage niedostepny (tryb prywatny itp.) - ankieta dziala dalej, po prostu bez wznawiania
@@ -498,85 +470,16 @@ function initSubjectGrid(){
 initSubjectGrid();
 
 /* ═══════════════════════════════════════════════════
-   EKRAN 3: KALENDARZ (wlasny widget, bez natywnego input)
+   EKRAN 3: KALENDARZ - wspolny komponent EduviaCalendar
+   (patrz static/calendar_picker.js), ten sam co uzywa kompaktowa
+   karta sprawdzianu na Dashboardzie.
    ═══════════════════════════════════════════════════ */
-var CAL_MONTHS_GEN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
-var CAL_MONTHS_NOM = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
-var CAL_WEEKDAYS = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'];
-
-var calViewDate = new Date();
-var selectedExamDate = null;
-
-function renderCalendar(){
-  var y = calViewDate.getFullYear();
-  var m = calViewDate.getMonth();
-  document.getElementById('calMonthLabel').textContent = CAL_MONTHS_NOM[m] + ' ' + y;
-
-  var firstOfMonth = new Date(y, m, 1);
-  var startOffset = firstOfMonth.getDay() - 1;
-  if (startOffset < 0) startOffset = 6;
-  var daysInMonth = new Date(y, m + 1, 0).getDate();
-  var daysInPrevMonth = new Date(y, m, 0).getDate();
-
-  var grid = document.getElementById('calGrid');
-  grid.innerHTML = '';
-  var today = new Date(); today.setHours(0, 0, 0, 0);
-
-  for (var i = startOffset - 1; i >= 0; i--) {
-    var pd = document.createElement('div');
-    pd.className = 'cal-day muted';
-    pd.textContent = daysInPrevMonth - i;
-    grid.appendChild(pd);
-  }
-  for (var day = 1; day <= daysInMonth; day++) {
-    (function(day){
-      var cellDate = new Date(y, m, day);
-      var d = document.createElement('div');
-      d.className = 'cal-day';
-      d.textContent = day;
-      if (cellDate.getTime() === today.getTime()) d.classList.add('today');
-      if (selectedExamDate && cellDate.getTime() === selectedExamDate.getTime()) d.classList.add('selected');
-      d.addEventListener('click', function(){
-        selectedExamDate = cellDate;
-        renderCalendar();
-        updateSelectedLabel();
-        saveOnboardingProgress(3);
-      });
-      grid.appendChild(d);
-    })(day);
-  }
-  var totalCells = startOffset + daysInMonth;
-  var remaining = (7 - (totalCells % 7)) % 7;
-  for (var j = 1; j <= remaining; j++) {
-    var nd = document.createElement('div');
-    nd.className = 'cal-day muted';
-    nd.textContent = j;
-    grid.appendChild(nd);
-  }
-}
-
-function updateSelectedLabel(){
-  var el = document.getElementById('calSelectedLabel');
-  if (!selectedExamDate) { el.style.display = 'none'; return; }
-  el.style.display = 'flex';
-  var wd = CAL_WEEKDAYS[selectedExamDate.getDay()];
-  el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-    + '<span><strong>' + wd + ', ' + selectedExamDate.getDate() + ' ' + CAL_MONTHS_GEN[selectedExamDate.getMonth()] + ' ' + selectedExamDate.getFullYear() + '</strong></span>';
-}
-
-function calChangeMonth(delta){
-  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + delta, 1);
-  renderCalendar();
-}
-
-renderCalendar();
-
-function isoFromDate(d){
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
+EduviaCalendar.render('examCalContainer', {
+  onSelect: function(){ saveOnboardingProgress(3); }
+});
 
 /* Wznowienie ankiety z localStorage - wywolane PO wszystkich renderStageList()/
-   initSubjectGrid()/renderCalendar() powyzej, zeby ustawienie zmiennych
+   initSubjectGrid()/EduviaCalendar.render() powyzej, zeby ustawienie zmiennych
    selectedX i ponowne (idempotentne) odrenderowanie odzwierciedlilo
    przywrocony wybor. */
 function restoreOnboardingProgress(){
@@ -603,11 +506,7 @@ function restoreOnboardingProgress(){
   }
 
   if (_savedProgress.selectedExamDate) {
-    var parts = _savedProgress.selectedExamDate.split('-').map(Number);
-    selectedExamDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    calViewDate = new Date(selectedExamDate.getFullYear(), selectedExamDate.getMonth(), 1);
-    renderCalendar();
-    updateSelectedLabel();
+    EduviaCalendar.setValue('examCalContainer', _savedProgress.selectedExamDate);
   }
 
   goStep(step);
@@ -656,7 +555,7 @@ async function finishOnboarding(skippedDate){
   confetti();
   clearOnboardingProgress();
 
-  var examDateVal = skippedDate ? '' : (selectedExamDate ? isoFromDate(selectedExamDate) : '');
+  var examDateVal = skippedDate ? '' : (EduviaCalendar.getValue('examCalContainer') || '');
   var payload = {
     education_level: selectedLevel,
     favorite_subject: selectedSubject,

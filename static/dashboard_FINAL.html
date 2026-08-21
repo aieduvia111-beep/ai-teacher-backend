@@ -57,12 +57,19 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 
 /* ═══ HERO ═══ */
 .dash-hero{
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;flex-direction:column;gap:22px;
   background:linear-gradient(135deg,rgba(124,106,255,.08) 0%,rgba(56,189,248,.04) 50%,rgba(34,211,160,.06) 100%);
   border:1px solid rgba(124,106,255,.15);
   border-radius:24px;padding:32px 36px;
   position:relative;overflow:hidden;
 }
+/* Powitanie + pierscien poziomu we WSPOLNYM rzedzie, ODDZIELNYM od panelu
+   XP ponizej - panel XP i pasek postepu maja wiec zawsze PELNA szerokosc
+   karty, zamiast byc scisniete w waskiej kolumnie obok pierscienia (co na
+   waskich telefonach realnie powodowalo wyjezdzanie 3-kolumnowego panelu
+   poza karte przy dluzszych wartosciach - flexbox nie potrafil go scisnac
+   ponizej naturalnej szerokosci tresci bez min-width:0 na kazdym elemencie). */
+.hero-top-row{display:flex;align-items:center;justify-content:space-between;gap:24px;}
 .dash-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(124,106,255,.08),transparent 60%);pointer-events:none;}
 .hero-date{font-size:.72em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;font-family:var(--h);}
 .hero-name{font-family:var(--h);font-size:2em;font-weight:800;line-height:1.1;color:white;margin-bottom:10px;}
@@ -141,14 +148,14 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 .dash-footer-txt{font-size:.68em;color:var(--muted);letter-spacing:.06em;}
 
 /* ═══ HERO STATS ═══ */
-.hero-stats{display:flex;align-items:center;gap:0;margin-top:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 16px;width:fit-content;gap:4px;}
+.hero-stats{display:flex;align-items:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 16px;width:fit-content;gap:4px;}
 .hs-item{display:flex;align-items:center;gap:7px;}
 .hs-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8em;flex-shrink:0;}
 .hs-val{font-family:var(--h);font-size:.88em;font-weight:800;}
 .hs-lbl{font-size:.65em;color:var(--muted2);}
 .hs-sep{width:1px;height:28px;background:rgba(255,255,255,.08);margin:0 14px;flex-shrink:0;}
 
-.hero-xpbar{margin-top:12px;width:100%;max-width:380px;}
+.hero-xpbar{width:100%;max-width:380px;}
 .xpbar-track{height:6px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden;position:relative;}
 .xpbar-fill{height:100%;background:linear-gradient(90deg,#7c6aff,#a78bfa,#22d3a0);border-radius:100px;transition:width .8s cubic-bezier(.4,0,.2,1);position:relative;}
 .xpbar-shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);animation:xpshine 2.5s ease-in-out infinite;}
@@ -202,21 +209,9 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 .mcal-close:hover{color:var(--text);border-color:var(--border-hi);background:rgba(255,255,255,.1);}
 .ec-topic-input{width:100%;max-width:380px;margin:0 auto;padding:10px 14px;border-radius:12px;background:var(--s2);border:1px solid var(--border-hi);color:var(--text);font-family:var(--b);font-size:.85em;outline:none;transition:.2s;box-sizing:border-box;}
 .ec-topic-input:focus{border-color:var(--accent);}
-.mcal-widget{background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;padding:12px 10px;width:100%;max-width:380px;margin:0 auto;box-sizing:border-box;}
-.mcal-day{max-width:52px;max-height:52px;margin:0 auto;}
-.mcal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.mcal-nav-btn{width:26px;height:26px;border-radius:8px;background:var(--s3);border:1px solid var(--border-hi);color:var(--muted2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;}
-.mcal-nav-btn:hover{color:var(--text);border-color:var(--accent);background:rgba(124,106,255,.12);}
-.mcal-month-label{font-family:var(--h);font-weight:700;font-size:.82em;}
-.mcal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:5px;}
-.mcal-weekdays span{font-family:var(--h);font-size:.55em;font-weight:700;color:var(--muted);letter-spacing:.03em;}
-.mcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-.mcal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:var(--b);font-size:.72em;color:var(--text);cursor:pointer;transition:.15s;border:1.5px solid transparent;}
-.mcal-day:hover:not(.muted):not(.past){background:rgba(124,106,255,.14);transform:scale(1.08);}
-.mcal-day.muted{color:var(--muted);cursor:default;opacity:.35;}
-.mcal-day.past{color:var(--muted);cursor:not-allowed;opacity:.3;}
-.mcal-day.today{border-color:rgba(124,106,255,.45);color:var(--accent2);font-weight:700;}
-.mcal-day.selected{background:linear-gradient(135deg,var(--accent),#5040c8);color:#fff;font-weight:700;box-shadow:0 0 14px rgba(124,106,255,.5),inset 0 1px 0 rgba(255,255,255,.2);}
+/* Widget kalendarza (.cal-widget.cal-compact) renderowany przez wspolny
+   komponent EduviaCalendar - patrz static/calendar_picker.css/.js. Ten sam
+   komponent uzywa ankieta onboardingowa (wariant pelny, bez .cal-compact). */
 .ec-picker-actions{display:flex;gap:10px;width:100%;max-width:380px;margin:0 auto;}
 .ec-picker-cancel{flex:1;padding:11px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border-hi);color:var(--muted2);font-family:var(--h);font-weight:700;font-size:.82em;cursor:pointer;transition:.2s;}
 .ec-picker-cancel:hover{background:rgba(255,255,255,.09);color:var(--text);}
@@ -323,12 +318,11 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
     height:auto!important;
   }
   .dash-hero{
-    flex-direction:row!important;
-    align-items:flex-start!important;
-    gap:12px!important;
+    gap:16px!important;
     padding:18px!important;
     border-radius:18px!important;
   }
+  .hero-top-row{align-items:flex-start!important;gap:12px!important;}
   .hero-left{flex:1;min-width:0;}
   .hero-name{font-size:1.3em!important;}
   .hero-orb{display:none!important;}
@@ -736,92 +730,31 @@ function _showExamView(view){
   if (editBtn) editBtn.style.display = (view === 'active') ? '' : 'none';
 }
 
-const MCAL_MONTHS_GEN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
-const MCAL_MONTHS_NOM = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
-const MCAL_WEEKDAYS = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'];
-let _mcalViewDate = new Date();
-let _mcalSelectedDate = null;
-
-function renderDashCal(){
-  const y = _mcalViewDate.getFullYear(), m = _mcalViewDate.getMonth();
-  const lbl = document.getElementById('mcalMonthLabel');
-  if (lbl) lbl.textContent = MCAL_MONTHS_NOM[m] + ' ' + y;
-
-  const firstOfMonth = new Date(y, m, 1);
-  let startOffset = firstOfMonth.getDay() - 1;
-  if (startOffset < 0) startOffset = 6;
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const daysInPrevMonth = new Date(y, m, 0).getDate();
-
-  const grid = document.getElementById('mcalGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-
-  for (let i = startOffset - 1; i >= 0; i--) {
-    const pd = document.createElement('div');
-    pd.className = 'mcal-day muted';
-    pd.textContent = daysInPrevMonth - i;
-    grid.appendChild(pd);
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    const cellDate = new Date(y, m, day);
-    const d = document.createElement('div');
-    d.className = 'mcal-day';
-    d.textContent = day;
-    const isPast = cellDate.getTime() < today.getTime();
-    if (isPast) {
-      d.classList.add('past');
-    } else {
-      if (cellDate.getTime() === today.getTime()) d.classList.add('today');
-      if (_mcalSelectedDate && cellDate.getTime() === _mcalSelectedDate.getTime()) d.classList.add('selected');
-      d.addEventListener('click', () => {
-        _mcalSelectedDate = cellDate;
-        renderDashCal();
-        const saveBtn = document.getElementById('ecPickerSaveBtn');
-        if (saveBtn) saveBtn.disabled = false;
-        const errEl = document.getElementById('ecPickerError');
-        if (errEl) errEl.style.display = 'none';
-      });
-    }
-    grid.appendChild(d);
-  }
-  const totalCells = startOffset + daysInMonth;
-  const remaining = (7 - (totalCells % 7)) % 7;
-  for (let j = 1; j <= remaining; j++) {
-    const nd = document.createElement('div');
-    nd.className = 'mcal-day muted';
-    nd.textContent = j;
-    grid.appendChild(nd);
-  }
-}
-window.dashCalChangeMonth = function(delta){
-  _mcalViewDate = new Date(_mcalViewDate.getFullYear(), _mcalViewDate.getMonth() + delta, 1);
-  renderDashCal();
-};
-
+// Kalendarz renderowany przez wspolny komponent EduviaCalendar.renderCompact()
+// (patrz static/calendar_picker.js) - ten sam komponent/CSS co pelny kalendarz
+// w ankiecie onboardingowej (Ekran 3), tylko w mniejszym wariancie .cal-compact.
 window.openExamPicker = function(){
   const activeVisible = document.getElementById('ecActiveView').style.display !== 'none';
   _examViewBeforePicker = activeVisible ? 'active' : (document.getElementById('ecPassedView').style.display !== 'none' ? 'passed' : 'empty');
+  const topicInput = document.getElementById('ecTopicInput');
+  if (topicInput) topicInput.value = localStorage.getItem('eduvia_exam_title') || '';
+  const errEl = document.getElementById('ecPickerError');
+  if (errEl) errEl.style.display = 'none';
   // Przy "Zmien termin" na juz aktywnym odliczaniu - od razu podswietl
   // TERAZNIEJSZA date w kalendarzu i otworz na jej miesiacu, zamiast
   // zaczynac od pustego wyboru (user modyfikuje istniejacy termin, nie
   // zaczyna od zera).
-  if (_examViewBeforePicker === 'active' && _dashProfile && _dashProfile.exam_date) {
-    const parts = _dashProfile.exam_date.split('-').map(Number);
-    _mcalSelectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    _mcalViewDate = new Date(parts[0], parts[1] - 1, 1);
-  } else {
-    _mcalSelectedDate = null;
-    _mcalViewDate = new Date();
-  }
-  const topicInput = document.getElementById('ecTopicInput');
-  if (topicInput) topicInput.value = localStorage.getItem('eduvia_exam_title') || '';
+  const preselect = (_examViewBeforePicker === 'active' && _dashProfile && _dashProfile.exam_date) ? _dashProfile.exam_date : null;
+  EduviaCalendar.renderCompact('examCalPickerContainer', {
+    value: preselect,
+    onSelect: function(){
+      const saveBtn = document.getElementById('ecPickerSaveBtn');
+      if (saveBtn) saveBtn.disabled = false;
+      if (errEl) errEl.style.display = 'none';
+    }
+  });
   const saveBtn = document.getElementById('ecPickerSaveBtn');
-  if (saveBtn) saveBtn.disabled = !_mcalSelectedDate;
-  const errEl = document.getElementById('ecPickerError');
-  if (errEl) errEl.style.display = 'none';
-  renderDashCal();
+  if (saveBtn) saveBtn.disabled = !preselect;
   _showExamView('picker');
 };
 window.closeExamPicker = function(){
@@ -829,10 +762,10 @@ window.closeExamPicker = function(){
 };
 
 window.saveNewExamDate = async function(){
-  if (!_mcalSelectedDate || !_dashUser) return;
+  const isoDate = EduviaCalendar.getValue('examCalPickerContainer');
+  if (!isoDate || !_dashUser) return;
   const errEl = document.getElementById('ecPickerError');
   const saveBtn = document.getElementById('ecPickerSaveBtn');
-  const isoDate = _mcalSelectedDate.getFullYear() + '-' + String(_mcalSelectedDate.getMonth() + 1).padStart(2, '0') + '-' + String(_mcalSelectedDate.getDate()).padStart(2, '0');
   const topicVal = (document.getElementById('ecTopicInput').value || '').trim().slice(0, 60);
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Zapisuję…'; }
   try {
@@ -857,8 +790,11 @@ window.saveNewExamDate = async function(){
     else localStorage.removeItem('eduvia_exam_title');
 
     document.getElementById('ecTitle').textContent = topicVal || 'Sprawdzian';
+    const savedDate = isoDate.split('-').map(Number);
+    const savedDateObj = new Date(savedDate[0], savedDate[1] - 1, savedDate[2]);
     const D = ["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"];
-    document.getElementById('ecDateTxt').textContent = D[_mcalSelectedDate.getDay()] + ', ' + _mcalSelectedDate.getDate() + ' ' + MCAL_MONTHS_GEN[_mcalSelectedDate.getMonth()] + ' ' + _mcalSelectedDate.getFullYear();
+    const M = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+    document.getElementById('ecDateTxt').textContent = D[savedDateObj.getDay()] + ', ' + savedDateObj.getDate() + ' ' + M[savedDateObj.getMonth()] + ' ' + savedDateObj.getFullYear();
     document.getElementById('ecClock').style.display = '';
     startExamCountdown(isoDate);
     _showExamView('active');
@@ -1080,6 +1016,8 @@ function getPlanBadgeHTML(plan) {
 </script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
+<script src="calendar_picker.js"></script>
+<link rel="stylesheet" href="calendar_picker.css">
 </head>
 
 <body style="display:block!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;margin:0!important;">
@@ -1143,69 +1081,72 @@ function getPlanBadgeHTML(plan) {
     <div class="bg-star" style="width:3px;height:3px;top:70px;right:100px;animation-delay:2.5s;"></div>
     <div class="bg-star" style="width:2px;height:2px;top:100px;right:180px;animation-delay:1.2s;"></div>
     <div class="bg-star" style="width:2px;height:2px;top:10px;right:250px;animation-delay:1.8s;"></div>
-    <div class="hero-left">
-      <div class="hero-date" id="heroDate"></div>
-      <h1 class="hero-name">Cześć, <span class="hero-nm">Jakub</span> 👋</h1>
-      <p class="hero-sub" id="heroQuote">Ładuję cytat...</p>
-
-      <!-- XP PANEL: 3 kolumny + separator + pasek postepu -->
-      <div class="hero-stats">
-        <div class="hs-item">
-          <div class="hs-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          </div>
-          <div class="hs-item-text">
-            <div class="hs-val" id="hsXP" style="color:#a78bfa;">0 XP</div>
-            <div class="hs-lbl">łącznie</div>
-          </div>
-        </div>
-        <div class="hs-sep"></div>
-        <div class="hs-item">
-          <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">🔥</div>
-          <div class="hs-item-text">
-            <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
-            <div class="hs-lbl">dni z rzędu</div>
-          </div>
-        </div>
-        <div class="hs-sep"></div>
-        <div class="hs-item">
-          <div class="hs-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          </div>
-          <div class="hs-item-text">
-            <div class="hs-val" id="hsAccuracy" style="color:#22d3a0;">—</div>
-            <div class="hs-lbl">skuteczność</div>
-          </div>
-        </div>
+    <div class="hero-top-row">
+      <div class="hero-left">
+        <div class="hero-date" id="heroDate"></div>
+        <h1 class="hero-name">Cześć, <span class="hero-nm">Jakub</span> 👋</h1>
+        <p class="hero-sub" id="heroQuote">Ładuję cytat...</p>
       </div>
 
-      <!-- XP BAR -->
-      <div class="hero-xpbar">
-        <div class="xpbar-track">
-          <div class="xpbar-fill" id="hsXPBar" style="width:0%"></div>
-          <div class="xpbar-shine"></div>
+      <!-- 3. OKRAGLY WSKAZNIK POZIOMU (korona + Poziom N + nazwa) -->
+      <div class="level-ring-wrap" aria-hidden="true">
+        <svg class="level-ring-track-svg" viewBox="0 0 132 132">
+          <defs>
+            <linearGradient id="levelRingGrad" x1="0" y1="0" x2="132" y2="132" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="var(--accent)"/>
+              <stop offset="100%" stop-color="var(--green)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="66" cy="66" r="56" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/>
+          <circle id="levelRingFg" class="level-ring-fill" cx="66" cy="66" r="56" fill="none" stroke="url(#levelRingGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+        </svg>
+        <div class="level-ring-center">
+          <svg class="level-ring-crown" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 17.5h14l1.4-8.7-4.9 3.4L12 5.3 8.5 12.2l-4.9-3.4L5 17.5z"/><rect x="5" y="18.8" width="14" height="2" rx="1"/></svg>
+          <div class="level-ring-num" id="ringLevelNum">Poziom 1</div>
+          <div class="level-ring-name" id="ringLevelName">Uczeń</div>
         </div>
-        <div class="xpbar-label" id="hsXPNext">0 / 100 XP do następnego poziomu</div>
       </div>
     </div>
 
-    <!-- 3. OKRAGLY WSKAZNIK POZIOMU (korona + Poziom N + nazwa) -->
-    <div class="level-ring-wrap" aria-hidden="true">
-      <svg class="level-ring-track-svg" viewBox="0 0 132 132">
-        <defs>
-          <linearGradient id="levelRingGrad" x1="0" y1="0" x2="132" y2="132" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="var(--accent)"/>
-            <stop offset="100%" stop-color="var(--green)"/>
-          </linearGradient>
-        </defs>
-        <circle cx="66" cy="66" r="56" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/>
-        <circle id="levelRingFg" class="level-ring-fill" cx="66" cy="66" r="56" fill="none" stroke="url(#levelRingGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
-      </svg>
-      <div class="level-ring-center">
-        <svg class="level-ring-crown" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 17.5h14l1.4-8.7-4.9 3.4L12 5.3 8.5 12.2l-4.9-3.4L5 17.5z"/><rect x="5" y="18.8" width="14" height="2" rx="1"/></svg>
-        <div class="level-ring-num" id="ringLevelNum">Poziom 1</div>
-        <div class="level-ring-name" id="ringLevelName">Uczeń</div>
+    <!-- XP PANEL: PELNA szerokosc karty (nie scisniety obok pierscienia) -
+         3 kolumny + separator + pasek postepu -->
+    <div class="hero-stats">
+      <div class="hs-item">
+        <div class="hs-icon" style="background:rgba(124,106,255,.15);color:#a78bfa;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="hs-item-text">
+          <div class="hs-val" id="hsXP" style="color:#a78bfa;">0 XP</div>
+          <div class="hs-lbl">łącznie</div>
+        </div>
       </div>
+      <div class="hs-sep"></div>
+      <div class="hs-item">
+        <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">🔥</div>
+        <div class="hs-item-text">
+          <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
+          <div class="hs-lbl">dni z rzędu</div>
+        </div>
+      </div>
+      <div class="hs-sep"></div>
+      <div class="hs-item">
+        <div class="hs-icon" style="background:rgba(34,211,160,.15);color:#22d3a0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div class="hs-item-text">
+          <div class="hs-val" id="hsAccuracy" style="color:#22d3a0;">—</div>
+          <div class="hs-lbl">skuteczność</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XP BAR -->
+    <div class="hero-xpbar">
+      <div class="xpbar-track">
+        <div class="xpbar-fill" id="hsXPBar" style="width:0%"></div>
+        <div class="xpbar-shine"></div>
+      </div>
+      <div class="xpbar-label" id="hsXPNext">0 / 100 XP do następnego poziomu</div>
     </div>
   </section>
 
@@ -1283,19 +1224,9 @@ function getPlanBadgeHTML(plan) {
         <button type="button" class="mcal-close" onclick="closeExamPicker()" title="Zamknij">✕</button>
       </div>
       <input type="text" id="ecTopicInput" class="ec-topic-input" placeholder="Temat / przedmiot (opcjonalnie)" maxlength="60">
-      <div class="mcal-widget">
-        <div class="mcal-nav">
-          <button type="button" class="mcal-nav-btn" onclick="dashCalChangeMonth(-1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <div class="mcal-month-label" id="mcalMonthLabel"></div>
-          <button type="button" class="mcal-nav-btn" onclick="dashCalChangeMonth(1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
-        <div class="mcal-weekdays"><span>PN</span><span>WT</span><span>ŚR</span><span>CZ</span><span>PT</span><span>SO</span><span>ND</span></div>
-        <div class="mcal-grid" id="mcalGrid"></div>
-      </div>
+      <!-- Renderowane przez wspolny komponent EduviaCalendar.renderCompact() -
+           ten sam kalendarz co w ankiecie onboardingowej, patrz openExamPicker(). -->
+      <div id="examCalPickerContainer"></div>
       <div class="ec-picker-error" id="ecPickerError" style="display:none;"></div>
       <div class="ec-picker-actions">
         <button type="button" class="ec-picker-cancel" onclick="closeExamPicker()">Anuluj</button>
