@@ -187,7 +187,8 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 .ns-arrow-btn:hover{transform:scale(1.06);box-shadow:0 0 32px rgba(124,106,255,.55);}
 
 /* ═══ SPRAWDZIAN - odliczanie ═══ */
-.exam-count-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;animation:cardIn .4s cubic-bezier(.22,1,.36,1) .05s both;}
+.exam-count-card{background:var(--s1);border:1px solid var(--border-hi);border-radius:22px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;animation:cardIn .4s cubic-bezier(.22,1,.36,1) .05s both;transition:.2s;}
+.exam-count-card:hover{border-color:rgba(34,211,160,.35);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3);}
 .ec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .ec-title{font-family:var(--h);font-size:1em;font-weight:800;color:#fff;margin-bottom:4px;}
 .ec-date{font-size:.8em;color:var(--muted2);display:flex;align-items:center;gap:6px;}
@@ -703,7 +704,13 @@ async function loadStudentProfile(user){
     } else {
       if(profile.education_level&&nsSec&&nsCard){
         const subjLabel=profile.favorite_subject?(DASH_SUBJECT_LABELS[profile.favorite_subject]||profile.favorite_subject):null;
-        const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)+(profile.favorite_subject?'&subject='+encodeURIComponent(profile.favorite_subject):'');
+        // topic=nazwa przedmiotu (nie mamy realnej logiki sugerowania
+        // konkretnego tematu, wiec nie zmyslamy jej) + autostart=1, zeby
+        // klikniecie karty od razu generowalo quiz (ekran ladowania),
+        // bez pokazywania formularza ustawien - jak przy "Rozpocznij quiz".
+        const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)
+          +(profile.favorite_subject?'&subject='+encodeURIComponent(profile.favorite_subject):'')
+          +(subjLabel?'&topic='+encodeURIComponent(subjLabel)+'&autostart=1':'');
         document.getElementById('nsTitle').textContent=subjLabel?('Quiz: '+subjLabel):'Nowy Quiz';
         document.getElementById('nsDesc').textContent='Dopasowany do Twojego poziomu — sprawdź wiedzę i zdobądź XP';
         const chipSubj=document.getElementById('nsChipSubject'), chipLvl=document.getElementById('nsChipLevel');
@@ -1022,9 +1029,10 @@ function getPlanBadgeHTML(plan) {
     </a>
   </section>
 
-  <!-- 6. KARTA SPRAWDZIANU - prawdziwe, tykajace odliczanie -->
+  <!-- 6. KARTA SPRAWDZIANU - prawdziwe, tykajace odliczanie. Klikalna ->
+       Plan Nauki (przygotowanie do sprawdzianu = harmonogram nauki). -->
   <section class="exam-count-sec" id="examCountSec" style="display:none;">
-    <div class="exam-count-card">
+    <a href="lesson_planner.html" class="exam-count-card" style="text-decoration:none;color:inherit;">
       <div class="ec-info">
         <div class="ec-label">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1045,7 +1053,7 @@ function getPlanBadgeHTML(plan) {
         <div class="ec-colon">:</div>
         <div class="ec-unit"><div class="ec-unit-val" id="ecSecs">00</div><div class="ec-unit-lbl">sek</div></div>
       </div>
-    </div>
+    </a>
   </section>
 
   <!-- 7. SIATKA 6 NARZEDZI (kompaktowa, 3 kolumny) -->
