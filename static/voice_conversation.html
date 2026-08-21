@@ -463,7 +463,21 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
   const snap = await getDoc(doc(db, 'users', user.uid));
-  if (snap.exists()) localStorage.setItem('eduvia_xp', snap.data().xp || 0);
+  const udata = snap.exists() ? snap.data() : {};
+  if (snap.exists()) localStorage.setItem('eduvia_xp', udata.xp || 0);
+  // window._userProfile jest tym, co ponizszy kod (w startSession, patrz
+  // "Pobierz profil ucznia") czyta, zeby AI zwracalo sie po imieniu -
+  // bez tego przypisania _profile.name bylo zawsze puste, wiec Voice AI
+  // NIGDY realnie nie zwracalo sie po imieniu mimo istniejacej logiki.
+  // streak: pole w Firestore nigdy nie jest zwiekszane (ten sam problem
+  // co w Dashboardzie) - uzywamy lokalnego licznika, jedynego realnego
+  // zrodla tej wartosci w calej apce.
+  window._userProfile = {
+    name: user.displayName ? user.displayName.split(' ')[0] : '',
+    xp: udata.xp || 0,
+    streak: parseInt(localStorage.getItem('eduvia_streak') || '0', 10),
+    quizCount: (udata.quizHistory || []).length
+  };
   if (window.EduviaLevelPicker && window.applyAutoLevel) {
     window.EduviaLevelPicker.applyUserProfileLevel({ user: user, onLevel: window.applyAutoLevel });
   }

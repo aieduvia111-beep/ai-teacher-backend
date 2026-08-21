@@ -85,7 +85,8 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 @keyframes orbSpin{to{transform:rotate(360deg)}}
 
 /* ═══ SECTION LABEL ═══ */
-.sec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.sec-label{font-family:var(--h);font-size:.65em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.sec-label svg{flex-shrink:0;}
 
 /* ═══ PROFIL UCZNIA (ankieta onboardingowa) ═══ */
 .profile-sec{margin-bottom:28px;}
@@ -171,6 +172,16 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 .level-ring-crown{color:#a78bfa;margin-bottom:1px;flex-shrink:0;}
 .level-ring-num{font-family:var(--h);font-weight:800;font-size:1.05em;color:#fff;line-height:1.15;}
 .level-ring-name{font-family:var(--h);font-weight:700;font-size:.64em;letter-spacing:.04em;color:var(--green);}
+/* Konfetti przy awansie poziomu - position:fixed zakotwiczone na realnej
+   pozycji ekranowej pierscienia (patrz _fireLevelUpCelebration), zeby
+   NIE bylo obcinane przez overflow:hidden karty .dash-hero. */
+.level-confetti{position:fixed;width:0;height:0;pointer-events:none;z-index:9999;}
+.level-confetti-piece{position:absolute;width:6px;height:10px;border-radius:2px;opacity:0;left:0;top:0;animation:levelConfettiFly 1.5s cubic-bezier(.15,.7,.3,1) forwards;}
+@keyframes levelConfettiFly{
+  0%{transform:translate(-50%,-50%) rotate(0deg) scale(.6);opacity:1;}
+  70%{opacity:1;}
+  100%{transform:translate(calc(-50% + var(--bx)), calc(-50% + var(--by) + 90px)) rotate(var(--rot)) scale(.9);opacity:0;}
+}
 
 /* ═══ XP PANEL (restyled hero-stats, pelna szerokosc) ═══ */
 .hero-stats{width:100%;justify-content:space-between;}
@@ -895,8 +906,8 @@ async function loadStudentProfile(user){
         document.getElementById('nsTitle').textContent=subjLabel?('Quiz: '+subjLabel):'Nowy Quiz';
         document.getElementById('nsDesc').textContent='Dopasowany do Twojego poziomu — sprawdź wiedzę i zdobądź XP';
         const chipSubj=document.getElementById('nsChipSubject'), chipLvl=document.getElementById('nsChipLevel');
-        if(subjLabel){chipSubj.textContent='📐 '+subjLabel;chipSubj.style.display='';}else{chipSubj.style.display='none';}
-        chipLvl.textContent='📶 '+(profile.education_level_label||profile.education_level);
+        if(subjLabel){document.getElementById('nsChipSubjectText').textContent=subjLabel;chipSubj.style.display='';}else{chipSubj.style.display='none';}
+        document.getElementById('nsChipLevelText').textContent=profile.education_level_label||profile.education_level;
         chipLvl.style.display='';
         nsCard.href=quizUrl;
         nsSec.style.display='';
@@ -1177,7 +1188,9 @@ function getPlanBadgeHTML(plan) {
       </div>
       <div class="hs-sep"></div>
       <div class="hs-item">
-        <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">🔥</div>
+        <div class="hs-icon" style="background:rgba(251,146,60,.15);color:#fb923c;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        </div>
         <div class="hs-item-text">
           <div class="hs-val" id="hsStreak" style="color:#fb923c;">0</div>
           <div class="hs-lbl">dni z rzędu</div>
@@ -1209,12 +1222,18 @@ function getPlanBadgeHTML(plan) {
   <section class="next-step-sec" id="nextStepSec" style="display:none;">
     <a href="#" class="next-step-card" id="nextStepCard" style="text-decoration:none;color:inherit;">
       <div class="ns-info">
-        <div class="ns-label">✨ Następny krok</div>
+        <div class="ns-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Następny krok</div>
         <div class="ns-title" id="nsTitle">Quiz dopasowany do Ciebie</div>
         <div class="ns-desc" id="nsDesc">Sprawdź wiedzę i zdobądź XP</div>
         <div class="ns-chips">
-          <span class="ns-chip" id="nsChipSubject">📐 Przedmiot</span>
-          <span class="ns-chip" id="nsChipLevel">📶 Poziom</span>
+          <span class="ns-chip" id="nsChipSubject">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span id="nsChipSubjectText">Przedmiot</span>
+          </span>
+          <span class="ns-chip" id="nsChipLevel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span id="nsChipLevelText">Poziom</span>
+          </span>
         </div>
       </div>
       <span class="ns-arrow-btn" aria-hidden="true">
@@ -1293,7 +1312,7 @@ function getPlanBadgeHTML(plan) {
 
   <!-- 7. SIATKA 6 NARZEDZI (kompaktowa, 3 kolumny) -->
   <section class="tools-sec">
-    <div class="sec-label">🛠 Narzędzia AI</div>
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Narzędzia AI</div>
     <div class="tools-grid-compact">
 
       <a href="chat.html" class="tool-card-c tc-chat">
@@ -1363,7 +1382,7 @@ function getPlanBadgeHTML(plan) {
        zakres (7/14/30 dni) wybieralny przez dzialajacy dropdown -->
   <section class="progress-sec">
     <div class="progress-sec-hdr">
-      <div class="sec-label" style="margin-bottom:0;">📈 Twoje postępy</div>
+      <div class="sec-label" style="margin-bottom:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Twoje postępy</div>
       <div class="progress-range-wrap">
         <button type="button" class="progress-range-sel" id="progressRangeSel" onclick="toggleRangeMenu()">
           <span id="progressRangeLabel">7 dni</span>
@@ -1492,6 +1511,44 @@ function getPlanBadgeHTML(plan) {
     return {num:1,...LEVELS[0]};
   }
 
+  // ═══ Konfetti + wibracja przy awansie na kolejny poziom ═══
+  // _lastSeenLevel=0 oznacza "jeszcze nie wiadomo" (pierwsza wizyta / czyste
+  // localStorage) - CELOWO nie odpala celebracji w tym przypadku, zeby
+  // powracajacy user z wysokim poziomem po wyczyszczeniu cache nie dostal
+  // falszywej "awansowales!" przy zwyklym otwarciu apki. Odpala sie tylko
+  // gdy realnie WIDZIELISMY nizszy poziom wczesniej.
+  let _lastSeenLevel = parseInt(localStorage.getItem('eduvia_last_level') || '0', 10);
+  function _fireLevelUpCelebration(){
+    try { if (navigator.vibrate) navigator.vibrate([40,30,40,30,90]); } catch(e){}
+    const ringWrap = document.querySelector('.level-ring-wrap');
+    if (!ringWrap) return;
+    const rect = ringWrap.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const burst = document.createElement('div');
+    burst.className = 'level-confetti';
+    burst.style.left = cx + 'px';
+    burst.style.top = cy + 'px';
+    const colors = ['var(--accent)','var(--accent2)','var(--green)','#f5a623','#38bdf8','#f472b6'];
+    let html = '';
+    for (let i = 0; i < 40; i++) {
+      const angle = Math.random() * 360;
+      const dist = 55 + Math.random() * 95;
+      const bx = Math.cos(angle * Math.PI / 180) * dist;
+      const by = Math.sin(angle * Math.PI / 180) * dist - 30;
+      const rot = Math.round(Math.random() * 720 - 360);
+      const delay = (Math.random() * 0.15).toFixed(2);
+      html += '<span class="level-confetti-piece" style="--bx:' + bx.toFixed(0) + 'px;--by:' + by.toFixed(0) + 'px;--rot:' + rot + 'deg;background:' + colors[i % colors.length] + ';animation-delay:' + delay + 's;"></span>';
+    }
+    burst.innerHTML = html;
+    document.body.appendChild(burst);
+    setTimeout(() => burst.remove(), 1900);
+  }
+  function _maybeCelebrateLevelUp(levelNum){
+    if (_lastSeenLevel > 0 && levelNum > _lastSeenLevel) _fireLevelUpCelebration();
+    if (levelNum !== _lastSeenLevel) localStorage.setItem('eduvia_last_level', String(levelNum));
+    _lastSeenLevel = levelNum;
+  }
+
   // Jedna funkcja renderujaca caly panel XP + pierscien poziomu - wywolywana
   // od razu z localStorage (szybkie pierwsze malowanie) i ponownie przez
   // modul Firebase gdy przyjdzie prawdziwe XP z Firestore (patrz onAuthStateChanged).
@@ -1512,6 +1569,7 @@ function getPlanBadgeHTML(plan) {
     if(elRNum)  elRNum.textContent  = 'Poziom '+lv.num;
     if(elRName) elRName.textContent = lv.name;
     if(elRFg)   setTimeout(()=>{ elRFg.style.strokeDashoffset = String(RING_CIRC*(1-pct/100)); }, 200);
+    _maybeCelebrateLevelUp(lv.num);
   }
   window.renderLevelUI = renderLevelUI;
 
