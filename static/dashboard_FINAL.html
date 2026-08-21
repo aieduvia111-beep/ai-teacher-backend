@@ -241,7 +241,15 @@ a.profile-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0
 
 /* ═══ TWOJE POSTEPY ═══ */
 .progress-sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.progress-range-sel{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;background:var(--s1);border:1px solid var(--border-hi);font-size:.75em;color:var(--muted2);font-weight:600;}
+.progress-range-wrap{position:relative;}
+.progress-range-sel{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;background:var(--s1);border:1px solid var(--border-hi);font-size:.75em;color:var(--muted2);font-weight:600;font-family:var(--b);cursor:pointer;transition:.2s;}
+.progress-range-sel:hover{border-color:var(--accent);color:var(--text);background:rgba(124,106,255,.08);}
+.progress-range-sel svg{transition:transform .2s;flex-shrink:0;}
+.progress-range-sel.open svg{transform:rotate(180deg);}
+.progress-range-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:110px;background:var(--s1);border:1px solid var(--border-hi);border-radius:14px;padding:6px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4);flex-direction:column;gap:2px;}
+.progress-range-menu.open{display:flex;animation:cardIn .18s cubic-bezier(.22,1,.36,1) both;}
+.progress-range-menu button{background:none;border:none;color:var(--muted2);font-family:var(--b);font-size:.8em;font-weight:600;text-align:left;padding:8px 10px;border-radius:9px;cursor:pointer;transition:.15s;}
+.progress-range-menu button:hover{background:rgba(124,106,255,.12);color:var(--text);}
 .progress-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .progress-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:16px 18px;animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;}
 .pc-label{font-size:.75em;color:var(--muted2);margin-bottom:6px;}
@@ -515,6 +523,83 @@ function recordDailyXPSnapshot(xp){
   return log;
 }
 
+// ═══ "Twoje postepy" - wykresy z REALNIE wybieralnym zakresem (7/14/30 dni).
+// Trzyma ostatnio pobrane dane Firestore (_dashFirestoreData) i biezace XP
+// (_dashXP) w module-scope, zeby zmiana zakresu mogla przeliczyc wykresy
+// natychmiast, bez ponownego odpytywania Firestore. ═══
+let _dashFirestoreData = null;
+let _dashXP = 0;
+let _dashRangeDays = 7;
+
+function renderProgressCharts(days){
+  _dashRangeDays = days;
+  const lbl = document.getElementById('progressRangeLabel');
+  if (lbl) lbl.textContent = days + ' dni';
+  if (!_dashFirestoreData) return; // dane z Firestore jeszcze nie doszly
+
+  const now = new Date();
+  const allTs = [];
+  ['quizHistory','notesHistory','examHistory','voiceHistory','lessonPlansHistory','whiteboardHistory'].forEach((k) => {
+    (_dashFirestoreData[k] || []).forEach((it) => { if (it && it.timestamp) allTs.push(it.timestamp); });
+  });
+  const actLast = countByDayBins(allTs, days, now);
+  const prevEnd = new Date(now); prevEnd.setDate(prevEnd.getDate() - days);
+  const actPrev = countByDayBins(allTs, days, prevEnd);
+  const actLastSum = actLast.reduce((a, b) => a + b, 0);
+  const actPrevSum = actPrev.reduce((a, b) => a + b, 0);
+  const pcActVal = document.getElementById('pcActVal');
+  if (pcActVal) pcActVal.textContent = actLastSum.toLocaleString('pl-PL');
+  setDelta('pcActDelta', actLastSum, actPrevSum);
+  renderMiniChart('pcActChart', actLast.length ? actLast : [0], 'var(--green)');
+
+  // XP: dziennik lokalny (patrz recordDailyXPSnapshot) - realny trend od
+  // pierwszego uruchomienia tej funkcji, bez zmyslania starszej historii.
+  const xpLog = recordDailyXPSnapshot(_dashXP);
+  const xpDays = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    xpDays.push(d.toISOString().slice(0, 10));
+  }
+  let lastKnown = null;
+  const xpSeries = xpDays.map((dk) => {
+    if (xpLog[dk] != null) { lastKnown = xpLog[dk]; return xpLog[dk]; }
+    return lastKnown != null ? lastKnown : _dashXP;
+  });
+  const firstKnownIdx = xpDays.findIndex((dk) => xpLog[dk] != null);
+  const xpWindowGain = firstKnownIdx >= 0 ? Math.max(0, _dashXP - xpLog[xpDays[firstKnownIdx]]) : 0;
+  const pcXPVal = document.getElementById('pcXPVal');
+  if (pcXPVal) pcXPVal.textContent = xpWindowGain.toLocaleString('pl-PL');
+  const pcXPDeltaEl = document.getElementById('pcXPDelta');
+  if (pcXPDeltaEl) {
+    if (firstKnownIdx > 0) { pcXPDeltaEl.textContent = '↑ ostatnie ' + (days - firstKnownIdx) + ' dni'; pcXPDeltaEl.className = 'pc-delta up'; }
+    else { pcXPDeltaEl.textContent = 'zbieramy dane…'; pcXPDeltaEl.className = 'pc-delta flat'; }
+  }
+  renderMiniChart('pcXPChart', xpSeries, 'var(--accent2)');
+}
+window.renderProgressCharts = renderProgressCharts;
+
+window.toggleRangeMenu = function(){
+  const menu = document.getElementById('progressRangeMenu');
+  const sel = document.getElementById('progressRangeSel');
+  if (menu) menu.classList.toggle('open');
+  if (sel) sel.classList.toggle('open');
+};
+window.selectRange = function(days){
+  renderProgressCharts(days);
+  const menu = document.getElementById('progressRangeMenu');
+  const sel = document.getElementById('progressRangeSel');
+  if (menu) menu.classList.remove('open');
+  if (sel) sel.classList.remove('open');
+};
+document.addEventListener('click', function(e){
+  const sel = document.getElementById('progressRangeSel');
+  const menu = document.getElementById('progressRangeMenu');
+  if (menu && menu.classList.contains('open') && sel && !sel.contains(e.target) && !menu.contains(e.target)) {
+    menu.classList.remove('open');
+    sel.classList.remove('open');
+  }
+});
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'login.html'; return; }
 
@@ -566,45 +651,10 @@ onAuthStateChanged(auth, async (user) => {
   const eEl = document.getElementById('statExam');
   if (eEl) eEl.textContent = examCount;
 
-  // ═══ TWOJE POSTEPY (2 wykresy, 7 dni, prawdziwe dane) ═══
-  const now = new Date();
-  const allTs = [];
-  ['quizHistory','notesHistory','examHistory','voiceHistory','lessonPlansHistory','whiteboardHistory'].forEach((k) => {
-    (data[k] || []).forEach((it) => { if (it && it.timestamp) allTs.push(it.timestamp); });
-  });
-  const actLast7 = countByDayBins(allTs, 7, now);
-  const prevEnd = new Date(now); prevEnd.setDate(prevEnd.getDate() - 7);
-  const actPrev7 = countByDayBins(allTs, 7, prevEnd);
-  const actLast7Sum = actLast7.reduce((a, b) => a + b, 0);
-  const actPrev7Sum = actPrev7.reduce((a, b) => a + b, 0);
-  const pcActVal = document.getElementById('pcActVal');
-  if (pcActVal) pcActVal.textContent = actLast7Sum.toLocaleString('pl-PL');
-  setDelta('pcActDelta', actLast7Sum, actPrev7Sum);
-  renderMiniChart('pcActChart', actLast7.length ? actLast7 : [0], 'var(--green)');
-
-  // XP: dziennik lokalny (patrz recordDailyXPSnapshot) - realny trend od
-  // pierwszego uruchomienia tej funkcji, bez zmyslania starszej historii.
-  const xpLog = recordDailyXPSnapshot(xp);
-  const xpDays = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i);
-    xpDays.push(d.toISOString().slice(0, 10));
-  }
-  let lastKnown = null;
-  const xpSeries = xpDays.map((dk) => {
-    if (xpLog[dk] != null) { lastKnown = xpLog[dk]; return xpLog[dk]; }
-    return lastKnown != null ? lastKnown : xp;
-  });
-  const firstKnownIdx = xpDays.findIndex((dk) => xpLog[dk] != null);
-  const xpWindowGain = firstKnownIdx >= 0 ? Math.max(0, xp - xpLog[xpDays[firstKnownIdx]]) : 0;
-  const pcXPVal = document.getElementById('pcXPVal');
-  if (pcXPVal) pcXPVal.textContent = xpWindowGain.toLocaleString('pl-PL');
-  const pcXPDeltaEl = document.getElementById('pcXPDelta');
-  if (pcXPDeltaEl) {
-    if (firstKnownIdx > 0) { pcXPDeltaEl.textContent = '↑ ostatnie ' + (7 - firstKnownIdx) + ' dni'; pcXPDeltaEl.className = 'pc-delta up'; }
-    else { pcXPDeltaEl.textContent = 'zbieramy dane…'; pcXPDeltaEl.className = 'pc-delta flat'; }
-  }
-  renderMiniChart('pcXPChart', xpSeries, 'var(--accent2)');
+  // ═══ TWOJE POSTEPY (2 wykresy, prawdziwe dane, zakres wybieralny - patrz renderProgressCharts) ═══
+  _dashFirestoreData = data;
+  _dashXP = xp;
+  renderProgressCharts(_dashRangeDays);
 
   // Przycisk wylogowania
   window.logoutUser = async () => {
@@ -1309,11 +1359,22 @@ function getPlanBadgeHTML(plan) {
     </div>
   </section>
 
-  <!-- 8. TWOJE POSTEPY: XP zdobyte + Aktywnosc (ostatnie 7 dni), wykresy z prawdziwych danych -->
+  <!-- 8. TWOJE POSTEPY: XP zdobyte + Aktywnosc, wykresy z prawdziwych danych,
+       zakres (7/14/30 dni) wybieralny przez dzialajacy dropdown -->
   <section class="progress-sec">
     <div class="progress-sec-hdr">
       <div class="sec-label" style="margin-bottom:0;">📈 Twoje postępy</div>
-      <div class="progress-range-sel">7 dni <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="progress-range-wrap">
+        <button type="button" class="progress-range-sel" id="progressRangeSel" onclick="toggleRangeMenu()">
+          <span id="progressRangeLabel">7 dni</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="progress-range-menu" id="progressRangeMenu">
+          <button type="button" onclick="selectRange(7)">7 dni</button>
+          <button type="button" onclick="selectRange(14)">14 dni</button>
+          <button type="button" onclick="selectRange(30)">30 dni</button>
+        </div>
+      </div>
     </div>
     <div class="progress-cards">
       <div class="progress-card">
