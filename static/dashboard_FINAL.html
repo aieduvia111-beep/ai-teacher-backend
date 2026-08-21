@@ -253,7 +253,7 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 .tree-body{flex:1;display:flex;align-items:center;justify-content:center;gap:20px;position:relative;}
 .tree-ring-wrap{position:relative;width:120px;height:120px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .tree-ring-pct{position:absolute;font-family:var(--h);font-weight:800;font-size:1.3em;color:var(--text);}
-.tree-svg-wrap{flex:1;display:flex;align-items:center;justify-content:center;max-width:280px;}
+.tree-svg-wrap{flex:1;display:flex;align-items:center;justify-content:center;max-width:280px;position:relative;}
 .tree-svg-wrap svg{width:100%;height:auto;overflow:visible;}
 @keyframes treeLeafPulse{0%,100%{opacity:.85;transform:scale(1);}50%{opacity:1;transform:scale(1.22);}}
 .tree-leaf{transform-box:fill-box;transform-origin:center;animation:treeLeafPulse 3.4s ease-in-out infinite;}
@@ -269,13 +269,23 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 @keyframes treeGlowPulse{0%,100%{opacity:.65;transform:scale(1);}50%{opacity:1;transform:scale(1.08);}}
 .tree-img-el{
   position:relative;width:100%;height:auto;display:block;opacity:1;
-  transform-origin:50% 100%;
-  animation:treeBreathe 6s ease-in-out infinite;
-  transition:opacity .38s ease;
-  filter:hue-rotate(var(--tree-hue,0deg)) saturate(var(--tree-sat,100%)) brightness(var(--tree-bright,100%))
-    drop-shadow(0 0 22px rgba(124,106,255,.45)) drop-shadow(0 0 46px rgba(34,211,160,.22));
+  transform-origin:50% 55%;
+  /* (1) poswiata o zmiennej intensywnosci (drop-shadow pulse) + (2) oddech (scale) - dwie oddzielne animacje na tej samej warstwie */
+  animation:treeImgGlowPulse 3.6s ease-in-out infinite, treeImgBreathe 5s ease-in-out infinite;
+  transition:opacity .5s ease;
+  /* Twarde, nieomal-czarne "tlo-łuk" wypalone w pikselach PNG jest usuwane
+     w JS (_keyOutDarkBackground, keying po jasnosci pikseli) zanim obraz tu trafi -
+     dzieki temu nie trzeba tu zgadywac ksztaltu maska (rozny dla kazdego etapu). */
 }
+@keyframes treeImgGlowPulse{
+  0%,100%{filter:hue-rotate(var(--tree-hue,0deg)) saturate(var(--tree-sat,100%)) brightness(var(--tree-bright,100%))
+    drop-shadow(0 0 14px rgba(124,106,255,.38)) drop-shadow(0 0 30px rgba(34,211,160,.16));}
+  50%{filter:hue-rotate(var(--tree-hue,0deg)) saturate(var(--tree-sat,100%)) brightness(var(--tree-bright,100%))
+    drop-shadow(0 0 28px rgba(124,106,255,.65)) drop-shadow(0 0 54px rgba(34,211,160,.32));}
+}
+@keyframes treeImgBreathe{0%,100%{transform:scale(.98);}50%{transform:scale(1.02);}}
 .tree-img-el.tree-img-fading{opacity:0;animation:none;}
+@keyframes treeStageFadeIn{from{opacity:0;}to{opacity:1;}}
 .tree-orbit-wrap{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;z-index:2;}
 .tree-orbit-ring{position:absolute;width:82%;height:44%;animation:orbitSpin 11s linear infinite;}
 .tree-orbit-ring.r2{width:58%;height:66%;animation-duration:15s;animation-direction:reverse;}
@@ -285,6 +295,16 @@ canvas#pc{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;}
 .tree-orbit-dot.g{background:var(--green);box-shadow:0 0 10px 3px rgba(34,211,160,.75);}
 .tree-orbit-dot.s{width:4px;height:4px;margin-left:-2px;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.8);}
 @keyframes orbitSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+/* (6) BONUS: jednorazowy "burst" czasteczek przy powrocie na Dashboard z nowym XP */
+.tree-burst{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;z-index:3;}
+.tree-burst-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 10px 3px rgba(124,106,255,.85);animation:treeBurstFly 1.1s cubic-bezier(.2,.7,.3,1) forwards;}
+.tree-burst-dot.g{background:var(--green);box-shadow:0 0 10px 3px rgba(34,211,160,.85);}
+.tree-burst-dot.s{width:3px;height:3px;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.9);}
+@keyframes treeBurstFly{
+  0%{transform:translate(0,0) scale(1);opacity:1;}
+  100%{transform:translate(var(--bx),var(--by)) scale(.2);opacity:0;}
+}
 .tree-caption{text-align:center;margin-top:14px;}
 .tree-caption-title{font-family:var(--h);font-weight:800;font-size:1em;color:var(--text);margin-bottom:4px;}
 .tree-caption-sub{font-size:.78em;color:var(--muted2);line-height:1.5;max-width:260px;margin:0 auto;}
@@ -910,6 +930,12 @@ function getPlanBadgeHTML(plan) {
 
   <!-- DRZEWO WIEDZY -->
   <section class="tree-card">
+    <div class="bg-star" style="width:2px;height:2px;top:18px;left:28px;animation-delay:.3s;"></div>
+    <div class="bg-star" style="width:3px;height:3px;top:40px;right:34px;animation-delay:1.6s;"></div>
+    <div class="bg-star" style="width:2px;height:2px;top:80px;left:16px;animation-delay:2.1s;"></div>
+    <div class="bg-star" style="width:2px;height:2px;bottom:120px;right:22px;animation-delay:.8s;"></div>
+    <div class="bg-star" style="width:3px;height:3px;bottom:160px;left:40px;animation-delay:2.6s;"></div>
+    <div class="bg-star" style="width:2px;height:2px;top:120px;right:60px;animation-delay:1.1s;"></div>
     <div class="tree-card-hdr">
       <div class="tree-label">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" title="Nowy listek co 100 XP, nowa galaz co 500 XP"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -1661,17 +1687,91 @@ function _renderTreeOrbits(){
   </div>`;
 }
 
-function _renderTreeImageStage(wrap, stageIdx, xp){
-  wrap.innerHTML = `<div class="tree-img-stage">
-      <div class="tree-img-glow"></div>
-      <img class="tree-img-el" id="treeImgEl" src="${TREE_IMG_STAGES[stageIdx]}" alt="Drzewo Wiedzy">
-      ${_renderTreeOrbits()}
-    </div>`;
-  _treeImgStageIdx = stageIdx;
-  const imgEl = document.getElementById('treeImgEl');
-  // Gdyby akurat TEN konkretny plik etapu nie zaladowal sie (np. tylko
-  // czesc z 5 zostala wgrana) - wracamy do SVG zamiast pokazywac "zepsuty obrazek".
-  if (imgEl) imgEl.onerror = () => { _treeImagesOK = false; wrap.innerHTML = buildTreeSVG(xp); };
+// Zrodlowe PNG maja WYPALONE w pikselach nieomal-czarne (RGB ~0,0,10),
+// w pelni NIEPRZEZROCZYSTE (alpha~250) tlo w ksztalcie luku - to ono, nie
+// brak przezroczystosci, tworzy efekt "wyklejonego zdjecia" na karcie (CSS
+// mask po samej alfa nic by tu nie dala, bo maska i tak dziala na alfa, a
+// tlo JEST nieprzezroczyste). Usuwamy je w runtime przez keying po jasnosci:
+// piksele ciemniejsze niz LOW staja sie w pelni przezroczyste, pasmo
+// LOW..HIGH przechodzi plynnie (miekka krawedz zamiast twardego ciecia),
+// wszystko jasniejsze (realna tresc: liscie, pien, iskry) zostaje bez zmian.
+const _treeImgKeyedCache = {};
+function _keyOutDarkBackground(src){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const id = ctx.getImageData(0, 0, c.width, c.height);
+        const d = id.data;
+        const LOW = 9, HIGH = 36;
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = Math.max(d[i], d[i + 1], d[i + 2]);
+          if (lum <= LOW) d[i + 3] = 0;
+          else if (lum < HIGH) d[i + 3] = Math.round(d[i + 3] * (lum - LOW) / (HIGH - LOW));
+        }
+        ctx.putImageData(id, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      } catch (e) {
+        resolve(src); // np. canvas "tainted" w nietypowym deploymencie - pokaz oryginal zamiast nic
+      }
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+function _getKeyedTreeImg(stageIdx){
+  if (!_treeImgKeyedCache[stageIdx]) _treeImgKeyedCache[stageIdx] = _keyOutDarkBackground(TREE_IMG_STAGES[stageIdx]);
+  return _treeImgKeyedCache[stageIdx];
+}
+
+function _renderTreeImageStage(wrap, stageIdx, xp, fadeIn){
+  return _getKeyedTreeImg(stageIdx).then((src) => {
+    wrap.innerHTML = `<div class="tree-img-stage">
+        <div class="tree-img-glow"></div>
+        <img class="tree-img-el" id="treeImgEl" src="${src}" alt="Drzewo Wiedzy">
+        ${_renderTreeOrbits()}
+      </div>`;
+    _treeImgStageIdx = stageIdx;
+    const imgEl = document.getElementById('treeImgEl');
+    if (imgEl) {
+      // Gdyby akurat TEN konkretny plik etapu nie zaladowal sie (np. tylko
+      // czesc z 5 zostala wgrana) - wracamy do SVG zamiast pokazywac "zepsuty obrazek".
+      imgEl.onerror = () => { _treeImagesOK = false; wrap.innerHTML = buildTreeSVG(xp); };
+      // (5) Plynne fadeIn (0.6s) przy zmianie etapu - dolaczony DO istniejacych
+      // animacji poswiaty/oddechu (rozne wlasciwosci CSS, wiec dzialaja rownolegle).
+      if (fadeIn) imgEl.style.animation = 'treeStageFadeIn .6s ease forwards, treeImgGlowPulse 3.6s ease-in-out infinite, treeImgBreathe 5s ease-in-out infinite';
+    }
+    return wrap.querySelector('.tree-img-stage');
+  });
+}
+
+// (6) BONUS: jednorazowy "burst" czasteczek gdy XP jest wyzsze niz przy
+// ostatniej wizycie (wykryte po powrocie na Dashboard - np. z innej karty
+// po skonczonym quizie). Odpala sie raz per przyrost, potem zapamietuje nowy stan.
+function _maybeTriggerTreeBurst(xp, stageEl){
+  const lastSeen = parseInt(localStorage.getItem('eduvia_tree_last_xp') || '0', 10);
+  if (xp > lastSeen && stageEl) {
+    const burst = document.createElement('div');
+    burst.className = 'tree-burst';
+    const N = 12;
+    let dots = '';
+    for (let i = 0; i < N; i++) {
+      const angle = (360 / N) * i + (Math.random() * 18 - 9);
+      const dist = 55 + Math.random() * 45;
+      const bx = (Math.cos(angle * Math.PI / 180) * dist).toFixed(0);
+      const by = (Math.sin(angle * Math.PI / 180) * dist).toFixed(0);
+      const cls = i % 3 === 0 ? 's' : (i % 2 === 0 ? 'g' : '');
+      dots += `<span class="tree-burst-dot ${cls}" style="--bx:${bx}px;--by:${by}px;animation-delay:${(i * 0.025).toFixed(3)}s"></span>`;
+    }
+    burst.innerHTML = dots;
+    stageEl.appendChild(burst);
+    setTimeout(() => burst.remove(), 1300);
+  }
+  localStorage.setItem('eduvia_tree_last_xp', String(xp));
 }
 
 function updateTreeUI(xp){
@@ -1680,17 +1780,22 @@ function updateTreeUI(xp){
 
   if (_treeImagesOK === false) {
     wrap.innerHTML = buildTreeSVG(xp);
+    _maybeTriggerTreeBurst(xp, wrap);
   } else if (_treeImagesOK === true) {
     if (stage0.index !== _treeImgStageIdx) {
       const imgEl = document.getElementById('treeImgEl');
       if (imgEl) {
-        // Plynne przejscie miedzy etapami: fade-out starego obrazu,
-        // podmiana src, fade-in nowego (przez powrot animacji CSS).
+        // Plynne przejscie miedzy etapami: fade-out starego obrazu (0.5s
+        // via transition), podmiana src, fade-in nowego (0.6s keyframe).
         imgEl.classList.add('tree-img-fading');
-        setTimeout(() => { _renderTreeImageStage(wrap, stage0.index, xp); }, 260);
+        setTimeout(() => {
+          _renderTreeImageStage(wrap, stage0.index, xp, true).then((stageEl) => _maybeTriggerTreeBurst(xp, stageEl));
+        }, 500);
       } else {
-        _renderTreeImageStage(wrap, stage0.index, xp);
+        _renderTreeImageStage(wrap, stage0.index, xp, true).then((stageEl) => _maybeTriggerTreeBurst(xp, stageEl));
       }
+    } else {
+      _maybeTriggerTreeBurst(xp, wrap.querySelector('.tree-img-stage'));
     }
   } else {
     // Pierwsze sprawdzenie w tej sesji: czy pliki w ogole istnieja na
@@ -1698,8 +1803,11 @@ function updateTreeUI(xp){
     // razu, a jesli sonda sie powiedzie, przelaczamy na obrazki.
     wrap.innerHTML = buildTreeSVG(xp);
     const probe = new Image();
-    probe.onload = () => { _treeImagesOK = true; _renderTreeImageStage(wrap, stage0.index, xp); };
-    probe.onerror = () => { _treeImagesOK = false; };
+    probe.onload = () => {
+      _treeImagesOK = true;
+      _renderTreeImageStage(wrap, stage0.index, xp, true).then((stageEl) => _maybeTriggerTreeBurst(xp, stageEl));
+    };
+    probe.onerror = () => { _treeImagesOK = false; _maybeTriggerTreeBurst(xp, wrap); };
     probe.src = TREE_IMG_STAGES[0];
   }
 
