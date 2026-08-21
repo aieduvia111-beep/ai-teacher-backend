@@ -403,12 +403,20 @@ window._fbSave=async function(collection,data,xp){
 // ============================================================
 const LIMITS_FREE = {
   chat: 5,
-  
+
   quiz: 3,
   notes: 2,
   exam: 1,
   voice: 3,
-  lesson: 2
+  lesson: 2,
+  // Odznaczanie dni planu jako zrobione nie mialo ZADNEGO limitu (audyt
+  // XP) - plan moze miec do 60 dni, kazdy dawal +20 XP bez ograniczen,
+  // wiec jednorazowe zaznaczenie calego planu dawalo do 1200 XP. To
+  // dzialanie jest tylko lokalne (bez wywolania do backendu), wiec limit
+  // moze byc tylko po stronie klienta - ale zamyka oczywisty przypadek
+  // "zaznacz caly plan naraz", zachowujac szczodry, realistyczny dzienny
+  // limit dla uczciwego uzycia.
+  lessonDay: 5
 };
 
 async function checkLimit(feature) {
@@ -446,7 +454,8 @@ function showLimitPopup(feature, limit) {
 
   const names = {
     chat: 'Chatu AI', quiz: 'Quizu AI',
-    notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki'
+    notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
+    lessonDay: 'odznaczania dni planu'
   };
   const name = names[feature] || feature;
 
@@ -1168,11 +1177,16 @@ window.toggleWeek=function(header){
   }
 };
 
-window.markDone=function markDone(planId,dayIdx){
+window.markDone=async function markDone(planId,dayIdx){
   // Znajdz plan
   var plan=S.plans.find(function(p){return String(p.id)===String(planId);});
   if(!plan){console.log('Plan nie znaleziony',planId,S.plans.map(function(p){return p.id;}));return;}
   if(!plan.days[dayIdx]){console.log('Dzien nie znaleziony',dayIdx);return;}
+  // Dzienny limit na odznaczanie dni (patrz LIMITS_FREE.lessonDay) - bez
+  // tego jednorazowe zaznaczenie calego planu dawalo do 1200 XP naraz.
+  var _lim=await checkLimit('lessonDay');
+  if(!_lim.allowed)return;
+  useLimit('lessonDay');
   plan.days[dayIdx].done=true;
   S.xp+=20;
   var today=new Date().toISOString().split('T')[0];

@@ -8,7 +8,7 @@ from ..exam_pdf_generator import ExamGenerator
 from ..openai_vision import analyze_image_with_gpt4_vision
 from ..firebase_auth import require_feature_limit
 from ..models import User
-import os, json
+import os, json, zipfile, tempfile
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -82,8 +82,37 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
             raise HTTPException(status_code=422, detail="Podaj temat lub wyslij zdjecie")
 
         pelny_temat = f"{przedmiot}: {temat}"
-
         loop = asyncio.get_event_loop()
+
+        # Wariant "AB" generuje OBA warianty w JEDNYM wywolaniu endpointu (wiec
+        # i jednym zuzyciu dziennego limitu "exam" - Depends(require_feature_limit)
+        # powyzej liczy sie raz na cale zadanie, niezaleznie od tego ile PDF-ow
+        # wewnatrz wygenerujemy). Wczesniej klient robil TO DWA oddzielne zadania
+        # (wariant A, potem wariant B) - kazde osobno zuzywalo limit 1/dzien, wiec
+        # przy darmowym koncie drugie zadanie (wariant B) zawsze dostawalo odmowe
+        # i cala funkcja "Wariant A+B" byla realnie zepsuta dla darmowych userow.
+        if req.wariant == "AB":
+            filename_a = await loop.run_in_executor(
+                _executor, _generate_blocking,
+                pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje
+            )
+            filename_b = await loop.run_in_executor(
+                _executor, _generate_blocking,
+                pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
+            )
+            if not (filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b)):
+                return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
+            zip_path = tempfile.mktemp(suffix=".zip")
+            with zipfile.ZipFile(zip_path, "w") as zf:
+                zf.write(filename_a, arcname="wariant_A.pdf")
+                zf.write(filename_b, arcname="wariant_B.pdf")
+            return FileResponse(
+                path=zip_path,
+                media_type="application/zip",
+                filename="sprawdzian_AB.zip",
+                headers={"Content-Disposition": "attachment; filename=sprawdzian_AB.zip"}
+            )
+
         filename = await loop.run_in_executor(
             _executor, _generate_blocking,
             pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje
