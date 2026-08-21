@@ -656,6 +656,33 @@ async def generate_quiz_from_topic(
                 + "Dostosuj CALY quiz do powyzszych wskazowek.\n"
             )
 
+        # NAPRAWIONE: gdy "topic" to w rzeczywistosci tylko nazwa przedmiotu
+        # (tak wysyla karta "Nastepny krok" na Dashboardzie, gdy nie ma
+        # konkretnego sugerowanego tematu - np. topic="Matematyka"), instrukcja
+        # ponizej ("temat ma NAJWYZSZY PRIORYTET, poziom NIE zmienia tematu")
+        # kazala AI zignorowac realny zakres materialu danej klasy z
+        # poziom_opis i wybrac DOWOLNY temat z przedmiotu. W praktyce user z
+        # liceum_2 (zakres: trygonometria/ciagi/planimetria) dostawal rownania
+        # kwadratowe (to zakres liceum_1) - bo "Matematyka" jako "temat" nie
+        # dawalo AI zadnego realnego ograniczenia. Gdy temat = nazwa
+        # przedmiotu, prosimy AI zeby SAMO wybralo temat z zakresu klasy
+        # zamiast traktowac nazwe przedmiotu jak sztywny, konkretny temat.
+        is_generic_topic = topic.strip().lower() == subject.strip().lower()
+        if is_generic_topic:
+            temat_instrukcja = (
+                f'KRYTYCZNE: User nie podal konkretnego tematu (podal tylko przedmiot). '
+                f'Wybierz SAM jeden konkretny temat z zakresu materialu podanego w '
+                f'"DOKLADNY POZIOM" ponizej i wygeneruj caly quiz TYLKO o tym jednym, '
+                f'wybranym temacie - NIE mieszaj kilku roznych tematow w jednym quizie, '
+                f'NIE wychodz poza podany zakres materialu klasy.'
+            )
+        else:
+            temat_instrukcja = (
+                f'KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO '
+                f'pytania o ten temat.\nPoziom okresla trudnosc i jezyk pytan, NIE '
+                f'zmienia tematu.\nNIGDY nie zmieniaj tematu na inny.'
+            )
+
         prompt = f"""Stwórz quiz na temat: "{topic}"
 
 PARAMETRY:
@@ -664,9 +691,7 @@ PARAMETRY:
 - DOKŁADNY POZIOM: {poziom_opis}
 - Trudność: {trudnosc_opis}
 {instrukcje_blok}
-KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO pytania o ten temat.
-Poziom okresla trudnosc i jezyk pytan, NIE zmienia tematu.
-NIGDY nie zmieniaj tematu na inny.
+{temat_instrukcja}
 KAZDE pytanie musi byc kompletne i jednoznaczne — nigdy nie urywaj zdania ani wzoru.
 Nigdy nie pisz 'cos 14?' bez kontekstu — zawsze pelne rownanie np. 'cos(x) = 0.5'.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.
