@@ -368,6 +368,7 @@ import{getFirestore,doc,getDoc,setDoc,updateDoc,arrayUnion,increment,collection,
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app);window.db=getFirestore(app);const db=window.db;
 let currentUser=null;
+window._currentUser=()=>currentUser;
 onAuthStateChanged(auth,async(user)=>{
   if(!user){window.location.href='login.html';return;}
   currentUser=user;
@@ -1027,8 +1028,14 @@ window.generatePlan=async function generatePlan(){
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
     var lessonController = new AbortController();
     var lessonTimeoutId = setTimeout(function(){lessonController.abort();}, 120000);
-    var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:localStorage.getItem('eduvia_uid'),additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
+    // NAPRAWIONE: endpoint teraz wymaga prawdziwego logowania Firebase i
+    // faktycznie liczy dzienny limit po stronie serwera (wczesniej nie mial
+    // zadnej autentykacji ani limitu - patrz app/api/lessons.py). Bez tokenu
+    // ponizej kazde wywolanie dostawaloby teraz 401.
+    var _idToken=window._currentUser&&window._currentUser()?await window._currentUser().getIdToken():'';
+    var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:localStorage.getItem('eduvia_uid'),additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
     clearTimeout(lessonTimeoutId);
+    if(res.status===429){const d=await res.json().catch(function(){return{};});throw new Error(d.detail||'Wykorzystałeś dzisiejszy darmowy limit Planu Nauki.');}
     if(!res.ok)throw new Error('Blad serwera '+res.status);
     var data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad generowania planu');

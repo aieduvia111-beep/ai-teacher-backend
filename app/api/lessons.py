@@ -7,7 +7,8 @@ from openai import OpenAI
 from ..config import settings
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Lesson
+from ..models import Lesson, User
+from ..firebase_auth import require_feature_limit
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -21,8 +22,14 @@ class CreateLessonPlanRequest(BaseModel):
     user_id: Optional[str] = None
     additional_info: Optional[str] = ""
 
+# NAPRAWIONE (audyt XP): ten endpoint wczesniej NIE MIAL zadnej autentykacji
+# ani wymuszenia limitu - kazdy mogl wywolac go dowolna liczbe razy, limit
+# "lesson: 2/dzien" istnial tylko jako liczba w LIMITS_FREE we frontendzie
+# (localStorage, trywialnie omijalny). Teraz wymaga prawdziwego logowania
+# Firebase i faktycznie liczy/blokuje po stronie serwera, tak jak
+# quiz/notatki/sprawdziany.
 @router.post("/create-plan")
-def create_lesson_plan(request: CreateLessonPlanRequest, db: Session = Depends(get_db)):
+def create_lesson_plan(request: CreateLessonPlanRequest, db: Session = Depends(get_db), user: User = Depends(require_feature_limit("lesson"))):
     try:
         safe_days = min(max(int(request.total_days or 7), 1), 60)
         safe_min = min(max(int(request.minutes_per_day or 30), 10), 240)
