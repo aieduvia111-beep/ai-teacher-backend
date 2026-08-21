@@ -1231,11 +1231,21 @@ function answer(idx){
     else o.classList.add('dim');
   });
   if(correct){
-    let earned=XP_MAP[VALS.diff]||20;xp+=earned;streak++;if(streak>maxStreak)maxStreak=streak;
+    streak++;if(streak>maxStreak)maxStreak=streak;
+    // NAPRAWIONE: legenda quizu i podpowiedz na starcie ("Seria = bonus XP",
+    // "3 poprawne z rzedu daja 🔥 i bonus XP") obiecywaly bonus, ale kod
+    // TYLKO doklejal emoji "🔥x3" do popupu - liczba XP byla ZAWSZE tylko
+    // baza z XP_MAP, zaden bonus nigdy nie byl faktycznie doliczany. Teraz
+    // od serii 3+ kazda kolejna poprawna odpowiedz (w trakcie trwania serii)
+    // dostaje realny +5 XP bonus na wierzch bazowej wartosci trudnosci.
+    let base=XP_MAP[VALS.diff]||20;
+    let streakBonus=streak>=3?5:0;
+    let earned=base+streakBonus;
+    xp+=earned;
     document.getElementById('xpTotal').textContent=xp;
     if(document.getElementById('qiXP'))document.getElementById('qiXP').textContent=xp;
     if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent=streak>=2?'🔥 x'+streak:'1';
-    let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak:'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
+    let pop=document.getElementById('xpPop');pop.textContent='+'+earned+' XP'+(streak>=3?' 🔥x'+streak+' bonus':'');pop.style.display='block';setTimeout(function(){pop.style.display='none';},1200);
   }else{streak=0;wrongIndexes.push(currentQ);if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent='—';}
   let fb=document.getElementById('feedbackBox'),fh=document.getElementById('feedbackHeader');
   if(correct){fb.className='feedback-box correct-fb show';window._haptic('ok');fh.className='feedback-header correct-h';fh.textContent='✓ Poprawnie!';}
