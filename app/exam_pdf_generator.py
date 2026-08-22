@@ -915,7 +915,11 @@ class ExamGenerator:
             else: result.append(c); i += 1
         return ''.join(result)
 
-    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
+    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
+        """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) - wydzielone
+        z _get_exam_data, zeby dogenerowywanie brakujacych zadan (patrz
+        _fill_missing_exam_questions) moglo to wywolywac wielokrotnie bez
+        rekurencyjnego uruchamiania calego cyklu weryfikacja+uzupelnianie."""
         temat_low = temat.lower()
         przedmiot_low = (przedmiot or '').lower()
 
@@ -991,12 +995,77 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                     m = re.search(r'\{.*\}', raw, re.DOTALL)
                     data = json.loads(m.group(0)) if m else {}
                 if data.get('sekcje'):
-                    return _verify_and_fix_exam_math(data)
+                    return data
                 last_error = ValueError("AI zwrocilo pusty sprawdzian (brak sekcji z pytaniami)")
             except Exception as e:
                 last_error = e
         print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
         return {}
+
+    def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
+        data = self._get_exam_data_raw(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
+        if not data.get('sekcje'):
+            return data
+        data = _verify_and_fix_exam_math(data)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
+        return data
+
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=3):
+        """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
+        poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
+        temat/poziom, zeby finalna liczba pytan zawsze zgadzala sie z
+        `liczba_pytan` zamowiona przez usera - user zamawiajac np. 12
+        pytan ma dostac 12, nie mniej. Max `max_rounds` dodatkowych
+        wywolan AI, zeby nie zapetlic sie w nieskonczonosc, gdyby temat
+        okazal sie uporczywie podatny na bledne klucze."""
+        for round_i in range(1, max_rounds + 1):
+            current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+            missing = liczba_pytan - current_total
+            if missing <= 0:
+                break
+            print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}) - dogenerowuje...")
+            try:
+                extra = self._get_exam_data_raw(temat, klasa, trudnosc, missing, wlasne_instrukcje, przedmiot)
+            except Exception as e:
+                print(f"[MathVerify][Exam] blad dogenerowania: {e}")
+                continue
+            if not extra or not extra.get('sekcje'):
+                continue
+            extra = _verify_and_fix_exam_math(extra)
+            extra_closed = []
+            for s in extra.get('sekcje', []):
+                if s.get('typ') == 'zamkniete':
+                    extra_closed.extend(s.get('pytania', []))
+            if not extra_closed:
+                continue
+            target = next((s for s in data['sekcje'] if s.get('typ') == 'zamkniete'), None)
+            if target is None:
+                target = {
+                    "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
+                    "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
+                    "pytania": [],
+                }
+                data.setdefault('sekcje', []).insert(0, target)
+            target['pytania'].extend(extra_closed)
+
+        # Przytnij, jesli po dogenerowaniu wyszlo za duzo (rundy licza
+        # brakujace zadania niezaleznie, wiec drobny nadmiar jest mozliwy).
+        total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+        overflow = total - liczba_pytan
+        if overflow > 0:
+            for s in reversed(data.get('sekcje', [])):
+                while overflow > 0 and s.get('pytania'):
+                    s['pytania'].pop()
+                    overflow -= 1
+                if overflow <= 0:
+                    break
+
+        nr = 1
+        for s in data.get('sekcje', []):
+            for pyt in s.get('pytania', []):
+                pyt['nr'] = nr
+                nr += 1
+        return data
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,

@@ -387,8 +387,26 @@ async def generate_quiz_from_image(
     try:
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
-        
-        prompt = f"""
+
+        async def _raw_call(n: int) -> dict:
+            return await _raw_generate_quiz_from_image_call(image_data, n, difficulty)
+
+        quiz_data = await _raw_call(num_questions)
+        print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
+        quiz_data = fix_latex_in_quiz(quiz_data)
+        quiz_data = await _verify_and_fill_quiz_math(quiz_data, num_questions, _raw_call)
+        return {"success": True, "quiz": quiz_data}
+
+    except Exception as e:
+        print(f"âŒ BÅ‚Ä…d: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+async def _raw_generate_quiz_from_image_call(image_data: str, num_questions: int, difficulty: str) -> dict:
+    """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
+    generate_quiz_from_image - wydzielone, zeby dogenerowywanie
+    brakujacych pytan moglo to wywolywac wielokrotnie."""
+    prompt = f"""
 StwÃ³rz QUIZ na podstawie tego materiału.
 
 PARAMETRY:
@@ -399,13 +417,13 @@ FORMAT (TYLKO JSON):
 {{
     "title": "TytuÅ‚ quizu",
     "questions": [
-        {{
-            "id": 1,
-            "question": "Treść pytania",
-            "options": ["A", "B", "C", "D"],
-            "correct": 0,
-            "explanation": "Wyjaśnienie"
-        }}
+    {{
+        "id": 1,
+        "question": "Treść pytania",
+        "options": ["A", "B", "C", "D"],
+        "correct": 0,
+        "explanation": "Wyjaśnienie"
+    }}
     ]
 }}
 
@@ -416,42 +434,34 @@ WAŻNE:
 - Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$
 - Zwróć TYLKO JSON
 """
-        
-        print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
-        
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_data}",
-                                "detail": "low"
-                            }
+    
+    print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
+    
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_data}",
+                            "detail": "low"
                         }
-                    ]
-                }
-            ],
-            max_tokens=2000,
-            temperature=0.7,
-            response_format={"type": "json_object"}
-        )
-        
-        raw_content = sanitize_latex_json_backslashes(response.choices[0].message.content)
-        quiz_data = json.loads(raw_content)
-        print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
-
-        quiz_data = fix_latex_in_quiz(quiz_data)
-        quiz_data = _verify_and_fix_quiz_math(quiz_data)
-        return {"success": True, "quiz": quiz_data}
-        
-    except Exception as e:
-        print(f"âŒ BÅ‚Ä…d: {str(e)}")
-        return {"success": False, "error": str(e)}
+                    }
+                ]
+            }
+        ],
+        max_tokens=2000,
+        temperature=0.7,
+        response_format={"type": "json_object"}
+    )
+    
+    raw_content = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    quiz_data = json.loads(raw_content)
+    return quiz_data
 
 
 
@@ -624,14 +634,15 @@ WAŻNE:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def _generate_quiz_topic_once(
+async def _raw_generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str
 ) -> Dict:
-    """Jedno wywolanie AI dla generate_quiz_from_topic - zbudowanie prompta,
-    wywolanie modelu i parsowanie JSON. Wydzielone, zeby
-    generate_quiz_from_topic mogl to wywolac wielokrotnie (retry przy
-    zlym temacie) bez duplikacji calego prompta."""
+    """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
+    generate_quiz_from_topic - zbudowanie prompta, wywolanie modelu i
+    parsowanie JSON. Wydzielone, zeby dogenerowywanie brakujacych pytan
+    (patrz _verify_and_fill_quiz_math) moglo to wywolywac wielokrotnie
+    bez rekurencyjnego uruchamiania calego cyklu weryfikacja+uzupelnianie."""
     difficulty_map = {"easy": "łatwy", "medium": "średni", "hard": "trudny"}
     poziom_opis = describe_level(level, subject=subject)
     trudnosc_opis = difficulty_map.get(difficulty, difficulty)
@@ -776,8 +787,57 @@ ZASADY:
             raw3 = raw3.replace('\\\\\'"', '\\\\\\\\"')
             quiz_data = json.loads(raw3)
     quiz_data = fix_latex_in_quiz(quiz_data)
-    quiz_data = _verify_and_fix_quiz_math(quiz_data)
     print(f"Quiz: {quiz_data.get('title')}")
+    return quiz_data
+
+
+async def _generate_quiz_topic_once(
+    topic: str, effective_topic_is_forced: bool, subject: str, level: str,
+    num_questions: int, difficulty: str, wlasne_instrukcje: str
+) -> Dict:
+    """Surowa generacja + weryfikacja sympy + dogenerowanie brakujacych
+    pytan, jesli weryfikacja cos usunela (patrz _verify_and_fill_quiz_math).
+    Nazwa zachowana bez zmian - to funkcja, ktora wolaja wszyscy callerzy
+    w generate_quiz_from_topic."""
+    quiz_data = await _raw_generate_quiz_topic_once(
+        topic, effective_topic_is_forced, subject, level, num_questions, difficulty, wlasne_instrukcje
+    )
+    quiz_data = await _verify_and_fill_quiz_math(
+        quiz_data, num_questions,
+        lambda n: _raw_generate_quiz_topic_once(
+            topic, effective_topic_is_forced, subject, level, n, difficulty, wlasne_instrukcje
+        ),
+    )
+    return quiz_data
+
+
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate) -> dict:
+    """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
+    moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
+    zamawiajac np. 10 pytan ma dostac 10, nie mniej - wiec dogenerowujemy
+    brakujace, az osiagniemy `requested_count` ALBO wyczerpiemy
+    `max_rounds` (zeby nie zapetlic sie w nieskonczonosc, gdyby temat byl
+    uporczywie podatny na bledne klucze)."""
+    quiz_data = _verify_and_fix_quiz_math(quiz_data)
+    max_rounds = 3
+    for round_i in range(1, max_rounds + 1):
+        current = len(quiz_data.get("questions", []))
+        missing = requested_count - current
+        if missing <= 0:
+            break
+        print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}) - dogenerowuje...")
+        try:
+            extra_data = await regenerate(missing)
+        except Exception as e:
+            print(f"[MathVerify] blad dogenerowania: {e}")
+            continue
+        extra_data = _verify_and_fix_quiz_math(extra_data)
+        quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
+
+    questions = quiz_data.get("questions", [])[:requested_count]
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+    quiz_data["questions"] = questions
     return quiz_data
 
 
