@@ -669,12 +669,27 @@ async def generate_quiz_from_topic(
         # zamiast traktowac nazwe przedmiotu jak sztywny, konkretny temat.
         is_generic_topic = topic.strip().lower() == subject.strip().lower()
         if is_generic_topic:
+            # NAPRAWIONE: audyt wszystkich 24 poziomow (temat generyczny,
+            # AI samo wybiera) pokazal, ze mimo tej instrukcji model i tak
+            # czesto wybieral "rownania kwadratowe" jako domyslny, "typowy"
+            # temat matematyki liceum - NIEZALEZNIE od podanego zakresu
+            # (dostal to np. liceum_2, liceum_3, liceum_4, technikum_2,
+            # technikum_3, dla ktorych ten temat NIE jest w zakresie).
+            # Samo "wybierz temat z zakresu" bylo za slabe - model ma silny
+            # prior na ten konkretny przyklad. Wymuszamy teraz, zeby najpierw
+            # WYPISAL, ktora pozycja z zakresu wybiera (zanim zacznie
+            # generowac pytania) i explicit zakazujemy tematow spoza listy.
             temat_instrukcja = (
                 f'KRYTYCZNE: User nie podal konkretnego tematu (podal tylko przedmiot). '
-                f'Wybierz SAM jeden konkretny temat z zakresu materialu podanego w '
-                f'"DOKLADNY POZIOM" ponizej i wygeneruj caly quiz TYLKO o tym jednym, '
-                f'wybranym temacie - NIE mieszaj kilku roznych tematow w jednym quizie, '
-                f'NIE wychodz poza podany zakres materialu klasy.'
+                f'Spojrz na liste tematow w "Zakres materialu z przedmiotu" w opisie '
+                f'DOKLADNY POZIOM ponizej - to jedyne dozwolone tematy. Wybierz z NIEJ '
+                f'DOKLADNIE JEDEN temat (skopiuj go, nie parafrazuj) i podaj go w polu '
+                f'"title" quizu. ZAKAZ: NIE wybieraj tematu, ktorego nie ma dosl:ownie w '
+                f'tej liscie - w szczegolnosci NIE wybieraj automatycznie "rownan '
+                f'kwadratowych" ani innego "typowego" skojarzenia z matematyka liceum, '
+                f'jesli nie ma go w podanym zakresie tej konkretnej klasy. Caly quiz '
+                f'musi byc TYLKO o tym jednym, wybranym temacie - NIE mieszaj kilku '
+                f'roznych tematow w jednym quizie.'
             )
         else:
             temat_instrukcja = (
@@ -692,6 +707,11 @@ PARAMETRY:
 - Trudność: {trudnosc_opis}
 {instrukcje_blok}
 {temat_instrukcja}
+SPOJNOSC TRUDNOSCI: wszystkie pytania w quizie musza byc na TYM SAMYM poziomie
+trudnosci - NIE mieszaj jednego trudnego pytania z parametrem/dowodem z drugim
+pytaniem, ktore jest banalnym dzialaniem arytmetycznym (np. dodawaniem ulamkow
+prostszym niz material tej klasy). Kazde pytanie ma osobno spelniac wymagania
+z "DOKLADNY POZIOM" i "Trudnosc" powyzej.
 KAZDE pytanie musi byc kompletne i jednoznaczne — nigdy nie urywaj zdania ani wzoru.
 Nigdy nie pisz 'cos 14?' bez kontekstu — zawsze pelne rownanie np. 'cos(x) = 0.5'.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.

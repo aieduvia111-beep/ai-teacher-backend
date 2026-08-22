@@ -379,7 +379,9 @@ SUBJECT_SCOPE = {
             "funkcje wykładnicze - własności, wykresy, równania i nierówności wykładnicze; "
             "wprowadzenie do rachunku prawdopodobieństwa - klasyczna definicja "
             "prawdopodobieństwa, prawdopodobieństwo warunkowe; stereometria - graniastosłupy, "
-            "ostrosłupy, bryły obrotowe, przekroje brył. "
+            "ostrosłupy, bryły obrotowe, przekroje brył. UWAGA: NIE wybieraj ogólnej "
+            "zbieżności szeregów (np. szeregi potęgowe, kryteria zbieżności) - to material "
+            "studiów (analiza matematyczna), NIE liceum. "
             "PRZYKŁAD TRUDNEGO ZADANIA: 'W urnie jest 5 kul białych i 3 czarne. Losujemy bez "
             "zwracania dwie kule. Oblicz prawdopodobieństwo, że obie są tego samego koloru.' "
             "- wymaga prawdopodobieństwa warunkowego/łącznego, NIE 'rzucasz monetą, jakie "
@@ -400,6 +402,8 @@ SUBJECT_SCOPE = {
             "permutacje, kombinacje, wariacje, schemat Bernoulliego; pochodne i całki "
             "(zakres rozszerzony) - reguła łańcuchowa, badanie przebiegu funkcji, ekstrema, "
             "całki oznaczone i pola pod wykresem; typowe zadania maturalne z pełnym zakresu. "
+            "UWAGA: NIE wybieraj ogólnej zbieżności szeregów (np. szeregi potęgowe, kryteria "
+            "zbieżności) - to material studiów (analiza matematyczna), NIE matury. "
             "PRZYKŁAD TRUDNEGO ZADANIA: 'Zbadaj monotoniczność i wyznacz ekstrema funkcji "
             "f(x)=x³-3x²+2 oraz naszkicuj jej wykres.' - pełne badanie funkcji z pochodną, "
             "NIE 'oblicz pochodną z x²'."
@@ -442,7 +446,9 @@ SUBJECT_SCOPE = {
             "logarytmy - własności i równania logarytmiczne, wprowadzenie do trygonometrii, "
             "elementy geometrii analitycznej (równanie prostej, odległość punktów). "
             "PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż równanie log₂(x+1)+log₂(x-1)=3.' - z "
-            "dziedziną i własnościami logarytmów, NIE 'oblicz log 100'."
+            "dziedziną i własnościami logarytmów, NIE 'oblicz log 100'. UWAGA: NIE wybieraj "
+            "'równań liniowych' ani 'układów równań liniowych' jako tematu - to materiał "
+            "z młodszych klas (technikum_1/podstawówka), nie z tego zakresu."
         ),
         "polski": "renesans i oświecenie - zarys",
         "angielski": "poziom B1, słownictwo zawodowe rozszerzone",
@@ -459,7 +465,8 @@ SUBJECT_SCOPE = {
             "geometryczne - wzór ogólny i suma n wyrazów, planimetria - twierdzenie "
             "sinusów i cosinusów. PRZYKŁAD TRUDNEGO ZADANIA: 'Ciąg arytmetyczny ma a₃=7 "
             "i a₇=19. Wyznacz a₁, różnicę r oraz sumę pierwszych 20 wyrazów.' - NIE 'podaj "
-            "kolejny wyraz ciągu 2,4,6,8'."
+            "kolejny wyraz ciągu 2,4,6,8'. UWAGA: NIE wybieraj 'macierzy' (wyznaczniki, "
+            "macierz odwrotna) jako tematu - to NIE jest część tego zakresu."
         ),
         "polski": "romantyzm i pozytywizm - zarys",
         "angielski": "poziom B1/B2, korespondencja zawodowa",
@@ -472,10 +479,13 @@ SUBJECT_SCOPE = {
     },
     "technikum_4": {
         "matematyka": (
-            "logarytmy, ciągi arytmetyczne i geometryczne, funkcje wykładnicze - równania "
-            "i nierówności, stereometria - graniastosłupy i ostrosłupy. PRZYKŁAD TRUDNEGO "
-            "ZADANIA: 'Rozwiąż nierówność 3^(2x-1) > 27.' - z zamianą na wspólną podstawę i "
-            "porównaniem wykładników, NIE '3 do potęgi 2 to ile'."
+            "logarytmy, ciągi arytmetyczne i geometryczne (w tym suma szeregu geometrycznego "
+            "zbieżnego), funkcje wykładnicze - równania i nierówności, stereometria - "
+            "graniastosłupy i ostrosłupy. PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż nierówność "
+            "3^(2x-1) > 27.' - z zamianą na wspólną podstawę i porównaniem wykładników, NIE "
+            "'3 do potęgi 2 to ile'. UWAGA: NIE wybieraj 'całek' (rachunek różniczkowy i "
+            "całkowy) ani ogólnej zbieżności szeregów potęgowych - to material studiów, NIE "
+            "technikum."
         ),
         "polski": "Młoda Polska - zarys, przygotowanie do matury",
         "angielski": "poziom B2, przygotowanie maturalne",
@@ -543,11 +553,22 @@ SUBJECT_SCOPE = {
         "informatyka": "podstawy programowania, struktury danych, logika",
     },
     "studia_2": {
-        "matematyka": "analiza matematyczna II (całki, szeregi), algebra liniowa II",
+        "matematyka": (
+            "analiza matematyczna II - całki (w tym przez podstawienie i przez części), "
+            "szeregi liczbowe i ich zbieżność; algebra liniowa II - przestrzenie wektorowe, "
+            "wartości i wektory własne. To ma być WYRAŹNIE trudniejsze niż I rok - NIE "
+            "sama całka z wielomianu (to material I roku), tylko np. całkowanie przez "
+            "podstawienie/przez części lub badanie zbieżności szeregu."
+        ),
         "informatyka": "algorytmy i złożoność obliczeniowa, bazy danych",
     },
     "studia_3": {
-        "matematyka": "równania różniczkowe, statystyka matematyczna",
+        "matematyka": (
+            "równania różniczkowe (zwyczajne, w tym liniowe I rzędu i o zmiennych "
+            "rozdzielonych), statystyka matematyczna - estymacja, testy hipotez. "
+            "PRZYKŁAD: 'Rozwiąż równanie różniczkowe y'+2y=e^(-x) metodą czynnika "
+            "całkującego.' - NIE prosta całka z wielomianu (to material I roku)."
+        ),
         "informatyka": "inżynieria oprogramowania, sieci komputerowe",
     },
     "studia_4": {
@@ -555,8 +576,23 @@ SUBJECT_SCOPE = {
         "informatyka": "systemy rozproszone, uczenie maszynowe - podstawy",
     },
     "studia_5": {
-        "matematyka": "zagadnienia badawcze związane z pracą magisterską",
-        "informatyka": "zagadnienia badawcze związane z pracą magisterską",
+        "matematyka": (
+            "zagadnienia badawcze związane z pracą magisterską - poziom ekspercki: "
+            "twierdzenia z dowodem, zaawansowana analiza funkcjonalna/topologia/algebra "
+            "abstrakcyjna (w zależności od specjalizacji), zastosowanie wyników z aktualnej "
+            "literatury naukowej. To NIE jest poziom standardowych ćwiczeń z I-II roku "
+            "(np. prosta całka z wielomianu czy wyznacznik macierzy trójkątnej) - zadania "
+            "mają wymagać samodzielnego dowodu lub analizy nietrywialnego przypadku. "
+            "PRZYKŁAD: 'Udowodnij, że przestrzeń unormowana skończenie wymiarowa jest "
+            "zupełna' - dowód na poziomie pracy magisterskiej, NIE 'oblicz całkę z x²'."
+        ),
+        "informatyka": (
+            "zagadnienia badawcze związane z pracą magisterską - poziom ekspercki: "
+            "analiza złożoności nietrywialnych algorytmów, zaawansowane struktury danych, "
+            "zastosowanie wyników z aktualnej literatury naukowej (np. uczenie maszynowe, "
+            "systemy rozproszone - zależnie od specjalizacji). To NIE jest poziom "
+            "podstawowych ćwiczeń z algorytmiki I-II roku."
+        ),
     },
 }
 

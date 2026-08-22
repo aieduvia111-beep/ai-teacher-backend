@@ -52,57 +52,6 @@ def _build_instrukcje_blok(wlasne: str) -> str:
         "Dostosuj CALY quiz do powyzszych wskazowek.\n"
     )
 
-async def _generate_topic_with_instrukcje(topic, subject, level, num_questions, difficulty, wlasne_instrukcje):
-    """Generuje quiz z tematu z wlasnymi instrukcjami bezposrednio przez OpenAI."""
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    diff_map = {"easy": "latwy", "medium": "sredni", "hard": "trudny"}
-    diff_pl = diff_map.get(difficulty, "sredni")
-    instrukcje_blok = _build_instrukcje_blok(wlasne_instrukcje)
-    diff_instructions = {
-        "latwy": "Pytania PROSTE - definicje, podstawowe fakty, oczywiste odpowiedzi. Dla ucznia ktory pierwszy raz slyszy o temacie.",
-        "sredni": "Pytania SREDNIE - wymagaja zrozumienia, nie tylko pamieci. Odpowiedzi mylace ale logiczne. Dla ucznia ktory zna podstawy.",
-        "trudny": "Pytania TRUDNE - wymagaja glebokiej wiedzy, obliczen lub analizy. Odpowiedzi bardzo podobne do siebie. Typowe pytania egzaminacyjne/maturalne. Zadne pytanie nie moze byc oczywiste."
-    }
-    diff_instruction = diff_instructions.get(diff_pl, diff_instructions["sredni"])
-
-    prompt = (
-        f"Wygeneruj quiz z {num_questions} pytaniami wielokrotnego wyboru.\n"
-        f"Temat: {topic}\nPrzedmiot: {subject}\nPoziom: {level}\nTrudnosc: {diff_pl.upper()}\n"
-        f"INSTRUKCJA TRUDNOSCI: {diff_instruction}\n"
-        f"{instrukcje_blok}\n"
-        "ZASADY:\n"
-        "- Pytania musza byc konkretne i merytoryczne - NIE ogolne\n"
-        "- Odpowiedzi mylace - 3 bledne musza byc podobne do poprawnej\n"
-        "- Urozmaicaj poprawna odpowiedz: 0,1,2,3 roznorodnie\n"
-        "- Wyjasnienie musi tlumaczyc DLACZEGO ta odpowiedz jest poprawna\n"
-        "- WZORY MATEMATYCZNE: znak $...$ uzywaj TYLKO wokol czystych wyrazen "
-        "matematycznych (liczby, zmienne, symbole, dzialania) - NIGDY nie wstawiaj "
-        "polskich slow (np. 'i', 'lub', 'oraz', 'gdy') do srodka $...$, pisz je jako "
-        "zwykly tekst POZA wzorem. "
-        "POPRAWNIE: \"$x = 2$ i $x = 3$\". BLEDNIE: \"$x = 2 i x = 3$\".\n"
-        "Odpowiedz TYLKO w formacie JSON (bez markdown):\n"
-        '{{\n  "title": "Tytul quizu",\n  "questions": [\n'
-        '    {{\n      "question": "Tresc pytania?",\n'
-        '      "options": ["A", "B", "C", "D"],\n'
-        '      "correct": 2,\n'
-        '      "explanation": "Krotkie wyjasnienie"\n'
-        '    }}\n  ]\n}}'
-    )
-    resp = await client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=4000, temperature=0.7
-    )
-    raw = resp.choices[0].message.content.strip()
-    raw = raw.replace('```json', '').replace('```', '').strip()
-    s = raw.find('{'); e = raw.rfind('}')
-    raw = sanitize_latex_json_backslashes(raw[s:e+1])
-    quiz_data = json.loads(raw)
-    quiz_data = fix_latex_in_quiz(quiz_data)
-    print(f"[Quiz-Topic+Instr] '{topic}' -> {len(quiz_data.get('questions',[]))} pytan")
-    return {"success": True, "quiz": quiz_data}
-
 def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
     data = base64.b64decode(doc_base64)
     ext = (doc_name or "").lower().split(".")[-1]
@@ -152,9 +101,21 @@ async def quiz_from_topic(req: QuizTopicRequest, user: User = Depends(require_fe
     try:
         wlasne = (req.wlasne_instrukcje or "").strip()
         print(f"[Quiz-Topic] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
-        result = await _generate_topic_with_instrukcje(
-            req.topic, req.subject, req.level,
-            req.num_questions, req.difficulty, wlasne
+        # NAPRAWIONE: ten endpoint wolal wczesniej wlasna, zduplikowana
+        # funkcje (_generate_topic_with_instrukcje), ktora NIGDY nie
+        # wywolywala describe_level() - "Poziom: {level}" trafial do prompta
+        # jako surowy string (np. "liceum_2") bez ZADNEGO zakresu materialu
+        # z SUBJECT_SCOPE ani klauzuli trudnosci. To byl realny powod, dla
+        # ktorego produkcyjny Quiz mogl wygenerowac cos w stylu "oblicz
+        # 24-32" dla liceum_2 - cala praca w level_config.py (SUBJECT_SCOPE,
+        # klauzula "nie upraszczaj") nigdy tu nie docierala. generate_quiz_from_topic
+        # w openai_exam.py juz to wszystko ma (plus priorytet tematu nad
+        # poziomem, plus lepsza sanityzacja JSON) - wiec wolamy ja tutaj
+        # zamiast utrzymywac dwie rozjezdzajace sie implementacje.
+        result = await generate_quiz_from_topic(
+            topic=req.topic, subject=req.subject, level=req.level,
+            num_questions=req.num_questions, difficulty=req.difficulty,
+            wlasne_instrukcje=wlasne
         )
         if result["success"]:
             return {"success": True, "quiz": result["quiz"]}
