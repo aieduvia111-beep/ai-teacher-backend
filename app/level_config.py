@@ -597,6 +597,177 @@ SUBJECT_SCOPE = {
 }
 
 
+# ============================================================
+# WALIDACJA TEMATU (dla trybu "AI samo wybiera temat" - patrz
+# generate_quiz_from_topic w openai_exam.py)
+# ============================================================
+# Audyt 24 poziomow (temat generyczny, AI samo wybiera z SUBJECT_SCOPE)
+# pokazal, ze sam opis zakresu w prompcie NIE wystarcza - dla kilku
+# poziomow (glownie liceum_3/4, technikum_2/3/4, studia_2/3/5) model
+# uporczywie wybieral temat spoza podanego zakresu (np. "rownania
+# kwadratowe" jako "typowy" temat matematyki liceum, albo dryfowal w
+# strone materialu ze studiow - szeregi, granice, macierze - dla
+# technikum/liceum). To PROSTA walidacja tekstowa (substring match, BEZ
+# kolejnego wywolania AI) uzywana przez generate_quiz_from_topic do
+# sprawdzenia, czy wygenerowany temat faktycznie pasuje do zakresu, z
+# mozliwoscia ponowienia generacji lub wymuszenia konkretnego tematu.
+#
+# "allowed": jesli lista niepusta, tytul+tresc pytan MUSI zawierac
+# przynajmniej jeden z tych fragmentow (case-insensitive substring).
+# "forbidden": jesli tytul+tresc zawiera ktorykolwiek z tych fragmentow,
+# walidacja NIE przechodzi (typowe tematy z INNYCH klas/poziomow, ktore
+# model wybieral zamiast podanego zakresu).
+# Brak wpisu dla danej pary (poziom, przedmiot) = walidacja pomijana
+# (nie blokujemy tematow, dla ktorych nie mamy jeszcze danych).
+GENERIC_TOPIC_KEYWORDS = {
+    "liceum_1": {"matematyka": {
+        "allowed": [("funkcj", "liniow"), "funkcje liniow", ("funkcj", "kwadratow"), ("funkcj", "kwadratow"),
+                    "logarytm", "potęg", "pierwiastk", "zbiór liczbow", "zbiory liczbow",
+                    "proporcjonalność odwrotn", "wzory viet", "wzór viet"],
+        "forbidden": ["trygonometri", "ciąg arytmetyczny", "ciąg geometryczny", "planimetri",
+                      "szereg", "całka", "pochodn", "macierz", "prawdopodobieńst", "stereometri"],
+    }},
+    "liceum_2": {"matematyka": {
+        "allowed": ["trygonometri", "ciąg arytmetyczny", "ciąg geometryczny", "planimetri",
+                    "twierdzenie sinus", "twierdzenie cosinus"],
+        "forbidden": [("równani", "kwadratow"), ("funkcj", "kwadratow"), "logarytm", "szereg", "całka",
+                      "pochodn", "macierz", "prawdopodobieńst", "stereometri", ("funkcj", "wykładnicz")],
+    }},
+    "liceum_3": {"matematyka": {
+        "allowed": [("funkcj", "wykładnicz"), ("funkcj", "wykładnicz"), ("równani", "wykładnicz"),
+                    ("nierówno", "wykładnicz"), "prawdopodobieńst", "stereometri", "graniastosłup",
+                    "ostrosłup", "bryła obrotow", "przekrój bryły"],
+        "forbidden": ["szereg", "zbieżność szeregu", "szereg potęgow", "granica ciągu",
+                      "granica funkcji", ("równani", "kwadratow"), "trygonometri", "macierz", "całka"],
+    }},
+    "liceum_4": {"matematyka": {
+        "allowed": ["kombinatoryka", "permutacj", "kombinacj", "wariacj", "schemat bernoulli",
+                    "pochodn", "całka oznaczon", "całka nieoznaczon", "ekstrem",
+                    "badanie przebiegu funkcji", "maturaln"],
+        "forbidden": ["szereg", "zbieżność szeregu", "szereg potęgow", "granica ciągu", "macierz",
+                      ("równani", "kwadratow")],
+    }},
+    "technikum_1": {"matematyka": {
+        "allowed": [("funkcj", "liniow"), ("funkcj", "kwadratow"), "zbiór liczbow", "zbiory liczbow",
+                    "potęg", "pierwiastk"],
+        "forbidden": ["trygonometri", "logarytm", "geometria analityczn", "macierz", "całka",
+                      "szereg", ("równani", "różniczkow")],
+    }},
+    "technikum_2": {"matematyka": {
+        "allowed": ["logarytm", "trygonometri", "geometria analityczn", ("równani", "prostej"),
+                    "odległość punkt"],
+        "forbidden": [("równani", "liniow"), "układ równań", ("funkcj", "kwadratow"), "macierz", "całka",
+                      "szereg", "granica"],
+    }},
+    "technikum_3": {"matematyka": {
+        "allowed": ["trygonometri", "ciąg arytmetyczny", "ciąg geometryczny", "planimetri",
+                    "twierdzenie sinus", "twierdzenie cosinus"],
+        "forbidden": ["macierz", "wyznacznik", "całka", "szereg", "granica ciągu",
+                      "granica funkcji", ("równani", "kwadratow")],
+    }},
+    "technikum_4": {"matematyka": {
+        "allowed": ["logarytm", ("funkcj", "wykładnicz"), ("równani", "wykładnicz"), ("nierówno", "wykładnicz"),
+                    "stereometri", "graniastosłup", "ostrosłup", "ciąg arytmetyczny",
+                    "ciąg geometryczny"],
+        "forbidden": ["macierz", "wyznacznik", "całka", ("równani", "różniczkow"), "granica ciągu",
+                      "granica funkcji"],
+    }},
+    "technikum_5": {"matematyka": {
+        "allowed": ["rachunek prawdopodobieńst", "schemat bernoulli", "maturaln", "powtórka"],
+        "forbidden": ["macierz", "całka", ("równani", "różniczkow")],
+    }},
+    "matura_podstawowa": {"matematyka": {
+        "allowed": [("funkcj", "liniow"), ("funkcj", "kwadratow"), "ciąg", "trygonometri", "planimetri",
+                    "stereometri", "statystyk", "prawdopodobieńst"],
+        "forbidden": ["macierz", "całka", "pochodn", ("równani", "różniczkow"), "szereg"],
+    }},
+    "matura_rozszerzona": {"matematyka": {
+        "allowed": ["pochodn", "całka", "kombinatoryka", "prawdopodobieńst", "dowód geometryczn",
+                    "wartość bezwzględn", "ciąg rekurencyjn"],
+        "forbidden": ["macierz", ("równani", "różniczkow")],
+    }},
+    "studia_2": {"matematyka": {
+        "allowed": ["całk", "szereg", "zbieżność szeregu", "wartości własne", "wektor własn",
+                    "przestrzeń wektorow"],
+        "forbidden": [("równani", "różniczkow"), "statystyka matematyczn"],
+    }},
+    "studia_3": {"matematyka": {
+        "allowed": [("równani", "różniczkow"), "statystyka matematyczn", "estymacj", "test hipotez",
+                    "czynnik całkując"],
+        "forbidden": ["szereg", "zbieżność szeregu"],
+    }},
+    "studia_5": {"matematyka": {
+        "allowed": ["dowód", "udowodnij", "wykaż", "twierdzeni"],
+        "forbidden": [],
+    }},
+}
+
+# Fallback, gdy nawet po kilku probach AI nie wybiera tematu z zakresu -
+# wtedy zamiast dalej pozwalac AI "wybierac samemu", wymuszamy JEDEN
+# konkretny, sprawdzony temat (to samo, co user wpisujacy konkretny
+# temat recznie - ta sciezka dziala niezawodnie, bo "temat ma najwyzszy
+# priorytet" jest respektowane przez model duzo silniej niz "wybierz
+# cokolwiek z listy").
+FORCED_FALLBACK_TOPICS = {
+    "liceum_1": {"matematyka": "Funkcja kwadratowa - równania i nierówności z parametrem"},
+    "liceum_2": {"matematyka": "Trygonometria - tożsamości i równania trygonometryczne"},
+    "liceum_3": {"matematyka": "Prawdopodobieństwo klasyczne i warunkowe"},
+    "liceum_4": {"matematyka": "Kombinatoryka i rachunek prawdopodobieństwa - zadania maturalne"},
+    "technikum_1": {"matematyka": "Funkcja kwadratowa - wprowadzenie"},
+    "technikum_2": {"matematyka": "Logarytmy - równania logarytmiczne"},
+    "technikum_3": {"matematyka": "Ciągi arytmetyczne i geometryczne"},
+    "technikum_4": {"matematyka": "Funkcje wykładnicze - równania i nierówności"},
+    "technikum_5": {"matematyka": "Rachunek prawdopodobieństwa - schemat Bernoulliego"},
+    "matura_podstawowa": {"matematyka": "Funkcja kwadratowa i trygonometria - zadania typu CKE"},
+    "matura_rozszerzona": {"matematyka": "Pochodne i badanie przebiegu funkcji"},
+    "studia_2": {"matematyka": "Szeregi liczbowe - badanie zbieżności"},
+    "studia_3": {"matematyka": "Równania różniczkowe zwyczajne pierwszego rzędu"},
+    "studia_5": {"matematyka": "Dowód twierdzenia z analizy funkcjonalnej - przestrzenie unormowane"},
+}
+
+
+def _keyword_hit(combined: str, item) -> bool:
+    """Jeden wpis w allowed/forbidden: string = pojedynczy substring,
+    tuple/list = WSZYSTKIE czesci musza wystapic (gdziekolwiek w tekscie,
+    niekoniecznie obok siebie) - uzywane zamiast jednej zlaczonej frazy,
+    bo polska odmiana (funkcja/funkcje/funkcji, rownanie/rownania) psuje
+    dopasowanie zlaczonej frazy z literalna spacja w srodku."""
+    if isinstance(item, (list, tuple)):
+        return all(part in combined for part in item)
+    return item in combined
+
+
+def validate_generic_topic(quiz_data: dict, level: str, subject: str) -> bool:
+    """Sprawdza (prostym substring-matchem, bez kolejnego wywolania AI),
+    czy temat wygenerowany przez AI w trybie "samo wybiera" faktycznie
+    miesci sie w zakresie tej klasy. True = OK albo brak danych do
+    walidacji (nie blokujemy). False = wykryto temat spoza zakresu."""
+    key = ALIASES.get(level, level)
+    spec = GENERIC_TOPIC_KEYWORDS.get(key, {}).get(subject.strip().lower())
+    if not spec:
+        return True
+    title = (quiz_data.get("title") or "").lower()
+    questions_text = " ".join(
+        q.get("question", "") for q in quiz_data.get("questions", []) if isinstance(q, dict)
+    ).lower()
+    combined = f"{title} {questions_text}"
+    forbidden = spec.get("forbidden", [])
+    if any(_keyword_hit(combined, f) for f in forbidden):
+        return False
+    allowed = spec.get("allowed", [])
+    if allowed and not any(_keyword_hit(combined, a) for a in allowed):
+        return False
+    return True
+
+
+def get_forced_fallback_topic(level: str, subject: str) -> str:
+    """Konkretny temat do wymuszenia, gdy AI nie potrafi trafic w zakres
+    samo (patrz FORCED_FALLBACK_TOPICS). None = brak zdefiniowanego
+    fallbacku dla tej pary (poziom, przedmiot)."""
+    key = ALIASES.get(level, level)
+    return FORCED_FALLBACK_TOPICS.get(key, {}).get(subject.strip().lower())
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

@@ -1,6 +1,6 @@
 from openai import AsyncOpenAI
 from .config import settings
-from .level_config import describe_level
+from .level_config import describe_level, validate_generic_topic, get_forced_fallback_topic
 from typing import List, Dict, Optional
 import json
 import re as _re_sanitize
@@ -622,83 +622,48 @@ WAŻNE:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def generate_quiz_from_topic(
-    topic: str,
-    subject: str = "matematyka",
-    level: str = "liceum",
-    num_questions: int = 5,
-    difficulty: str = "medium",
-    wlasne_instrukcje: str = ""
+async def _generate_quiz_topic_once(
+    topic: str, effective_topic_is_forced: bool, subject: str, level: str,
+    num_questions: int, difficulty: str, wlasne_instrukcje: str
 ) -> Dict:
-    """ðŸŽ“ Generuje quiz z podanego tematu"""
-    try:
-        # Opis poziomu z centralnego level_config.py (z zakresem materialu
-        # dla konkretnego przedmiotu, jesli mamy go w SUBJECT_SCOPE).
-        #
-        # NAPRAWIONE: wczesniej byl tu wlasny, niezalezny "combo_map"
-        # kluczowany PO KOSZYKACH OGOLNYCH ("liceum", "podstawowka"...),
-        # ktory nigdy nie pasowal do konkretnych klas wysylanych przez
-        # frontend (np. "liceum_3") - kazde wywolanie cicho spadalo na
-        # bezuzyteczny fallback "poziom liceum_3, trudnosc medium", bez
-        # zadnego realnego zakresu materialu. describe_level() rozumie
-        # zarowno koszyki ogolne jak i konkretne klasy.
-        difficulty_map = {"easy": "łatwy", "medium": "średni", "hard": "trudny"}
-        poziom_opis = describe_level(level, subject=subject)
-        trudnosc_opis = difficulty_map.get(difficulty, difficulty)
+    """Jedno wywolanie AI dla generate_quiz_from_topic - zbudowanie prompta,
+    wywolanie modelu i parsowanie JSON. Wydzielone, zeby
+    generate_quiz_from_topic mogl to wywolac wielokrotnie (retry przy
+    zlym temacie) bez duplikacji calego prompta."""
+    difficulty_map = {"easy": "łatwy", "medium": "średni", "hard": "trudny"}
+    poziom_opis = describe_level(level, subject=subject)
+    trudnosc_opis = difficulty_map.get(difficulty, difficulty)
 
-        # Wlasne instrukcje
-        instrukcje_blok = ""
-        if wlasne_instrukcje and wlasne_instrukcje.strip():
-            instrukcje_blok = (
-                "\n=== WLASNE INSTRUKCJE (NAJWYZSZY PRIORYTET) ===\n"
-                "Uczen podal nastepujace instrukcje. MUSISZ je bezwzglednie uwzglednic:\n"
-                + wlasne_instrukcje.strip() + "\n"
-                + "Dostosuj CALY quiz do powyzszych wskazowek.\n"
-            )
+    instrukcje_blok = ""
+    if wlasne_instrukcje and wlasne_instrukcje.strip():
+        instrukcje_blok = (
+            "\n=== WLASNE INSTRUKCJE (NAJWYZSZY PRIORYTET) ===\n"
+            "Uczen podal nastepujace instrukcje. MUSISZ je bezwzglednie uwzglednic:\n"
+            + wlasne_instrukcje.strip() + "\n"
+            + "Dostosuj CALY quiz do powyzszych wskazowek.\n"
+        )
 
-        # NAPRAWIONE: gdy "topic" to w rzeczywistosci tylko nazwa przedmiotu
-        # (tak wysyla karta "Nastepny krok" na Dashboardzie, gdy nie ma
-        # konkretnego sugerowanego tematu - np. topic="Matematyka"), instrukcja
-        # ponizej ("temat ma NAJWYZSZY PRIORYTET, poziom NIE zmienia tematu")
-        # kazala AI zignorowac realny zakres materialu danej klasy z
-        # poziom_opis i wybrac DOWOLNY temat z przedmiotu. W praktyce user z
-        # liceum_2 (zakres: trygonometria/ciagi/planimetria) dostawal rownania
-        # kwadratowe (to zakres liceum_1) - bo "Matematyka" jako "temat" nie
-        # dawalo AI zadnego realnego ograniczenia. Gdy temat = nazwa
-        # przedmiotu, prosimy AI zeby SAMO wybralo temat z zakresu klasy
-        # zamiast traktowac nazwe przedmiotu jak sztywny, konkretny temat.
-        is_generic_topic = topic.strip().lower() == subject.strip().lower()
-        if is_generic_topic:
-            # NAPRAWIONE: audyt wszystkich 24 poziomow (temat generyczny,
-            # AI samo wybiera) pokazal, ze mimo tej instrukcji model i tak
-            # czesto wybieral "rownania kwadratowe" jako domyslny, "typowy"
-            # temat matematyki liceum - NIEZALEZNIE od podanego zakresu
-            # (dostal to np. liceum_2, liceum_3, liceum_4, technikum_2,
-            # technikum_3, dla ktorych ten temat NIE jest w zakresie).
-            # Samo "wybierz temat z zakresu" bylo za slabe - model ma silny
-            # prior na ten konkretny przyklad. Wymuszamy teraz, zeby najpierw
-            # WYPISAL, ktora pozycja z zakresu wybiera (zanim zacznie
-            # generowac pytania) i explicit zakazujemy tematow spoza listy.
-            temat_instrukcja = (
-                f'KRYTYCZNE: User nie podal konkretnego tematu (podal tylko przedmiot). '
-                f'Spojrz na liste tematow w "Zakres materialu z przedmiotu" w opisie '
-                f'DOKLADNY POZIOM ponizej - to jedyne dozwolone tematy. Wybierz z NIEJ '
-                f'DOKLADNIE JEDEN temat (skopiuj go, nie parafrazuj) i podaj go w polu '
-                f'"title" quizu. ZAKAZ: NIE wybieraj tematu, ktorego nie ma dosl:ownie w '
-                f'tej liscie - w szczegolnosci NIE wybieraj automatycznie "rownan '
-                f'kwadratowych" ani innego "typowego" skojarzenia z matematyka liceum, '
-                f'jesli nie ma go w podanym zakresie tej konkretnej klasy. Caly quiz '
-                f'musi byc TYLKO o tym jednym, wybranym temacie - NIE mieszaj kilku '
-                f'roznych tematow w jednym quizie.'
-            )
-        else:
-            temat_instrukcja = (
-                f'KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO '
-                f'pytania o ten temat.\nPoziom okresla trudnosc i jezyk pytan, NIE '
-                f'zmienia tematu.\nNIGDY nie zmieniaj tematu na inny.'
-            )
+    if effective_topic_is_forced:
+        temat_instrukcja = (
+            f'KRYTYCZNE: Temat "{topic}" ma NAJWYZSZY PRIORYTET — generuj TYLKO '
+            f'pytania o ten temat.\nPoziom okresla trudnosc i jezyk pytan, NIE '
+            f'zmienia tematu.\nNIGDY nie zmieniaj tematu na inny.'
+        )
+    else:
+        temat_instrukcja = (
+            f'KRYTYCZNE: User nie podal konkretnego tematu (podal tylko przedmiot). '
+            f'Spojrz na liste tematow w "Zakres materialu z przedmiotu" w opisie '
+            f'DOKLADNY POZIOM ponizej - to jedyne dozwolone tematy. Wybierz z NIEJ '
+            f'DOKLADNIE JEDEN temat (skopiuj go, nie parafrazuj) i podaj go w polu '
+            f'"title" quizu. ZAKAZ: NIE wybieraj tematu, ktorego nie ma doslownie w '
+            f'tej liscie - w szczegolnosci NIE wybieraj automatycznie "rownan '
+            f'kwadratowych" ani innego "typowego" skojarzenia z matematyka liceum, '
+            f'jesli nie ma go w podanym zakresie tej konkretnej klasy. Caly quiz '
+            f'musi byc TYLKO o tym jednym, wybranym temacie - NIE mieszaj kilku '
+            f'roznych tematow w jednym quizie.'
+        )
 
-        prompt = f"""Stwórz quiz na temat: "{topic}"
+    prompt = f"""Stwórz quiz na temat: "{topic}"
 
 PARAMETRY:
 - Przedmiot: {subject}
@@ -744,63 +709,134 @@ ZASADY:
 - correct = indeks (0-3)
 - Po polsku
 - TYLKO JSON"""
-        
-        print(f"ðŸŽ“ Quiz: {topic} ({num_questions} pytaÅ„)...")
 
-        system = (
-            "Jestes generatorem quizow edukacyjnych. Zwracasz TYLKO poprawny JSON.\n"
-            "ZAKAZ: nie uzywaj cudzyslowow wewnatrz tekstu pytania - psuja JSON.\n"
-            "ZAKAZ: nie pisz backslash-u (\\u) w wzorach - psuje JSON.\n"
-            "Zamiast \\underbrace, \\usepackage itp - opisz slownie.\n\n"
-            "POZIOM - dostosuj pytania scisle:\n"
-            "studia = calki, macierze, szeregi, rownania rozniczkowe\n"
-            "liceum = material maturalny\n"
-            "podstawowka = ulamki, procenty\n\n"
-            "WZORY: kazdy wzor w $...$ lub $$...$$\n"
-            "ZAWSZE \\\\frac{ nie rac{ nie \\\\rac{\n"
-            "ZAWSZE \\\\text{ nie ext{\n"
-            "Dobry przyklad opcji: [$x = \\\\frac{1}{2}$, $x = 2$, $x = -1$, $x = 0$]"
-        )
+    print(f"ðŸŽ“ Quiz: {topic} ({num_questions} pytaÅ„)...")
 
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2500,
-            temperature=0.7,
-            response_format={"type": "json_object"}
-        )
-        
-        raw = response.choices[0].message.content
-        # NAPRAWIONE: brakowalo tu sanitize_latex_json_backslashes() (juz
-        # uzywanego w generate_exam_from_image/generate_quiz_from_image).
-        # Bez tego np. "\neq" (pojedynczy backslash) jest dla json.loads()
-        # NIEODROZNIALNE od poprawnego escape'a JSON \n (nowa linia) - parser
-        # PO CICHU (bez wyjatku, wiec "Proba 1" zawsze "sie udawala") zjadal
-        # "\n" jako prawdziwa nowa linie, zostawiajac samo "eq" - w quizie
-        # wychodzilo to jako zlamane "$a \n eq 1$" zamiast "$a \neq 1$".
-        raw = sanitize_latex_json_backslashes(raw)
-        # Proba 1: bezposrednio
+    system = (
+        "Jestes generatorem quizow edukacyjnych. Zwracasz TYLKO poprawny JSON.\n"
+        "ZAKAZ: nie uzywaj cudzyslowow wewnatrz tekstu pytania - psuja JSON.\n"
+        "ZAKAZ: nie pisz backslash-u (\\u) w wzorach - psuje JSON.\n"
+        "Zamiast \\underbrace, \\usepackage itp - opisz slownie.\n\n"
+        "POZIOM - dostosuj pytania scisle:\n"
+        "studia = calki, macierze, szeregi, rownania rozniczkowe\n"
+        "liceum = material maturalny\n"
+        "podstawowka = ulamki, procenty\n\n"
+        "WZORY: kazdy wzor w $...$ lub $$...$$\n"
+        "ZAWSZE \\\\frac{ nie rac{ nie \\\\rac{\n"
+        "ZAWSZE \\\\text{ nie ext{\n"
+        "Dobry przyklad opcji: [$x = \\\\frac{1}{2}$, $x = 2$, $x = -1$, $x = 0$]"
+    )
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=2500,
+        temperature=0.7,
+        response_format={"type": "json_object"}
+    )
+
+    raw = response.choices[0].message.content
+    # NAPRAWIONE: brakowalo tu sanitize_latex_json_backslashes() (juz
+    # uzywanego w generate_exam_from_image/generate_quiz_from_image).
+    # Bez tego np. "\neq" (pojedynczy backslash) jest dla json.loads()
+    # NIEODROZNIALNE od poprawnego escape'a JSON \n (nowa linia) - parser
+    # PO CICHU (bez wyjatku, wiec "Proba 1" zawsze "sie udawala") zjadal
+    # "\n" jako prawdziwa nowa linie, zostawiajac samo "eq" - w quizie
+    # wychodzilo to jako zlamane "$a \n eq 1$" zamiast "$a \neq 1$".
+    raw = sanitize_latex_json_backslashes(raw)
+    # Proba 1: bezposrednio
+    try:
+        quiz_data = json.loads(raw)
+    except Exception:
+        # Proba 2: napraw \u ktore nie sa unicode escape
+        import re as _re2
+        raw2 = _re2.sub(r'\\u(?![0-9a-fA-F]{4})', r'\\\\u', raw)
         try:
-            quiz_data = json.loads(raw)
+            quiz_data = json.loads(raw2)
         except Exception:
-            # Proba 2: napraw \u ktore nie sa unicode escape
-            import re as _re2
-            raw2 = _re2.sub(r'\\u(?![0-9a-fA-F]{4})', r'\\\\u', raw)
-            try:
-                quiz_data = json.loads(raw2)
-            except Exception:
-                # Proba 3: agresywne czyszczenie - zamien wszystkie \ na \\
-                raw3 = raw.replace('\\', '\\\\')
-                raw3 = raw3.replace('\\\\\'"', '\\\\\\\\"')
-                quiz_data = json.loads(raw3)
-        quiz_data = fix_latex_in_quiz(quiz_data)
-        print(f"Quiz: {quiz_data.get('title')}")
-        
-        return {"success": True, "quiz": quiz_data}
-        
-    except Exception as e:
-        print(f"âŒ BÅ‚Ä…d: {str(e)}")
-        return {"success": False, "error": str(e)}
+            # Proba 3: agresywne czyszczenie - zamien wszystkie \ na \\
+            raw3 = raw.replace('\\', '\\\\')
+            raw3 = raw3.replace('\\\\\'"', '\\\\\\\\"')
+            quiz_data = json.loads(raw3)
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    print(f"Quiz: {quiz_data.get('title')}")
+    return quiz_data
+
+
+async def generate_quiz_from_topic(
+    topic: str,
+    subject: str = "matematyka",
+    level: str = "liceum",
+    num_questions: int = 5,
+    difficulty: str = "medium",
+    wlasne_instrukcje: str = ""
+) -> Dict:
+    """ðŸŽ“ Generuje quiz z podanego tematu"""
+    # NAPRAWIONE: gdy "topic" to w rzeczywistosci tylko nazwa przedmiotu
+    # (tak wysyla karta "Nastepny krok" na Dashboardzie, gdy nie ma
+    # konkretnego sugerowanego tematu - np. topic="Matematyka"), pozwalamy
+    # AI samo wybrac temat z zakresu klasy. Audyt 24 poziomow pokazal, ze
+    # samo instruowanie AI "wybierz z listy" nie jest niezawodne - model
+    # czasem i tak wybiera "typowy" temat spoza zakresu (np. rownania
+    # kwadratowe dla liceum_2, ktorej realny zakres to trygonometria).
+    # Zamiast ufac AI za kazdym razem, WALIDUJEMY wynik programowo
+    # (validate_generic_topic - prosty substring-match, BEZ kolejnego
+    # wywolania AI) i przy zlym temacie probujemy ponownie (max 3 proby).
+    # Jesli nadal sie nie uda - wymuszamy KONKRETNY, sprawdzony temat z
+    # FORCED_FALLBACK_TOPICS zamiast dalej pozwalac AI "wybierac samemu"
+    # (ta sciezka - temat jako sztywny priorytet - jest w praktyce dużo
+    # bardziej niezawodna niz "wybierz cokolwiek z listy").
+    is_generic_topic = topic.strip().lower() == subject.strip().lower()
+
+    if not is_generic_topic:
+        try:
+            quiz_data = await _generate_quiz_topic_once(
+                topic, True, subject, level, num_questions, difficulty, wlasne_instrukcje
+            )
+            return {"success": True, "quiz": quiz_data}
+        except Exception as e:
+            print(f"âŒ BÅ‚Ä…d: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    last_quiz_data = None
+    last_error = None
+    MAX_ATTEMPTS = 3
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            quiz_data = await _generate_quiz_topic_once(
+                topic, False, subject, level, num_questions, difficulty, wlasne_instrukcje
+            )
+        except Exception as e:
+            last_error = e
+            print(f"âŒ Quiz-Scope proba {attempt}/{MAX_ATTEMPTS} - blad generacji: {e}")
+            continue
+        last_quiz_data = quiz_data
+        if validate_generic_topic(quiz_data, level, subject):
+            return {"success": True, "quiz": quiz_data}
+        print(
+            f"[Quiz-Scope] proba {attempt}/{MAX_ATTEMPTS}: temat "
+            f"'{quiz_data.get('title')}' NIE pasuje do zakresu {level}/{subject} - ponawiam"
+        )
+
+    fallback_topic = get_forced_fallback_topic(level, subject)
+    if fallback_topic:
+        try:
+            quiz_data = await _generate_quiz_topic_once(
+                fallback_topic, True, subject, level, num_questions, difficulty, wlasne_instrukcje
+            )
+            print(f"[Quiz-Scope] wymuszony fallback temat: '{fallback_topic}'")
+            return {"success": True, "quiz": quiz_data}
+        except Exception as e:
+            last_error = e
+            print(f"âŒ Quiz-Scope fallback - blad generacji: {e}")
+
+    # Nic lepszego sie nie udalo - zwroc ostatni wygenerowany quiz (nawet
+    # jesli nie przeszedl walidacji) zamiast twardego bledu. Lepiej dac
+    # userowi quiz o niepewnym temacie niz pusty ekran bledu.
+    if last_quiz_data is not None:
+        return {"success": True, "quiz": last_quiz_data}
+    print(f"âŒ BÅ‚Ä…d: {str(last_error)}")
+    return {"success": False, "error": str(last_error) if last_error else "unknown error"}
