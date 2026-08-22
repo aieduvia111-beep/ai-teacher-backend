@@ -636,7 +636,7 @@ GENERIC_TOPIC_KEYWORDS = {
     "liceum_3": {"matematyka": {
         "allowed": [("funkcj", "wykładnicz"), ("funkcj", "wykładnicz"), ("równani", "wykładnicz"),
                     ("nierówno", "wykładnicz"), "prawdopodobieńst", "stereometri", "graniastosłup",
-                    "ostrosłup", "bryła obrotow", "przekrój bryły"],
+                    "ostrosłup", ("brył", "obrotow"), "przekrój bryły", "walec", "stożek", "kula"],
         "forbidden": ["szereg", "zbieżność szeregu", "szereg potęgow", "granica ciągu",
                       "granica funkcji", ("równani", "kwadratow"), "trygonometri", "macierz", "całka"],
     }},
@@ -711,8 +711,24 @@ GENERIC_TOPIC_KEYWORDS = {
 FORCED_FALLBACK_TOPICS = {
     "liceum_1": {"matematyka": "Funkcja kwadratowa - równania i nierówności z parametrem"},
     "liceum_2": {"matematyka": "Trygonometria - tożsamości i równania trygonometryczne"},
-    "liceum_3": {"matematyka": "Prawdopodobieństwo klasyczne i warunkowe"},
-    "liceum_4": {"matematyka": "Kombinatoryka i rachunek prawdopodobieństwa - zadania maturalne"},
+    # liceum_3/4 i studia_5: LISTA kilku tematow, nie jeden - Sugerowany
+    # Quiz na Dashboardzie ma sie zmieniac codziennie, wiec jeden staly
+    # fallback zniszczylby ta rotacje dla tych poziomow (AI prawie nigdy
+    # nie trafia tu samo w zakres, wiec fallback jest w praktyce GLOWNA
+    # sciezka, nie tylko siatka bezpieczenstwa - patrz audyt w komentarzu
+    # przy generate_quiz_from_topic).
+    "liceum_3": {"matematyka": [
+        "Prawdopodobieństwo klasyczne i warunkowe",
+        "Funkcja wykładnicza - równania i nierówności z parametrem",
+        "Stereometria - graniastosłupy i ostrosłupy, obliczanie objętości",
+        "Bryły obrotowe - walec, stożek i kula w zadaniach maturalnych",
+    ]},
+    "liceum_4": {"matematyka": [
+        "Kombinatoryka i rachunek prawdopodobieństwa - zadania maturalne",
+        "Pochodne - badanie przebiegu funkcji i ekstrema",
+        "Całka oznaczona - obliczanie pól figur",
+        "Permutacje, kombinacje i wariacje - kombinatoryka maturalna",
+    ]},
     "technikum_1": {"matematyka": "Funkcja kwadratowa - wprowadzenie"},
     "technikum_2": {"matematyka": "Logarytmy - równania logarytmiczne"},
     "technikum_3": {"matematyka": "Ciągi arytmetyczne i geometryczne"},
@@ -722,7 +738,12 @@ FORCED_FALLBACK_TOPICS = {
     "matura_rozszerzona": {"matematyka": "Pochodne i badanie przebiegu funkcji"},
     "studia_2": {"matematyka": "Szeregi liczbowe - badanie zbieżności"},
     "studia_3": {"matematyka": "Równania różniczkowe zwyczajne pierwszego rzędu"},
-    "studia_5": {"matematyka": "Dowód twierdzenia z analizy funkcjonalnej - przestrzenie unormowane"},
+    "studia_5": {"matematyka": [
+        "Dowód twierdzenia z analizy funkcjonalnej - przestrzenie unormowane",
+        "Dowód twierdzenia o zwartości w przestrzeniach metrycznych",
+        "Wykaż zbieżność ciągu funkcyjnego - twierdzenie o zbieżności jednostajnej",
+        "Dowód twierdzenia z topologii ogólnej - zwartość i spójność",
+    ]},
 }
 
 
@@ -762,10 +783,17 @@ def validate_generic_topic(quiz_data: dict, level: str, subject: str) -> bool:
 
 def get_forced_fallback_topic(level: str, subject: str) -> str:
     """Konkretny temat do wymuszenia, gdy AI nie potrafi trafic w zakres
-    samo (patrz FORCED_FALLBACK_TOPICS). None = brak zdefiniowanego
-    fallbacku dla tej pary (poziom, przedmiot)."""
+    samo (patrz FORCED_FALLBACK_TOPICS). Wartosc moze byc pojedynczym
+    stringiem (jeden staly temat) albo lista - wtedy losujemy jeden z
+    nich, zeby powtarzane wywolania (np. codzienny Sugerowany Quiz na
+    Dashboardzie) nie utknely na jednym, zawsze tym samym temacie.
+    None = brak zdefiniowanego fallbacku dla tej pary (poziom, przedmiot)."""
+    import random
     key = ALIASES.get(level, level)
-    return FORCED_FALLBACK_TOPICS.get(key, {}).get(subject.strip().lower())
+    topic = FORCED_FALLBACK_TOPICS.get(key, {}).get(subject.strip().lower())
+    if isinstance(topic, (list, tuple)):
+        return random.choice(topic) if topic else None
+    return topic
 
 
 def is_known_level(level: str) -> bool:
