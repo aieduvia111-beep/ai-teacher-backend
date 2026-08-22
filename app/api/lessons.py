@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Lesson, User
 from ..firebase_auth import require_feature_limit
+from ..level_config import describe_level
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -22,6 +23,19 @@ class CreateLessonPlanRequest(BaseModel):
     user_id: Optional[str] = None
     additional_info: Optional[str] = ""
 
+# NAPRAWIONE (audyt Quiz/Notatki/Sprawdziany/Plan Nauki): ten endpoint mial
+# WLASNY, zduplikowany, bardzo ogolny opis poziomu ("liceum = zaawansowany")
+# zamiast wolac describe_level()/SUBJECT_SCOPE z level_config.py - dokladnie
+# ten sam blad co znaleziony wczesniej w Quizie. Co gorsza, istnieje osobna,
+# POPRAWNA implementacja (LessonPlannerAI.create_lesson_plan w
+# app/services/lesson_planner.py, ktora juz uzywa describe_level(level,
+# subject=subject)) - ale NIGDZIE nie jest wolana, wiec byla martwym kodem.
+# Nie podmieniamy calego endpointu na ta klase, bo jej format planu (JSON
+# schema "tasks": [str,...]) jest niezgodny z tym, czego oczekuje
+# lesson_planner.html (schema "steps": [{{type,title,content,duration}}]) -
+# zamiast tego naprawiono TYLKO opis poziomu w istniejacym, dzialajacym
+# promptcie, zeby nie zepsuc frontendu.
+#
 # NAPRAWIONE (audyt XP): ten endpoint wczesniej NIE MIAL zadnej autentykacji
 # ani wymuszenia limitu - kazdy mogl wywolac go dowolna liczbe razy, limit
 # "lesson: 2/dzien" istnial tylko jako liczba w LIMITS_FREE we frontendzie
@@ -45,13 +59,9 @@ DANE:
 - Dodatkowe info: {request.additional_info or "brak"}
 
 POZIOM UCZNIA - KRYTYCZNE:
-Poziom: {request.level}
-- klasa 1-3 = bardzo proste, konkretne przyklady z zycia, bez abstrakcji
-- klasa 4-6 = proste, przyklady z zycia codziennego
-- klasa 7-8 = sredni poziom, wprowadzaj abstrakcje
-- liceum = zaawansowany, pelna teoria i wzory
-- matura = bardzo zaawansowany, zadania maturalne
-DOSTOSUJ trudnosc, jezyk i zadania do tego poziomu!
+{describe_level(request.level, subject=request.subject)}
+DOSTOSUJ trudnosc, jezyk i zadania do tego poziomu! To NIE moze byc zbyt
+latwe ani zbyt trudne wzgledem powyzszego opisu.
 
 ZASADY (KRYTYCZNE):
 0. ZAKAZ: nie pisz numerow stron ani nazw podrecznikow - uczen moze nie miec tego samego podrecznika!
