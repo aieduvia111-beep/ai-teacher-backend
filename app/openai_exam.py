@@ -1,6 +1,7 @@
 from openai import AsyncOpenAI
 from .config import settings
 from .level_config import describe_level, validate_generic_topic, get_forced_fallback_topic
+from .math_verify import verify_and_fix_math_question
 from typing import List, Dict, Optional
 import json
 import re as _re_sanitize
@@ -445,6 +446,7 @@ WAŻNE:
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
 
         quiz_data = fix_latex_in_quiz(quiz_data)
+        quiz_data = _verify_and_fix_quiz_math(quiz_data)
         return {"success": True, "quiz": quiz_data}
         
     except Exception as e:
@@ -774,7 +776,52 @@ ZASADY:
             raw3 = raw3.replace('\\\\\'"', '\\\\\\\\"')
             quiz_data = json.loads(raw3)
     quiz_data = fix_latex_in_quiz(quiz_data)
+    quiz_data = _verify_and_fix_quiz_math(quiz_data)
     print(f"Quiz: {quiz_data.get('title')}")
+    return quiz_data
+
+
+def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
+    """Niezalezna weryfikacja sympy (patrz math_verify.py) dla pytan z
+    rozpoznawalnym rownaniem kwadratowym - audyt wykazal, ze prompt-based
+    samo-weryfikacja NIE wystarcza (model potrafi poprawnie wyprowadzic
+    wynik w "explanation" i mimo to wskazac inny, bledny index w
+    "correct"). Dla kazdego pytania: jesli wzorzec rozpoznany i AI mial
+    zly index ale prawidlowa odpowiedz JEST wsrod opcji -> poprawiamy
+    index (+ wyjasnienie, zeby nie zostalo niespojne ze star treascia).
+    Jesli prawidlowej odpowiedzi NIE MA wsrod opcji -> pytanie jest
+    nieoprawialne, usuwamy je z quizu (lepszy krotszy quiz niz quiz z
+    blednym kluczem)."""
+    questions = quiz_data.get("questions")
+    if not isinstance(questions, list):
+        return quiz_data
+    kept = []
+    for q in questions:
+        try:
+            text = q.get("question", "")
+            options = q.get("options", [])
+            result = verify_and_fix_math_question(text, options)
+        except Exception as e:
+            print(f"[MathVerify] blad weryfikacji pytania: {e}")
+            kept.append(q)
+            continue
+        if result["status"] == "unverifiable":
+            kept.append(q)
+        elif result["status"] == "match_index":
+            true_idx = result["true_index"]
+            if q.get("correct") != true_idx:
+                print(f"[MathVerify] POPRAWIONO odpowiedz: '{text[:60]}...' correct {q.get('correct')} -> {true_idx}")
+                q["correct"] = true_idx
+                if result.get("explanation"):
+                    q["explanation"] = result["explanation"]
+            kept.append(q)
+        elif result["status"] == "no_option_matches":
+            print(f"[MathVerify] USUNIETO pytanie (brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
+        else:
+            kept.append(q)
+    for i, q in enumerate(kept, start=1):
+        q["id"] = i
+    quiz_data["questions"] = kept
     return quiz_data
 
 

@@ -23,6 +23,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
 from .level_config import describe_level
+from .math_verify import verify_and_fix_math_question
 
 # ============================================================
 # CZCIONKI
@@ -809,6 +810,62 @@ def _build_exam_pages(data: dict) -> bytes:
     doc.build(story, onFirstPage=_add_page_bg, onLaterPages=_add_page_bg)
     return buf.getvalue()
 
+_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
+_IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
+
+
+def _verify_and_fix_exam_math(data: dict) -> dict:
+    """Niezalezna weryfikacja sympy (patrz math_verify.py) dla zadan
+    zamknietych z rozpoznawalnym rownaniem kwadratowym - ten sam
+    mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math).
+    Audyt wykazal, ze prompt-based samo-weryfikacja (instrukcja
+    "WERYFIKACJA OBLICZEN" w EXAM_PROMPT) NIE wystarcza. Dziala tylko na
+    sekcjach "zamkniete" (maja 4 opcje do porownania) - zadania otwarte
+    ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze objete, bo nie
+    maja ustalonego zbioru opcji do sprawdzenia."""
+    for sekcja in data.get("sekcje", []):
+        if sekcja.get("typ") != "zamkniete":
+            continue
+        kept = []
+        for pyt in sekcja.get("pytania", []):
+            tresc = pyt.get("tresc", "")
+            opcje = pyt.get("opcje", [])
+            try:
+                result = verify_and_fix_math_question(tresc, opcje)
+            except Exception as e:
+                print(f"[MathVerify][Exam] blad weryfikacji: {e}")
+                kept.append(pyt)
+                continue
+            if result["status"] == "unverifiable":
+                kept.append(pyt)
+            elif result["status"] == "match_index":
+                true_idx = result["true_index"]
+                current_idx = _LETTER_TO_IDX.get(str(pyt.get("odpowiedz", "")).strip().lower())
+                if current_idx != true_idx:
+                    new_letter = _IDX_TO_LETTER.get(true_idx)
+                    if new_letter:
+                        print(f"[MathVerify][Exam] POPRAWIONO odpowiedz: '{tresc[:60]}...' {pyt.get('odpowiedz')} -> {new_letter}")
+                        pyt["odpowiedz"] = new_letter
+                        if result.get("explanation"):
+                            pyt["wyjasnienie"] = result["explanation"]
+                kept.append(pyt)
+            elif result["status"] == "no_option_matches":
+                print(f"[MathVerify][Exam] USUNIETO zadanie (brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
+            else:
+                kept.append(pyt)
+        sekcja["pytania"] = kept
+
+    # Renumeracja "nr" SEKWENCYJNIE przez wszystkie sekcje (zamkniete +
+    # otwarte razem) - usuniecie zadania z sekcji zamknietej nie moze
+    # zostawic dziury/nakladki w numeracji dla sekcji otwartej po niej.
+    nr = 1
+    for sekcja in data.get("sekcje", []):
+        for pyt in sekcja.get("pytania", []):
+            pyt["nr"] = nr
+            nr += 1
+    return data
+
+
 # ============================================================
 # GŁÓWNA KLASA
 # ============================================================
@@ -934,7 +991,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                     m = re.search(r'\{.*\}', raw, re.DOTALL)
                     data = json.loads(m.group(0)) if m else {}
                 if data.get('sekcje'):
-                    return data
+                    return _verify_and_fix_exam_math(data)
                 last_error = ValueError("AI zwrocilo pusty sprawdzian (brak sekcji z pytaniami)")
             except Exception as e:
                 last_error = e
