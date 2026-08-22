@@ -138,6 +138,27 @@ TRUDNOSC = {trudnosc} w ramach {klasa}:
 NAKAZ: KAZDE zadanie musi byc na poziomie {klasa} i trudnosci {trudnosc}
 ZAKAZ: dla liceum/matura/studia — prostego dodawania ulamkow liczbowych
 
+WERYFIKACJA OBLICZEN - KRYTYCZNE (bledny klucz odpowiedzi to powazny blad,
+tak samo powazny jak zbyt latwe zadanie):
+Dla KAZDEGO zadania z obliczeniami (rownania, nierownosci, delta/wyroznik,
+pierwiastki, prawdopodobienstwo, pochodne, calki itp.) MUSISZ, ZANIM
+zapiszesz finalna odpowiedz:
+1. Rozwiaz zadanie NAPRAWDE, krok po kroku (nie tylko w polu
+   "odpowiedz_modelowa" - to samo rozumowanie musi faktycznie doprowadzic
+   Cie do wyniku, ktory potem zapisujesz).
+2. PODSTAW otrzymany wynik z powrotem do pierwotnego rownania/warunku i
+   sprawdz, czy sie zgadza (np. dla zadania z parametrem: podstaw
+   znaleziona wartosc parametru do rownania i sprawdz, czy faktycznie ma
+   ono zadane wlasciwosci - dwa pierwiastki, jeden pierwiastek,
+   pierwiastki ujemne, itd. - a nie tylko "wyglada podobnie").
+3. Dla zadan zamknietych (Czesc A): upewnij sie, ze DOKLADNIE JEDNA z 4
+   opcji odpowiada Twojemu sprawdzonemu wynikowi. Jesli zaden dystraktor
+   nie pasuje do prawidlowego wyniku - POPRAW dystraktory, NIE zostawiaj
+   klucza "odpowiedz" wskazujacego na bledna opcje.
+4. Jesli po podstawieniu wynik SIE NIE ZGADZA - przelicz zadanie jeszcze
+   raz od nowa. NIE zgaduj i NIE zostawiaj niesprawdzonej odpowiedzi ani
+   niesprawdzonego "odpowiedz_modelowa".
+
 WZORY MATEMATYCZNE:
 KRYTYCZNE: backslash podwojny w JSON: \\frac, \\sqrt, \\cdot, \\times
 KRYTYCZNE: KAZDY wzor w dolarach: $wzor$

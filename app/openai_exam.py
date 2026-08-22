@@ -681,6 +681,18 @@ KAZDE pytanie musi byc kompletne i jednoznaczne — nigdy nie urywaj zdania ani 
 Nigdy nie pisz 'cos 14?' bez kontekstu — zawsze pelne rownanie np. 'cos(x) = 0.5'.
 Jeśli poziom to podstawówka — NIE pytaj o pochodne ani logarytmy.
 
+WERYFIKACJA OBLICZEN - KRYTYCZNE (bledny klucz odpowiedzi to powazny blad,
+tak samo powazny jak zbyt latwe pytanie): Dla KAZDEGO pytania z obliczeniami
+(rownania, nierownosci, delta/wyroznik, pierwiastki, prawdopodobienstwo,
+pochodne, calki itp.) MUSISZ, ZANIM zapiszesz "correct": 1) rozwiazac
+zadanie NAPRAWDE krok po kroku, 2) PODSTAWIC otrzymany wynik z powrotem do
+pierwotnego rownania/warunku i sprawdzic, czy sie zgadza (nie tylko "czy
+wyglada podobnie"), 3) upewnic sie, ze "correct" wskazuje DOKLADNIE ta
+opcje z "options", ktora odpowiada Twojemu sprawdzonemu wynikowi - jesli
+zadna opcja nie pasuje, POPRAW opcje zamiast zostawiac bledny klucz. Jesli
+po podstawieniu wynik sie NIE zgadza - przelicz jeszcze raz od nowa, NIE
+zgaduj.
+
 WZORY MATEMATYCZNE - KRYTYCZNE:
 - Kazdy wzor w $...$ np: $x^2 + 3x = 0$
 - ZAWSZE \\frac{{ nie rac{{ nie \\rac{{
