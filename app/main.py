@@ -382,6 +382,30 @@ async def startup():
     except Exception as e:
         print(f"⚠️ Baza danych: {e}")
 
+    # create_all() tworzy tylko BRAKUJACE TABELE, nie dokłada nowych
+    # kolumn do już istniejącej tabeli (SQLAlchemy tego nie robi) - stąd
+    # recznie dodajemy nowe, opcjonalne kolumny (jesli jeszcze ich nie ma)
+    # zamiast wymagac od kogokolwiek reczengo kasowania/migrowania bazy
+    # przy kazdym takim dodaniu. Idempotentne - bezpieczne przy kazdym
+    # restarcie.
+    try:
+        from sqlalchemy import inspect as _sa_inspect, text as _sa_text
+        _insp = _sa_inspect(engine)
+        if "users" in _insp.get_table_names():
+            _existing_cols = {c["name"] for c in _insp.get_columns("users")}
+            _new_cols = {
+                "suggested_topic": "VARCHAR(255)",
+                "suggested_topic_date": "VARCHAR(10)",
+            }
+            with engine.connect() as _conn:
+                for _col, _sqltype in _new_cols.items():
+                    if _col not in _existing_cols:
+                        _conn.execute(_sa_text(f"ALTER TABLE users ADD COLUMN {_col} {_sqltype}"))
+                        _conn.commit()
+                        print(f"✅ Dodano kolumne users.{_col}")
+    except Exception as e:
+        print(f"⚠️ Migracja kolumn users: {e}")
+
     print("=" * 60)
     print("🚀 AI TEACHER BACKEND STARTED!")
     print(f"🔑 OpenAI: {'✅ ' + settings.OPENAI_API_KEY[:20] + '...' if settings.OPENAI_API_KEY else '❌ MISSING'}")

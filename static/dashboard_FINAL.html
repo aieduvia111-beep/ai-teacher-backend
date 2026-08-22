@@ -906,15 +906,24 @@ async function loadStudentProfile(user){
     } else {
       if(profile.education_level&&nsSec&&nsCard){
         const subjLabel=profile.favorite_subject?(DASH_SUBJECT_LABELS[profile.favorite_subject]||profile.favorite_subject):null;
-        // topic=nazwa przedmiotu (nie mamy realnej logiki sugerowania
-        // konkretnego tematu, wiec nie zmyslamy jej) + autostart=1, zeby
-        // klikniecie karty od razu generowalo quiz (ekran ladowania),
-        // bez pokazywania formularza ustawien - jak przy "Rozpocznij quiz".
+        // NAPRAWIONE: karta pokazuje teraz KONKRETNY temat dnia
+        // (profile.suggested_topic) zamiast samej nazwy przedmiotu -
+        // backend (/users/me) generuje go i rotuje raz dziennie, dopasowany
+        // do klasy+przedmiotu z ankiety (patrz app/api/users.py). Ten sam
+        // temat trafia jako &topic= do quiz_app.html, zeby klikniecie karty
+        // faktycznie wygenerowalo quiz o tym, co karta obiecuje - nie o
+        // czyms innym. Brak suggested_topic (np. user bez ulubionego
+        // przedmiotu) - spadamy na sam przedmiot jak wczesniej.
+        const suggestedTopic=profile.suggested_topic||null;
+        const quizTopicParam=suggestedTopic||subjLabel;
+        // autostart=1, zeby klikniecie karty od razu generowalo quiz (ekran
+        // ladowania), bez pokazywania formularza ustawien - jak przy
+        // "Rozpocznij quiz".
         const quizUrl='quiz_app.html?level='+encodeURIComponent(profile.education_level)
           +(profile.favorite_subject?'&subject='+encodeURIComponent(profile.favorite_subject):'')
-          +(subjLabel?'&topic='+encodeURIComponent(subjLabel)+'&autostart=1':'');
-        document.getElementById('nsTitle').textContent=subjLabel?('Quiz: '+subjLabel):'Nowy Quiz';
-        document.getElementById('nsDesc').textContent='Dopasowany do Twojego poziomu — sprawdź wiedzę i zdobądź XP';
+          +(quizTopicParam?'&topic='+encodeURIComponent(quizTopicParam)+'&autostart=1':'');
+        document.getElementById('nsTitle').textContent=suggestedTopic?suggestedTopic:(subjLabel?('Quiz: '+subjLabel):'Nowy Quiz');
+        document.getElementById('nsDesc').textContent=suggestedTopic?'Temat dnia — dopasowany do Twojego poziomu':'Dopasowany do Twojego poziomu — sprawdź wiedzę i zdobądź XP';
         const chipSubj=document.getElementById('nsChipSubject'), chipLvl=document.getElementById('nsChipLevel');
         if(subjLabel){document.getElementById('nsChipSubjectText').textContent=subjLabel;chipSubj.style.display='';}else{chipSubj.style.display='none';}
         document.getElementById('nsChipLevelText').textContent=profile.education_level_label||profile.education_level;

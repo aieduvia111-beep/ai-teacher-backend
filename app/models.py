@@ -106,6 +106,13 @@ class User(Base):
     exam_date = Column(DateTime(timezone=True), nullable=True)
     onboarding_completed = Column(Boolean, default=False)
 
+    # Sugerowany Quiz na Dashboardzie ("Nastepny krok") - konkretny temat
+    # (nie tylko nazwa przedmiotu), zmieniany raz dziennie. Wzorowane na
+    # voice_usage_date (String YYYY-MM-DD zamiast DateTime, bo porownujemy
+    # tylko z date.today().isoformat(), nie potrzebujemy czasu/strefy).
+    suggested_topic = Column(String(255), nullable=True)
+    suggested_topic_date = Column(String(10), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
