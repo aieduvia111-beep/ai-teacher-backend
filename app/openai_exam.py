@@ -814,12 +814,14 @@ async def _generate_quiz_topic_once(
 async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
-    zamawiajac np. 10 pytan ma dostac 10, nie mniej - wiec dogenerowujemy
-    brakujace, az osiagniemy `requested_count` ALBO wyczerpiemy
-    `max_rounds` (zeby nie zapetlic sie w nieskonczonosc, gdyby temat byl
-    uporczywie podatny na bledne klucze)."""
+    zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
+    poprawnosc sa wazniejsze niz szybkosc, wiec dogenerowujemy brakujace
+    az osiagniemy `requested_count` ALBO wyczerpiemy `max_rounds` (10 -
+    tylko zeby nie zapetlic sie w NIESKONCZONOSC, gdyby temat byl
+    ekstremalnie i uporczywie podatny na bledne klucze - w praktyce
+    powinno to byc bardzo rzadkie)."""
     quiz_data = _verify_and_fix_quiz_math(quiz_data)
-    max_rounds = 3
+    max_rounds = 10
     for round_i in range(1, max_rounds + 1):
         current = len(quiz_data.get("questions", []))
         missing = requested_count - current
@@ -833,6 +835,17 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             continue
         extra_data = _verify_and_fix_quiz_math(extra_data)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
+
+    final_count = len(quiz_data.get("questions", []))
+    if final_count < requested_count:
+        # Bardzo rzadki przypadek - wyczerpano max_rounds i nadal brakuje.
+        # Uczciwy komunikat zamiast cichego podania niepelnego quizu.
+        quiz_data["_shortfall_warning"] = (
+            f"Udalo sie wygenerowac i zweryfikowac {final_count} z {requested_count} "
+            f"zamowionych pytan - pozostale okazaly sie bledne mimo {max_rounds} prob "
+            f"dogenerowania. Sprobuj ponownie albo zmien temat/trudnosc."
+        )
+        print(f"[MathVerify] SHORTFALL: {final_count}/{requested_count} po {max_rounds} rundach dogenerowania")
 
     questions = quiz_data.get("questions", [])[:requested_count]
     for i, q in enumerate(questions, start=1):

@@ -1010,14 +1010,15 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=3):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10):
         """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
-        temat/poziom, zeby finalna liczba pytan zawsze zgadzala sie z
-        `liczba_pytan` zamowiona przez usera - user zamawiajac np. 12
-        pytan ma dostac 12, nie mniej. Max `max_rounds` dodatkowych
-        wywolan AI, zeby nie zapetlic sie w nieskonczonosc, gdyby temat
-        okazal sie uporczywie podatny na bledne klucze."""
+        temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
+        `liczba_pytan` zamowiona przez usera - kompletnosc i poprawnosc
+        sa wazniejsze niz szybkosc. Max `max_rounds` (10) dodatkowych
+        wywolan AI, tylko zeby nie zapetlic sie w NIESKONCZONOSC, gdyby
+        temat okazal sie ekstremalnie uporczywie podatny na bledne klucze
+        - w praktyce powinno to byc bardzo rzadkie."""
         for round_i in range(1, max_rounds + 1):
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
             missing = liczba_pytan - current_total
@@ -1065,6 +1066,15 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             for pyt in s.get('pytania', []):
                 pyt['nr'] = nr
                 nr += 1
+
+        final_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+        if final_total < liczba_pytan:
+            data["_shortfall_warning"] = (
+                f"Udalo sie wygenerowac i zweryfikowac {final_total} z {liczba_pytan} "
+                f"zamowionych zadan - pozostale okazaly sie bledne mimo {max_rounds} prob "
+                f"dogenerowania. Sprobuj ponownie albo zmien temat/trudnosc."
+            )
+            print(f"[MathVerify][Exam] SHORTFALL: {final_total}/{liczba_pytan} po {max_rounds} rundach dogenerowania")
         return data
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
