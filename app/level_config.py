@@ -341,9 +341,14 @@ SUBJECT_SCOPE = {
             "funkcja kwadratowa - postać ogólna/kanoniczna/iloczynowa, wzory Viète'a, "
             "równania i nierówności kwadratowe, równania i nierówności kwadratowe "
             "z parametrem, zadania optymalizacyjne z parabolą, proporcjonalność odwrotna. "
-            "PRZYKŁAD TRUDNEGO ZADANIA (tak trudne mają być zadania, NIE łatwiejsze): "
-            "'Dla jakich wartości parametru m równanie x²-(m+1)x+m=0 ma dwa różne "
-            "pierwiastki dodatnie?' - to NIE jest poziom 'rozwiąż x²=4'."
+            "PRZYKŁADY TRUDNYCH ZADAŃ (tak trudne mają być zadania, NIE łatwiejsze): "
+            "(funkcja kwadratowa) 'Dla jakich wartości parametru m równanie x²-(m+1)x+m=0 "
+            "ma dwa różne pierwiastki dodatnie?' - to NIE jest poziom 'rozwiąż x²=4'. "
+            "(funkcja liniowa) 'Wyznacz równanie prostej prostopadłej do prostej "
+            "y=2x-3, przechodzącej przez punkt (4,1).' - NIE 'narysuj y=2x'. "
+            "(logarytmy) 'Rozwiąż równanie log₂(x+3)+log₂(x-1)=5, sprawdzając dziedzinę.' "
+            "- NIE 'oblicz log 100'. (potęgi/pierwiastki) 'Uprość wyrażenie "
+            "(2^(n+2)-2^n)/(2^(n+1)) dla dowolnego naturalnego n.' - NIE '2² to ile'."
         ),
         "polski": "starożytność i średniowiecze (Biblia, Iliada, pieśni)",
         "angielski": "poziom B1, gramatyka rozszerzona, słownictwo tematyczne maturalne",
@@ -360,10 +365,15 @@ SUBJECT_SCOPE = {
             "równania trygonometryczne; ciągi arytmetyczne i geometryczne - wzór ogólny, "
             "suma n wyrazów, zastosowania (np. procent składany); planimetria - twierdzenie "
             "sinusów i cosinusów, pola figur, okręgi wpisane i opisane. "
-            "PRZYKŁAD TRUDNEGO ZADANIA: 'W trójkącie kąt α=60°, boki przy tym kącie mają "
+            "PRZYKŁADY TRUDNYCH ZADAŃ (KAŻDY podtemat musi być tak trudny, nie tylko "
+            "planimetria): (planimetria) 'W trójkącie kąt α=60°, boki przy tym kącie mają "
             "długość 5 i 8. Oblicz pole trójkąta i długość trzeciego boku.' - wymaga "
             "twierdzenia cosinusów i wzoru na pole z sinusem, NIE prostego 'oblicz pole "
-            "prostokąta'."
+            "prostokąta'. (ciągi) 'Ciąg arytmetyczny ma a₃=11 i a₇=27. Wyznacz a₁, różnicę r "
+            "oraz najmniejsze n, dla którego suma pierwszych n wyrazów przekracza 500.' - NIE "
+            "'podaj kolejny wyraz ciągu 2,4,6,8'. (trygonometria) 'Rozwiąż równanie "
+            "2sin²(x)-3cos(x)=0 dla x∈[0,2π), sprowadzając do równania kwadratowego "
+            "względem cos(x).' - NIE 'ile wynosi sin(30°)'."
         ),
         "polski": "renesans, barok, oświecenie (Kochanowski, \"Pan Tadeusz\" - wprowadzenie)",
         "angielski": "poziom B1/B2, strona bierna, mowa zależna",
@@ -382,10 +392,15 @@ SUBJECT_SCOPE = {
             "ostrosłupy, bryły obrotowe, przekroje brył. UWAGA: NIE wybieraj ogólnej "
             "zbieżności szeregów (np. szeregi potęgowe, kryteria zbieżności) - to material "
             "studiów (analiza matematyczna), NIE liceum. "
-            "PRZYKŁAD TRUDNEGO ZADANIA: 'W urnie jest 5 kul białych i 3 czarne. Losujemy bez "
+            "PRZYKŁADY TRUDNYCH ZADAŃ (KAŻDY podtemat, nie tylko prawdopodobieństwo): "
+            "(prawdopodobieństwo) 'W urnie jest 5 kul białych i 3 czarne. Losujemy bez "
             "zwracania dwie kule. Oblicz prawdopodobieństwo, że obie są tego samego koloru.' "
             "- wymaga prawdopodobieństwa warunkowego/łącznego, NIE 'rzucasz monetą, jakie "
-            "prawdopodobieństwo orła'."
+            "prawdopodobieństwo orła'. (funkcje wykładnicze) 'Rozwiąż nierówność "
+            "4^x-3·2^x-4≤0, podstawiając t=2^x.' - NIE 'oblicz 2 do potęgi 3'. "
+            "(stereometria) 'Podstawą ostrosłupa prawidłowego czworokątnego jest kwadrat o "
+            "boku 6, a krawędź boczna ma długość 10. Oblicz objętość i pole powierzchni "
+            "całkowitej.' - NIE 'ile ścian ma sześcian'."
         ),
         "polski": "romantyzm i pozytywizm (Mickiewicz, Słowacki, \"Lalka\")",
         "angielski": "poziom B2, słownictwo abstrakcyjne, przygotowanie do matury ustnej",
@@ -404,9 +419,15 @@ SUBJECT_SCOPE = {
             "całki oznaczone i pola pod wykresem; typowe zadania maturalne z pełnym zakresu. "
             "UWAGA: NIE wybieraj ogólnej zbieżności szeregów (np. szeregi potęgowe, kryteria "
             "zbieżności) - to material studiów (analiza matematyczna), NIE matury. "
-            "PRZYKŁAD TRUDNEGO ZADANIA: 'Zbadaj monotoniczność i wyznacz ekstrema funkcji "
-            "f(x)=x³-3x²+2 oraz naszkicuj jej wykres.' - pełne badanie funkcji z pochodną, "
-            "NIE 'oblicz pochodną z x²'."
+            "PRZYKŁADY TRUDNYCH ZADAŃ (KAŻDY podtemat, nie tylko pochodne): "
+            "(pochodne) 'Zbadaj monotoniczność i wyznacz ekstrema funkcji f(x)=x³-3x²+2 "
+            "oraz naszkicuj jej wykres.' - pełne badanie funkcji z pochodną, NIE 'oblicz "
+            "pochodną z x²'. (całki) 'Oblicz pole obszaru ograniczonego wykresami funkcji "
+            "f(x)=x² i g(x)=2x.' - wymaga znalezienia punktów przecięcia i całki oznaczonej "
+            "z różnicy funkcji, NIE 'oblicz całkę z x²'. (kombinatoryka/prawdopodobieństwo) "
+            "'Z talii 52 kart losujemy 5. Oblicz prawdopodobieństwo, że wśród nich są "
+            "dokładnie 2 asy.' - schemat kombinacji z prawdopodobieństwem klasycznym, NIE "
+            "'ile jest asów w talii'."
         ),
         "polski": "Młoda Polska i współczesność (Wyspiański, literatura XX/XXI w.), powtórka maturalna",
         "angielski": "przygotowanie maturalne - pisanie rozprawek, matura ustna",
@@ -428,9 +449,10 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "zbiory liczbowe, potęgi i pierwiastki, funkcja liniowa, funkcja kwadratowa - "
             "postać ogólna i kanoniczna, rozwiązywanie równań kwadratowych (delta). "
-            "PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż równanie 2x²-5x+3=0 i sprawdź znak "
-            "wyróżnika przed obliczeniem pierwiastków.' - z pełnym wzorem i deltą, NIE "
-            "'rozwiąż x²=9'."
+            "PRZYKŁADY TRUDNYCH ZADAŃ: (funkcja kwadratowa) 'Rozwiąż równanie 2x²-5x+3=0 i "
+            "sprawdź znak wyróżnika przed obliczeniem pierwiastków.' - z pełnym wzorem i "
+            "deltą, NIE 'rozwiąż x²=9'. (funkcja liniowa) 'Wyznacz wzór funkcji liniowej, "
+            "której wykres przechodzi przez punkty (1,5) i (3,-1).' - NIE 'narysuj y=x'."
         ),
         "polski": "starożytność i średniowiecze - wprowadzenie",
         "angielski": "poziom A2/B1, słownictwo ogólne i zawodowe - podstawy",
@@ -445,8 +467,11 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "logarytmy - własności i równania logarytmiczne, wprowadzenie do trygonometrii, "
             "elementy geometrii analitycznej (równanie prostej, odległość punktów). "
-            "PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż równanie log₂(x+1)+log₂(x-1)=3.' - z "
-            "dziedziną i własnościami logarytmów, NIE 'oblicz log 100'. UWAGA: NIE wybieraj "
+            "PRZYKŁADY TRUDNYCH ZADAŃ: (logarytmy) 'Rozwiąż równanie log₂(x+1)+log₂(x-1)=3.' "
+            "- z dziedziną i własnościami logarytmów, NIE 'oblicz log 100'. (geometria "
+            "analityczna) 'Oblicz odległość punktu A=(3,4) od prostej o równaniu "
+            "3x-4y+5=0.' - wzór na odległość punktu od prostej, NIE 'narysuj punkt na "
+            "układzie współrzędnych'. UWAGA: NIE wybieraj "
             "'równań liniowych' ani 'układów równań liniowych' jako tematu - to materiał "
             "z młodszych klas (technikum_1/podstawówka), nie z tego zakresu."
         ),
@@ -463,9 +488,12 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "pełna trygonometria - tożsamości i równania, ciągi arytmetyczne i "
             "geometryczne - wzór ogólny i suma n wyrazów, planimetria - twierdzenie "
-            "sinusów i cosinusów. PRZYKŁAD TRUDNEGO ZADANIA: 'Ciąg arytmetyczny ma a₃=7 "
-            "i a₇=19. Wyznacz a₁, różnicę r oraz sumę pierwszych 20 wyrazów.' - NIE 'podaj "
-            "kolejny wyraz ciągu 2,4,6,8'. UWAGA: NIE wybieraj 'macierzy' (wyznaczniki, "
+            "sinusów i cosinusów. PRZYKŁADY TRUDNYCH ZADAŃ: (ciągi) 'Ciąg arytmetyczny ma "
+            "a₃=7 i a₇=19. Wyznacz a₁, różnicę r oraz sumę pierwszych 20 wyrazów.' - NIE "
+            "'podaj kolejny wyraz ciągu 2,4,6,8'. (trygonometria/planimetria) 'W trójkącie "
+            "boki mają długość a=7, b=9, kąt między nimi γ=50°. Oblicz długość trzeciego "
+            "boku oraz pole trójkąta.' - twierdzenie cosinusów + wzór na pole z sinusem, "
+            "NIE 'ile wynosi sin(30°)'. UWAGA: NIE wybieraj 'macierzy' (wyznaczniki, "
             "macierz odwrotna) jako tematu - to NIE jest część tego zakresu."
         ),
         "polski": "romantyzm i pozytywizm - zarys",
@@ -481,11 +509,15 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "logarytmy, ciągi arytmetyczne i geometryczne (w tym suma szeregu geometrycznego "
             "zbieżnego), funkcje wykładnicze - równania i nierówności, stereometria - "
-            "graniastosłupy i ostrosłupy. PRZYKŁAD TRUDNEGO ZADANIA: 'Rozwiąż nierówność "
-            "3^(2x-1) > 27.' - z zamianą na wspólną podstawę i porównaniem wykładników, NIE "
-            "'3 do potęgi 2 to ile'. UWAGA: NIE wybieraj 'całek' (rachunek różniczkowy i "
-            "całkowy) ani ogólnej zbieżności szeregów potęgowych - to material studiów, NIE "
-            "technikum."
+            "graniastosłupy i ostrosłupy. PRZYKŁADY TRUDNYCH ZADAŃ: (funkcje wykładnicze) "
+            "'Rozwiąż nierówność 3^(2x-1) > 27.' - z zamianą na wspólną podstawę i "
+            "porównaniem wykładników, NIE '3 do potęgi 2 to ile'. (logarytmy) 'Rozwiąż "
+            "równanie log₃(x²-8)=2.' - z uwzględnieniem dziedziny, NIE 'oblicz log₃9'. "
+            "(stereometria) 'Podstawą graniastosłupa prawidłowego czworokątnego jest kwadrat "
+            "o boku 4, a wysokość bryły wynosi 10. Oblicz pole powierzchni całkowitej i "
+            "objętość.' - NIE 'ile ścian ma sześcian'. UWAGA: NIE wybieraj 'całek' "
+            "(rachunek różniczkowy i całkowy) ani ogólnej zbieżności szeregów potęgowych - "
+            "to material studiów, NIE technikum."
         ),
         "polski": "Młoda Polska - zarys, przygotowanie do matury",
         "angielski": "poziom B2, przygotowanie maturalne",
@@ -519,10 +551,18 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "pełny zakres podstawowy: funkcje liniowe i kwadratowe, ciągi, trygonometria, "
             "planimetria i stereometria, elementy statystyki i prawdopodobieństwa - poziom "
-            "i format typowego arkusza CKE poziom podstawowy. PRZYKŁAD TRUDNEGO ZADANIA: "
-            "'Dane są punkty A=(-2,1) i B=(4,5). Wyznacz równanie prostej prostopadłej do "
-            "AB, przechodzącej przez środek odcinka AB.' - typowe zadanie z arkusza CKE, "
-            "NIE 'oblicz odległość dwóch punktów na osi liczbowej'."
+            "i format typowego arkusza CKE poziom podstawowy. PRZYKŁADY TRUDNYCH ZADAŃ: "
+            "(funkcje/geometria analityczna) 'Dane są punkty A=(-2,1) i B=(4,5). Wyznacz "
+            "równanie prostej prostopadłej do AB, przechodzącej przez środek odcinka AB.' - "
+            "typowe zadanie z arkusza CKE, NIE 'oblicz odległość dwóch punktów na osi "
+            "liczbowej'. (ciągi) 'Ciąg geometryczny ma a₁=3 i q=2. Wyznacz najmniejsze n, "
+            "dla którego suma pierwszych n wyrazów przekracza 300.' - NIE 'podaj następny "
+            "wyraz ciągu 2,4,8'. (trygonometria/planimetria) 'W trójkącie prostokątnym "
+            "przeciwprostokątna ma długość 10, a jeden z kątów ostrych 35°. Oblicz długości "
+            "przyprostokątnych.' - NIE 'ile wynosi sin(30°)'. (statystyka/prawdopodobieństwo) "
+            "'W klasie jest 12 dziewcząt i 8 chłopców. Losujemy 3 osoby. Oblicz "
+            "prawdopodobieństwo, że wśród nich będzie dokładnie 1 chłopiec.' - NIE 'ile "
+            "osób jest w klasie'."
         ),
         "polski": "wszystkie epoki literackie, rozprawka maturalna, część ustna",
         "angielski": "poziom B1, wszystkie sprawności językowe, typowy arkusz maturalny",
@@ -532,10 +572,19 @@ SUBJECT_SCOPE = {
             "pełny zakres rozszerzony: pochodne i badanie przebiegu funkcji, całki oznaczone "
             "i nieoznaczone, kombinatoryka i prawdopodobieństwo, dowody geometryczne, "
             "równania i nierówności z wartością bezwzględną, ciągi rekurencyjne - poziom i "
-            "format arkusza CKE poziom rozszerzony. PRZYKŁAD TRUDNEGO ZADANIA: 'Wykaż, że "
-            "dla dowolnego trójkąta ostrokątnego wpisanego w okrąg o promieniu R, pole "
-            "trójkąta wyraża się wzorem P=2R²sinAsinBsinC.' - dowód na poziomie "
-            "rozszerzonym, NIE 'oblicz pole trójkąta o podanych bokach'."
+            "format arkusza CKE poziom rozszerzony. PRZYKŁADY TRUDNYCH ZADAŃ: (dowody) "
+            "'Wykaż, że dla dowolnego trójkąta ostrokątnego wpisanego w okrąg o promieniu "
+            "R, pole trójkąta wyraża się wzorem P=2R²sinAsinBsinC.' - dowód na poziomie "
+            "rozszerzonym, NIE 'oblicz pole trójkąta o podanych bokach'. (pochodne/całki) "
+            "'Wyznacz największą i najmniejszą wartość funkcji f(x)=x³-3x na przedziale "
+            "[-2,3].' - badanie funkcji z pochodną na przedziale domkniętym, NIE 'oblicz "
+            "pochodną z x²'. (kombinatoryka/prawdopodobieństwo) 'Ile jest liczb "
+            "czterocyfrowych o różnych cyfrach, podzielnych przez 5?' - łączenie reguły "
+            "mnożenia z warunkiem podzielności, NIE 'ile jest liczb dwucyfrowych'. "
+            "(wartość bezwzględna) 'Rozwiąż nierówność |2x-3|+|x+1|≤6.' - z rozbiciem na "
+            "przedziały, NIE '|−5| to ile'. (ciągi rekurencyjne) 'Ciąg dany jest wzorem "
+            "a₁=2, a_(n+1)=3a_n-1. Wyznacz a₅ oraz zbadaj, czy ciąg jest monotoniczny.' - "
+            "NIE 'podaj a₂ dla a₁=1, a_(n+1)=a_n+1'."
         ),
         "polski": "pogłębiona interpretacja, kontekst historycznoliteracki, wypracowanie na poziomie rozszerzonym",
         "angielski": "poziom B2/C1, tłumaczenia, rozprawka na poziomie rozszerzonym",
@@ -549,7 +598,17 @@ SUBJECT_SCOPE = {
 
     # ---------- STUDIA (ogólnie, bez podziału na kierunek) ----------
     "studia_1": {
-        "matematyka": "analiza matematyczna I (granice, pochodne), algebra liniowa I (macierze, wektory)",
+        "matematyka": (
+            "analiza matematyczna I - granice ciągów i funkcji (w tym symbole nieoznaczone), "
+            "pochodne i ich zastosowania (reguła de l'Hospitala, ekstrema, wypukłość); "
+            "algebra liniowa I - macierze, wyznaczniki, układy równań liniowych (eliminacja "
+            "Gaussa), przestrzenie wektorowe - wprowadzenie. PRZYKŁADY TRUDNYCH ZADAŃ: "
+            "(granice) 'Oblicz granicę lim(x→0) (e^x-1-x)/x², stosując regułę de "
+            "l'Hospitala dwukrotnie.' - NIE 'oblicz lim(x→∞) 1/x'. (algebra liniowa) "
+            "'Rozwiąż metodą eliminacji Gaussa układ trzech równań liniowych z trzema "
+            "niewiadomymi i zbadaj rząd macierzy współczynników.' - NIE 'oblicz wyznacznik "
+            "macierzy 2x2'."
+        ),
         "informatyka": "podstawy programowania, struktury danych, logika",
     },
     "studia_2": {
@@ -558,7 +617,12 @@ SUBJECT_SCOPE = {
             "szeregi liczbowe i ich zbieżność; algebra liniowa II - przestrzenie wektorowe, "
             "wartości i wektory własne. To ma być WYRAŹNIE trudniejsze niż I rok - NIE "
             "sama całka z wielomianu (to material I roku), tylko np. całkowanie przez "
-            "podstawienie/przez części lub badanie zbieżności szeregu."
+            "podstawienie/przez części lub badanie zbieżności szeregu. PRZYKŁADY TRUDNYCH "
+            "ZADAŃ: (całki) 'Oblicz całkę ∫x·ln(x)dx metodą całkowania przez części.' - NIE "
+            "'oblicz całkę z x²'. (szeregi) 'Zbadaj zbieżność szeregu Σ(n=1 do ∞) n/(2^n), "
+            "stosując kryterium d'Alemberta.' - NIE 'wypisz pierwsze 3 wyrazy szeregu'. "
+            "(algebra liniowa) 'Wyznacz wartości i wektory własne macierzy [[2,1],[1,2]].' "
+            "- NIE 'dodaj dwie macierze 2x2'."
         ),
         "informatyka": "algorytmy i złożoność obliczeniowa, bazy danych",
     },
@@ -566,13 +630,26 @@ SUBJECT_SCOPE = {
         "matematyka": (
             "równania różniczkowe (zwyczajne, w tym liniowe I rzędu i o zmiennych "
             "rozdzielonych), statystyka matematyczna - estymacja, testy hipotez. "
-            "PRZYKŁAD: 'Rozwiąż równanie różniczkowe y'+2y=e^(-x) metodą czynnika "
-            "całkującego.' - NIE prosta całka z wielomianu (to material I roku)."
+            "PRZYKŁADY TRUDNYCH ZADAŃ: (równania różniczkowe) 'Rozwiąż równanie "
+            "różniczkowe y'+2y=e^(-x) metodą czynnika całkującego.' - NIE prosta całka z "
+            "wielomianu (to material I roku). (statystyka matematyczna) 'Z próby losowej "
+            "n=36 o średniej x̄=52 i odchyleniu standardowym s=6, zbuduj 95% przedział "
+            "ufności dla średniej populacji.' - NIE 'oblicz średnią z 5 liczb'."
         ),
         "informatyka": "inżynieria oprogramowania, sieci komputerowe",
     },
     "studia_4": {
-        "matematyka": "matematyka specjalistyczna zależna od kierunku",
+        "matematyka": (
+            "matematyka specjalistyczna zależna od kierunku - typowo: rachunek "
+            "prawdopodobieństwa i procesy stochastyczne (zmienne losowe, rozkłady, wartość "
+            "oczekiwana, łańcuchy Markowa), metody numeryczne (interpolacja, całkowanie "
+            "numeryczne, rozwiązywanie równań nieliniowych). PRZYKŁADY TRUDNYCH ZADAŃ: "
+            "(prawdopodobieństwo/procesy stochastyczne) 'Dla łańcucha Markowa o macierzy "
+            "przejścia P=[[0.7,0.3],[0.4,0.6]] wyznacz rozkład stacjonarny.' - NIE 'oblicz "
+            "prawdopodobieństwo orła przy rzucie monetą'. (metody numeryczne) 'Znajdź "
+            "przybliżone miejsce zerowe funkcji f(x)=x³-x-2 metodą Newtona, wykonując 3 "
+            "iteracje od x₀=1.5.' - NIE 'oblicz f(2) dla f(x)=x²'."
+        ),
         "informatyka": "systemy rozproszone, uczenie maszynowe - podstawy",
     },
     "studia_5": {
