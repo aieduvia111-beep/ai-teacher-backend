@@ -902,11 +902,23 @@ def _build_exam_pages(data: dict) -> bytes:
     doc.build(story, onFirstPage=_add_page_bg, onLaterPages=_add_page_bg)
     return buf.getvalue()
 
-def _buffered_question_count(n: int) -> int:
+# ETAP 3: adaptacyjny oversampling - identyczne uzasadnienie i mechanizm
+# co w openai_exam.py _buffered_count (patrz komentarz tam).
+_HARD_DIFFICULTY_WORDS = {"trudny", "trudna"}
+
+
+def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) -> int:
     """Ile zadan zamowic za pierwszym razem, zeby po odrzuceniu blednych
-    (weryfikacja sympy) prawdopodobnie zostalo >= n bez potrzeby rund
-    dogenerowania. +30%, minimum +2."""
-    return n + max(2, -(-n * 3 // 10))  # ceil(n * 0.3), min 2
+    (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
+    rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "trudna"
+    rownan kwadratowych z parametrem."""
+    is_hard_quadratic = (
+        temat is not None
+        and (trudnosc or "").strip().lower() in _HARD_DIFFICULTY_WORDS
+        and is_quadratic_equation_topic(temat)
+    )
+    numerator = 6 if is_hard_quadratic else 3
+    return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
 # Minimalny rozmiar partii w rundzie dogenerowania - NIGDY nie prosimy o
@@ -919,7 +931,19 @@ _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
+def _question_fingerprint(text: str):
+    """ETAP 3: identyczny mechanizm co openai_exam.py _question_fingerprint
+    (patrz tam pelne uzasadnienie) - prosty fingerprint do wykrywania
+    duplikatow/bardzo podobnych zadan w obrebie jednego requestu."""
+    t = (text or "").lower()
+    numbers = tuple(re.findall(r'-?\d+(?:[.,]\d+)?', t))
+    skeleton = re.sub(r'-?\d+(?:[.,]\d+)?', '#', t)
+    skeleton = re.sub(r'[^a-ząćęłńóśźż#]+', ' ', skeleton)
+    skeleton = ' '.join(skeleton.split())
+    return (skeleton, numbers)
+
+
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -950,7 +974,12 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
 
     Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
     zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
-    objete, bo nie maja ustalonego zbioru opcji do sprawdzenia."""
+    objete, bo nie maja ustalonego zbioru opcji do sprawdzenia.
+
+    DEDUPLIKACJA (ETAP 3, opcjonalna - tylko gdy `seen_fingerprints`
+    podane): identyczny mechanizm co w Quizie - patrz
+    openai_exam._verify_and_fix_quiz_math. Dziala TYLKO na sekcjach
+    zamknietych (ta sama, wspomniana wyzej luka co Warstwa 1/2/3)."""
     for sekcja in data.get("sekcje", []):
         if sekcja.get("typ") != "zamkniete":
             continue
@@ -1021,6 +1050,18 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
                     continue
                 kept2.append(pyt)
             kept = kept2
+
+        # DEDUPLIKACJA (ETAP 3) - patrz docstring wyzej.
+        if seen_fingerprints is not None:
+            deduped = []
+            for pyt in kept:
+                fp = _question_fingerprint(pyt.get("tresc", ""))
+                if fp in seen_fingerprints:
+                    print(f"[MathVerify][Exam][Dedup] USUNIETO duplikat: '{pyt.get('tresc', '')[:60]}...'")
+                    continue
+                seen_fingerprints.add(fp)
+                deduped.append(pyt)
+            kept = deduped
 
         sekcja["pytania"] = kept
 
@@ -1193,14 +1234,22 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         # sympy niz partie 1-2-zadaniowe, wiec to zmniejsza szanse na
         # koniecznosc wielu rund dogenerowania.
         t_start = time.monotonic()
-        data = self._get_exam_data_raw(temat, klasa, trudnosc, _buffered_question_count(liczba_pytan), wlasne_instrukcje, przedmiot)
+        data = self._get_exam_data_raw(
+            temat, klasa, trudnosc,
+            _buffered_question_count(liczba_pytan, temat=temat, trudnosc=trudnosc),
+            wlasne_instrukcje, przedmiot,
+        )
         if not data.get('sekcje'):
             return data
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start)
+        # ETAP 3: seen_fingerprints zyje przez CALY proces (ta partia +
+        # wszystkie rundy dogenerowania) - patrz openai_exam.py rownowazny
+        # mechanizm dla Quizu.
+        seen_fingerprints = set()
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None):
         """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
         temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
@@ -1231,7 +1280,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 continue
             if not extra or not extra.get('sekcje'):
                 continue
-            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':

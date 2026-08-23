@@ -927,7 +927,8 @@ async def _generate_quiz_topic_once(
     wchodzic w rundy dogenerowania."""
     t_start = time.monotonic()
     quiz_data = await _raw_generate_quiz_topic_once(
-        topic, effective_topic_is_forced, subject, level, _buffered_count(num_questions), difficulty, wlasne_instrukcje
+        topic, effective_topic_is_forced, subject, level,
+        _buffered_count(num_questions, topic=topic, difficulty=difficulty), difficulty, wlasne_instrukcje
     )
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions,
@@ -939,11 +940,31 @@ async def _generate_quiz_topic_once(
     return quiz_data
 
 
-def _buffered_count(n: int) -> int:
+# ETAP 3: adaptacyjny oversampling. Dzisiejsze realne testy (patrz
+# commity Etapu 2) pokazaly konsekwentnie WYZSZY rejection rate dla
+# "hard" rownan kwadratowych z parametrem niz dla reszty (kumulacja
+# odrzucen Warstwy 2 - sympy - i Warstwy 3 - trudnosc), co wielokrotnie
+# prowadzilo do wyczerpania limitu 30s przy standardowym buforze +30%.
+# Dla TEGO konkretnego, zmierzonego przypadku uzywamy wiekszego bufora
+# (+60%) - dla wszystkiego innego zostaje dotychczasowe +30% (brak
+# danych uzasadniajacych wieksze bufory gdzie indziej, nie zgadujemy).
+_HARD_DIFFICULTY_WORDS = {"hard", "trudny", "trudna"}
+
+
+def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
     """Ile pytan zamowic za pierwszym razem, zeby po odrzuceniu blednych
-    (weryfikacja sympy) prawdopodobnie zostalo >= n bez potrzeby rund
-    dogenerowania. +30%, minimum +2."""
-    return n + max(2, -(-n * 3 // 10))  # ceil(n * 0.3), min 2
+    (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
+    rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "hard" rownan
+    kwadratowych z parametrem (patrz komentarz wyzej). `topic`/`difficulty`
+    sa opcjonalne - gdy nieznane (np. sciezka z obrazka, gdzie temat nie
+    jest jeszcze znany), uzywa dotychczasowego +30%."""
+    is_hard_quadratic = (
+        topic is not None
+        and (difficulty or "").strip().lower() in _HARD_DIFFICULTY_WORDS
+        and is_quadratic_equation_topic(topic)
+    )
+    numerator = 6 if is_hard_quadratic else 3
+    return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
 # Minimalny rozmiar partii w rundzie dogenerowania - NIGDY nie prosimy o
@@ -967,8 +988,14 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     pierwszego (buforowanego) wywolania AI, nie tylko od poczatku petli
     dogenerowania, zeby limit faktycznie obejmowal caly czas generowania
     zgodnie z wymaganiem, nie tylko rundy uzupelniajace. Jesli caller nie
-    poda t_start (np. stary kod), liczymy od tego miejsca jako fallback."""
-    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty)
+    poda t_start (np. stary kod), liczymy od tego miejsca jako fallback.
+
+    ETAP 3: `seen_fingerprints` zyje przez CALA petle (jeden zbior,
+    mutowany w kazdym wywolaniu _verify_and_fix_quiz_math) - dogenerowane
+    w kolejnych rundach pytanie-duplikat zostanie odrzucone tak samo jak
+    blad matematyczny czy zla trudnosc, i policzone do `missing`."""
+    seen_fingerprints = set()
+    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints)
     max_rounds = 10
     max_seconds = 30.0
     if t_start is None:
@@ -988,7 +1015,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         except Exception as e:
             print(f"[MathVerify] blad dogenerowania: {e}")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty)
+        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1012,7 +1039,25 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     return quiz_data
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
+def _question_fingerprint(text: str):
+    """ETAP 3: prosty fingerprint do wykrywania duplikatow/bardzo
+    podobnych pytan w obrebie jednego requestu (patrz uzycie w
+    _verify_and_fix_quiz_math). Normalizuje tekst (lowercase, liczby
+    zastapione placeholderem, interpunkcja/biale znaki scalone) i OSOBNO
+    wyciaga faktyczne liczby - dwa pytania licza sie jako duplikat TYLKO
+    gdy maja IDENTYCZNY szkielet slowny ORAZ IDENTYCZNE liczby (typowy
+    przypadek: AI zwrocilo w jednej partii dwa niemal identyczne
+    pytania). Te same slowa z INNYMI liczbami/parametrem to legalna,
+    rozna wersja tego samego typu zadania - NIE duplikat."""
+    t = (text or "").lower()
+    numbers = tuple(re_module.findall(r'-?\d+(?:[.,]\d+)?', t))
+    skeleton = re_module.sub(r'-?\d+(?:[.,]\d+)?', '#', t)
+    skeleton = re_module.sub(r'[^a-ząćęłńóśźż#]+', ' ', skeleton)
+    skeleton = ' '.join(skeleton.split())
+    return (skeleton, numbers)
+
+
+def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -1044,7 +1089,15 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
     potwierdzona na identycznych przypadkach). Szuka rownania zarowno w
     tresci pytania, jak i w opcjach odpowiedzi (obsluguje tez format
     "Ktore z ponizszych rownan..."). FAIL -> pytanie odrzucone
-    (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2)."""
+    (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2).
+
+    DEDUPLIKACJA (ETAP 3, opcjonalna - tylko gdy `seen_fingerprints`
+    podane): odrzuca pytania, ktorych fingerprint (patrz
+    _question_fingerprint) juz wystapil w TYM SAMYM requescie - w tej
+    partii albo w ktorejkolwiek wczesniejszej rundzie dogenerowania
+    (zbior jest przekazywany i mutowany przez cala petle w
+    _verify_and_fill_quiz_math). Bez podania `seen_fingerprints`
+    zachowanie jest identyczne jak przed Etapem 3."""
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
         return quiz_data
@@ -1114,6 +1167,18 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
                 continue
             kept2.append(q)
         kept = kept2
+
+    # DEDUPLIKACJA (ETAP 3) - patrz docstring wyzej.
+    if seen_fingerprints is not None:
+        deduped = []
+        for q in kept:
+            fp = _question_fingerprint(q.get("question", ""))
+            if fp in seen_fingerprints:
+                print(f"[MathVerify][Dedup] USUNIETO duplikat: '{q.get('question', '')[:60]}...'")
+                continue
+            seen_fingerprints.add(fp)
+            deduped.append(q)
+        kept = deduped
 
     for i, q in enumerate(kept, start=1):
         q["id"] = i
