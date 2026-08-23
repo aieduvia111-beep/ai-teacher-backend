@@ -966,7 +966,15 @@ async function fetchWariant(temat,numQ,wariant){
   clearTimeout(examTimeoutId);
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
-  if(!ct.includes('application/pdf')&&!ct.includes('application/zip')){const d=await res.json();throw new Error(d.error||'Nieznany błąd');}
+  if(!ct.includes('application/pdf')&&!ct.includes('application/zip')){
+    const d=await res.json();
+    if(d.status==='incomplete_generation'){
+      const _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' zadań.'));
+      _ie.isIncomplete=true;
+      throw _ie;
+    }
+    throw new Error(d.error||'Nieznany błąd');
+  }
   return await res.blob();
 }
 
@@ -1028,7 +1036,8 @@ async function generate(){
     document.getElementById('loadingView').style.display='none';document.getElementById('formView').style.display='block';document.getElementById('genBtn').disabled=false;
 
     var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
-    if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    if(e.isIncomplete){_errMsg=e.message;}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';

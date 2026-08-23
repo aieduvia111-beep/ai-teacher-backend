@@ -1110,9 +1110,14 @@ async function startQuiz(){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
     .then(function(r){clearTimeout(quizTimeoutId1);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-    .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
+    .then(function(d){
+      if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
+      if(!d.success)throw new Error(d.error||'Błąd');
+      quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
+    })
     .catch(function(e){clearTimeout(quizTimeoutId1);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
-    if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    if(e.isIncomplete){_errMsg=e.message;}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
@@ -1148,9 +1153,14 @@ async function startQuiz(){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })
   .then(function(r){clearTimeout(quizTimeoutId2);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
-  .then(function(d){if(!d.success)throw new Error(d.error||'Błąd');quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);})
+  .then(function(d){
+    if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
+    if(!d.success)throw new Error(d.error||'Błąd');
+    quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
+  })
   .catch(function(e){clearTimeout(quizTimeoutId2);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
-    if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    if(e.isIncomplete){_errMsg=e.message;}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
