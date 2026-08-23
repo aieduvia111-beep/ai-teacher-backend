@@ -961,7 +961,8 @@ async function fetchWariant(temat,numQ,wariant){
   const examController = new AbortController();
   const examTimeoutId = setTimeout(()=>examController.abort(), 120000);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-  const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
+  const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':'https://eduvia-backend-2.onrender.com';
+  const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
   clearTimeout(examTimeoutId);
   if(!res.ok)throw new Error('Błąd serwera '+res.status);
   const ct=res.headers.get('content-type')||'';
