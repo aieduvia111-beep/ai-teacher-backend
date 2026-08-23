@@ -954,7 +954,7 @@ async def _generate_quiz_topic_once(
         lambda n: _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
-        t_start=t_start, difficulty=difficulty, metrics=metrics,
+        t_start=t_start, difficulty=difficulty, metrics=metrics, level=level,
     )
     return quiz_data
 
@@ -996,7 +996,7 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
 _MIN_FILL_BATCH = 4
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None) -> dict:
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
@@ -1027,7 +1027,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     if metrics is None:
         metrics = GenerationMetrics(requested_count=requested_count)
     seen_fingerprints = set()
-    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics)
+    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level)
     max_rounds = 10
     max_seconds = 30.0
     if t_start is None:
@@ -1052,7 +1052,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             print(f"[MathVerify] blad dogenerowania: {e}")
             metrics.record_rejection("json_crash")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics)
+        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1099,7 +1099,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None) -> dict:
+def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -1146,7 +1146,16 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
     metrics.rejection_reasons (klucze: final_answer_no_match,
     sympy_mismatch, difficulty_fail, duplicate). Caly czas tej funkcji
     liczy sie do metrics.validation_time, a sam czas Warstwy 3 - do
-    metrics.difficulty_time (podzbior validation_time, nie osobna pula)."""
+    metrics.difficulty_time (podzbior validation_time, nie osobna pula).
+
+    KALIBRACJA POZIOMU (ETAP 5, opcjonalna - tylko gdy `level` podane):
+    Warstwa 3 przekazuje `level` do DifficultyAnalyzer, ktory dla rownan
+    kwadratowych przesuwa okno akceptowalnych tierow wzgledem poziomu
+    ucznia (patrz app/difficulty/calibration.py
+    level_adjusted_tier_shift) - to samo pytanie moze wiec zostac
+    zaakceptowane dla jednego poziomu i odrzucone dla innego. Bez
+    `level` (albo dla liceum_2 - baseline kalibracji) zachowanie jest
+    DOKLADNIE identyczne jak przed Etapem 5."""
     from .metrics import _Timer
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
@@ -1205,7 +1214,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             text = q.get("question", "")
             try:
                 score = _difficulty_analyzer.analyze(
-                    text, option_texts=q.get("options", []), requested_difficulty_word=difficulty,
+                    text, option_texts=q.get("options", []), requested_difficulty_word=difficulty, level=level,
                 )
                 # domain_detail to DOKLADNIE to, co zwrocilo
                 # validate_quadratic_difficulty - jesli zaden domain

@@ -943,7 +943,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None) -> dict:
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -982,7 +982,13 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
     zamknietych (ta sama, wspomniana wyzej luka co Warstwa 1/2/3).
 
     METRYKI (ETAP 4, opcjonalne - tylko gdy `metrics` podane): identyczny
-    mechanizm co w Quizie - patrz openai_exam._verify_and_fix_quiz_math."""
+    mechanizm co w Quizie - patrz openai_exam._verify_and_fix_quiz_math.
+
+    KALIBRACJA POZIOMU (ETAP 5, opcjonalna - tylko gdy `level` podane -
+    tutaj to wartosc `klasa` przekazana przez callera, patrz
+    _get_exam_data): identyczny mechanizm co w Quizie - Warstwa 3
+    przesuwa okno akceptowalnych tierow rownan kwadratowych wzgledem
+    poziomu ucznia. Bez `level` - dokladnie dzisiejsze zachowanie."""
     from .metrics import _Timer
     _validation_timer = _Timer(metrics, "validation_time") if metrics else None
     if _validation_timer:
@@ -1047,7 +1053,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 tresc = pyt.get("tresc", "")
                 try:
                     score = _difficulty_analyzer.analyze(
-                        tresc, option_texts=pyt.get("opcje", []), requested_difficulty_word=trudnosc,
+                        tresc, option_texts=pyt.get("opcje", []), requested_difficulty_word=trudnosc, level=level,
                     )
                     diff_result = score.domain_detail or {"status": "not_quadratic"}
                 except Exception as e:
@@ -1276,7 +1282,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         # wszystkie rundy dogenerowania) - patrz openai_exam.py rownowazny
         # mechanizm dla Quizu.
         seen_fingerprints = set()
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics)
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics)
         return data
 
@@ -1326,7 +1332,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             if not extra or not extra.get('sekcje'):
                 metrics.record_rejection("json_crash")
                 continue
-            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':
