@@ -93,7 +93,14 @@ def calibrate(score: int, level: str = None) -> str:
 # TYLKO gdy adapter jawnie o niego poprosi (patrz level=None -> shift 0).
 # ---------------------------------------------------------------
 QUADRATIC_BASELINE_LEVEL = "liceum_2"
-QUADRATIC_MAX_SHIFT = 2  # liczba pasm tieru na krancach skali (podstawowka_1..studia_5)
+# NAPRAWIONE (feedback usera po pierwszym tescie): MAX_SHIFT=2 bylo za
+# male, zeby wykryc DOKLADNIE ten przypadek, ktory mial rozwiazac caly
+# ten mechanizm - "7 klasa vs 2 LO" (3 lata roznicy) wychodzilo na
+# shift=0 po zaokragleniu, wiec bliskie, realistyczne pary poziomow byly
+# NIEODROZNIALNE - a to byl glowny cel Etapu 5, nie tylko skrajnosci.
+# MAX_SHIFT=4 (nadal punkt startowy do dalszej kalibracji) wykrywa juz
+# ta konkretna, bliska roznice - potwierdzone w test_etap5.py.
+QUADRATIC_MAX_SHIFT = 4  # liczba pasm tieru na krancach skali (podstawowka_1..studia_5)
 
 
 def level_adjusted_tier_shift(level: str) -> int:

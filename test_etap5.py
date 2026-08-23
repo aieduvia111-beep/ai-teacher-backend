@@ -158,41 +158,49 @@ check("kontrola: tresc testowa faktycznie klasyfikuje sie jako tier 5-6", detect
 
 print()
 print("  6a) Zadana trojka z zadania (podstawowka_7 / liceum_2 / studia_1), request 'medium':")
+print("      (MAX_SHIFT podniesiony z 2 na 4 po feedbacku usera - patrz komentarz w calibration.py -")
+print("       pierwsza wersja NIE lapala tej bliskiej roznicy, teraz musi.)")
 results_requested_trio = {}
+requested_tiers_trio = {}
 for lvl in ["podstawowka_7", "liceum_2", "studia_1"]:
     r = modifier.evaluate(tier_56_question, None, "medium", level=lvl)
     results_requested_trio[lvl] = r["status"]
+    requested_tiers_trio[lvl] = r.get("requested_tier")
     shift = level_adjusted_tier_shift(lvl)
-    print(f"      {lvl:15s} shift={shift:+d}  status={r['status']}")
-# UWAGA (raportowane uczciwie, patrz podsumowanie do usera): przy
-# MAX_SHIFT=2 te trzy konkretne poziomy sa WYSTARCZAJACO blisko siebie
-# na osi "rok nauki" (7, 10, 14 na skali 1-18), zeby wszystkie trzy dac
-# shift=0 po zaokragleniu - WSZYSTKIE TRZY moga wiec wyjsc identyczne.
-# Test PRZYZNAJE ten fakt zamiast go ukrywac - sprawdzamy TYLKO ze
-# wyniki sa WEWNETRZNIE spojne (jesli shifty sa rowne, statusy tez musza
-# byc rowne), NIE wymuszamy sztucznie roznicy tam, gdzie matematycznie
-# jej nie ma przy dzisiejszych parametrach.
-shifts_requested_trio = {lvl: level_adjusted_tier_shift(lvl) for lvl in results_requested_trio}
-if len(set(shifts_requested_trio.values())) == 1:
-    check("shifty rowne -> statusy TEZ rowne (wewnetrzna spojnosc, nie sztuczna roznica)",
-          len(set(results_requested_trio.values())) == 1, (shifts_requested_trio, results_requested_trio))
-else:
-    check("shifty rozne -> statusy MOGA/POWINNY sie roznic", True)
+    print(f"      {lvl:15s} shift={shift:+d}  status={r['status']:5s} requested_tier={r.get('requested_tier')}")
+
+check("podstawowka_7 vs liceum_2: RUZNE shifty (nie 0 dla obu, jak przy MAX_SHIFT=2)",
+      level_adjusted_tier_shift("podstawowka_7") != level_adjusted_tier_shift("liceum_2"), results_requested_trio)
+check("studia_1 vs liceum_2: RUZNE shifty", level_adjusted_tier_shift("studia_1") != level_adjusted_tier_shift("liceum_2"), results_requested_trio)
+check("GLOWNY CEL ETAPU 5 SPELNIONY: to samo pytanie (tier 5-6) dla podstawowka_7/liceum_2/studia_1 -> 3 RUZNE wyniki",
+      len(set(results_requested_trio.values())) >= 2 and len(set(requested_tiers_trio.values())) == 3,
+      (results_requested_trio, requested_tiers_trio))
+check("liceum_2 (baseline) nadal 'ok' - pytanie DOKLADNIE trafia w tier 5-6 = 'medium' tam, gdzie skala byla kalibrowana",
+      results_requested_trio["liceum_2"] == "ok", results_requested_trio)
+check("podstawowka_7 (mlodszy uczen): to samo pytanie liczy sie jako ZA TRUDNE na 'medium'",
+      results_requested_trio["podstawowka_7"] == "fail", results_requested_trio)
+check("studia_1 (starszy uczen): to samo pytanie liczy sie jako ZA LATWE na 'medium'",
+      results_requested_trio["studia_1"] == "fail", results_requested_trio)
 
 print()
-print("  6b) Bardziej odlegla trojka (podstawowka_1 / liceum_2 / studia_5), request 'medium':")
+print("  6b) Skrajne poziomy (podstawowka_1 / studia_5) - kontrola braku 'przesadzenia':")
 results_wide_trio = {}
 for lvl in ["podstawowka_1", "liceum_2", "studia_5"]:
     r = modifier.evaluate(tier_56_question, None, "medium", level=lvl)
-    results_wide_trio[lvl] = r["status"]
+    results_wide_trio[lvl] = r
     shift = level_adjusted_tier_shift(lvl)
-    print(f"      {lvl:15s} shift={shift:+d}  status={r['status']}  detail={r}")
-check("podstawowka_1 (shift ujemny): tier 5-6 poproszone jako 'medium' u NIEGO liczy sie jako ZA TRUDNE",
-      results_wide_trio["podstawowka_1"] != results_wide_trio["liceum_2"], results_wide_trio)
-check("studia_5 (shift dodatni): tier 5-6 poproszone jako 'medium' u NIEGO liczy sie jako ZA LATWE (bo medium tam wymaga wyzszego tieru)",
-      results_wide_trio["studia_5"] != results_wide_trio["liceum_2"], results_wide_trio)
-check("MECHANIZM DZIALA: przy dostatecznie odleglych poziomach TA SAMA tresc dostaje INNA klasyfikacje",
-      len(set(results_wide_trio.values())) >= 2, results_wide_trio)
+    print(f"      {lvl:15s} shift={shift:+d}  status={r['status']:5s} requested_tier={r.get('requested_tier')}")
+check("podstawowka_1: shift wciaz w rozsadnym zakresie (-2, nie mniej - 5 tierow, nie przekracza skali)",
+      level_adjusted_tier_shift("podstawowka_1") == -2, level_adjusted_tier_shift("podstawowka_1"))
+check("studia_5: shift wciaz w rozsadnym zakresie (+2, nie wiecej)",
+      level_adjusted_tier_shift("studia_5") == 2, level_adjusted_tier_shift("studia_5"))
+check("podstawowka_1: requested_tier NIE jest pusty/zdegenerowany (nadal konkretne pasmo, tu '1-2')",
+      results_wide_trio["podstawowka_1"]["requested_tier"] == "1-2", results_wide_trio["podstawowka_1"])
+check("studia_5: requested_tier NIE jest pusty/zdegenerowany (nadal konkretne pasmo, tu '9-10')",
+      results_wide_trio["studia_5"]["requested_tier"] == "9-10", results_wide_trio["studia_5"])
+check("podstawowka_1 i studia_5 dalej ROZNE od liceum_2 (mechanizm z Czesci 6 poprzedniego testu nadal dziala)",
+      results_wide_trio["podstawowka_1"]["status"] != results_wide_trio["liceum_2"]["status"] and
+      results_wide_trio["studia_5"]["status"] != results_wide_trio["liceum_2"]["status"], results_wide_trio)
 
 
 print()
