@@ -1281,7 +1281,14 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,
                       wariant: str = "A", wlasne_instrukcje: str = None,
-                      przedmiot: str = None) -> str:
+                      przedmiot: str = None):
+        """Zwraca (fname, shortfall_info). shortfall_info jest None, jesli
+        wygenerowano pelna zamowiona liczbe zadan - w przeciwnym razie dict
+        {"message", "requested_count", "accepted_count"} (ETAP 2, Punkt 2 -
+        patrz identyczny mechanizm w quiz_api.py _shortfall_response).
+        PDF jest budowany normalnie w OBU przypadkach (data["_shortfall_warning"]
+        nie blokuje generowania pliku) - to wywolujacy kod (exam_api.py)
+        decyduje, czy mimo shortfallu i tak oddac PDF, czy zwrocic blad."""
         print(f"[ExamGen] Generuję: '{temat}' | {klasa} | {trudnosc} | Wariant {wariant}")
         # Wyciągnij przedmiot z tematu jeśli format "Przedmiot: Temat"
         if not przedmiot and ':' in temat:
@@ -1289,6 +1296,15 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
+        shortfall_info = None
+        shortfall_message = data.get("_shortfall_warning")
+        if shortfall_message:
+            accepted = sum(len(s.get("pytania", [])) for s in data.get("sekcje", []))
+            shortfall_info = {
+                "message": shortfall_message,
+                "requested_count": liczba_pytan,
+                "accepted_count": accepted,
+            }
         data['wariant'] = wariant
         print(f"[ExamGen] Sprawdzian: '{data.get('tytul','?')}'")
 
@@ -1313,4 +1329,4 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         with open(fname, 'wb') as f:
             writer.write(f)
         print(f"[ExamGen] Plik: {fname}")
-        return fname
+        return fname, shortfall_info

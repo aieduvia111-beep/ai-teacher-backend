@@ -27,12 +27,27 @@ class ExamRequest(BaseModel):
     images: Optional[List[str]] = None
 
 def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wariant, wlasne_instrukcje=None):
+    """Zwraca (fname, shortfall_info) - patrz ExamGenerator.generate_exam."""
     gen = ExamGenerator(api_key)
     return gen.generate_exam(
         temat=pelny_temat, klasa=klasa,
         trudnosc=trudnosc, liczba_pytan=liczba_pytan,
         wariant=wariant, wlasne_instrukcje=wlasne_instrukcje
     )
+
+
+def _shortfall_response(shortfall_info: dict):
+    """ETAP 2, Punkt 2: identyczny mechanizm co quiz_api._shortfall_response -
+    zamiast po cichu oddac niepelny PDF jako sukces, zwracamy kontrolowany
+    stan incomplete_generation. Zero PDF w odpowiedzi - user dostaje jasny
+    komunikat i moze sprobowac ponownie (patrz Punkt 3, frontend)."""
+    return {
+        "success": False,
+        "status": "incomplete_generation",
+        "message": shortfall_info["message"],
+        "requested_count": shortfall_info["requested_count"],
+        "accepted_count": shortfall_info["accepted_count"],
+    }
 
 async def _extract_topic_from_images(images: list) -> str:
     """Używa vision żeby wyciągnąć temat ze zdjęć."""
@@ -92,14 +107,18 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
         # przy darmowym koncie drugie zadanie (wariant B) zawsze dostawalo odmowe
         # i cala funkcja "Wariant A+B" byla realnie zepsuta dla darmowych userow.
         if req.wariant == "AB":
-            filename_a = await loop.run_in_executor(
+            filename_a, shortfall_a = await loop.run_in_executor(
                 _executor, _generate_blocking,
                 pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje
             )
-            filename_b = await loop.run_in_executor(
+            filename_b, shortfall_b = await loop.run_in_executor(
                 _executor, _generate_blocking,
                 pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
             )
+            if shortfall_a or shortfall_b:
+                # Jesli KTORYKOLWIEK wariant ma niepelna liczbe zadan - nie
+                # oddawaj po cichu ZIP-a z niekompletnym PDF-em w srodku.
+                return _shortfall_response(shortfall_a or shortfall_b)
             if not (filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b)):
                 return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
             zip_path = tempfile.mktemp(suffix=".zip")
@@ -113,10 +132,12 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
                 headers={"Content-Disposition": "attachment; filename=sprawdzian_AB.zip"}
             )
 
-        filename = await loop.run_in_executor(
+        filename, shortfall = await loop.run_in_executor(
             _executor, _generate_blocking,
             pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje
         )
+        if shortfall:
+            return _shortfall_response(shortfall)
 
         if filename and os.path.exists(filename):
             return FileResponse(

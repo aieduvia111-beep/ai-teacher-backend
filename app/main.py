@@ -28,8 +28,6 @@ from .openai_exam import (
     generate_exam_from_image,
     generate_notes_from_image,
     generate_notes_from_topic,
-    generate_quiz_from_image,
-    generate_quiz_from_topic
 )
 
 # Tables will be created on startup
@@ -94,6 +92,13 @@ try:
     print("✅ exam_api OK")
 except Exception as e:
     print(f"❌ exam_api: {e}")
+
+try:
+    from .api.quiz_api import router as quiz_router
+    app.include_router(quiz_router)
+    print("✅ quiz_api OK")
+except Exception as e:
+    print(f"❌ quiz_api: {e}")
 
 try:
     from .api.vision import router as vision_router
@@ -243,23 +248,6 @@ class NotesTopicResponse(BaseModel):
     style: Optional[str] = None
     error: Optional[str] = None
 
-class QuizRequest(BaseModel):
-    image: str
-    num_questions: int = 5
-    difficulty: str = "medium"
-
-class QuizTopicRequest(BaseModel):
-    topic: str
-    subject: str = "matematyka"
-    level: str = "liceum"
-    num_questions: int = 5
-    difficulty: str = "medium"
-    wlasne_instrukcje: str = ""
-
-class QuizResponse(BaseModel):
-    success: bool
-    quiz: Optional[Dict] = None
-    error: Optional[str] = None
 
 
 # ══ ENDPOINTY VISION ══
@@ -345,31 +333,16 @@ async def generate_notes_topic(request: NotesTopicRequest):
 
 
 # ══ ENDPOINTY QUIZ ══
-@app.post("/api/v1/quiz/generate", response_model=QuizResponse)
-async def generate_quiz(request: QuizRequest):
-    try:
-        result = await generate_quiz_from_image(
-            request.image, request.num_questions, request.difficulty
-        )
-        if result["success"]:
-            return QuizResponse(success=True, quiz=result["quiz"])
-        return QuizResponse(success=False, error=result.get("error"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/quiz/generate-topic", response_model=QuizResponse)
-async def generate_quiz_topic(request: QuizTopicRequest):
-    try:
-        result = await generate_quiz_from_topic(
-            request.topic, request.subject, request.level,
-            request.num_questions, request.difficulty,
-            request.wlasne_instrukcje
-        )
-        if result["success"]:
-            return QuizResponse(success=True, quiz=result["quiz"])
-        return QuizResponse(success=False, error=result.get("error"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# ETAP 2, Punkt 2: usuniete stad duplikaty /api/v1/quiz/generate i
+# /generate-topic - ZAWSZE wygrywaly wyscig routingu z app/api/quiz_api.py
+# (ten plik nigdy nie byl podlaczony przez app.include_router - martwy kod
+# od poczatku), wiec caly ruch Quiz szedl przez ta prostsza, starsza
+# implementacje: bez Depends(require_feature_limit), bez response_model
+# pozwalajacego na dodatkowe pola (status/requested_count/accepted_count
+# potrzebne dla incomplete_generation). Teraz jedynym zrodlem prawdy jest
+# quiz_api.router (patrz include_router nizej) - identyczna logika
+# generowania (ta sama funkcja generate_quiz_from_topic), ale z pelna
+# obsluga limitow i shortfallu.
 
 
 # ══ STARTUP ══

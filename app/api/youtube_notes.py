@@ -124,7 +124,11 @@ async def youtube_exam(req: YoutubeRequest):
         gen = ExamGenerator(settings.OPENAI_API_KEY)
         
         loop = asyncio.get_event_loop()
-        pdf_path = await loop.run_in_executor(
+        # generate_exam() zwraca teraz (fname, shortfall_info) - patrz Etap 2
+        # Universal Difficulty Engine. Ta sciezka (YouTube) nie obsluguje
+        # jeszcze kontrolowanego incomplete_generation jak Quiz/Sprawdzian -
+        # oddajemy PDF tak jak dotychczas, niezaleznie od shortfallu.
+        pdf_path, _shortfall = await loop.run_in_executor(
             _executor, lambda: gen.generate_exam(
                 temat=temat,
                 klasa=req.klasa,

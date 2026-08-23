@@ -17,6 +17,30 @@ from concurrent.futures import ThreadPoolExecutor
 router = APIRouter(prefix="/api/v1/quiz", tags=["quiz"])
 _executor = ThreadPoolExecutor(max_workers=4)
 
+
+def _shortfall_response(quiz: dict, requested_count: int):
+    """ETAP 2, Punkt 2: quiz["_shortfall_warning"] (patrz openai_exam.py
+    _verify_and_fill_quiz_math) byl dotad MARTWYM polem - ustawiany przez
+    backend, ale nigdy nie czytany tutaj ani przez frontend, wiec user
+    dostawal cichy success:true z mniejsza liczba pytan niz zamowil, bez
+    zadnej informacji dlaczego. Teraz: jesli pole jest ustawione, zwracamy
+    KONTROLOWANY stan zamiast udawanego sukcesu - success:false,
+    status:"incomplete_generation", z dokladnymi requested/accepted, tak
+    zeby frontend mogl pokazac uczciwy komunikat (patrz Punkt 3).
+    Zwraca None, jesli wszystko w porzadku (pelna liczba pytan)."""
+    warning = quiz.get("_shortfall_warning")
+    if not warning:
+        return None
+    accepted = len(quiz.get("questions", []))
+    return {
+        "success": False,
+        "status": "incomplete_generation",
+        "message": warning,
+        "requested_count": requested_count,
+        "accepted_count": accepted,
+        "quiz": quiz,
+    }
+
 class QuizImageRequest(BaseModel):
     image: str
     num_questions: int = 10
@@ -88,11 +112,14 @@ async def quiz_from_image(req: QuizImageRequest, user: User = Depends(require_fe
             return {"success": False, "error": result.get("error")}
         # Jezeli sa wlasne instrukcje - dodaj je do tytulu zeby zaznaczyc ze zostaly uwzglednione
         # Obrazki sa analizowane przez Vision - instrukcje przekazujemy przez temat
+        quiz = result["quiz"]
         if req.wlasne_instrukcje and req.wlasne_instrukcje.strip():
-            quiz = result["quiz"]
             # Wstrzyknij instrukcje jako dodatkowy kontekst do tytulu (Vision nie przyjmuje prompta)
             quiz["_instrukcje"] = req.wlasne_instrukcje.strip()
-        return {"success": True, "quiz": result["quiz"]}
+        shortfall = _shortfall_response(quiz, req.num_questions)
+        if shortfall:
+            return shortfall
+        return {"success": True, "quiz": quiz}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -118,7 +145,11 @@ async def quiz_from_topic(req: QuizTopicRequest, user: User = Depends(require_fe
             wlasne_instrukcje=wlasne
         )
         if result["success"]:
-            return {"success": True, "quiz": result["quiz"]}
+            quiz = result["quiz"]
+            shortfall = _shortfall_response(quiz, req.num_questions)
+            if shortfall:
+                return shortfall
+            return {"success": True, "quiz": quiz}
         return {"success": False, "error": result.get("error")}
     except Exception as e:
         return {"success": False, "error": str(e)}
