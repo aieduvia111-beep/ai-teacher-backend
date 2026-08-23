@@ -943,7 +943,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None) -> dict:
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -979,7 +979,14 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
     DEDUPLIKACJA (ETAP 3, opcjonalna - tylko gdy `seen_fingerprints`
     podane): identyczny mechanizm co w Quizie - patrz
     openai_exam._verify_and_fix_quiz_math. Dziala TYLKO na sekcjach
-    zamknietych (ta sama, wspomniana wyzej luka co Warstwa 1/2/3)."""
+    zamknietych (ta sama, wspomniana wyzej luka co Warstwa 1/2/3).
+
+    METRYKI (ETAP 4, opcjonalne - tylko gdy `metrics` podane): identyczny
+    mechanizm co w Quizie - patrz openai_exam._verify_and_fix_quiz_math."""
+    from .metrics import _Timer
+    _validation_timer = _Timer(metrics, "validation_time") if metrics else None
+    if _validation_timer:
+        _validation_timer.__enter__()
     for sekcja in data.get("sekcje", []):
         if sekcja.get("typ") != "zamkniete":
             continue
@@ -996,6 +1003,8 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 fa_status, fa_idx = "no_final_answer", None
             if fa_status in ("no_match", "ambiguous", "no_final_answer"):
                 print(f"[MathVerify][Exam] USUNIETO zadanie (final_answer={fa_status}): '{tresc[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("final_answer_no_match")
                 continue
             new_letter = _IDX_TO_LETTER.get(fa_idx)
             if new_letter and pyt.get("odpowiedz") != new_letter:
@@ -1023,11 +1032,16 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 kept.append(pyt)
             elif result["status"] == "no_option_matches":
                 print(f"[MathVerify][Exam] USUNIETO zadanie (sympy: brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("sympy_mismatch")
             else:
                 kept.append(pyt)
 
         # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
         if trudnosc:
+            _difficulty_timer = _Timer(metrics, "difficulty_time") if metrics else None
+            if _difficulty_timer:
+                _difficulty_timer.__enter__()
             kept2 = []
             for pyt in kept:
                 tresc = pyt.get("tresc", "")
@@ -1047,9 +1061,13 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                         f"REQUESTED_TIER={diff_result['requested_tier']} "
                         f"DETECTED_TIER={diff_result['detected_tier']}"
                     )
+                    if metrics:
+                        metrics.record_rejection("difficulty_fail")
                     continue
                 kept2.append(pyt)
             kept = kept2
+            if _difficulty_timer:
+                _difficulty_timer.__exit__(None, None, None)
 
         # DEDUPLIKACJA (ETAP 3) - patrz docstring wyzej.
         if seen_fingerprints is not None:
@@ -1058,12 +1076,17 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 fp = _question_fingerprint(pyt.get("tresc", ""))
                 if fp in seen_fingerprints:
                     print(f"[MathVerify][Exam][Dedup] USUNIETO duplikat: '{pyt.get('tresc', '')[:60]}...'")
+                    if metrics:
+                        metrics.record_rejection("duplicate")
                     continue
                 seen_fingerprints.add(fp)
                 deduped.append(pyt)
             kept = deduped
 
         sekcja["pytania"] = kept
+
+    if _validation_timer:
+        _validation_timer.__exit__(None, None, None)
 
     # Renumeracja "nr" SEKWENCYJNIE przez wszystkie sekcje (zamkniete +
     # otwarte razem) - usuniecie zadania z sekcji zamknietej nie moze
@@ -1233,23 +1256,31 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         # wieksze partie maja wyzszy odsetek przechodzacy weryfikacje
         # sympy niz partie 1-2-zadaniowe, wiec to zmniejsza szanse na
         # koniecznosc wielu rund dogenerowania.
+        # ETAP 4: GenerationMetrics tworzone tutaj (jedyne miejsce, ktore
+        # zna batch_size PRZED pierwszym wywolaniem AI) - patrz identyczny
+        # wzorzec w openai_exam.py _generate_quiz_topic_once.
+        from .metrics import GenerationMetrics, _Timer
         t_start = time.monotonic()
-        data = self._get_exam_data_raw(
-            temat, klasa, trudnosc,
-            _buffered_question_count(liczba_pytan, temat=temat, trudnosc=trudnosc),
-            wlasne_instrukcje, przedmiot,
-        )
+        batch_size = _buffered_question_count(liczba_pytan, temat=temat, trudnosc=trudnosc)
+        metrics = GenerationMetrics(requested_count=liczba_pytan, batch_size=batch_size)
+        with _Timer(metrics, "generation_time"):
+            data = self._get_exam_data_raw(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
+        metrics.api_request_count += 1
+        metrics.generated_count += sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if not data.get('sekcje'):
+            metrics.record_rejection("json_crash")
+            metrics.total_time = time.monotonic() - t_start
+            metrics.log("[GenerationMetrics][Exam]")
             return data
         # ETAP 3: seen_fingerprints zyje przez CALY proces (ta partia +
         # wszystkie rundy dogenerowania) - patrz openai_exam.py rownowazny
         # mechanizm dla Quizu.
         seen_fingerprints = set()
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints)
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None):
         """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
         temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
@@ -1259,7 +1290,16 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         _get_exam_data - `t_start` przekazywany stamtad, zeby limit
         obejmowal caly proces generowania, nie tylko rundy uzupelniajace)
         - bezpieczniki: user nigdy nie powinien czekac bez konca, nawet
-        dla ekstremalnie uporczywego tematu (w praktyce bardzo rzadkie)."""
+        dla ekstremalnie uporczywego tematu (w praktyce bardzo rzadkie).
+
+        ETAP 4: `metrics` (GenerationMetrics, patrz _get_exam_data - tworzone
+        tam, bo tylko tamten caller zna batch_size PRZED pierwszym
+        wywolaniem AI) jest tu koncowym punktem - loguje finalna linie JSON
+        z accepted_count/total_time. Jesli caller nie poda `metrics`,
+        tworzymy lokalna, jednorazowa instancje (zero zmiany zachowania)."""
+        from .metrics import GenerationMetrics, _Timer
+        if metrics is None:
+            metrics = GenerationMetrics(requested_count=liczba_pytan)
         max_seconds = 30.0
         if t_start is None:
             t_start = time.monotonic()
@@ -1273,14 +1313,20 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 print(f"[MathVerify][Exam] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
                 break
             print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
+            metrics.retry_count += 1
             try:
-                extra = self._get_exam_data_raw(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+                with _Timer(metrics, "generation_time"):
+                    extra = self._get_exam_data_raw(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+                metrics.api_request_count += 1
+                metrics.generated_count += sum(len(s.get('pytania', [])) for s in (extra or {}).get('sekcje', []))
             except Exception as e:
                 print(f"[MathVerify][Exam] blad dogenerowania: {e}")
+                metrics.record_rejection("json_crash")
                 continue
             if not extra or not extra.get('sekcje'):
+                metrics.record_rejection("json_crash")
                 continue
-            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':
@@ -1325,6 +1371,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 f"Sprobuj ponownie albo zmien temat/trudnosc."
             )
             print(f"[MathVerify][Exam] SHORTFALL: {final_total}/{liczba_pytan} po {total_elapsed:.1f}s ({reason})")
+
+        metrics.accepted_count = final_total
+        metrics.total_time = time.monotonic() - t_start
+        metrics.log("[GenerationMetrics][Exam]")
+
         return data
 
     def generate_exam(self, temat: str, klasa: str = "liceum",

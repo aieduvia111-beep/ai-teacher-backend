@@ -924,18 +924,37 @@ async def _generate_quiz_topic_once(
     zamowiono (patrz _buffered_count) - empirycznie wieksze partie maja
     wyzszy odsetek pytan przechodzacych weryfikacje sympy niz partie
     jednopytaniowe, wiec to zmniejsza szanse, ze w ogole trzeba bedzie
-    wchodzic w rundy dogenerowania."""
+    wchodzic w rundy dogenerowania.
+
+    ETAP 4: tworzy GenerationMetrics tutaj (jedyne miejsce, ktore zna
+    `batch_size` PRZED pierwszym wywolaniem AI) i przekazuje dalej do
+    _verify_and_fill_quiz_math, ktora dolicza rundy dogenerowania i
+    finalnie loguje jedna linie JSON. Jesli SUROWE (pierwsze) wywolanie
+    AI calkowicie sie wywali (np. crash JSON, patrz realny przypadek z
+    tej sesji) - metryki i tak sa zalogowane przed ponownym rzuceniem
+    wyjatku, zeby nie stracic obserwowalnosci nawet w calkowitej porazce."""
+    from .metrics import GenerationMetrics, _Timer
     t_start = time.monotonic()
-    quiz_data = await _raw_generate_quiz_topic_once(
-        topic, effective_topic_is_forced, subject, level,
-        _buffered_count(num_questions, topic=topic, difficulty=difficulty), difficulty, wlasne_instrukcje
-    )
+    batch_size = _buffered_count(num_questions, topic=topic, difficulty=difficulty)
+    metrics = GenerationMetrics(requested_count=num_questions, batch_size=batch_size)
+    try:
+        with _Timer(metrics, "generation_time"):
+            quiz_data = await _raw_generate_quiz_topic_once(
+                topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
+            )
+        metrics.api_request_count += 1
+        metrics.generated_count += len(quiz_data.get("questions", []))
+    except Exception:
+        metrics.record_rejection("json_crash")
+        metrics.total_time = time.monotonic() - t_start
+        metrics.log("[GenerationMetrics][Quiz]")
+        raise
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions,
         lambda n: _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
-        t_start=t_start, difficulty=difficulty,
+        t_start=t_start, difficulty=difficulty, metrics=metrics,
     )
     return quiz_data
 
@@ -977,7 +996,7 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
 _MIN_FILL_BATCH = 4
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None) -> dict:
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
@@ -993,9 +1012,22 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     ETAP 3: `seen_fingerprints` zyje przez CALA petle (jeden zbior,
     mutowany w kazdym wywolaniu _verify_and_fix_quiz_math) - dogenerowane
     w kolejnych rundach pytanie-duplikat zostanie odrzucone tak samo jak
-    blad matematyczny czy zla trudnosc, i policzone do `missing`."""
+    blad matematyczny czy zla trudnosc, i policzone do `missing`.
+
+    ETAP 4: `metrics` (GenerationMetrics) jest tworzone przez callera
+    (patrz _generate_quiz_topic_once - juz zna batch_size i pierwsze
+    api_request_count/generation_time z surowego wywolania PRZED tym
+    miejscem) i mutowane dalej tutaj - kazda runda dogenerowania to
+    +1 do retry_count i api_request_count, czas w regenerate() liczy sie
+    do generation_time, a blad calego wywolania AI (np. crash JSON) do
+    rejection_reasons["json_crash"]. Jesli caller nie poda `metrics`,
+    tworzymy lokalna, jednorazowa instancje (zero zmiany zachowania -
+    po prostu nic jej nie loguje)."""
+    from .metrics import GenerationMetrics, _Timer
+    if metrics is None:
+        metrics = GenerationMetrics(requested_count=requested_count)
     seen_fingerprints = set()
-    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints)
+    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics)
     max_rounds = 10
     max_seconds = 30.0
     if t_start is None:
@@ -1010,12 +1042,17 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             print(f"[MathVerify] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
             break
         print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
+        metrics.retry_count += 1
         try:
-            extra_data = await regenerate(missing)
+            with _Timer(metrics, "generation_time"):
+                extra_data = await regenerate(missing)
+            metrics.api_request_count += 1
+            metrics.generated_count += len(extra_data.get("questions", []))
         except Exception as e:
             print(f"[MathVerify] blad dogenerowania: {e}")
+            metrics.record_rejection("json_crash")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints)
+        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1036,6 +1073,11 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     for i, q in enumerate(questions, start=1):
         q["id"] = i
     quiz_data["questions"] = questions
+
+    metrics.accepted_count = len(questions)
+    metrics.total_time = time.monotonic() - t_start
+    metrics.log("[GenerationMetrics][Quiz]")
+
     return quiz_data
 
 
@@ -1057,7 +1099,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None) -> dict:
+def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -1097,10 +1139,21 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
     partii albo w ktorejkolwiek wczesniejszej rundzie dogenerowania
     (zbior jest przekazywany i mutowany przez cala petle w
     _verify_and_fill_quiz_math). Bez podania `seen_fingerprints`
-    zachowanie jest identyczne jak przed Etapem 3."""
+    zachowanie jest identyczne jak przed Etapem 3.
+
+    METRYKI (ETAP 4, opcjonalne - tylko gdy `metrics` podane): kazde
+    odrzucenie zwieksza metrics.rejected_count i histogram
+    metrics.rejection_reasons (klucze: final_answer_no_match,
+    sympy_mismatch, difficulty_fail, duplicate). Caly czas tej funkcji
+    liczy sie do metrics.validation_time, a sam czas Warstwy 3 - do
+    metrics.difficulty_time (podzbior validation_time, nie osobna pula)."""
+    from .metrics import _Timer
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
         return quiz_data
+    _validation_timer = _Timer(metrics, "validation_time") if metrics else None
+    if _validation_timer:
+        _validation_timer.__enter__()
     kept = []
     for q in questions:
         text = q.get("question", "")
@@ -1113,6 +1166,8 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             fa_status = "no_final_answer"
         if fa_status in ("no_match", "ambiguous", "no_final_answer"):
             print(f"[MathVerify] USUNIETO pytanie (final_answer={fa_status}): '{text[:60]}...'")
+            if metrics:
+                metrics.record_rejection("final_answer_no_match")
             continue
 
         # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec
@@ -1135,11 +1190,16 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             kept.append(q)
         elif result["status"] == "no_option_matches":
             print(f"[MathVerify] USUNIETO pytanie (sympy: brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
+            if metrics:
+                metrics.record_rejection("sympy_mismatch")
         else:
             kept.append(q)
 
     # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
     if difficulty:
+        _difficulty_timer = _Timer(metrics, "difficulty_time") if metrics else None
+        if _difficulty_timer:
+            _difficulty_timer.__enter__()
         kept2 = []
         for q in kept:
             text = q.get("question", "")
@@ -1164,9 +1224,13 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
                     f"REQUESTED_TIER={diff_result['requested_tier']} "
                     f"DETECTED_TIER={diff_result['detected_tier']}"
                 )
+                if metrics:
+                    metrics.record_rejection("difficulty_fail")
                 continue
             kept2.append(q)
         kept = kept2
+        if _difficulty_timer:
+            _difficulty_timer.__exit__(None, None, None)
 
     # DEDUPLIKACJA (ETAP 3) - patrz docstring wyzej.
     if seen_fingerprints is not None:
@@ -1175,6 +1239,8 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             fp = _question_fingerprint(q.get("question", ""))
             if fp in seen_fingerprints:
                 print(f"[MathVerify][Dedup] USUNIETO duplikat: '{q.get('question', '')[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("duplicate")
                 continue
             seen_fingerprints.add(fp)
             deduped.append(q)
@@ -1183,6 +1249,8 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
     for i, q in enumerate(kept, start=1):
         q["id"] = i
     quiz_data["questions"] = kept
+    if _validation_timer:
+        _validation_timer.__exit__(None, None, None)
     return quiz_data
 
 
