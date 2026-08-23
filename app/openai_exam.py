@@ -485,14 +485,6 @@ import re as re_module
 _LATEX_CONNECTOR_RE = re_module.compile(
     r'\s+(lub|i|oraz|albo|gdy|dla|wynosi|wynoszą|jest równ[ea]|są równe|to)\s+'
 )
-# Znajduje JUZ poprawnie opakowane wzory $...$ - te zostawiamy calkowicie
-# nietkniete, opakowujemy tylko to co lezy MIEDZY nimi (poza istniejacymi
-# dolarami). Bez tego np. "Rozwiaz rownanie $\log_2(x)=3$" (poprawne, tylko
-# przedrostek "Rozwiaz rownanie " jest poza wzorem) bylo blednie traktowane
-# jako "nie w pelni opakowane" (bo caly string nie zaczynal sie od $) i
-# dostawalo DODATKOWY dolar na obu koncach: "$Rozwiaz rownanie $...$$".
-_EXISTING_DOLLAR_RE = re_module.compile(r'\$[^$]*\$')
-
 def _wrap_plain_segment(segment):
     """Opakowuje w $...$ fragmenty z komendami LaTeX w TEKSCIE BEZ zadnych
     istniejacych dolarow - z podzialem na polskich lacznikach jak wyzej."""
@@ -515,18 +507,55 @@ def _wrap_plain_segment(segment):
 
 def _wrap_naked_latex(t):
     """Opakowuje w $...$ fragmenty zawierajace komendy LaTeX (\\frac, \\pm...),
-    ktore model zwrocil bez dolarow. Najpierw wydziela JUZ poprawnie opakowane
-    $...$ (te zostaja bez zmian), a dopiero potem naprawia to, co zostalo
-    poza nimi - zeby nie podwajac dolarow przy czesciowo opakowanym tekscie."""
+    ktore model zwrocil bez dolarow. Dzieli string po KAZDYM pojedynczym $
+    (nie po parach) - parzyste indeksy (0, 2, 4...) sa ZAWSZE poza $...$,
+    nieparzyste ZAWSZE wewnatrz, zgodnie z tym jak faktycznie dziala
+    naprzemienne parowanie delimiterow (tak samo jak KaTeX je interpretuje)."""
     if not t or '\\' not in t:
         return t
-    delimited = _EXISTING_DOLLAR_RE.findall(t)
-    plain_parts = _EXISTING_DOLLAR_RE.split(t)
+    parts = t.split('$')
+    out = [_wrap_plain_segment(part) if i % 2 == 0 else part for i, part in enumerate(parts)]
+    return '$'.join(out)
+
+
+_MATH_INDICATOR_RE = re_module.compile(r'[\d\\=+\-*/^<>_{}]')
+
+
+def _strip_mistaken_dollar_pairs(t):
+    """Usuwa POJEDYNCZE "sieroce" dolary, ktore nie maja prawdziwego
+    partnera - typowo model wstawia zbedny $ tuz PRZED prawdziwym wzorem
+    (np. "Liczymy delte:$ $\\Delta=5$" - pierwszy $ nie powinien tam byc).
+
+    Skanuje string ZNAK PO ZNAKU zamiast parowac dolary z gory sekwencyjnie
+    (1-2, 3-4, 5-6...) - sekwencyjne parowanie zawodzi tutaj, bo KAZDY
+    sierocy dolar przesuwa numeracje WSZYSTKICH kolejnych par o jeden, wiec
+    prawdziwa tresc wzoru zaczyna wygladac jak "para" z sasiednim sierocym
+    dolarem, a jej WLASCIWY partner zostaje osierocony z kolei - kaskada
+    bledow. Zamiast tego: dla kazdego napotkanego $, patrzymy TYLKO na
+    tekst do NASTEPNEGO $ - jesli wyglada na matematyke (cyfra, backslash,
+    operator, indeks dolny, nawias klamrowy), zostawiamy pare nietknieta i
+    skaczemy ZA nia; jesli nie, ten JEDEN $ jest sierocy - usuwamy go i
+    wracamy do skanowania od zaraz po nim (NIE konsumujemy $, na ktory
+    patrzylismy jako "koniec" - moze on byc prawdziwym otwarciem kolejnego,
+    realnego wzoru, tak jak w przykladzie wyzej)."""
     out = []
-    for i, plain in enumerate(plain_parts):
-        out.append(_wrap_plain_segment(plain))
-        if i < len(delimited):
-            out.append(delimited[i])
+    i, n = 0, len(t)
+    while i < n:
+        if t[i] != '$':
+            out.append(t[i])
+            i += 1
+            continue
+        j = t.find('$', i + 1)
+        if j == -1:
+            out.append(t[i])
+            i += 1
+            continue
+        content = t[i + 1:j]
+        if _MATH_INDICATOR_RE.search(content):
+            out.append(t[i:j + 1])
+            i = j + 1
+        else:
+            i += 1  # sierocy $ - pomin, NIE konsumuj drugiego $
     return ''.join(out)
 
 def fix_latex_in_quiz(quiz_data):
@@ -542,8 +571,24 @@ def fix_latex_in_quiz(quiz_data):
         # Napraw znak funkcji (⁡) i stopnie (o -> °)
         t = t.replace('\u2061', '')  # invisible function application
         t = _r3.sub(r'(sin|cos|tan|log|ln)(\d+)o\b', r'\\1(\2°)', t)
-        # Napraw podwojne dolary na pojedyncze
-        t = t.replace("$$", "$")
+        # Usun \newline / \\ (komendy lamania linii) - model czasem wstawia
+        # je jako separator krokow w wielokrokowych wyjasnieniach (np. Viete),
+        # co razem z ponizszym naiwnym "$$"->"$" psuje parzystosc dolarow i
+        # objawia sie w przegladarce jako zdublowany/polamany tekst (KaTeX
+        # renderuje $...$ pary przesuniete o jeden segment). Usuwamy PRZED
+        # zwijaniem "$$", zeby nie zostawiac dziury w parzystosci dolarow.
+        t = t.replace('\\newline', ' ').replace('\\\\', ' ')
+        # Napraw podwojne (lub wiecej) dolary na pojedyncze - regex (nie
+        # str.replace, ktory nie usuwa NIEPARZYSTYCH ciagow jak "$$$" w
+        # jednym przebiegu) lapie caly ciag naraz.
+        t = _r3.sub(r'\${2,}', '$', t)
+        # Usun $...$ pary, ktorych zawartosc nie wyglada na matematyke (patrz
+        # _strip_mistaken_dollar_pairs) - to niemal zawsze "sierocy" dolar
+        # wstawiony tuz przed prawdziwym wzorem, ktory inaczej przesuwa
+        # parzystosc WSZYSTKICH kolejnych par (patrz docstring funkcji).
+        # Kolejny \${2,} sprzata ewentualna nowa przyleglosc po usunieciu.
+        t = _strip_mistaken_dollar_pairs(t)
+        t = _r3.sub(r'\${2,}', '$', t)
         # Napraw rac{ -> \frac{
         t = t.replace("\\rac{", "\\frac{")
         t = re_module.sub(r"(?<![a-zA-Z\\])rac\{", r"\\frac{", t)
@@ -563,6 +608,14 @@ def fix_latex_in_quiz(quiz_data):
         # spelnial i "nagie" wzory (np. w opcjach odpowiedzi z ulamkami)
         # trafialy na frontend bez dolarow, wiec KaTeX ich nie renderowal.
         t = _wrap_naked_latex(t)
+        # Ostatni bezpiecznik: _wrap_naked_latex czasem opakowuje "zewnetrzny"
+        # fragment, ktory zaczyna sie TUZ PO juz istniejacym $ (np. gdy caly
+        # fragment miedzy wzorami zawiera "\") - to tworzy NOWY, przypadkowy
+        # "$$" na styku. KaTeX auto-render traktuje "$$" jako poczatek
+        # DISPLAY math (szuka NASTEPNEGO "$$"), wiec taki przypadkowy styk
+        # potrafi polknac cala reszte tekstu jako jeden zle sformatowany
+        # wzor - stad finalny collapse PO wszystkich innych krokach.
+        t = _r3.sub(r'\${2,}', '$', t)
         return t
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
@@ -753,6 +806,18 @@ WZORY MATEMATYCZNE - KRYTYCZNE:
 - NIGDY nie wstawiaj polskich slow (np. "i", "lub", "oraz", "gdy") do srodka $...$ -
   pisz je jako zwykly tekst POZA wzorem. POPRAWNIE: "$x = 2$ i $x = 3$".
   BLEDNIE: "$x = 2 i x = 3$" (slowo "i" wewnatrz wzoru wyglada wtedy jak zmienna).
+
+POLE "explanation" - WIELOKROKOWE OBLICZENIA (KRYTYCZNE, czesty blad):
+Gdy wyjasnienie ma kilka krokow (np. licz delte, potem warunek, potem
+wzory Viete'a) - pisz je jako JEDNO, CIAGLE zdanie/akapit zwyklej prozy
+PO POLSKU, w ktorym TYLKO pojedyncze wzory sa opakowane w $...$ (kazdy
+z osobna, krotko). NIGDY nie uzywaj \\newline, \\\\ ani zadnej innej
+komendy LaTeX do lamania linii wewnatrz "explanation" - to psuje
+renderowanie (dublowanie tekstu, widoczne surowe komendy). NIGDY nie
+opakowuj calego zdania ani wielu wzorow naraz w jeden $...$ - kazdy
+wzor ma miec WLASNA, osobna pare $...$.
+POPRAWNIE: "Liczymy deltę: $\\Delta = (m-3)^2 - 4m = m^2 - 10m + 9$. Warunek na dwa różne pierwiastki: $\\Delta > 0$, czyli $m^2 - 10m + 9 > 0$, co daje $m < 1$ lub $m > 9$."
+BLEDNIE: "Liczymy deltę:$ $\\Delta = ...$ $\\newline Warunek$ $\\Delta > 0$$. \\newline ..." (zlamane dolary, \\newline, dublowanie).
 
 FORMAT (TYLKO JSON):
 {{

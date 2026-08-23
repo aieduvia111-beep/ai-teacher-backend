@@ -182,8 +182,16 @@ identyczny z zadna opcja - wiec musi dokladnie pasowac.
 WZORY MATEMATYCZNE:
 KRYTYCZNE: backslash podwojny w JSON: \\frac, \\sqrt, \\cdot, \\times
 KRYTYCZNE: KAZDY wzor w dolarach: $wzor$
-ZAKAZ: \\left, \\right, \\displaystyle, \\limits
+ZAKAZ: \\left, \\right, \\displaystyle, \\limits, \\newline
 POPRAWNE: "$\\frac{{a}}{{b}}$", "$x^2 + y^2$", "$\\sqrt{{4}}$"
+
+POLE "wyjasnienie" - WIELOKROKOWE OBLICZENIA (KRYTYCZNE, czesty blad):
+Wielokrokowe wyjasnienie (np. delta -> warunek -> wzory Viete'a) pisz
+jako JEDNO, CIAGLE zdanie zwyklej prozy, w ktorym TYLKO pojedyncze
+wzory sa opakowane w $...$ (kazdy z osobna). NIGDY nie uzywaj \\newline
+ani \\\\ do lamania linii wewnatrz "wyjasnienie" - psuje to renderowanie
+(zlamane dolary, dublowanie tekstu w PDF). NIGDY nie opakowuj calego
+zdania w jeden $...$.
 
 WLASNE INSTRUKCJE NAUCZYCIELA (jesli podane — OBOWIAZKOWE):
 {wlasne_instrukcje_blok}
@@ -254,10 +262,48 @@ ZASADY:
 - final_answer (zadania zamkniete) = doslowna kopia tresci poprawnej opcji, BEZ prefiksu "a) " (patrz wyzej)
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
 
+_MATH_INDICATOR_RE = re.compile(r'[\d\\=+\-*/^<>_{}]')
+
+
+def _strip_mistaken_dollar_pairs(t: str) -> str:
+    """Usuwa POJEDYNCZE "sieroce" dolary bez prawdziwego partnera (skanuje
+    znak po znaku, nie sekwencyjnym parowaniem) - patrz identyczny fix (z
+    pelnym uzasadnieniem) w openai_exam.py."""
+    out = []
+    i, n = 0, len(t)
+    while i < n:
+        if t[i] != '$':
+            out.append(t[i])
+            i += 1
+            continue
+        j = t.find('$', i + 1)
+        if j == -1:
+            out.append(t[i])
+            i += 1
+            continue
+        content = t[i + 1:j]
+        if _MATH_INDICATOR_RE.search(content):
+            out.append(t[i:j + 1])
+            i = j + 1
+        else:
+            i += 1
+    return ''.join(out)
+
+
 def _fix_latex(tekst: str) -> str:
     """Naprawia brakujące backslashe w LaTeX — prosta zamiana stringiem."""
     if not tekst:
         return tekst
+    # Usun \newline / \\ - model czasem wstawia je jako separator krokow w
+    # wielokrokowych wyjasnieniach (Viete itp.), co psuje parzystosc dolarow
+    # i renderowanie (patrz identyczny fix w openai_exam.py fix_latex_in_quiz).
+    tekst = tekst.replace('\\newline', ' ').replace('\\\\', ' ')
+    # Zwin ciagi 2+ dolarow do pojedynczego, usun "sieroce" nie-matematyczne
+    # pary $...$ (patrz _strip_mistaken_dollar_pairs), po czym zwin jeszcze
+    # raz na wypadek nowej przyleglosci po usunieciu.
+    tekst = re.sub(r'\${2,}', '$', tekst)
+    tekst = _strip_mistaken_dollar_pairs(tekst)
+    tekst = re.sub(r'\${2,}', '$', tekst)
     # Lista komend które GPT gubi backslash przed
     for cmd in ['frac', 'sqrt', 'cdot', 'times', 'div', 'sum', 'int',
                 'alpha', 'beta', 'gamma', 'delta', 'pi', 'theta',
@@ -270,6 +316,26 @@ def _fix_latex(tekst: str) -> str:
         tekst = tekst.replace('$' + cmd + '{', '$\\' + cmd + '{')
         tekst = tekst.replace('\n' + cmd + '{', '\n\\' + cmd + '{')
     return tekst
+
+
+def _fix_latex_in_exam_data(data: dict) -> dict:
+    """Stosuje _fix_latex() (w tym usuwanie \\newline/\\\\) do WSZYSTKICH pol
+    tekstowych sprawdzianu - jeden punkt normalizacji zaraz po sparsowaniu
+    JSON, zanim dane traf ia do KTOREGOKOLWIEK z rendererow PDF. Potrzebne,
+    bo np. wyjasnienie w sekcji "zamkniete" jest renderowane bezposrednio
+    przez _render_math_png (linia w tabeli klucza odpowiedzi), z pominieciem
+    _math_line - jedynego innego miejsca, ktore wczesniej wywolywalo
+    _fix_latex."""
+    for sekcja in data.get("sekcje", []):
+        for pyt in sekcja.get("pytania", []):
+            for key in ("tresc", "wyjasnienie", "final_answer", "odpowiedz_modelowa"):
+                if pyt.get(key):
+                    pyt[key] = _fix_latex(str(pyt[key]))
+            if isinstance(pyt.get("opcje"), list):
+                pyt["opcje"] = [_fix_latex(str(o)) for o in pyt["opcje"]]
+            if isinstance(pyt.get("schemat_oceniania"), list):
+                pyt["schemat_oceniania"] = [_fix_latex(str(o)) for o in pyt["schemat_oceniania"]]
+    return data
 
 
 def _render_math_png(tekst: str, width_pt: float, fontsize: float = 11,
@@ -1101,7 +1167,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                     m = re.search(r'\{.*\}', raw, re.DOTALL)
                     data = json.loads(m.group(0)) if m else {}
                 if data.get('sekcje'):
-                    return data
+                    return _fix_latex_in_exam_data(data)
                 last_error = ValueError("AI zwrocilo pusty sprawdzian (brak sekcji z pytaniami)")
             except Exception as e:
                 last_error = e
