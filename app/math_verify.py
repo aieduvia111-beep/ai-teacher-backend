@@ -59,7 +59,14 @@ def _parse_expr(s: str):
 def _parse_relational(s: str):
     """'m < 3' / 'm <= 4' / 'm = 4' -> obiekt Relational sympy. Rozdziela
     RECZNIE na operatorze (nie przez Pythonowe ==, ktore dla sympy
-    Symboli NIE tworzy rownania tylko robi strukturalne porownanie)."""
+    Symboli NIE tworzy rownania tylko robi strukturalne porownanie).
+    UWAGA: nie obsluguje podwojnych nierownosci ('0 < m < 2') - do tego
+    sluzy _parse_relational_list, ktory NAJPIERW probuje to rozpoznac
+    zanim tu w ogole trafi (patrz komentarz w _parse_relational_list -
+    zwykle wywolanie tej funkcji na fragmencie z DWOMA operatorami
+    powodowalo TypeError w sympy, bo Python 'a op b op c' parsuje 'b op c'
+    jako zagniezdzony Relational, ktory potem probowano porownac jako
+    zwykly Expr)."""
     s = _clean_latex(s)
     for op, builder in (('<=', sp.Le), ('>=', sp.Ge), ('!=', sp.Ne), ('<', sp.Lt), ('>', sp.Gt), ('=', sp.Eq)):
         if op in s:
@@ -71,6 +78,37 @@ def _parse_relational(s: str):
                 return None
             return builder(lhs, rhs)
     return None
+
+
+_COMPOUND_INEQ_RE = re.compile(r'^(.+?)(<=|>=|<|>)([a-zA-Z]\w*)(<=|>=|<|>)(.+)$')
+_DIRECT_OP = {'<': sp.Lt, '<=': sp.Le, '>': sp.Gt, '>=': sp.Ge}
+_FLIPPED_OP = {'<': sp.Gt, '<=': sp.Ge, '>': sp.Lt, '>=': sp.Le}
+
+
+def _parse_relational_list(s: str):
+    """Jak _parse_relational, ale ROZPOZNAJE podwojne nierownosci typu
+    '0 < m < 2' / '-1 <= m <= 5' PRZED probą zwyklego parsowania -
+    zwraca liste Relational do przeciecia (AND). Zwykle 1-elementowa
+    lista, 2-elementowa dla podwojnej nierownosci. None jesli nie
+    rozpoznano w ogole."""
+    cleaned = _clean_latex(s)
+    m = _COMPOUND_INEQ_RE.match(cleaned.replace(' ', ''))
+    if m:
+        lower_s, op1, var_s, op2, upper_s = m.groups()
+        try:
+            lower = _parse_expr(lower_s)
+            upper = _parse_expr(upper_s)
+            var = _parse_expr(var_s)
+        except Exception:
+            return None
+        try:
+            rel1 = _FLIPPED_OP[op1](var, lower)   # "0 < m"  -> m > 0
+            rel2 = _DIRECT_OP[op2](var, upper)    # "m < 2"  -> m < 2
+        except Exception:
+            return None
+        return [rel1, rel2]
+    rel = _parse_relational(s)
+    return [rel] if rel is not None else None
 
 
 def _find_equation_in_text(text: str):
@@ -151,6 +189,96 @@ def detect_discriminant_condition(question_text: str):
     return None
 
 
+# ---------------------------------------------------------------
+# ITERACJA 2: skala trudnosci 1-10 dla rownan kwadratowych -
+# walidacja PO wygenerowaniu, PRZED pokazaniem userowi (osobna od
+# weryfikacji poprawnosci klucza odpowiedzi powyzej). Klasyfikuje
+# wygenerowane pytanie w jedno z 5 pasm (patrz level_config.py
+# QUADRATIC_DIFFICULTY_TIERS) na podstawie rozpoznawalnych cech tekstu,
+# porownuje z pasmem oczekiwanym dla zadanej trudnosci (easy/medium/
+# hard - Quiz; latwy/latwa/sredni/srednia/trudny/trudna - Sprawdzian).
+# Dziala TYLKO dla rownan kwadratowych (uzywa analyze_quadratic_question
+# do wykrycia) - inne tematy zwracaja "not_quadratic" i nie sa dotkniete.
+# ---------------------------------------------------------------
+_CASE_ANALYSIS_MARKERS = (
+    "rozważ osobno", "rozwaz osobno", "osobno przypadek", "w zależności od przypadku",
+    "w zaleznosci od przypadku", "udowodnij", "wykaż", "wykaz twierdzenie",
+)
+_SIGN_ANALYSIS_MARKERS = (
+    "przeciwnych znak", "tego samego znak", "pierwiastki dodatnie", "pierwiastki ujemne",
+    "iloczyn pierwiastk", "suma pierwiastk", "mniejszy od", "większy od", "wiekszy od",
+)
+
+_QUADRATIC_ACCEPTABLE_TIERS = {
+    "easy": {"1-2", "3-4"}, "latwy": {"1-2", "3-4"}, "łatwy": {"1-2", "3-4"}, "latwa": {"1-2", "3-4"}, "łatwa": {"1-2", "3-4"},
+    "medium": {"5-6"}, "sredni": {"5-6"}, "średni": {"5-6"}, "srednia": {"5-6"}, "średnia": {"5-6"},
+    "hard": {"7-8", "9-10"}, "trudny": {"7-8", "9-10"}, "trudna": {"7-8", "9-10"},
+}
+
+
+def classify_quadratic_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1-2'/'3-4'/'5-6'/'7-8'/'9-10')
+    wygenerowanego pytania o rownaniu kwadratowym. None jesli tekst nie
+    zawiera rozpoznawalnego rownania kwadratowego (walidacja nie ma
+    zastosowania - nie blokujemy)."""
+    parsed = analyze_quadratic_question(question_text)
+    if not parsed:
+        return None
+    text_lower = (question_text or "").lower()
+
+    if any(marker in text_lower for marker in _CASE_ANALYSIS_MARKERS):
+        return "9-10"
+
+    param, A = parsed["param"], parsed["A"]
+
+    if param is None:
+        # Bez parametru: "ladny" rozklad na czynniki (calkowite
+        # pierwiastki) = bezposrednie podstawienie (1-2), inaczej
+        # standardowy wzor na delte (3-4).
+        try:
+            x = parsed["x"]
+            roots = sp.solve(Eq(A * x ** 2 + parsed["B"] * x + parsed["C"], 0), x)
+            nice = bool(roots) and all(r.is_Integer for r in roots)
+        except Exception:
+            nice = False
+        return "1-2" if nice else "3-4"
+
+    # Z parametrem.
+    if param in A.free_symbols:
+        return "7-8"  # parametr jako wspolczynnik wiodacy - zawsze zlozony przypadek
+    if any(marker in text_lower for marker in _SIGN_ANALYSIS_MARKERS):
+        return "7-8"  # warunek na znak/sume/iloczyn pierwiastkow (Viete)
+    if detect_discriminant_condition(question_text) is not None:
+        return "5-6"  # prosty warunek na delte
+    return "7-8"  # parametr + nierozpoznany warunek - ostroznie w gore, nie w dol
+
+
+def validate_quadratic_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o rownaniu kwadratowym
+    odpowiada ZADANEJ trudnosci (nie tylko czy jest matematycznie
+    poprawne - to osobna weryfikacja powyzej). Zwraca dict:
+      {"status": "not_quadratic"} - pytanie nie jest o rownaniu
+          kwadratowym ALBO slowo trudnosci nierozpoznane - walidacja
+          nie ma zastosowania, nie blokujemy.
+      {"status": "ok", "detected_tier": ..., "requested_tier": ...}
+      {"status": "fail", "reason": ..., "detected_tier": ...,
+          "requested_tier": ...} - do odrzucenia/dogenerowania."""
+    acceptable = _QUADRATIC_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    if not acceptable:
+        return {"status": "not_quadratic"}
+    detected_tier = classify_quadratic_difficulty(question_text)
+    if detected_tier is None:
+        return {"status": "not_quadratic"}
+    requested_label = "/".join(sorted(acceptable))
+    if detected_tier in acceptable:
+        return {"status": "ok", "detected_tier": detected_tier, "requested_tier": requested_label}
+    if detected_tier < min(acceptable):
+        reason = f"za latwe - brak parametru/zlozonego warunku (wykryto {detected_tier}, oczekiwano {requested_label})"
+    else:
+        reason = f"za trudne - zbyt zlozona analiza jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})"
+    return {"status": "fail", "reason": reason, "detected_tier": detected_tier, "requested_tier": requested_label}
+
+
 def solve_discriminant_condition(A, B, C, param, kind):
     """Prawdziwy zbior wartosci parametru spelniajacych warunek na delte.
     Zwraca sympy Set albo None (blad/niemozliwe do rozwiazania - abstain)."""
@@ -216,13 +344,17 @@ def parse_option_as_param_set(option_text: str, param):
         return None
     sets = []
     for p in parts:
-        rel = _parse_relational(p)
-        if rel is None or param not in rel.free_symbols:
+        rels = _parse_relational_list(p)
+        if not rels or any(param not in rel.free_symbols for rel in rels):
             return None
         try:
-            sets.append(sp.solveset(rel, param, domain=S.Reals))
+            rel_sets = [sp.solveset(rel, param, domain=S.Reals) for rel in rels]
         except Exception:
             return None
+        part_set = rel_sets[0]
+        for rs in rel_sets[1:]:
+            part_set = part_set.intersect(rs)
+        sets.append(part_set)
     result = sets[0]
     for s2 in sets[1:]:
         result = result.union(s2)
@@ -497,7 +629,13 @@ def verify_sequence_question(question_text: str, options: list):
         return a1 * (rr ** nn - 1) / (rr - 1)
 
     def _option_value_after_equals(opt):
-        text = _normalize_subscripts(_option_text(opt))
+        # NAPRAWIONE (test regresyjny): "$a_{10} = 48$" ma $ na koncu, wiec
+        # kotwica konca-stringu \s*$ nie pasowala tuz po liczbie (byl tam
+        # jeszcze znak $) - regex nigdy nie trafial, a fallback probowal
+        # sparsowac CALY tekst "a_(10) = 48" jako JEDNO wyrazenie sympy,
+        # co zawsze rzucalo SyntaxError (bare "=" nie jest wyrazeniem) i
+        # bylo cicho polykane przez zewnetrzny except, dajac "unverifiable".
+        text = _normalize_subscripts(_option_text(opt)).strip().strip('$').strip()
         m = re.search(r'=\s*(-?\d+(?:[.,]\d+)?)\s*$', text)
         if m:
             return _to_num(m.group(1))

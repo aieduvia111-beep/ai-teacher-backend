@@ -873,6 +873,90 @@ def get_forced_fallback_topic(level: str, subject: str) -> str:
     return topic
 
 
+# ============================================================
+# SKALA TRUDNOSCI 1-10 DLA ROWNAN KWADRATOWYCH (matematyka)
+# ============================================================
+# Pierwszy, scelowany krok w strone pelnego systemu trudnosci (patrz
+# TODO z podsumowania sesji - pelna wersja ChatGPT: skala 1-10 +
+# kryteria per-temat + wielowarstwowa walidacja, dla WSZYSTKICH
+# tematow). Zaczynamy TYLKO od rownan kwadratowych, bo to jedyny
+# temat z pelna infrastruktura weryfikacji (math_verify.py +
+# final_answer) - kazdy nowy przyklad ponizej jest od razu chroniony
+# istniejacym mechanizmem. Inne tematy nadal dostaja tylko pojedyncze
+# slowo latwy/sredni/trudny, jak dotychczas - to swiadome, gated
+# rozszerzenie, nie zmiana globalnego zachowania.
+QUADRATIC_DIFFICULTY_TIERS = {
+    "1-2": {
+        "kryterium": (
+            "Bezposredni rozklad na czynniki, calkowite wspolczynniki, "
+            "oczywisty wzor skroconego mnozenia - BEZ liczenia delty."
+        ),
+        "przyklad": "x² - 5x + 6 = 0",
+    },
+    "3-4": {
+        "kryterium": (
+            "Standardowy wzor na delte, wieksze lub niecalkowite "
+            "wspolczynniki, brak latwego rozkladu na czynniki."
+        ),
+        "przyklad": "2x² - 7x + 3 = 0",
+    },
+    "5-6": {
+        "kryterium": (
+            "Jeden parametr, prosty warunek na delte - bezposrednie "
+            "podstawienie do wzoru na delte i rozwiazanie nierownosci "
+            "LINIOWEJ wzgledem parametru."
+        ),
+        "przyklad": "Dla jakich wartości parametru m równanie x²+(m-3)x+m=0 ma dwa różne pierwiastki?",
+    },
+    "7-8": {
+        "kryterium": (
+            "Parametr + warunek ZLOZONY - znak pierwiastkow przez wzory "
+            "Viete'a, ALBO parametr jako wspolczynnik wiodacy (wymaga "
+            "dodatkowego zalozenia wspolczynnik != 0)."
+        ),
+        "przyklad": "Dla jakich wartości parametru a równanie ax²-(2a+3)x+a+2=0 ma dwa różne pierwiastki dodatnie?",
+    },
+    "9-10": {
+        "kryterium": (
+            "Wymaga analizy KILKU przypadkow jednoczesnie (np. osobno "
+            "przypadek degeneracji do rownania liniowego), dowodu, ALBO "
+            "polaczenia z zadaniem geometrycznym/optymalizacyjnym."
+        ),
+        "przyklad": "Dla jakich wartości parametru k równanie kx²-(k+2)x+2=0 ma dokładnie jedno rozwiązanie rzeczywiste? (rozważ osobno k=0 i k≠0)",
+    },
+}
+
+_QUADRATIC_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1-2", "latwy": "1-2", "łatwy": "1-2", "latwa": "1-2", "łatwa": "1-2",
+    "medium": "5-6", "sredni": "5-6", "średni": "5-6", "srednia": "5-6", "średnia": "5-6",
+    "hard": "7-8", "trudny": "7-8", "trudna": "7-8",
+}
+
+
+def get_quadratic_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladu (skala 1-10) dla podanego slowa
+    trudnosci (easy/medium/hard - Quiz; latwy/sredni/trudny lub
+    latwa/srednia/trudna - Sprawdzian). None jesli slowo nierozpoznane
+    (wtedy caller ma spasc na stare, generyczne zachowanie)."""
+    tier = _QUADRATIC_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = QUADRATIC_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/10 (skala dla rownan kwadratowych): {data['kryterium']} "
+        f"Przyklad zadania na tym poziomie: '{data['przyklad']}'. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_quadratic_equation_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy rownan kwadratowych - uzywane
+    do "gated injection" skali 1-10 (dziala TYLKO dla tego tematu, inne
+    tematy sa niedotkniete - nie zmieniamy globalnego zachowania)."""
+    t = (topic or "").lower()
+    return ("równani" in t or "rownani" in t) and "kwadratow" in t
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

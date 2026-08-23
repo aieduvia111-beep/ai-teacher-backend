@@ -1,7 +1,10 @@
 from openai import AsyncOpenAI
 from .config import settings
-from .level_config import describe_level, validate_generic_topic, get_forced_fallback_topic
-from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
+from .level_config import (
+    describe_level, validate_generic_topic, get_forced_fallback_topic,
+    get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
+)
+from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer, validate_quadratic_difficulty
 from typing import List, Dict, Optional
 import json
 import time
@@ -397,7 +400,7 @@ async def generate_quiz_from_image(
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
-            quiz_data, num_questions, lambda n: _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start
+            quiz_data, num_questions, lambda n: _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start, difficulty=difficulty
         )
         return {"success": True, "quiz": quiz_data}
 
@@ -653,6 +656,16 @@ async def _raw_generate_quiz_topic_once(
     poziom_opis = describe_level(level, subject=subject)
     trudnosc_opis = difficulty_map.get(difficulty, difficulty)
 
+    # NOWE: "gated injection" skali trudnosci 1-10 - TYLKO dla tematu
+    # "rownania kwadratowe" (jedyny z pelna infrastruktura weryfikacji -
+    # math_verify.py + final_answer). Inne tematy dzialaja jak dotychczas
+    # (samo slowo trudnosci) - to swiadomie ograniczone rozszerzenie.
+    quadratic_anchor_blok = ""
+    if is_quadratic_equation_topic(topic):
+        anchor_text = get_quadratic_difficulty_anchor(difficulty)
+        if anchor_text:
+            quadratic_anchor_blok = f"\n{anchor_text}\n"
+
     instrukcje_blok = ""
     if wlasne_instrukcje and wlasne_instrukcje.strip():
         instrukcje_blok = (
@@ -689,6 +702,7 @@ PARAMETRY:
 - Liczba pytań: {num_questions}
 - DOKŁADNY POZIOM: {poziom_opis}
 - Trudność: {trudnosc_opis}
+{quadratic_anchor_blok}
 {instrukcje_blok}
 {temat_instrukcja}
 SPOJNOSC TRUDNOSCI: wszystkie pytania w quizie musza byc na TYM SAMYM poziomie
@@ -846,7 +860,7 @@ async def _generate_quiz_topic_once(
         lambda n: _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
-        t_start=t_start,
+        t_start=t_start, difficulty=difficulty,
     )
     return quiz_data
 
@@ -868,7 +882,7 @@ def _buffered_count(n: int) -> int:
 _MIN_FILL_BATCH = 4
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None) -> dict:
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
@@ -880,7 +894,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     dogenerowania, zeby limit faktycznie obejmowal caly czas generowania
     zgodnie z wymaganiem, nie tylko rundy uzupelniajace. Jesli caller nie
     poda t_start (np. stary kod), liczymy od tego miejsca jako fallback."""
-    quiz_data = _verify_and_fix_quiz_math(quiz_data)
+    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty)
     max_rounds = 10
     max_seconds = 30.0
     if t_start is None:
@@ -900,7 +914,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         except Exception as e:
             print(f"[MathVerify] blad dogenerowania: {e}")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data)
+        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -924,8 +938,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     return quiz_data
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
-    """Dwuwarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
+def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
+    """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
     WARSTWA 1 (kazdy przedmiot): "correct" jest ZAWSZE przeliczany na
@@ -942,7 +956,15 @@ def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
     ktora liczy prawdziwy wynik z tresci pytania (nie z tego, co
     zadeklarowal AI) i porownuje z opcjami - dodatkowa siatka
     bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
-    matematycznie bledne (a jedynie wewnetrznie spojne z jedna z opcji)."""
+    matematycznie bledne (a jedynie wewnetrznie spojne z jedna z opcji).
+
+    WARSTWA 3 (ITERACJA 2, TYLKO rownania kwadratowe): walidacja skali
+    trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
+    osobna od poprawnosci matematycznej. Sprawdza, czy wygenerowane
+    pytanie FAKTYCZNIE odpowiada zadanej trudnosci (easy/medium/hard),
+    nie tylko czy jest matematycznie poprawne. FAIL -> pytanie
+    odrzucone (dogenerowywane w innym miejscu potoku, tak samo jak
+    Warstwa 1/2)."""
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
         return quiz_data
@@ -982,6 +1004,29 @@ def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
             print(f"[MathVerify] USUNIETO pytanie (sympy: brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
         else:
             kept.append(q)
+
+    # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
+    if difficulty:
+        kept2 = []
+        for q in kept:
+            text = q.get("question", "")
+            try:
+                diff_result = validate_quadratic_difficulty(text, difficulty)
+            except Exception as e:
+                print(f"[MathVerify][Difficulty] blad walidacji trudnosci: {e}")
+                kept2.append(q)
+                continue
+            if diff_result["status"] == "fail":
+                print(
+                    f"[MathVerify][Difficulty] FAIL: '{text[:60]}...' "
+                    f"REASON={diff_result['reason']} "
+                    f"REQUESTED_TIER={diff_result['requested_tier']} "
+                    f"DETECTED_TIER={diff_result['detected_tier']}"
+                )
+                continue
+            kept2.append(q)
+        kept = kept2
+
     for i, q in enumerate(kept, start=1):
         q["id"] = i
     quiz_data["questions"] = kept

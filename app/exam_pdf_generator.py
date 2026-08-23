@@ -22,8 +22,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
-from .level_config import describe_level
-from .math_verify import verify_and_fix_math_question, match_final_answer_index
+from .level_config import describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic
+from .math_verify import verify_and_fix_math_question, match_final_answer_index, validate_quadratic_difficulty
 
 # ============================================================
 # CZCIONKI
@@ -138,7 +138,7 @@ TRUDNOSC = {trudnosc} w ramach {klasa}:
 
 NAKAZ: KAZDE zadanie musi byc na poziomie {klasa} i trudnosci {trudnosc}
 ZAKAZ: dla liceum/matura/studia — prostego dodawania ulamkow liczbowych
-
+{quadratic_anchor_blok}
 WERYFIKACJA OBLICZEN - KRYTYCZNE (bledny klucz odpowiedzi to powazny blad,
 tak samo powazny jak zbyt latwe zadanie):
 Dla KAZDEGO zadania z obliczeniami (rownania, nierownosci, delta/wyroznik,
@@ -848,8 +848,8 @@ _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
 
 
-def _verify_and_fix_exam_math(data: dict) -> dict:
-    """Dwuwarstwowa weryfikacja dla zadan zamknietych - ten sam
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
+    """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
 
@@ -865,6 +865,11 @@ def _verify_and_fix_exam_math(data: dict) -> dict:
     tresci zadania i porownuje z opcjami - dodatkowa siatka
     bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
     matematycznie bledne.
+
+    WARSTWA 3 (ITERACJA 2, TYLKO rownania kwadratowe): walidacja skali
+    trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
+    osobna od poprawnosci matematycznej. FAIL -> zadanie odrzucone
+    (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2).
 
     Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
     zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
@@ -914,6 +919,29 @@ def _verify_and_fix_exam_math(data: dict) -> dict:
                 print(f"[MathVerify][Exam] USUNIETO zadanie (sympy: brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
             else:
                 kept.append(pyt)
+
+        # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
+        if trudnosc:
+            kept2 = []
+            for pyt in kept:
+                tresc = pyt.get("tresc", "")
+                try:
+                    diff_result = validate_quadratic_difficulty(tresc, trudnosc)
+                except Exception as e:
+                    print(f"[MathVerify][Exam][Difficulty] blad walidacji trudnosci: {e}")
+                    kept2.append(pyt)
+                    continue
+                if diff_result["status"] == "fail":
+                    print(
+                        f"[MathVerify][Exam][Difficulty] FAIL: '{tresc[:60]}...' "
+                        f"REASON={diff_result['reason']} "
+                        f"REQUESTED_TIER={diff_result['requested_tier']} "
+                        f"DETECTED_TIER={diff_result['detected_tier']}"
+                    )
+                    continue
+                kept2.append(pyt)
+            kept = kept2
+
         sekcja["pytania"] = kept
 
     # Renumeracja "nr" SEKWENCYJNIE przez wszystkie sekcje (zamkniete +
@@ -1028,9 +1056,20 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 blok = f"{typ_instrukcja}\nNAUCZYCIEL CHCE: {instr}\nMUSISZ to uwzglednic w sprawdzianie."
         else:
             blok = typ_instrukcja
+
+        # NOWE: "gated injection" skali trudnosci 1-10 - TYLKO dla tematu
+        # "rownania kwadratowe" (ten sam mechanizm co w Quizie, patrz
+        # openai_exam.py). Inne tematy dzialaja jak dotychczas.
+        quadratic_anchor_blok = ""
+        if is_quadratic_equation_topic(temat):
+            anchor_text = get_quadratic_difficulty_anchor(trudnosc)
+            if anchor_text:
+                quadratic_anchor_blok = f"\n{anchor_text}\n"
+
         prompt = EXAM_PROMPT.format(
             temat=temat, klasa=klasa, poziom_opis=describe_level(klasa, subject=przedmiot),
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
+            quadratic_anchor_blok=quadratic_anchor_blok,
             wlasne_instrukcje_blok=blok
         )
         last_error = None
@@ -1077,7 +1116,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         data = self._get_exam_data_raw(temat, klasa, trudnosc, _buffered_question_count(liczba_pytan), wlasne_instrukcje, przedmiot)
         if not data.get('sekcje'):
             return data
-        data = _verify_and_fix_exam_math(data)
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start)
         return data
 
@@ -1112,7 +1151,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 continue
             if not extra or not extra.get('sekcje'):
                 continue
-            extra = _verify_and_fix_exam_math(extra)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':
