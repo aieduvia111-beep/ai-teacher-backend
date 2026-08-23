@@ -868,8 +868,10 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
 
     WARSTWA 3 (ITERACJA 2, TYLKO rownania kwadratowe): walidacja skali
     trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
-    osobna od poprawnosci matematycznej. FAIL -> zadanie odrzucone
-    (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2).
+    osobna od poprawnosci matematycznej. Szuka rownania zarowno w tresci
+    zadania, jak i w opcjach odpowiedzi (obsluguje tez format "Ktore z
+    ponizszych rownan..."). FAIL -> zadanie odrzucone (dogenerowywane w
+    innym miejscu potoku, tak samo jak Warstwa 1/2).
 
     Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
     zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
@@ -926,7 +928,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
             for pyt in kept:
                 tresc = pyt.get("tresc", "")
                 try:
-                    diff_result = validate_quadratic_difficulty(tresc, trudnosc)
+                    diff_result = validate_quadratic_difficulty(tresc, trudnosc, option_texts=pyt.get("opcje", []))
                 except Exception as e:
                     print(f"[MathVerify][Exam][Difficulty] blad walidacji trudnosci: {e}")
                     kept2.append(pyt)

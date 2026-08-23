@@ -25,6 +25,7 @@ from app.math_verify import (
     _parse_relational_list,
     force_correct_from_final_answer,
     match_final_answer_index,
+    validate_quadratic_difficulty,
 )
 
 FAILED = []
@@ -174,6 +175,42 @@ check("brak final_answer -> no_final_answer", status == "no_final_answer" and id
 
 status, idx = match_final_answer_index("b) $m < 4$", ["a) $m > 4$", "b) $m < 4$", "c) $m = 4$", "d) $m <= 4$"])
 check("final_answer z prefiksem litery (Sprawdzian) dopasowany", status == "forced" and idx == 1, (status, idx))
+
+
+# ============================================================
+# 5. validate_quadratic_difficulty - rownanie w OPCJACH, nie w tresci
+# pytania ("Ktore z ponizszych rownan..." - residualny gap z Iteracji 2,
+# naprawiony rozszerzeniem analyzera o przeszukiwanie option_texts).
+# ============================================================
+print()
+print("=== Regresja: validate_quadratic_difficulty - rownanie w opcjach ===")
+
+stem_options_only = "Które z poniższych równań ma dwa różne pierwiastki rzeczywiste?"
+opts_equations_easy = ["$x^2-5x+6=0$", "$x^2+4=0$", "$x^2-2x+5=0$", "$x^2+9=0$"]
+
+r = validate_quadratic_difficulty(stem_options_only, "easy")
+check("rownanie TYLKO w opcjach, bez option_texts -> nadal not_quadratic (brak regresji)", r["status"] == "not_quadratic", r)
+
+r = validate_quadratic_difficulty(stem_options_only, "easy", option_texts=opts_equations_easy)
+check("rownanie TYLKO w opcjach, z option_texts -> juz NIE not_quadratic, faktycznie waliduje", r["status"] in ("ok", "fail"), r)
+check("rownanie TYLKO w opcjach: wykryty pierwszy parsowalny wzorzec -> tier 1-2 (ladny rozklad)", r.get("detected_tier") == "1-2", r)
+check("rownanie TYLKO w opcjach, 'easy' vs tier 1-2 -> ok", r["status"] == "ok", r)
+
+r = validate_quadratic_difficulty(stem_options_only, "hard", option_texts=opts_equations_easy)
+check("rownanie TYLKO w opcjach, 'hard' vs tier 1-2 -> fail (za latwe)", r["status"] == "fail" and r["detected_tier"] == "1-2", r)
+
+# Rownanie w TRESCI pytania (dotychczasowy przypadek) dziala tak samo
+# jak przed zmiana, niezaleznie od tego, czy przekazano option_texts.
+stem_in_question = "Dla jakich wartości parametru $m$ równanie $x^2+(m-3)x+m=0$ ma dwa różne pierwiastki?"
+r_no_opts = validate_quadratic_difficulty(stem_in_question, "medium")
+r_with_opts = validate_quadratic_difficulty(stem_in_question, "medium", option_texts=["$m > 1$", "$m < 1$ lub $m > 9$", "tak", "nie"])
+check("rownanie w tresci pytania: bez option_texts -> ok, tier 5-6 (brak regresji)", r_no_opts["status"] == "ok" and r_no_opts["detected_tier"] == "5-6", r_no_opts)
+check("rownanie w tresci pytania: z option_texts -> ten sam wynik (tresc ma pierwszenstwo)", r_with_opts == r_no_opts, (r_no_opts, r_with_opts))
+
+# Zwykle pytania z tekstowymi opcjami (bez rownan wcale, nawet gdy
+# przekazano option_texts) nie generuja falszywych blokad.
+r = validate_quadratic_difficulty("Kto napisał Pana Tadeusza?", "hard", option_texts=["Mickiewicz", "Słowacki", "Kochanowski", "Sienkiewicz"])
+check("pytanie i opcje bez rownan -> not_quadratic, bez falszywej blokady", r["status"] == "not_quadratic", r)
 
 
 print()

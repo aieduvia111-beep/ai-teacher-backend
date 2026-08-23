@@ -962,9 +962,10 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
     trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
     osobna od poprawnosci matematycznej. Sprawdza, czy wygenerowane
     pytanie FAKTYCZNIE odpowiada zadanej trudnosci (easy/medium/hard),
-    nie tylko czy jest matematycznie poprawne. FAIL -> pytanie
-    odrzucone (dogenerowywane w innym miejscu potoku, tak samo jak
-    Warstwa 1/2)."""
+    nie tylko czy jest matematycznie poprawne. Szuka rownania zarowno w
+    tresci pytania, jak i w opcjach odpowiedzi (obsluguje tez format
+    "Ktore z ponizszych rownan..."). FAIL -> pytanie odrzucone
+    (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2)."""
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
         return quiz_data
@@ -1011,7 +1012,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
         for q in kept:
             text = q.get("question", "")
             try:
-                diff_result = validate_quadratic_difficulty(text, difficulty)
+                diff_result = validate_quadratic_difficulty(text, difficulty, option_texts=q.get("options", []))
             except Exception as e:
                 print(f"[MathVerify][Difficulty] blad walidacji trudnosci: {e}")
                 kept2.append(q)

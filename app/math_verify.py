@@ -128,11 +128,21 @@ def _find_equation_in_text(text: str):
     return None
 
 
-def analyze_quadratic_question(question_text: str):
+def analyze_quadratic_question(question_text: str, option_texts=None):
     """Rozpoznaje rownanie kwadratowe w tresci pytania. Zwraca dict
     {x, param, A, B, C} (param=None gdy rownanie czysto liczbowe) albo
-    None gdy nie rozpoznano (niewspierany wzorzec - abstain)."""
+    None gdy nie rozpoznano (niewspierany wzorzec - abstain).
+
+    Jesli w tresci pytania nie ma rownania (np. "Ktore z ponizszych
+    rownan..." - rownania sa w opcjach odpowiedzi, nie w tresci),
+    a przekazano `option_texts`, szuka rownania w PIERWSZEJ pasujacej
+    opcji zamiast od razu abstain-owac."""
     found = _find_equation_in_text(question_text)
+    if not found and option_texts:
+        for opt in option_texts:
+            found = _find_equation_in_text(_option_text(opt))
+            if found:
+                break
     if not found:
         return None
     lhs_s, rhs_s = found
@@ -216,12 +226,14 @@ _QUADRATIC_ACCEPTABLE_TIERS = {
 }
 
 
-def classify_quadratic_difficulty(question_text: str):
+def classify_quadratic_difficulty(question_text: str, option_texts=None):
     """Szacuje pasmo trudnosci ('1-2'/'3-4'/'5-6'/'7-8'/'9-10')
     wygenerowanego pytania o rownaniu kwadratowym. None jesli tekst nie
     zawiera rozpoznawalnego rownania kwadratowego (walidacja nie ma
-    zastosowania - nie blokujemy)."""
-    parsed = analyze_quadratic_question(question_text)
+    zastosowania - nie blokujemy). `option_texts` pozwala znalezc
+    rownanie tez wtedy, gdy jest tylko w opcjach (patrz
+    analyze_quadratic_question)."""
+    parsed = analyze_quadratic_question(question_text, option_texts=option_texts)
     if not parsed:
         return None
     text_lower = (question_text or "").lower()
@@ -253,20 +265,23 @@ def classify_quadratic_difficulty(question_text: str):
     return "7-8"  # parametr + nierozpoznany warunek - ostroznie w gore, nie w dol
 
 
-def validate_quadratic_difficulty(question_text: str, requested_difficulty_word: str):
+def validate_quadratic_difficulty(question_text: str, requested_difficulty_word: str, option_texts=None):
     """Sprawdza, czy wygenerowane pytanie o rownaniu kwadratowym
     odpowiada ZADANEJ trudnosci (nie tylko czy jest matematycznie
-    poprawne - to osobna weryfikacja powyzej). Zwraca dict:
+    poprawne - to osobna weryfikacja powyzej). `option_texts` (opcjonalne)
+    pozwala wykryc rownanie tez wtedy, gdy jest podane w opcjach
+    odpowiedzi zamiast w tresci pytania (np. "Ktore z ponizszych rownan
+    ma dwa rozne pierwiastki?"). Zwraca dict:
       {"status": "not_quadratic"} - pytanie nie jest o rownaniu
-          kwadratowym ALBO slowo trudnosci nierozpoznane - walidacja
-          nie ma zastosowania, nie blokujemy.
+          kwadratowym (ani w tresci, ani w opcjach) ALBO slowo trudnosci
+          nierozpoznane - walidacja nie ma zastosowania, nie blokujemy.
       {"status": "ok", "detected_tier": ..., "requested_tier": ...}
       {"status": "fail", "reason": ..., "detected_tier": ...,
           "requested_tier": ...} - do odrzucenia/dogenerowania."""
     acceptable = _QUADRATIC_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
     if not acceptable:
         return {"status": "not_quadratic"}
-    detected_tier = classify_quadratic_difficulty(question_text)
+    detected_tier = classify_quadratic_difficulty(question_text, option_texts=option_texts)
     if detected_tier is None:
         return {"status": "not_quadratic"}
     requested_label = "/".join(sorted(acceptable))
