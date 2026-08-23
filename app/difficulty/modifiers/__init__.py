@@ -7,11 +7,14 @@ Kazdy modifier implementuje dwie metody:
   applies(question_text, option_texts) -> bool
       Czy ten modifier rozpoznaje ten typ zadania (np. rownanie kwadratowe
       w tresci LUB w opcjach).
-  evaluate(question_text, option_texts, requested_difficulty_word) -> dict | None
+  evaluate(question_text, option_texts, requested_difficulty_word, level=None) -> dict | None
       Zwraca dict {"status": "ok"/"fail"/..., ...} - identyczny ksztalt do
       tego, co juz zwraca np. validate_quadratic_difficulty w
       math_verify.py. None jesli nie da sie ocenic (np. brak
-      requested_difficulty_word).
+      requested_difficulty_word). `level` (ETAP 5, opcjonalny) - klucz
+      poziomu edukacyjnego (np. "liceum_2") - modifier MOZE (nie musi)
+      go uwzglednic przy ocenie; brak `level` = dotychczasowe,
+      poziom-agnostyczne zachowanie.
 
 WAZNE: modifiery NIE implementuja wlasnej logiki walidacji od zera -
 opakowuja/wywoluja ISTNIEJACY, juz sprawdzony kod (patrz math_quadratic.py
@@ -31,7 +34,7 @@ class DomainModifier(ABC):
 
     @abstractmethod
     def evaluate(self, question_text: str, option_texts: Optional[List[str]],
-                 requested_difficulty_word: Optional[str]) -> Optional[dict]:
+                 requested_difficulty_word: Optional[str], level: Optional[str] = None) -> Optional[dict]:
         ...
 
 

@@ -48,7 +48,7 @@ class DifficultyAnalyzer:
         if matched_modifier is not None:
             domain_name = matched_modifier.name
             try:
-                result = matched_modifier.evaluate(question_text, option_texts, requested_difficulty_word)
+                result = matched_modifier.evaluate(question_text, option_texts, requested_difficulty_word, level=level)
             except Exception as e:
                 result = None
                 domain_detail = {"error": str(e)}
