@@ -23,7 +23,12 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
 from .level_config import describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic
-from .math_verify import verify_and_fix_math_question, match_final_answer_index, validate_quadratic_difficulty
+from .math_verify import verify_and_fix_math_question, match_final_answer_index
+from .difficulty import DifficultyAnalyzer
+
+# ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
+# openai_exam.py - jedna, wspoldzielona instancja, bez stanu miedzy wywolaniami.
+_difficulty_analyzer = DifficultyAnalyzer()
 
 # ============================================================
 # CZCIONKI
@@ -932,12 +937,16 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
     bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
     matematycznie bledne.
 
-    WARSTWA 3 (ITERACJA 2, TYLKO rownania kwadratowe): walidacja skali
-    trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
-    osobna od poprawnosci matematycznej. Szuka rownania zarowno w tresci
-    zadania, jak i w opcjach odpowiedzi (obsluguje tez format "Ktore z
-    ponizszych rownan..."). FAIL -> zadanie odrzucone (dogenerowywane w
-    innym miejscu potoku, tak samo jak Warstwa 1/2).
+    WARSTWA 3 (ETAP 2 Universal Difficulty Engine, TYLKO rownania
+    kwadratowe na razie): walidacja skali trudnosci - osobna od
+    poprawnosci matematycznej. Uzywa DifficultyAnalyzer z domain
+    modifierem math_quadratic.py, ktory wewnatrz wywoluje NIEZMIENIONY
+    validate_quadratic_difficulty z math_verify.py - zachowanie
+    identyczne jak przed Etapem 2 (patrz test_difficulty_engine.py).
+    Szuka rownania zarowno w tresci zadania, jak i w opcjach odpowiedzi
+    (obsluguje tez format "Ktore z ponizszych rownan..."). FAIL ->
+    zadanie odrzucone (dogenerowywane w innym miejscu potoku, tak samo
+    jak Warstwa 1/2).
 
     Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
     zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
@@ -994,7 +1003,10 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None) -> dict:
             for pyt in kept:
                 tresc = pyt.get("tresc", "")
                 try:
-                    diff_result = validate_quadratic_difficulty(tresc, trudnosc, option_texts=pyt.get("opcje", []))
+                    score = _difficulty_analyzer.analyze(
+                        tresc, option_texts=pyt.get("opcje", []), requested_difficulty_word=trudnosc,
+                    )
+                    diff_result = score.domain_detail or {"status": "not_quadratic"}
                 except Exception as e:
                     print(f"[MathVerify][Exam][Difficulty] blad walidacji trudnosci: {e}")
                     kept2.append(pyt)

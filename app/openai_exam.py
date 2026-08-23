@@ -4,13 +4,22 @@ from .level_config import (
     describe_level, validate_generic_topic, get_forced_fallback_topic,
     get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
 )
-from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer, validate_quadratic_difficulty
+from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
+from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
 import json
 import time
 import re as _re_sanitize
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+# ETAP 2 Universal Difficulty Engine: podlaczony TYLKO jako zamiennik
+# bezposredniego wywolania validate_quadratic_difficulty w Warstwie 3
+# (patrz _verify_and_fix_quiz_math nizej) - domain modifier
+# math_quadratic.py wywoluje ten sam, niezmieniony kod z math_verify.py,
+# wiec zachowanie jest identyczne. Jeden, wspoldzielony instancja -
+# DifficultyAnalyzer nie trzyma zadnego stanu miedzy wywolaniami.
+_difficulty_analyzer = DifficultyAnalyzer()
 
 
 _LATEX_CMDS_AT_RISK = [
@@ -1023,11 +1032,16 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
     bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
     matematycznie bledne (a jedynie wewnetrznie spojne z jedna z opcji).
 
-    WARSTWA 3 (ITERACJA 2, TYLKO rownania kwadratowe): walidacja skali
-    trudnosci 1-10 (validate_quadratic_difficulty w math_verify.py) -
-    osobna od poprawnosci matematycznej. Sprawdza, czy wygenerowane
-    pytanie FAKTYCZNIE odpowiada zadanej trudnosci (easy/medium/hard),
-    nie tylko czy jest matematycznie poprawne. Szuka rownania zarowno w
+    WARSTWA 3 (ETAP 2 Universal Difficulty Engine, TYLKO rownania
+    kwadratowe na razie): walidacja skali trudnosci - osobna od
+    poprawnosci matematycznej. Sprawdza, czy wygenerowane pytanie
+    FAKTYCZNIE odpowiada zadanej trudnosci (easy/medium/hard), nie tylko
+    czy jest matematycznie poprawne. Uzywa DifficultyAnalyzer
+    (app/difficulty/) z domain modifierem math_quadratic.py, ktory
+    wewnatrz wywoluje NIEZMIENIONY validate_quadratic_difficulty z
+    math_verify.py - zachowanie identyczne jak przed Etapem 2, zmienila
+    sie tylko struktura kodu (patrz test_difficulty_engine.py - regresja
+    potwierdzona na identycznych przypadkach). Szuka rownania zarowno w
     tresci pytania, jak i w opcjach odpowiedzi (obsluguje tez format
     "Ktore z ponizszych rownan..."). FAIL -> pytanie odrzucone
     (dogenerowywane w innym miejscu potoku, tak samo jak Warstwa 1/2)."""
@@ -1077,7 +1091,15 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None) -> dict:
         for q in kept:
             text = q.get("question", "")
             try:
-                diff_result = validate_quadratic_difficulty(text, difficulty, option_texts=q.get("options", []))
+                score = _difficulty_analyzer.analyze(
+                    text, option_texts=q.get("options", []), requested_difficulty_word=difficulty,
+                )
+                # domain_detail to DOKLADNIE to, co zwrocilo
+                # validate_quadratic_difficulty - jesli zaden domain
+                # modifier nie pasowal (np. nie rownanie kwadratowe),
+                # domain_detail jest None -> traktujemy jak "not_quadratic"
+                # (ta sama semantyka co bezposrednie wywolanie wczesniej).
+                diff_result = score.domain_detail or {"status": "not_quadratic"}
             except Exception as e:
                 print(f"[MathVerify][Difficulty] blad walidacji trudnosci: {e}")
                 kept2.append(q)
