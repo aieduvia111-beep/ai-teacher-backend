@@ -1,9 +1,10 @@
 from openai import AsyncOpenAI
 from .config import settings
 from .level_config import describe_level, validate_generic_topic, get_forced_fallback_topic
-from .math_verify import verify_and_fix_math_question
+from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
 from typing import List, Dict, Optional
 import json
+import time
 import re as _re_sanitize
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
@@ -391,10 +392,13 @@ async def generate_quiz_from_image(
         async def _raw_call(n: int) -> dict:
             return await _raw_generate_quiz_from_image_call(image_data, n, difficulty)
 
-        quiz_data = await _raw_call(num_questions)
+        t_start = time.monotonic()
+        quiz_data = await _raw_call(_buffered_count(num_questions))
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
-        quiz_data = await _verify_and_fill_quiz_math(quiz_data, num_questions, _raw_call)
+        quiz_data = await _verify_and_fill_quiz_math(
+            quiz_data, num_questions, lambda n: _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start
+        )
         return {"success": True, "quiz": quiz_data}
 
     except Exception as e:
@@ -454,11 +458,13 @@ WAŻNE:
                 ]
             }
         ],
-        max_tokens=2000,
+        # Skalujemy z liczba pytan - patrz analogiczny fix i komentarz w
+        # _raw_generate_quiz_topic_once (bufor moze prosic o 20+ pytan).
+        max_tokens=min(8000, max(2000, 500 + num_questions * 350)),
         temperature=0.7,
         response_format={"type": "json_object"}
     )
-    
+
     raw_content = sanitize_latex_json_backslashes(response.choices[0].message.content)
     quiz_data = json.loads(raw_content)
     return quiz_data
@@ -706,6 +712,25 @@ zadna opcja nie pasuje, POPRAW opcje zamiast zostawiac bledny klucz. Jesli
 po podstawieniu wynik sie NIE zgadza - przelicz jeszcze raz od nowa, NIE
 zgaduj.
 
+KOLEJNOSC TWORZENIA OPCJI (zeby nie powtorzyc powyzszego bledu): NAJPIERW
+rozwiaz zadanie i zapisz sobie prawdziwy wynik, DOPIERO POTEM wymysl 3
+bledne dystraktory wokol niego. NIGDY nie rob tego odwrotnie (najpierw
+4 "prawdopodobnie wygladajace" opcje, potem zgadywanie ktora pasuje) -
+to najczestsza przyczyna sytuacji, w ktorej PRAWDZIWA odpowiedz nie
+znajduje sie wsrod opcji wcale. Jesli rownanie z parametrem ma parametr
+jako WSPOLCZYNNIK PRZY x^2 (np. $ax^2+...=0$) - to trudniejszy przypadek:
+pamietaj o zalozeniu wspolczynnik != 0 (inaczej rownanie przestaje byc
+kwadratowe) w obliczeniach delty I w opcjach.
+
+POLE "final_answer" - NOWE, OBOWIAZKOWE: oprocz "correct" i "explanation",
+KAZDE pytanie MUSI miec pole "final_answer" - skopiuj do niego DOKLADNIE
+(znak w znak, razem z $...$) tekst TEJ JEDNEJ opcji z "options", ktora
+jest Twoja sprawdzona, poprawna odpowiedzia. NIE parafrazuj, NIE skracaj,
+NIE pisz wlasnymi slowami - to ma byc doslowna kopia jednej z 4 opcji.
+System automatycznie sprawdza to pole i ODRZUCA pytanie, jesli
+"final_answer" nie jest identyczny z zadna opcja - wiec musi dokladnie
+pasowac.
+
 WZORY MATEMATYCZNE - KRYTYCZNE:
 - Kazdy wzor w $...$ np: $x^2 + 3x = 0$
 - ZAWSZE \\frac{{ nie rac{{ nie \\rac{{
@@ -724,6 +749,7 @@ FORMAT (TYLKO JSON):
             "question": "Pytanie $x^2 = 4$",
             "options": ["$x = 2$", "$x = -2$", "$x = \\pm 2$", "$x = 4$"],
             "correct": 2,
+            "final_answer": "$x = \\pm 2$",
             "explanation": "Bo $x = \\pm 2$"
         }}
     ]
@@ -732,6 +758,7 @@ FORMAT (TYLKO JSON):
 ZASADY:
 - Pytania konkretne i merytoryczne
 - correct = indeks (0-3)
+- final_answer = doslowna kopia poprawnej opcji z "options" (patrz wyzej)
 - Po polsku
 - TYLKO JSON"""
 
@@ -758,7 +785,12 @@ ZASADY:
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=2500,
+        # NAPRAWIONE: stale max_tokens=2500 wystarczalo dla malych partii,
+        # ale przy buforowaniu (_buffered_count moze prosic o 20+ pytan
+        # naraz) odpowiedz AI byla ucinana w polowie generowania, co
+        # psulo JSON calkowicie (blad "Unterminated string" - caly quiz
+        # padal, nie tylko nadmiarowe pytania). Skalujemy z liczba pytan.
+        max_tokens=min(8000, max(2500, 500 + num_questions * 350)),
         temperature=0.7,
         response_format={"type": "json_object"}
     )
@@ -798,36 +830,71 @@ async def _generate_quiz_topic_once(
     """Surowa generacja + weryfikacja sympy + dogenerowanie brakujacych
     pytan, jesli weryfikacja cos usunela (patrz _verify_and_fill_quiz_math).
     Nazwa zachowana bez zmian - to funkcja, ktora wolaja wszyscy callerzy
-    w generate_quiz_from_topic."""
+    w generate_quiz_from_topic.
+
+    NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ pytan niz
+    zamowiono (patrz _buffered_count) - empirycznie wieksze partie maja
+    wyzszy odsetek pytan przechodzacych weryfikacje sympy niz partie
+    jednopytaniowe, wiec to zmniejsza szanse, ze w ogole trzeba bedzie
+    wchodzic w rundy dogenerowania."""
+    t_start = time.monotonic()
     quiz_data = await _raw_generate_quiz_topic_once(
-        topic, effective_topic_is_forced, subject, level, num_questions, difficulty, wlasne_instrukcje
+        topic, effective_topic_is_forced, subject, level, _buffered_count(num_questions), difficulty, wlasne_instrukcje
     )
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions,
         lambda n: _raw_generate_quiz_topic_once(
-            topic, effective_topic_is_forced, subject, level, n, difficulty, wlasne_instrukcje
+            topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
+        t_start=t_start,
     )
     return quiz_data
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate) -> dict:
+def _buffered_count(n: int) -> int:
+    """Ile pytan zamowic za pierwszym razem, zeby po odrzuceniu blednych
+    (weryfikacja sympy) prawdopodobnie zostalo >= n bez potrzeby rund
+    dogenerowania. +30%, minimum +2."""
+    return n + max(2, -(-n * 3 // 10))  # ceil(n * 0.3), min 2
+
+
+# Minimalny rozmiar partii w rundzie dogenerowania - NIGDY nie prosimy o
+# dokladnie 1 brakujace pytanie. Empirycznie (test na najtrudniejszym
+# znanym przypadku): partie 1-pytaniowe mialy w praktyce ~0% szans na
+# przejscie weryfikacji dla tematow typu "rownania kwadratowe z
+# parametrem", podczas gdy partia 4-pytaniowa miala ~50%. Prosimy wiec
+# zawsze o co najmniej tyle - nadmiar i tak zostaje przyciety do
+# requested_count na koncu.
+_MIN_FILL_BATCH = 4
+
+
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
     poprawnosc sa wazniejsze niz szybkosc, wiec dogenerowujemy brakujace
-    az osiagniemy `requested_count` ALBO wyczerpiemy `max_rounds` (10 -
-    tylko zeby nie zapetlic sie w NIESKONCZONOSC, gdyby temat byl
-    ekstremalnie i uporczywie podatny na bledne klucze - w praktyce
-    powinno to byc bardzo rzadkie)."""
+    az osiagniemy `requested_count` ALBO wyczerpiemy `max_rounds` LUB
+    `max_seconds` (bezpieczniki: user nigdy nie powinien czekac dluzej
+    niz ok. 30s NA CALY PROCES - `t_start` liczony jest od POCZATKU
+    pierwszego (buforowanego) wywolania AI, nie tylko od poczatku petli
+    dogenerowania, zeby limit faktycznie obejmowal caly czas generowania
+    zgodnie z wymaganiem, nie tylko rundy uzupelniajace. Jesli caller nie
+    poda t_start (np. stary kod), liczymy od tego miejsca jako fallback."""
     quiz_data = _verify_and_fix_quiz_math(quiz_data)
     max_rounds = 10
+    max_seconds = 30.0
+    if t_start is None:
+        t_start = time.monotonic()
     for round_i in range(1, max_rounds + 1):
         current = len(quiz_data.get("questions", []))
         missing = requested_count - current
         if missing <= 0:
             break
-        print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}) - dogenerowuje...")
+        elapsed = time.monotonic() - t_start
+        if elapsed >= max_seconds:
+            print(f"[MathVerify] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
+            break
+        print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
         try:
             extra_data = await regenerate(missing)
         except Exception as e:
@@ -838,14 +905,17 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
 
     final_count = len(quiz_data.get("questions", []))
     if final_count < requested_count:
-        # Bardzo rzadki przypadek - wyczerpano max_rounds i nadal brakuje.
-        # Uczciwy komunikat zamiast cichego podania niepelnego quizu.
+        # Bardzo rzadki przypadek - wyczerpano max_rounds ALBO max_seconds
+        # i nadal brakuje. Uczciwy komunikat zamiast cichego podania
+        # niepelnego quizu.
+        total_elapsed = time.monotonic() - t_start
+        reason = "przekroczono limit czasu (30s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
         quiz_data["_shortfall_warning"] = (
             f"Udalo sie wygenerowac i zweryfikowac {final_count} z {requested_count} "
-            f"zamowionych pytan - pozostale okazaly sie bledne mimo {max_rounds} prob "
-            f"dogenerowania. Sprobuj ponownie albo zmien temat/trudnosc."
+            f"zamowionych pytan - {reason}, pozostale okazaly sie bledne. "
+            f"Sprobuj ponownie albo zmien temat/trudnosc."
         )
-        print(f"[MathVerify] SHORTFALL: {final_count}/{requested_count} po {max_rounds} rundach dogenerowania")
+        print(f"[MathVerify] SHORTFALL: {final_count}/{requested_count} po {total_elapsed:.1f}s ({reason})")
 
     questions = quiz_data.get("questions", [])[:requested_count]
     for i, q in enumerate(questions, start=1):
@@ -855,27 +925,47 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
 
 
 def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
-    """Niezalezna weryfikacja sympy (patrz math_verify.py) dla pytan z
-    rozpoznawalnym rownaniem kwadratowym - audyt wykazal, ze prompt-based
-    samo-weryfikacja NIE wystarcza (model potrafi poprawnie wyprowadzic
-    wynik w "explanation" i mimo to wskazac inny, bledny index w
-    "correct"). Dla kazdego pytania: jesli wzorzec rozpoznany i AI mial
-    zly index ale prawidlowa odpowiedz JEST wsrod opcji -> poprawiamy
-    index (+ wyjasnienie, zeby nie zostalo niespojne ze star treascia).
-    Jesli prawidlowej odpowiedzi NIE MA wsrod opcji -> pytanie jest
-    nieoprawialne, usuwamy je z quizu (lepszy krotszy quiz niz quiz z
-    blednym kluczem)."""
+    """Dwuwarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
+    opcja jest "correct" (architektura ustalona z userem, patrz commit):
+
+    WARSTWA 1 (kazdy przedmiot): "correct" jest ZAWSZE przeliczany na
+    nowo z dopasowania pola "final_answer" (doslowna kopia poprawnej
+    opcji, ktora AI ma teraz obowiazek podac) do "options" -
+    force_correct_from_final_answer(). To lapie najczestszy blad z
+    audytu tej sesji: AI poprawnie wyprowadza wynik w "explanation", ale
+    "correct" wskazuwalo inny, bledny indeks. Brak final_answer, brak
+    dopasowania do zadnej opcji, albo dopasowanie do wiecej niz jednej -
+    pytanie jest odrzucane (dogenerowywane w innym miejscu potoku).
+
+    WARSTWA 2 (tylko rozpoznane wzorce matematyczne - rownania
+    kwadratowe, ciagi): NIEZALEZNA weryfikacja sympy (math_verify.py),
+    ktora liczy prawdziwy wynik z tresci pytania (nie z tego, co
+    zadeklarowal AI) i porownuje z opcjami - dodatkowa siatka
+    bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
+    matematycznie bledne (a jedynie wewnetrznie spojne z jedna z opcji)."""
     questions = quiz_data.get("questions")
     if not isinstance(questions, list):
         return quiz_data
     kept = []
     for q in questions:
+        text = q.get("question", "")
+
+        # WARSTWA 1: wymus "correct" z "final_answer" (wszystkie przedmioty)
         try:
-            text = q.get("question", "")
+            fa_status = force_correct_from_final_answer(q)
+        except Exception as e:
+            print(f"[MathVerify] blad wymuszania final_answer: {e}")
+            fa_status = "no_final_answer"
+        if fa_status in ("no_match", "ambiguous", "no_final_answer"):
+            print(f"[MathVerify] USUNIETO pytanie (final_answer={fa_status}): '{text[:60]}...'")
+            continue
+
+        # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec
+        try:
             options = q.get("options", [])
             result = verify_and_fix_math_question(text, options)
         except Exception as e:
-            print(f"[MathVerify] blad weryfikacji pytania: {e}")
+            print(f"[MathVerify] blad weryfikacji sympy: {e}")
             kept.append(q)
             continue
         if result["status"] == "unverifiable":
@@ -883,13 +973,13 @@ def _verify_and_fix_quiz_math(quiz_data: dict) -> dict:
         elif result["status"] == "match_index":
             true_idx = result["true_index"]
             if q.get("correct") != true_idx:
-                print(f"[MathVerify] POPRAWIONO odpowiedz: '{text[:60]}...' correct {q.get('correct')} -> {true_idx}")
+                print(f"[MathVerify] POPRAWIONO odpowiedz (sympy nie zgadza sie z final_answer): '{text[:60]}...' correct {q.get('correct')} -> {true_idx}")
                 q["correct"] = true_idx
                 if result.get("explanation"):
                     q["explanation"] = result["explanation"]
             kept.append(q)
         elif result["status"] == "no_option_matches":
-            print(f"[MathVerify] USUNIETO pytanie (brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
+            print(f"[MathVerify] USUNIETO pytanie (sympy: brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
         else:
             kept.append(q)
     for i, q in enumerate(kept, start=1):

@@ -4,7 +4,7 @@ Generuje profesjonalne sprawdziany PDF z GPT-4o
 Na tym samym poziomie co generator notatek.
 """
 
-import io, re, json, os, tempfile, datetime
+import io, re, json, os, tempfile, datetime, time
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib as _mpl
@@ -23,7 +23,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
 from .level_config import describe_level
-from .math_verify import verify_and_fix_math_question
+from .math_verify import verify_and_fix_math_question, match_final_answer_index
 
 # ============================================================
 # CZCIONKI
@@ -160,6 +160,25 @@ zapiszesz finalna odpowiedz:
    raz od nowa. NIE zgaduj i NIE zostawiaj niesprawdzonej odpowiedzi ani
    niesprawdzonego "odpowiedz_modelowa".
 
+KOLEJNOSC TWORZENIA OPCJI (Czesc A) - zeby nie powtorzyc powyzszego bledu:
+NAJPIERW rozwiaz zadanie i zapisz sobie prawdziwy wynik, DOPIERO POTEM
+wymysl 3 bledne dystraktory wokol niego. NIGDY nie rob tego odwrotnie
+(najpierw 4 "prawdopodobnie wygladajace" opcje, potem zgadywanie ktora
+pasuje) - to najczestsza przyczyna sytuacji, w ktorej PRAWDZIWA
+odpowiedz nie znajduje sie wsrod opcji wcale. Jesli rownanie z
+parametrem ma parametr jako WSPOLCZYNNIK PRZY x^2 (np. $ax^2+...=0$) -
+to trudniejszy przypadek: pamietaj o zalozeniu wspolczynnik != 0
+(inaczej rownanie przestaje byc kwadratowe) w obliczeniach delty I w
+opcjach.
+
+POLE "final_answer" (Czesc A) - NOWE, OBOWIAZKOWE: oprocz "odpowiedz" i
+"wyjasnienie", KAZDE zadanie zamkniete MUSI miec pole "final_answer" -
+skopiuj do niego DOKLADNIE (znak w znak, razem z $...$, BEZ prefiksu
+"a) ") tekst TEJ JEDNEJ opcji z "opcje", ktora jest Twoja sprawdzona,
+poprawna odpowiedzia. NIE parafrazuj, NIE skracaj. System automatycznie
+sprawdza to pole i ODRZUCA zadanie, jesli "final_answer" nie jest
+identyczny z zadna opcja - wiec musi dokladnie pasowac.
+
 WZORY MATEMATYCZNE:
 KRYTYCZNE: backslash podwojny w JSON: \\frac, \\sqrt, \\cdot, \\times
 KRYTYCZNE: KAZDY wzor w dolarach: $wzor$
@@ -197,6 +216,7 @@ ZASADY:
           "tresc": "Tresc pytania z konkretnymi danymi. Moze zawierac $wzory$.",
           "opcje": ["a) ...", "b) ...", "c) ...", "d) ..."],
           "odpowiedz": "b",
+          "final_answer": "...(doslowna kopia tresci opcji b, BEZ prefiksu 'b) ')",
           "punkty": 1,
           "wyjasnienie": "Krotkie wyjasnienie dlaczego b jest poprawne."
         }}
@@ -231,6 +251,7 @@ ZASADY:
 - PRIORYTET: liczba pytan {liczba_pytan} jest WAZNIEJSZA niz zakresy sekcji
 - punkty lacznie: 25-35 pkt
 - trudnosc rosnaca w obrebie kazdej sekcji
+- final_answer (zadania zamkniete) = doslowna kopia tresci poprawnej opcji, BEZ prefiksu "a) " (patrz wyzej)
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
 
 def _fix_latex(tekst: str) -> str:
@@ -810,19 +831,44 @@ def _build_exam_pages(data: dict) -> bytes:
     doc.build(story, onFirstPage=_add_page_bg, onLaterPages=_add_page_bg)
     return buf.getvalue()
 
+def _buffered_question_count(n: int) -> int:
+    """Ile zadan zamowic za pierwszym razem, zeby po odrzuceniu blednych
+    (weryfikacja sympy) prawdopodobnie zostalo >= n bez potrzeby rund
+    dogenerowania. +30%, minimum +2."""
+    return n + max(2, -(-n * 3 // 10))  # ceil(n * 0.3), min 2
+
+
+# Minimalny rozmiar partii w rundzie dogenerowania - NIGDY nie prosimy o
+# dokladnie 1 brakujace zadanie. Empirycznie partie 1-zadaniowe mialy w
+# praktyce ~0% szans na przejscie weryfikacji dla tematow typu "rownania
+# kwadratowe z parametrem", podczas gdy wieksza partia miala ~50%.
+_MIN_FILL_BATCH_EXAM = 4
+
 _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
 
 
 def _verify_and_fix_exam_math(data: dict) -> dict:
-    """Niezalezna weryfikacja sympy (patrz math_verify.py) dla zadan
-    zamknietych z rozpoznawalnym rownaniem kwadratowym - ten sam
-    mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math).
-    Audyt wykazal, ze prompt-based samo-weryfikacja (instrukcja
-    "WERYFIKACJA OBLICZEN" w EXAM_PROMPT) NIE wystarcza. Dziala tylko na
-    sekcjach "zamkniete" (maja 4 opcje do porownania) - zadania otwarte
-    ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze objete, bo nie
-    maja ustalonego zbioru opcji do sprawdzenia."""
+    """Dwuwarstwowa weryfikacja dla zadan zamknietych - ten sam
+    mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
+    NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
+
+    WARSTWA 1 (kazde zadanie zamkniete, kazdy przedmiot): "odpowiedz"
+    jest ZAWSZE przeliczany na nowo z dopasowania "final_answer"
+    (doslowna kopia poprawnej opcji, ktora AI ma teraz obowiazek podac)
+    do "opcje" - match_final_answer_index(). Brak final_answer, brak
+    dopasowania, albo dopasowanie do wiecej niz jednej opcji - zadanie
+    jest odrzucane (dogenerowywane w innym miejscu potoku).
+
+    WARSTWA 2 (tylko rozpoznane wzorce matematyczne): NIEZALEZNA
+    weryfikacja sympy (math_verify.py), ktora liczy prawdziwy wynik z
+    tresci zadania i porownuje z opcjami - dodatkowa siatka
+    bezpieczenstwa nawet jesli final_answer AI bylo samo w sobie
+    matematycznie bledne.
+
+    Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
+    zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
+    objete, bo nie maja ustalonego zbioru opcji do sprawdzenia."""
     for sekcja in data.get("sekcje", []):
         if sekcja.get("typ") != "zamkniete":
             continue
@@ -830,10 +876,25 @@ def _verify_and_fix_exam_math(data: dict) -> dict:
         for pyt in sekcja.get("pytania", []):
             tresc = pyt.get("tresc", "")
             opcje = pyt.get("opcje", [])
+
+            # WARSTWA 1: wymus "odpowiedz" z "final_answer"
+            try:
+                fa_status, fa_idx = match_final_answer_index(pyt.get("final_answer"), opcje)
+            except Exception as e:
+                print(f"[MathVerify][Exam] blad wymuszania final_answer: {e}")
+                fa_status, fa_idx = "no_final_answer", None
+            if fa_status in ("no_match", "ambiguous", "no_final_answer"):
+                print(f"[MathVerify][Exam] USUNIETO zadanie (final_answer={fa_status}): '{tresc[:60]}...'")
+                continue
+            new_letter = _IDX_TO_LETTER.get(fa_idx)
+            if new_letter and pyt.get("odpowiedz") != new_letter:
+                pyt["odpowiedz"] = new_letter
+
+            # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec
             try:
                 result = verify_and_fix_math_question(tresc, opcje)
             except Exception as e:
-                print(f"[MathVerify][Exam] blad weryfikacji: {e}")
+                print(f"[MathVerify][Exam] blad weryfikacji sympy: {e}")
                 kept.append(pyt)
                 continue
             if result["status"] == "unverifiable":
@@ -842,15 +903,15 @@ def _verify_and_fix_exam_math(data: dict) -> dict:
                 true_idx = result["true_index"]
                 current_idx = _LETTER_TO_IDX.get(str(pyt.get("odpowiedz", "")).strip().lower())
                 if current_idx != true_idx:
-                    new_letter = _IDX_TO_LETTER.get(true_idx)
-                    if new_letter:
-                        print(f"[MathVerify][Exam] POPRAWIONO odpowiedz: '{tresc[:60]}...' {pyt.get('odpowiedz')} -> {new_letter}")
-                        pyt["odpowiedz"] = new_letter
+                    true_letter = _IDX_TO_LETTER.get(true_idx)
+                    if true_letter:
+                        print(f"[MathVerify][Exam] POPRAWIONO odpowiedz (sympy nie zgadza sie z final_answer): '{tresc[:60]}...' {pyt.get('odpowiedz')} -> {true_letter}")
+                        pyt["odpowiedz"] = true_letter
                         if result.get("explanation"):
                             pyt["wyjasnienie"] = result["explanation"]
                 kept.append(pyt)
             elif result["status"] == "no_option_matches":
-                print(f"[MathVerify][Exam] USUNIETO zadanie (brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
+                print(f"[MathVerify][Exam] USUNIETO zadanie (sympy: brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
             else:
                 kept.append(pyt)
         sekcja["pytania"] = kept
@@ -985,7 +1046,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                             "Znaki nowej linii w stringach jako \\n."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.5, max_tokens=5500,
+                    # Skalujemy z liczba_pytan - stala wartosc byla
+                    # ryzykowna po dodaniu bufora (_buffered_question_count
+                    # moze prosic o 20+ zadan naraz), analogicznie do fixa w
+                    # openai_exam.py (ucinanie odpowiedzi psulo caly JSON).
+                    temperature=0.5, max_tokens=min(10000, max(5500, 600 * liczba_pytan)),
                 )
                 raw = r.choices[0].message.content.strip()
                 raw = self._fix_json(raw)
@@ -1003,30 +1068,45 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         return {}
 
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
-        data = self._get_exam_data_raw(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
+        # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
+        # zamowiono (patrz _buffered_question_count) - empirycznie
+        # wieksze partie maja wyzszy odsetek przechodzacy weryfikacje
+        # sympy niz partie 1-2-zadaniowe, wiec to zmniejsza szanse na
+        # koniecznosc wielu rund dogenerowania.
+        t_start = time.monotonic()
+        data = self._get_exam_data_raw(temat, klasa, trudnosc, _buffered_question_count(liczba_pytan), wlasne_instrukcje, przedmiot)
         if not data.get('sekcje'):
             return data
         data = _verify_and_fix_exam_math(data)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None):
         """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
         temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
         `liczba_pytan` zamowiona przez usera - kompletnosc i poprawnosc
-        sa wazniejsze niz szybkosc. Max `max_rounds` (10) dodatkowych
-        wywolan AI, tylko zeby nie zapetlic sie w NIESKONCZONOSC, gdyby
-        temat okazal sie ekstremalnie uporczywie podatny na bledne klucze
-        - w praktyce powinno to byc bardzo rzadkie."""
+        sa wazniejsze niz szybkosc. Max `max_rounds` (10) LUB `max_seconds`
+        (30s, liczone od POCZATKU pierwszego buforowanego wywolania AI w
+        _get_exam_data - `t_start` przekazywany stamtad, zeby limit
+        obejmowal caly proces generowania, nie tylko rundy uzupelniajace)
+        - bezpieczniki: user nigdy nie powinien czekac bez konca, nawet
+        dla ekstremalnie uporczywego tematu (w praktyce bardzo rzadkie)."""
+        max_seconds = 30.0
+        if t_start is None:
+            t_start = time.monotonic()
         for round_i in range(1, max_rounds + 1):
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
             missing = liczba_pytan - current_total
             if missing <= 0:
                 break
-            print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}) - dogenerowuje...")
+            elapsed = time.monotonic() - t_start
+            if elapsed >= max_seconds:
+                print(f"[MathVerify][Exam] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
+                break
+            print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
             try:
-                extra = self._get_exam_data_raw(temat, klasa, trudnosc, missing, wlasne_instrukcje, przedmiot)
+                extra = self._get_exam_data_raw(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
             except Exception as e:
                 print(f"[MathVerify][Exam] blad dogenerowania: {e}")
                 continue
@@ -1069,12 +1149,14 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
 
         final_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if final_total < liczba_pytan:
+            total_elapsed = time.monotonic() - t_start
+            reason = "przekroczono limit czasu (30s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
             data["_shortfall_warning"] = (
                 f"Udalo sie wygenerowac i zweryfikowac {final_total} z {liczba_pytan} "
-                f"zamowionych zadan - pozostale okazaly sie bledne mimo {max_rounds} prob "
-                f"dogenerowania. Sprobuj ponownie albo zmien temat/trudnosc."
+                f"zamowionych zadan - {reason}, pozostale okazaly sie bledne. "
+                f"Sprobuj ponownie albo zmien temat/trudnosc."
             )
-            print(f"[MathVerify][Exam] SHORTFALL: {final_total}/{liczba_pytan} po {max_rounds} rundach dogenerowania")
+            print(f"[MathVerify][Exam] SHORTFALL: {final_total}/{liczba_pytan} po {total_elapsed:.1f}s ({reason})")
         return data
 
     def generate_exam(self, temat: str, klasa: str = "liceum",
