@@ -3,6 +3,7 @@ from .config import settings
 from .level_config import (
     describe_level, validate_generic_topic, get_forced_fallback_topic,
     get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
+    get_sequence_difficulty_anchor, is_sequence_topic,
 )
 from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
 from .difficulty import DifficultyAnalyzer
@@ -722,11 +723,19 @@ async def _raw_generate_quiz_topic_once(
     # "rownania kwadratowe" (jedyny z pelna infrastruktura weryfikacji -
     # math_verify.py + final_answer). Inne tematy dzialaja jak dotychczas
     # (samo slowo trudnosci) - to swiadomie ograniczone rozszerzenie.
-    quadratic_anchor_blok = ""
+    difficulty_anchor_blok = ""
     if is_quadratic_equation_topic(topic):
         anchor_text = get_quadratic_difficulty_anchor(difficulty)
         if anchor_text:
-            quadratic_anchor_blok = f"\n{anchor_text}\n"
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+
+    # ETAP 6: analogiczna "gated injection" dla ciagow arytmetycznych/
+    # geometrycznych - dziala TYLKO gdy temat nie zostal juz rozpoznany
+    # jako rownanie kwadratowe (temat nie moze byc jednoczesnie obiema).
+    elif is_sequence_topic(topic):
+        anchor_text = get_sequence_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
 
     instrukcje_blok = ""
     if wlasne_instrukcje and wlasne_instrukcje.strip():
@@ -764,7 +773,7 @@ PARAMETRY:
 - Liczba pytań: {num_questions}
 - DOKŁADNY POZIOM: {poziom_opis}
 - Trudność: {trudnosc_opis}
-{quadratic_anchor_blok}
+{difficulty_anchor_blok}
 {instrukcje_blok}
 {temat_instrukcja}
 SPOJNOSC TRUDNOSCI: wszystkie pytania w quizie musza byc na TYM SAMYM poziomie
@@ -1204,7 +1213,10 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
         else:
             kept.append(q)
 
-    # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
+    # WARSTWA 3: walidacja skali trudnosci (rownania kwadratowe skala 1-10,
+    # ETAP 6: ciagi arytmetyczne/geometryczne skala 1-5) - topic-agnostyczne,
+    # kazdy zarejestrowany domain modifier (DEFAULT_MODIFIERS) sam
+    # rozpoznaje, czy dotyczy danego pytania (applies()).
     if difficulty:
         _difficulty_timer = _Timer(metrics, "difficulty_time") if metrics else None
         if _difficulty_timer:

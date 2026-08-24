@@ -103,6 +103,23 @@ QUADRATIC_BASELINE_LEVEL = "liceum_2"
 QUADRATIC_MAX_SHIFT = 4  # liczba pasm tieru na krancach skali (podstawowka_1..studia_5)
 
 
+def level_adjusted_shift(level: str, baseline_level: str, max_shift: int) -> int:
+    """Ogolna wersja level_adjusted_tier_shift - przesuniecie (w pasmach
+    tieru) wzgledem dowolnego `baseline_level`/`max_shift`, nie tylko
+    rownan kwadratowych. ETAP 6: wydzielone z level_adjusted_tier_shift
+    zeby moduly ciagow (i przyszle domain modifiery) mogly uzyc TEGO
+    SAMEGO, juz sprawdzonego mechanizmu przesuniecia z WLASNA kalibracja
+    (inna skala tierow moze potrzebowac innego max_shift - patrz
+    SEQUENCE_MAX_SHIFT ponizej).
+
+    None/nierozpoznany poziom -> shift 0 (bezpieczny fallback)."""
+    idx = level_index(level)
+    if idx is None:
+        return 0
+    baseline_idx = level_index(baseline_level)
+    return round((idx - baseline_idx) * max_shift)
+
+
 def level_adjusted_tier_shift(level: str) -> int:
     """Zwraca calkowita liczbe pasm (tierow), o jaka przesunac okno
     akceptowalnych tierow rownan kwadratowych, wzgledem QUADRATIC_BASELINE_LEVEL.
@@ -115,9 +132,22 @@ def level_adjusted_tier_shift(level: str) -> int:
     "hard" dla mlodszego ucznia).
 
     None/nierozpoznany poziom -> shift 0 (bezpieczny fallback - dokladnie
-    dzisiejsze, globalne zachowanie)."""
-    idx = level_index(level)
-    if idx is None:
-        return 0
-    baseline_idx = level_index(QUADRATIC_BASELINE_LEVEL)
-    return round((idx - baseline_idx) * QUADRATIC_MAX_SHIFT)
+    dzisiejsze, globalne zachowanie). Cienki wrapper nad
+    level_adjusted_shift - zachowanie bez zmian."""
+    return level_adjusted_shift(level, QUADRATIC_BASELINE_LEVEL, QUADRATIC_MAX_SHIFT)
+
+
+# ---------------------------------------------------------------
+# ETAP 6: analogiczne przesuniecie dla ciagow arytmetycznych/geometrycznych
+# - patrz app/difficulty/modifiers/math_sequences.py. Ten sam baseline
+# (liceum_2, gdzie ciagi sa tez naturalnie uczone w polskim programie),
+# ale WLASNY max_shift - skala tierow ciagow ma tylko 3 pasma ("1",
+# "2-3","4-5", indeksy 0-2) zamiast 5 pasm rownan kwadratowych (indeksy
+# 0-4), wiec przy tym samym max_shift=4 co rownania nasyca sie (osiaga
+# skrajne pasmo) przy mniejszej roznicy poziomow niz rownania - to
+# bezpieczne (przesuniecie jest zawsze przycinane do istniejacych
+# pasm), i pozwala wykryc te same bliskie, realistyczne roznice
+# poziomow co dla rownan kwadratowych (Etap 5 - MAX_SHIFT=2 okazal sie
+# za maly, zeby wykryc "7 klasa vs 2 LO"; 4 dziala).
+SEQUENCE_BASELINE_LEVEL = "liceum_2"
+SEQUENCE_MAX_SHIFT = 4

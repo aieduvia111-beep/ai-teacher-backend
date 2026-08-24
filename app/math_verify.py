@@ -535,13 +535,50 @@ def _to_num(s: str):
     return sp.nsimplify(s.replace(',', '.'))
 
 
-_SEQ_TERM_RE = re.compile(r'a_?\{?(\d+)\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
-_SEQ_LAST_TERM_RE = re.compile(r'a_?\{?n\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
+# NAPRAWIONE (wykryte realna generacja Etapu 6): litera zmiennej wyrazu
+# NIE zawsze jest 'a' - AI dla urozmaicenia kilku pytan w tej samej
+# partii uzywa tez b/c/d/e_1=... - dowolna mala litera, nie tylko 'a'
+# (bezpieczne: wymagany cyfrowy indeks w dolnym indeksie odroznia to od
+# _SEQ_R_RE/_SEQ_Q_RE, ktore nie maja indeksu).
+_SEQ_TERM_RE = re.compile(r'[a-z]_?\{?(\d+)\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
+_SEQ_LAST_TERM_RE = re.compile(r'[a-z]_?\{?n\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
 _SEQ_R_RE = re.compile(r'(?<![a-zA-Z])r\s*=\s*(-?\d+(?:[.,]\d+)?)')
 _SEQ_Q_RE = re.compile(r'(?<![a-zA-Z])q\s*=\s*(-?\d+(?:[.,]\d+)?)')
-_SEQ_SUM_N_RE = re.compile(r'sum[eę]\s+pierwszych\s+(\d+)\s+wyraz')
+# NAPRAWIONE (wykryte realna generacja Etapu 6): "suma" (mianownik, np.
+# "Ile wynosi suma pierwszych 6 wyrazów...") obok "sumę"/"sume" (biernik,
+# np. "Oblicz sumę pierwszych 6 wyrazów...") - ten sam sum_given_n,
+# inny przypadek gramatyczny zaleznie od pozycji w zdaniu.
+_SEQ_SUM_N_RE = re.compile(r'sum[aeę]\s+pierwszych\s+(\d+)\s+wyraz')
 _SEQ_SUM_VALUE_RE = re.compile(r'suma\s+pierwszych\s+(\d+)\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
-_SEQ_NTH_ASK_RE = re.compile(r'oblicz\s+(\d+)[-.]?\s*(?:ty|szy|-ty|-szy)?\s*wyraz')
+# NAPRAWIONE (wykryte realna generacja Etapu 6): oprocz "oblicz" AI rowniez
+# naturalnie pisze "wyznacz"/"znajdz"/"jaki jest" N-ty wyraz - te same
+# pytanie o find_nth_term, inny czasownik.
+_SEQ_NTH_ASK_VERB = r'(?:oblicz|wyznacz|znajd\w*|jaki jest)'
+_SEQ_NTH_ASK_RE = re.compile(_SEQ_NTH_ASK_VERB + r'\s+(\d+)[-.]?\s*(?:ty|szy|-ty|-szy)?\s*wyraz')
+# ETAP 6 (naprawa wykryta realna generacja - "easy" AI naturalnie pisze
+# "Oblicz piąty wyraz", nie "Oblicz 5. wyraz"): to samo co _SEQ_NTH_ASK_RE,
+# ale slownie zamiast cyfra - odrebny regex/slownik (nie mieszamy grupy
+# cyfrowej ze slowna w jednym wzorcu).
+_SEQ_ORDINAL_WORDS = {
+    # UWAGA: celowo BEZ "pierwszy":1 - "wyznacz/oblicz pierwszy wyraz" w
+    # praktyce ZAWSZE oznacza "znajdz a1" (two_term_to_a1_ratio/
+    # find_a1_given_sum), nigdy dosl. "policz wyraz o indeksie 1"
+    # (degenerowane, nikt tak nie pyta) - dodanie tu "pierwszy" powodowalo
+    # falszywe dopasowanie find_nth_term zamiast two_term_to_a1_ratio dla
+    # "Wyznacz pierwszy wyraz i różnicę" (zlapany przez test_math_verify.py).
+    "drugi": 2, "trzeci": 3, "czwarty": 4,
+    "piąty": 5, "piaty": 5, "szósty": 6, "szosty": 6,
+    "siódmy": 7, "siodmy": 7, "ósmy": 8, "osmy": 8,
+    "dziewiąty": 9, "dziewiaty": 9, "dziesiąty": 10, "dziesiaty": 10,
+    "jedenasty": 11, "dwunasty": 12, "trzynasty": 13, "czternasty": 14,
+    "piętnasty": 15, "pietnasty": 15, "szesnasty": 16, "siedemnasty": 17,
+    "osiemnasty": 18, "dziewiętnasty": 19, "dziewietnasty": 19, "dwudziesty": 20,
+}
+_SEQ_NTH_ASK_ORDINAL_RE = re.compile(_SEQ_NTH_ASK_VERB + r'\s+(' + '|'.join(_SEQ_ORDINAL_WORDS.keys()) + r')\s+wyraz')
+# ETAP 6: "suma pierwszych N wyrazow ... wynosi X" GDZIE N JEST SZUKANE
+# (litera "n", nie cyfra) - odroznione od _SEQ_SUM_VALUE_RE (ktory
+# wymaga cyfry - tam N JEST DANE, szukane jest a1).
+_SEQ_SUM_VALUE_UNKNOWN_N_RE = re.compile(r'suma\s+pierwszych\s+n\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
 
 
 def analyze_sequence_question(question_text: str):
@@ -550,9 +587,13 @@ def analyze_sequence_question(question_text: str):
     zadanie/brak rozpoznawalnych danych - abstain)."""
     if not question_text:
         return None
-    text = _normalize_subscripts(question_text)
-    is_arithmetic = 'arytmetyczn' in text.lower()
-    is_geometric = 'geometryczn' in text.lower()
+    # NAPRAWIONE: text musi byc lowercase PRZED regex-extraction, nie tylko
+    # lokalnie w kind-checku - zdaniowo-poczatkowa wielka litera ("Suma
+    # pierwszych...") inaczej nie pasowala do _SEQ_SUM_VALUE_RE (i innych),
+    # ktore oczekuja malych liter (tak jak juz robi detect_sequence_intent).
+    text = _normalize_subscripts(question_text).lower()
+    is_arithmetic = 'arytmetyczn' in text
+    is_geometric = 'geometryczn' in text
     if not is_arithmetic and not is_geometric:
         return None
     kind = "arithmetic" if is_arithmetic else "geometric"
@@ -581,19 +622,62 @@ def analyze_sequence_question(question_text: str):
     return {"kind": kind, "terms": terms, "ratio": ratio, "last_term": last_term, "sum_value": sum_value}
 
 
+def _sequence_a1_given(text: str) -> bool:
+    """True jesli a1 jest PODANE wprost w tresci (np. 'a_1=3', 'a1 = 3') -
+    wywolywane na juz-lowercased/znormalizowanym tekscie (patrz
+    detect_sequence_intent). Uzywane do odroznienia 'pierwszy wyraz' jako
+    OPISU danej wartosci od 'pierwszy wyraz' jako SZUKANEJ wartosci."""
+    return any(int(m.group(1)) == 1 for m in _SEQ_TERM_RE.finditer(text))
+
+
 def detect_sequence_intent(question_text: str):
     """Zwraca dict opisujacy co jest pytaniem, albo None (nierozpoznany
     typ pytania o ciagu - abstain). Kolejnosc sprawdzania ma znaczenie -
     od najbardziej specyficznych wzorcow do najbardziej ogolnych, zeby
     np. "suma...znajdz pierwszy wyraz" nie zostalo zle sklasyfikowane
-    jako zwykle "two_term_to_a1_ratio"."""
+    jako zwykle "two_term_to_a1_ratio".
+
+    ETAP 6: dodane 2 nowe, minimalne rozszerzenia (bez nowego parsera -
+    reuzywaja istniejace an_expr/sn_expr w verify_sequence_question):
+      find_n_from_sum - "suma pierwszych n wyrazow... wynosi X" gdzie n
+          jest SZUKANE (litera, nie cyfra) - inny przypadek niz
+          find_a1_given_sum (tam n jest DANE, szukane a1).
+      term_and_sum_to_a1_ratio - jeden KONKRETNY wyraz + suma, szukane
+          a1 I r/q razem (uklad 2 rownan) - musi byc sprawdzone PRZED
+          find_a1_given_sum, ktory zaklada ze r/q jest juz dane wprost.
+
+    NAPRAWIONE (wykryte realna generacja Etapu 6 - "easy" pytania typu
+    "ma pierwszy wyraz a1=3 i różnicę r=5. Oblicz piąty wyraz." byly
+    falszywie lapane jako two_term_to_a1_ratio, bo fraza 'pierwszy wyraz'
+    tam tylko OPISUJE juz PODANE a1, nie prosi o jego wyznaczenie): gdy
+    a1 jest juz PODANE wprost w tresci (patrz _sequence_a1_given), frazy
+    'pierwszy wyraz'/'znajdz'/'wyznacz a1'/'oblicz a1' NIE licza sie jako
+    sygnal "a1 jest szukane" dla two_term_to_a1_ratio/find_a1_given_sum/
+    term_and_sum_to_a1_ratio."""
     text = _normalize_subscripts(question_text).lower()
 
     m = _SEQ_NTH_ASK_RE.search(text)
     if m and 'suma' not in text:
         return {"intent": "find_nth_term", "n": int(m.group(1))}
 
-    if 'suma' in text and ('pierwszy wyraz' in text or 'wyznacz a1' in text or 'znajd' in text or 'oblicz a1' in text):
+    m = _SEQ_NTH_ASK_ORDINAL_RE.search(text)
+    if m and 'suma' not in text:
+        return {"intent": "find_nth_term", "n": _SEQ_ORDINAL_WORDS[m.group(1)]}
+
+    m = _SEQ_SUM_VALUE_UNKNOWN_N_RE.search(text)
+    if m:
+        return {"intent": "find_n_from_sum", "sum_value": _to_num(m.group(1))}
+
+    a1_given = _sequence_a1_given(text)
+    asks_for_a1 = not a1_given and (
+        'pierwszy wyraz' in text or 'wyznacz a1' in text or 'znajd' in text or 'oblicz a1' in text
+    )
+
+    if (_SEQ_SUM_VALUE_RE.search(text) and _SEQ_TERM_RE.search(text) and asks_for_a1 and
+        ('różnic' in text or 'roznic' in text or 'iloraz' in text)):
+        return {"intent": "term_and_sum_to_a1_ratio"}
+
+    if 'suma' in text and asks_for_a1:
         return {"intent": "find_a1_given_sum"}
 
     m = _SEQ_SUM_N_RE.search(text)
@@ -603,9 +687,7 @@ def detect_sequence_intent(question_text: str):
     if ('ile wyraz' in text or ('liczb' in text and 'wyraz' in text)) and 'przekracza' not in text:
         return {"intent": "find_n_from_last_term"}
 
-    if ('pierwszy wyraz' in text or 'wyznacz a1' in text or 'znajd' in text or 'oblicz a1' in text) and (
-        'różnic' in text or 'roznic' in text or 'iloraz' in text
-    ):
+    if asks_for_a1 and ('różnic' in text or 'roznic' in text or 'iloraz' in text):
         return {"intent": "two_term_to_a1_ratio"}
     return None
 
@@ -686,6 +768,44 @@ def verify_sequence_question(question_text: str, options: list):
                 return {"status": "unverifiable"}
             true_value = sp.nsimplify(real_sol[0])
             option_parser = lambda opt: _parse_expr(_option_text(opt))
+        elif intent["intent"] == "find_n_from_sum":
+            # ETAP 6: dla arytmetycznych S_n jest kwadratowe wzgledem n -
+            # ma jednoznaczne rozwiazanie sympy.solve. Dla geometrycznych
+            # rownanie jest transcendentalne (r^n) - swiadomie NIE
+            # probujemy tego rozwiazywac (abstain), zeby nie zgadywac.
+            if kind != "arithmetic":
+                return {"status": "unverifiable"}
+            if 1 not in terms or ratio is None:
+                return {"status": "unverifiable"}
+            sol = sp.solve(Eq(sn_expr(terms[1], ratio, n_sym), intent["sum_value"]), n_sym)
+            real_sol = [s for s in sol if s.is_real and s > 0]
+            if len(real_sol) != 1:
+                return {"status": "unverifiable"}
+            true_value = sp.nsimplify(real_sol[0])
+            option_parser = lambda opt: _parse_expr(_option_text(opt))
+        elif intent["intent"] == "term_and_sum_to_a1_ratio":
+            # ETAP 6: naturalne rozszerzenie two_term_to_a1_ratio - zamiast
+            # DWOCH konkretnych wyrazow, mamy JEDEN wyraz + sume - wciaz
+            # uklad 2 rownan/2 niewiadome (a1, r/q), ten sam sympy.solve.
+            if len(terms) != 1 or parsed["sum_value"] is None:
+                return {"status": "unverifiable"}
+            term_idx = next(iter(terms))
+            term_val = terms[term_idx]
+            sv = parsed["sum_value"]
+            sol = sp.solve([
+                Eq(an_expr(a1_sym, r_sym, term_idx), term_val),
+                Eq(sn_expr(a1_sym, r_sym, sv["n"]), sv["value"]),
+            ], [a1_sym, r_sym])
+            sols = sol if isinstance(sol, list) else [sol]
+            real_sols = []
+            for s in sols:
+                a1v, rv = (s[a1_sym], s[r_sym]) if isinstance(s, dict) else s
+                if a1v.is_real and rv.is_real:
+                    real_sols.append((sp.nsimplify(a1v), sp.nsimplify(rv)))
+            if len(real_sols) != 1:
+                return {"status": "unverifiable"}
+            true_value = real_sols[0]
+            option_parser = lambda opt: _option_a1_ratio(opt, kind)
         elif intent["intent"] == "two_term_to_a1_ratio":
             idxs = sorted(terms.keys())
             if len(idxs) != 2:
@@ -730,6 +850,76 @@ def verify_sequence_question(question_text: str, options: list):
     if len(matches) > 1:
         return {"status": "unverifiable"}
     return {"status": "no_option_matches"}
+
+
+# ---------------------------------------------------------------
+# ETAP 6 Universal Difficulty Engine: skala trudnosci dla ciagow
+# arytmetycznych/geometrycznych - ten sam wzorzec co
+# classify_quadratic_difficulty/validate_quadratic_difficulty powyzej,
+# ale zbudowany na 7 rozpoznawalnych (intent, kind) kombinacjach zamiast
+# ogolnego parsera symbolicznego (ciagi go dzis nie maja - patrz
+# detect_sequence_intent). 5 pasm (SEQUENCE_DIFFICULTY_TIERS w
+# level_config.py), naprawiony "hard" celowo obejmuje WIELE roznych
+# wzorcow (nie jeden powtarzalny typ - wymog usera): 2 warianty
+# two_term_to_a1_ratio (wg kind), term_and_sum_to_a1_ratio,
+# find_n_from_sum.
+# ---------------------------------------------------------------
+_SEQUENCE_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
+    "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
+}
+
+
+def classify_sequence_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1'..'5') pytania o ciagu arytmetycznym/
+    geometrycznym, na bazie (intent, kind) - patrz SEQUENCE_DIFFICULTY_TIERS
+    w level_config.py po pelny opis kazdego pasma. None jesli tresc nie
+    zawiera rozpoznawalnego wzorca pytania o ciag (analyze_sequence_question/
+    detect_sequence_intent zwrocily None) - walidacja nie ma zastosowania,
+    nie blokujemy (ta sama filozofia co przy rownaniach kwadratowych -
+    bezpieczny abstain, nie zgadywanie)."""
+    parsed = analyze_sequence_question(question_text)
+    if not parsed:
+        return None
+    intent = detect_sequence_intent(question_text)
+    if not intent:
+        return None
+    kind = parsed["kind"]
+    name = intent["intent"]
+
+    if name == "find_nth_term":
+        return "1"
+    if name in ("sum_given_n", "find_n_from_last_term", "find_a1_given_sum"):
+        return "3" if kind == "geometric" else "2"
+    if name == "two_term_to_a1_ratio":
+        return "5" if kind == "geometric" else "4"
+    if name == "term_and_sum_to_a1_ratio":
+        return "4"
+    if name == "find_n_from_sum":
+        return "5"
+    return None
+
+
+def validate_sequence_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o ciagu odpowiada ZADANEJ
+    trudnosci - identyczny kontrakt do validate_quadratic_difficulty
+    (status ok/fail/not_sequence + reason/detected_tier/requested_tier)."""
+    acceptable = _SEQUENCE_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    if not acceptable:
+        return {"status": "not_sequence"}
+    detected_tier = classify_sequence_difficulty(question_text)
+    if detected_tier is None:
+        return {"status": "not_sequence"}
+    requested_label = "/".join(sorted(acceptable))
+    if detected_tier in acceptable:
+        return {"status": "ok", "detected_tier": detected_tier, "requested_tier": requested_label}
+    tier_order = ["1", "2", "3", "4", "5"]
+    if tier_order.index(detected_tier) < tier_order.index(min(acceptable, key=tier_order.index)):
+        reason = f"za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})"
+    else:
+        reason = f"za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})"
+    return {"status": "fail", "reason": reason, "detected_tier": detected_tier, "requested_tier": requested_label}
 
 
 # ---------------------------------------------------------------

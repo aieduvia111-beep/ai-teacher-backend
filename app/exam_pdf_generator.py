@@ -22,7 +22,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
-from .level_config import describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic
+from .level_config import (
+    describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
+    get_sequence_difficulty_anchor, is_sequence_topic,
+)
 from .math_verify import verify_and_fix_math_question, match_final_answer_index
 from .difficulty import DifficultyAnalyzer
 
@@ -143,7 +146,7 @@ TRUDNOSC = {trudnosc} w ramach {klasa}:
 
 NAKAZ: KAZDE zadanie musi byc na poziomie {klasa} i trudnosci {trudnosc}
 ZAKAZ: dla liceum/matura/studia — prostego dodawania ulamkow liczbowych
-{quadratic_anchor_blok}
+{difficulty_anchor_blok}
 WERYFIKACJA OBLICZEN - KRYTYCZNE (bledny klucz odpowiedzi to powazny blad,
 tak samo powazny jak zbyt latwe zadanie):
 Dla KAZDEGO zadania z obliczeniami (rownania, nierownosci, delta/wyroznik,
@@ -1043,7 +1046,10 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
             else:
                 kept.append(pyt)
 
-        # WARSTWA 3: walidacja skali trudnosci 1-10 (TYLKO rownania kwadratowe)
+        # WARSTWA 3: walidacja skali trudnosci (rownania kwadratowe skala
+        # 1-10, ETAP 6: ciagi arytmetyczne/geometryczne skala 1-5) -
+        # topic-agnostyczne, kazdy zarejestrowany domain modifier sam
+        # rozpoznaje, czy dotyczy danego pytania.
         if trudnosc:
             _difficulty_timer = _Timer(metrics, "difficulty_time") if metrics else None
             if _difficulty_timer:
@@ -1207,19 +1213,24 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         else:
             blok = typ_instrukcja
 
-        # NOWE: "gated injection" skali trudnosci 1-10 - TYLKO dla tematu
-        # "rownania kwadratowe" (ten sam mechanizm co w Quizie, patrz
-        # openai_exam.py). Inne tematy dzialaja jak dotychczas.
-        quadratic_anchor_blok = ""
+        # "gated injection" skali trudnosci - rownania kwadratowe (1-10) i
+        # ETAP 6: ciagi arytmetyczne/geometryczne (1-5), ten sam mechanizm
+        # co w Quizie (patrz openai_exam.py). Inne tematy dzialaja jak
+        # dotychczas (samo slowo trudnosci).
+        difficulty_anchor_blok = ""
         if is_quadratic_equation_topic(temat):
             anchor_text = get_quadratic_difficulty_anchor(trudnosc)
             if anchor_text:
-                quadratic_anchor_blok = f"\n{anchor_text}\n"
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_sequence_topic(temat):
+            anchor_text = get_sequence_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
 
         prompt = EXAM_PROMPT.format(
             temat=temat, klasa=klasa, poziom_opis=describe_level(klasa, subject=przedmiot),
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
-            quadratic_anchor_blok=quadratic_anchor_blok,
+            difficulty_anchor_blok=difficulty_anchor_blok,
             wlasne_instrukcje_blok=blok
         )
         last_error = None

@@ -957,6 +957,80 @@ def is_quadratic_equation_topic(topic: str) -> bool:
     return ("równani" in t or "rownani" in t) and "kwadratow" in t
 
 
+# ETAP 6: analogiczna "gated injection" skala trudnosci dla ciagow
+# arytmetycznych/geometrycznych - patrz QUADRATIC_DIFFICULTY_TIERS wyzej
+# po uzasadnienie wzorca. Skala tu to 1-5 (nie 1-10), bo tyle rozpoznawalnych
+# pasm daje dzis detect_sequence_intent/classify_sequence_difficulty w
+# math_verify.py - kazde pasmo nadal odpowiada WIELU roznym wzorcom zadan
+# (np. pasmo "4-5" obejmuje uklad-2-wyrazow, wyraz+suma, ORAZ szukanie n z
+# sumy), zeby "hard" nie oznaczalo w praktyce jednego powtarzalnego typu
+# zadania (wyraznie wymagane przez usera).
+SEQUENCE_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Podstawienie n do wzoru na n-ty wyraz (a1 i r/q dane wprost) - "
+            "JEDNO dzialanie, bez ukladu rownan."
+        ),
+        "przyklad": "Ciąg arytmetyczny ma a1=3, r=5. Oblicz dziesiąty wyraz tego ciągu.",
+    },
+    "2-3": {
+        "kryterium": (
+            "Wyznaczenie sumy n poczatkowych wyrazow (dane a1 i r/q), ALBO "
+            "wyznaczenie liczby wyrazow n z warunku na ostatni wyraz, ALBO "
+            "wyznaczenie a1 z danej sumy i r/q - jeden konkretny warunek, "
+            "BEZ ukladu 2 rownan."
+        ),
+        "przyklad": "Ciąg arytmetyczny ma a1=2, r=3. Oblicz sumę pierwszych 10 wyrazów tego ciągu.",
+    },
+    "4-5": {
+        "kryterium": (
+            "Uklad DWOCH warunkow jednoczesnie, prowadzacy do ukladu 2 rownan "
+            "na a1 i r/q: dwa rozne wyrazy ciagu, ALBO jeden wyraz + suma, "
+            "ALBO wyznaczenie n z rownania (suma pierwszych n wyrazow rowna "
+            "danej liczbie). Uzyj ROZNORODNYCH wzorcow z tej listy, nie "
+            "zawsze tego samego."
+        ),
+        "przyklad": (
+            "Rozne przyklady na tym poziomie: 'W ciągu arytmetycznym a3=10, "
+            "a7=22. Wyznacz pierwszy wyraz i różnicę.' LUB 'W ciągu "
+            "arytmetycznym a2=7. Suma pierwszych 4 wyrazów wynosi 26. "
+            "Wyznacz pierwszy wyraz i różnicę.' LUB 'Ciąg arytmetyczny ma "
+            "a1=3, r=2. Suma pierwszych n wyrazów wynosi 120. Wyznacz n.'"
+        ),
+    },
+}
+
+_SEQUENCE_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "2-3", "sredni": "2-3", "średni": "2-3", "srednia": "2-3", "średnia": "2-3",
+    "hard": "4-5", "trudny": "4-5", "trudna": "4-5",
+}
+
+
+def get_sequence_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladow (skala 1-5) dla podanego slowa
+    trudnosci, analogicznie do get_quadratic_difficulty_anchor. None jesli
+    slowo nierozpoznane (wtedy caller ma spasc na stare, generyczne
+    zachowanie)."""
+    tier = _SEQUENCE_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = SEQUENCE_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/5 (skala dla ciagow arytmetycznych/geometrycznych): {data['kryterium']} "
+        f"Przyklady zadan na tym poziomie: {data['przyklad']}. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_sequence_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy ciagow arytmetycznych/geometrycznych -
+    uzywane do "gated injection" skali 1-5 (dziala TYLKO dla tego tematu)."""
+    t = (topic or "").lower()
+    has_ciag = "ciąg" in t or "ciag" in t
+    return has_ciag and ("arytmetyczn" in t or "geometryczn" in t)
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

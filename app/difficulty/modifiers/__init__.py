@@ -39,5 +39,6 @@ class DomainModifier(ABC):
 
 
 from .math_quadratic import QuadraticEquationModifier
+from .math_sequences import SequenceModifier
 
-DEFAULT_MODIFIERS = [QuadraticEquationModifier()]
+DEFAULT_MODIFIERS = [QuadraticEquationModifier(), SequenceModifier()]
