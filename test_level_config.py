@@ -140,7 +140,13 @@ print("=" * 70)
 print("7) Nieznany poziom + fallback=None -> passthrough")
 print("=" * 70)
 check("nieznany klucz + fallback=None zwraca sam siebie", describe_level("cos_dziwnego_123", fallback=None) == "cos_dziwnego_123")
-check("nieznany klucz + domyslny fallback zwraca opis liceum", describe_level("cos_dziwnego_123") == LEVEL_DESC[DEFAULT_LEVEL])
+# UWAGA: nie porownujemy z LEVEL_DESC[DEFAULT_LEVEL] bezposrednio -
+# describe_level() zawsze dokleja globalna klauzule "WAZNE: To NIE moze
+# byc zbyt latwe..." (patrz komentarz w level_config.py), wiec surowy
+# wpis w slowniku nigdy nie bedzie rownowazny wynikowi describe_level().
+# Wlasciwe porownanie: fallback na nieznanym kluczu daje TAKI SAM wynik
+# jak bezposrednie zapytanie o DEFAULT_LEVEL.
+check("nieznany klucz + domyslny fallback zwraca opis liceum", describe_level("cos_dziwnego_123") == describe_level(DEFAULT_LEVEL))
 check("is_known_level('cos_dziwnego_123') == False", not is_known_level("cos_dziwnego_123"))
 
 print()
