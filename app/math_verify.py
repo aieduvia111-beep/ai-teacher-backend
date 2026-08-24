@@ -48,6 +48,21 @@ def _clean_latex(s: str) -> str:
     for _ in range(3):
         s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'((\1)/(\2))', s)
     s = s.replace('\\leq', '<=').replace('\\geq', '>=').replace('\\neq', '!=')
+    # NAPRAWIONE (zgloszony realny bug): unicode "≠" (U+2260) nie byl
+    # rownowazny "!=" - AI czesto pisze warunki jak "c≠0" (unicode znak),
+    # nie tylko LaTeX "\neq" (juz obslugiwane wyzej). Bez tego
+    # parse_option_as_param_set (weryfikacja rownan kwadratowych z
+    # parametrem) nie potrafil sparsowac takiej opcji (SyntaxError w
+    # sympy), co przy WSZYSTKICH 4 opcjach nierozpoznanych prowadzilo do
+    # "unverifiable" - Warstwa 2 nie mogla nic zawetowac.
+    s = s.replace('\u2260', '!=')
+    # NAPRAWIONE (ten sam zglobszony bug): unicode superscript ("e²>1",
+    # "f²>24") tez nie parsowal sie w tej sciezce - _normalize_subscripts
+    # (uzywany gdzie indziej) NIE jest wolany tutaj. _clean_latex jest
+    # jedynym wspolnym punktem normalizacji przed parse_expr w CALEJ
+    # sciezce rownan kwadratowych (z parametrem i bez), wiec to
+    # najbezpieczniejsze miejsce - dziala identycznie dla obu.
+    s = _SUPERSCRIPT_RE.sub(lambda m: '^' + m.group(0).translate(_SUPERSCRIPT_MAP), s)
     s = s.replace('{', '(').replace('}', ')')
     return s.strip()
 
