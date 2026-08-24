@@ -26,6 +26,9 @@ from .level_config import (
     describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
     get_sequence_difficulty_anchor, is_sequence_topic,
     get_trig_difficulty_anchor, is_trigonometry_topic,
+    get_linear_function_difficulty_anchor, is_linear_function_topic,
+    get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
+    get_exponential_function_difficulty_anchor, is_exponential_function_topic,
 )
 from .math_verify import verify_and_fix_math_question, match_final_answer_index
 from .difficulty import DifficultyAnalyzer
@@ -1229,6 +1232,18 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_trigonometry_topic(temat):
             anchor_text = get_trig_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_linear_function_topic(temat):
+            anchor_text = get_linear_function_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_quadratic_function_topic(temat):
+            anchor_text = get_quadratic_function_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_exponential_function_topic(temat):
+            anchor_text = get_exponential_function_difficulty_anchor(trudnosc)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
 

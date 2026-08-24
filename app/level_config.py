@@ -1106,6 +1106,170 @@ def is_trigonometry_topic(topic: str) -> bool:
     return "trygonometri" in t
 
 
+# ETAP 8: analogiczna "gated injection" skala trudnosci dla funkcji
+# (liniowej, kwadratowej JAKO FUNKCJI - nie rownania, wykladniczej
+# podstawowej) - patrz TRIG_DIFFICULTY_TIERS wyzej po uzasadnienie
+# wzorca. Skala 1-5, 3 pasma - jak ciagi/trygonometria.
+LINEAR_FUNCTION_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Podstawienie konkretnej liczby do f(x)=ax+b (a,b dane "
+            "wprost) - JEDNO dzialanie."
+        ),
+        "przyklad": "Dla funkcji f(x)=2x+3, oblicz f(4).",
+    },
+    "2-3": {
+        "kryterium": (
+            "Wyznaczenie rownania prostej przez 2 punkty, ALBO prostej "
+            "rownoleglej/prostopadlej przez dany punkt, ALBO "
+            "monotonicznosc/miejsce zerowe z danego wzoru."
+        ),
+        "przyklad": "Wyznacz równanie prostej prostopadłej do y=2x-3, przechodzącej przez punkt (4,1).",
+    },
+    "4-5": {
+        "kryterium": (
+            "Parametr (dla jakich m funkcja jest rosnaca/malejaca, "
+            "przechodzi przez dany punkt), ALBO uklad dwoch prostych z "
+            "warunkiem. Uzyj ROZNORODNYCH wzorcow, nie zawsze tego samego."
+        ),
+        "przyklad": "Dla jakich wartości m funkcja f(x)=(m-2)x+3 jest malejąca?",
+    },
+}
+_LINEAR_FUNCTION_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "2-3", "sredni": "2-3", "średni": "2-3", "srednia": "2-3", "średnia": "2-3",
+    "hard": "4-5", "trudny": "4-5", "trudna": "4-5",
+}
+
+
+def get_linear_function_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladow (skala 1-5) dla funkcji
+    liniowej, analogicznie do get_trig_difficulty_anchor."""
+    tier = _LINEAR_FUNCTION_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = LINEAR_FUNCTION_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/5 (skala dla funkcji liniowej): {data['kryterium']} "
+        f"Przyklad zadania na tym poziomie: '{data['przyklad']}'. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_linear_function_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy funkcji liniowej."""
+    t = (topic or "").lower()
+    return "funkcj" in t and "liniow" in t
+
+
+QUADRATIC_FUNCTION_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Odczyt wierzcholka WPROST z postaci kanonicznej "
+            "f(x)=a(x-p)^2+q (p,q dane, bez obliczen)."
+        ),
+        "przyklad": "f(x)=2(x-3)²+5. Podaj współrzędne wierzchołka.",
+    },
+    "2-3": {
+        "kryterium": (
+            "Sprowadzenie z postaci ogolnej do kanonicznej (wyznaczenie "
+            "wierzcholka), ALBO monotonicznosc/zbior wartosci z postaci "
+            "ogolnej."
+        ),
+        "przyklad": "f(x)=x²-4x+7. Wyznacz wierzchołek i zbiór wartości.",
+    },
+    "4-5": {
+        "kryterium": (
+            "Parametr wplywajacy na wierzcholek/zakres, ALBO zadanie "
+            "optymalizacyjne wykorzystujace wierzcholek. Uzyj "
+            "ROZNORODNYCH wzorcow, nie zawsze tego samego."
+        ),
+        "przyklad": "Dla jakich m wierzchołek paraboli f(x)=x²-2mx+1 leży powyżej osi OX?",
+    },
+}
+_QUADRATIC_FUNCTION_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "2-3", "sredni": "2-3", "średni": "2-3", "srednia": "2-3", "średnia": "2-3",
+    "hard": "4-5", "trudny": "4-5", "trudna": "4-5",
+}
+
+
+def get_quadratic_function_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladow dla funkcji kwadratowej JAKO
+    FUNKCJI (wierzcholek/monotonicznosc/zbior wartosci - NIE rownania,
+    patrz get_quadratic_difficulty_anchor dla tamtej skali)."""
+    tier = _QUADRATIC_FUNCTION_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = QUADRATIC_FUNCTION_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/5 (skala dla funkcji kwadratowej - wlasciwosci, nie rownania): {data['kryterium']} "
+        f"Przyklad zadania na tym poziomie: '{data['przyklad']}'. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_quadratic_function_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy funkcji kwadratowej JAKO
+    FUNKCJI - odrebne od is_quadratic_equation_topic (rownania).
+    Priorytet miedzy nimi ustala KOLEJNOSC elif w openai_exam.py/
+    exam_pdf_generator.py (rownania sprawdzane PIERWSZE - zachowanie
+    dla tematow typu 'rownania kwadratowe' bez zmian)."""
+    t = (topic or "").lower()
+    return "funkcj" in t and "kwadratow" in t
+
+
+EXPONENTIAL_FUNCTION_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Podstawienie calkowitej liczby do f(x)=a^x (a dane wprost) "
+            "- JEDNO dzialanie, ALBO rozpoznanie wzrost/spadek z podstawy a."
+        ),
+        "przyklad": "f(x)=2ˣ. Oblicz f(3).",
+    },
+    "2-3": {
+        "kryterium": (
+            "Rownanie wykladnicze przy TEJ SAMEJ podstawie (porownanie "
+            "wykladnikow), ALBO przesuniecie wykresu funkcji wykladniczej."
+        ),
+        "przyklad": "Rozwiąż równanie 2^(x+1) = 8.",
+    },
+    "4-5": {
+        "kryterium": (
+            "Rownanie wymagajace podstawienia (t=a^x) sprowadzajace do "
+            "kwadratowego, ALBO nierownosc wykladnicza, ALBO parametr. "
+            "Uzyj ROZNORODNYCH wzorcow, nie zawsze tego samego."
+        ),
+        "przyklad": "Rozwiąż nierówność 4ˣ-3·2ˣ-4≤0, podstawiając t=2ˣ.",
+    },
+}
+_EXPONENTIAL_FUNCTION_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "2-3", "sredni": "2-3", "średni": "2-3", "srednia": "2-3", "średnia": "2-3",
+    "hard": "4-5", "trudny": "4-5", "trudna": "4-5",
+}
+
+
+def get_exponential_function_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladow dla funkcji wykladniczej,
+    analogicznie do get_linear_function_difficulty_anchor."""
+    tier = _EXPONENTIAL_FUNCTION_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = EXPONENTIAL_FUNCTION_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/5 (skala dla funkcji wykladniczej): {data['kryterium']} "
+        f"Przyklad zadania na tym poziomie: '{data['przyklad']}'. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_exponential_function_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy funkcji wykladniczej."""
+    t = (topic or "").lower()
+    return "wykładnicz" in t or "wykladnicz" in t
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

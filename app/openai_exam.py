@@ -5,6 +5,9 @@ from .level_config import (
     get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
     get_sequence_difficulty_anchor, is_sequence_topic,
     get_trig_difficulty_anchor, is_trigonometry_topic,
+    get_linear_function_difficulty_anchor, is_linear_function_topic,
+    get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
+    get_exponential_function_difficulty_anchor, is_exponential_function_topic,
 )
 from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
 from .difficulty import DifficultyAnalyzer
@@ -741,6 +744,23 @@ async def _raw_generate_quiz_topic_once(
     # ETAP 7: analogiczna "gated injection" dla trygonometrii.
     elif is_trigonometry_topic(topic):
         anchor_text = get_trig_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+
+    # ETAP 8: analogiczna "gated injection" dla funkcji (liniowej,
+    # kwadratowej JAKO FUNKCJI, wykladniczej). is_quadratic_function_topic
+    # sprawdzany PO is_quadratic_equation_topic - rownania zachowuja
+    # pierwszenstwo dla tematow, ktore wygladaja jak obie naraz.
+    elif is_linear_function_topic(topic):
+        anchor_text = get_linear_function_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+    elif is_quadratic_function_topic(topic):
+        anchor_text = get_quadratic_function_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+    elif is_exponential_function_topic(topic):
+        anchor_text = get_exponential_function_difficulty_anchor(difficulty)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 

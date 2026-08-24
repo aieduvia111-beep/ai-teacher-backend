@@ -111,9 +111,24 @@ def _parse_relational_list(s: str):
     return [rel] if rel is not None else None
 
 
+_FUNC_DEF_LHS_RE = re.compile(r'^[fgh]\s*\(\s*x\s*\)$')
+
+
 def _find_equation_in_text(text: str):
     """Pierwszy fragment $...$ w tekscie wygladajacy na rownanie kwadratowe
-    (zawiera 'x', '=' i 'x^2'/'x**2'). Zwraca (lhs_str, rhs_str) albo None."""
+    (zawiera 'x', '=' i 'x^2'/'x**2'). Zwraca (lhs_str, rhs_str) albo None.
+
+    NAPRAWIONE (Etap 8, wykryte realna generacja): "f(x) = x^2-4x+3" (DEFINICJA
+    funkcji, nie rownanie do rozwiazania) spelnialo wszystkie 3 warunki
+    powyzej i bylo bledne interpretowane jako rownanie - _parse_expr
+    parsuje "f(x)" jako NIEJAWNE MNOZENIE "f*x" (nie wywolanie funkcji,
+    bo transformacje sympy tu uzyte nie rozpoznaja 'f' jako nazwy
+    funkcji), wiec 'f' ladowal jako "parametr" rownania kwadratowego -
+    to bezposrednio kolidowalo z nowym classify_quadratic_function_difficulty
+    (Etap 8), ktory oczekuje TAKIEJ WLASNIE notacji "f(x)=...". Jawne
+    wykluczenie LHS=="f(x)" (definicja funkcji) z detekcji rownania -
+    prawdziwe rownania kwadratowe w tej apce zawsze maja wielomian po
+    lewej stronie (np. "x^2-5x+6=0"), nigdy bare "f(x)"."""
     if not text:
         return None
     for m in _EQ_IN_DOLLARS.finditer(text):
@@ -124,7 +139,10 @@ def _find_equation_in_text(text: str):
             continue
         parts = chunk.split('=')
         if len(parts) == 2:
-            return parts[0], parts[1]
+            lhs_s, rhs_s = parts
+            if _FUNC_DEF_LHS_RE.match(lhs_s.strip()):
+                continue
+            return lhs_s, rhs_s
     return None
 
 
@@ -561,11 +579,21 @@ def build_verified_explanation(parsed: dict, kind: str, true_set) -> str:
 # "unverifiable", tak jak rownania z wiecej niz 1 parametrem).
 # ---------------------------------------------------------------
 _SUBSCRIPT_MAP = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+# NAPRAWIONE (Etap 8, wykryte przy budowie funkcji kwadratowej): AI
+# czesto pisze "x²" (unicode superscript), nie "x^2"/"x**2" - sympy
+# parse_expr nie rozumie unicode superscriptow w ogole (SyntaxError).
+# Dotyczylo to tez ISTNIEJACEGO kodu rownan kwadratowych
+# (_find_equation_in_text wymaga literalnie "^2"/"**2"), wiec ta
+# naprawa (w jedynym wspolnym punkcie normalizacji) korzysta WSZYSTKIM
+# tematom naraz, nie tylko funkcjom.
+_SUPERSCRIPT_MAP = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+_SUPERSCRIPT_RE = re.compile(r'[⁰¹²³⁴⁵⁶⁷⁸⁹]+')
 
 
 def _normalize_subscripts(s: str) -> str:
     s = s.translate(_SUBSCRIPT_MAP)
-    return re.sub(r'a_(\d)', r'a\1', s)
+    s = re.sub(r'a_(\d)', r'a\1', s)
+    return _SUPERSCRIPT_RE.sub(lambda m: '^' + m.group(0).translate(_SUPERSCRIPT_MAP), s)
 
 
 def _to_num(s: str):
@@ -1107,8 +1135,14 @@ _TRIG_GIVEN_VALUE_RE = re.compile(r'\\?(sin|cos|tg|ctg|tan|cot|sec|csc)\s*\(?\s*
 # zakresu (nigdy nie sa realnymi nazwami parametrow w tej aplikacji -
 # konwencja to a/b/c/k/m/n/p/t). "a" ZOSTAJE mimo bycia tez spojnikiem
 # ("a nie") - to zbyt czesta, realna nazwa parametru, zeby ja wykluczyc
-# bez utraty wykrywania prawdziwych przypadkow.
-_TRIG_PARAMETER_RE = re.compile(r'(?<![a-zA-Ząćęłńóśźż\\])[a-hj-np-tvA-HJ-NP-TV](?![a-zA-Ząćęłńóśźż{])')
+# bez utraty wykrywania prawdziwych przypadkow. Etap 8: wspolna dla
+# wszystkich tematow (nie jest w niczym specyficzna dla trygonometrii),
+# uzywana tez przez classify_exponential_function_difficulty.
+# Etap 8: dodatkowo wykluczone "(" z lookaheada - litera BEZPOSREDNIO
+# przed nawiasem to wywolanie funkcji (np. "f(x)"), nie izolowany
+# parametr. Bez tego "f" w KAZDYM pytaniu o funkcji ("f(x)=...",
+# "oblicz f(3)") falszywie lapalo sie jako parametr.
+_ISOLATED_LETTER_PARAMETER_RE = re.compile(r'(?<![a-zA-Ząćęłńóśźż\\])[a-hj-np-tvA-HJ-NP-TV](?![a-zA-Ząćęłńóśźż{(])')
 
 
 def classify_trig_difficulty(question_text: str):
@@ -1140,7 +1174,7 @@ def classify_trig_difficulty(question_text: str):
     if has_func_mention and has_proof and has_identity:
         return "5"
     if has_func_mention and has_equation:
-        has_param = bool(_TRIG_PARAMETER_RE.search(text))
+        has_param = bool(_ISOLATED_LETTER_PARAMETER_RE.search(text))
         return "5" if has_param else "4"
     if has_right_triangle:
         return "3" if ('sinus' in text or 'cosinus' in text) else "2"
@@ -1171,6 +1205,529 @@ def validate_trig_difficulty(question_text: str, requested_difficulty_word: str)
     detected_tier = classify_trig_difficulty(question_text)
     return _generic_validate_difficulty(
         detected_tier, acceptable, _TRIG_TIER_ORDER, "not_trig",
+        "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
+
+
+# ---------------------------------------------------------------
+# ETAP 8 Universal Difficulty Engine: funkcje (liniowa, kwadratowa jako
+# FUNKCJA - nie rownanie, wykladnicza podstawowa).
+#
+# Warstwa 2 (weryfikacja sympy) - SWIADOMIE zawezona do BEZPIECZNYCH,
+# closed-form podzbiorow (ta sama filozofia co trygonometria w Etapie 7):
+#   liniowa: ewaluacja f(k) dla danego k, ORAZ wyznaczenie rownania
+#       prostej przez 2 punkty.
+#   kwadratowa-jako-funkcja: wierzcholek (p,q) z postaci ogolnej.
+#   wykladnicza: ewaluacja f(k) dla calkowitego k, ORAZ rownanie przy tej
+#       samej podstawie (a^E = liczba bedaca "ladna" potega a).
+# Rownania/nierownosci z parametrem, podstawieniem, dowody, zadania
+# optymalizacyjne - CELOWO pozostaja abstain (jak rownania/tozsamosci
+# trygonometryczne w Etapie 7).
+# ---------------------------------------------------------------
+# Przechwytuje RHS definicji NIEZACHLANNIE, zatrzymujac sie na pierwszym
+# z: przecinek/kropka/znak zapytania/wykrzyknik/$, ALBO granicy slowa
+# przed 2+ literowym "slowem" (kontynuacja zdania po polsku, np.
+# "f(x)=3x-6 jest rosnąca?" - bez tego zachlanny [^,.$]+ probowal
+# sparsowac CALE zdanie jako wyrazenie sympy i zawsze sie wywalal).
+# NAPRAWIONE (wykryte realna generacja): AI nie zawsze uzywa "f" - czesto
+# "g"/"h" (zwlaszcza gdy w tym samym zadaniu jest juz inna funkcja, albo
+# po prostu dla urozmaicenia) - [fgh] zamiast literalnego "f" wszedzie
+# tam, gdzie oczekujemy definicji funkcji.
+_FUNC_DEF_RE = re.compile(
+    r'[fgh]\s*\(\s*x\s*\)\s*=\s*([^,.$?!]+?)(?=\s+[a-zżąćęłńóśźA-ZŻĄĆĘŁŃÓŚŹ]{2,}\b|[,.$?!]|$)'
+)
+_FUNC_EVAL_RE = re.compile(r'[fgh]\s*\(\s*(-?\d+(?:[.,]\d+)?)\s*\)')
+_POINT_RE = re.compile(r'\(\s*(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)\s*\)')
+# _ISOLATED_LETTER_PARAMETER_RE zdefiniowana wyzej (Etap 7, przy
+# classify_trig_difficulty) - uzywana tez przez
+# classify_exponential_function_difficulty ponizej.
+
+
+def _find_function_poly(question_text: str, degree: int):
+    """Znajduje 'f(x) = <wyrazenie>' w tresci i sprawdza, ze <wyrazenie>
+    jest wielomianem STOPNIA `degree` wzgledem x (dziala tez gdy
+    wspolczynniki sa symboliczne - parametr, np. 'f(x)=(m-2)x+3' -
+    Poly(expr,x) traktuje 'm' jako czesc wspolczynnika, degree() liczy
+    TYLKO wzgledem x). Zwraca (x, Poly) albo None (nie rozpoznano -
+    abstain). Wspolne dla liniowej (degree=1) i kwadratowej-jako-funkcji
+    (degree=2)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+    m = _FUNC_DEF_RE.search(text)
+    if not m:
+        return None
+    try:
+        expr = _parse_expr(m.group(1))
+        x = Symbol('x')
+        poly = Poly(expr, x)
+    except Exception:
+        return None
+    if poly.degree() != degree:
+        return None
+    return x, poly
+
+
+def _find_function_eval_target(question_text: str):
+    """Znajduje wystapienie 'f(liczba)' w tresci - pytanie o wartosc
+    funkcji w konkretnym punkcie (NIGDY nie dopasowuje 'f(x)' - wymaga
+    liczby w nawiasie, wiec definicja funkcji jest naturalnie pomijana).
+    Zwraca liczbe albo None."""
+    text = _normalize_subscripts(question_text)
+    m = _FUNC_EVAL_RE.search(text)
+    if not m:
+        return None
+    return _to_num(m.group(1))
+
+
+def _match_single_value_option(true_value, options: list) -> dict:
+    """Wspolna petla dopasowania POJEDYNCZEJ wartosci sympy do listy
+    opcji (parsowanych jako wyrazenia) - identyczny ksztalt/kontrakt co
+    verify_trig_special_angle_question (wyodrebnione do ponownego
+    uzycia - liniowa/wykladnicza maja ten sam ksztalt weryfikacji:
+    JEDNA liczba do znalezienia wsrod opcji)."""
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = sp.nsimplify(_parse_expr(_option_text(opt)))
+        except Exception:
+            opt_val = None
+        if opt_val is None:
+            continue
+        any_parsed = True
+        try:
+            equal = bool(sp.simplify(opt_val - true_value) == 0)
+        except Exception:
+            equal = False
+        if equal:
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "unverifiable"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
+# =================================================================
+# 8a. FUNKCJA LINIOWA
+# =================================================================
+def analyze_linear_function_question(question_text: str):
+    """Rozpoznaje funkcje liniowa f(x)=ax+b w tresci pytania. Zwraca
+    {"x","a","b"} albo None (brak rozpoznanego wzoru - abstain)."""
+    found = _find_function_poly(question_text, degree=1)
+    if not found:
+        return None
+    x, poly = found
+    a, b = poly.all_coeffs()
+    return {"x": x, "a": a, "b": b}
+
+
+def verify_linear_function_evaluate(question_text: str, options: list):
+    """Warstwa 2: f(x)=ax+b, pytanie 'oblicz f(k)' dla konkretnego k."""
+    parsed = analyze_linear_function_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    if parsed["a"].free_symbols or parsed["b"].free_symbols:
+        return {"status": "unverifiable"}  # parametr - nie da sie policzyc liczby
+    k = _find_function_eval_target(question_text)
+    if k is None:
+        return {"status": "unverifiable"}
+    true_value = sp.nsimplify(parsed["a"] * k + parsed["b"])
+    return _match_single_value_option(true_value, options)
+
+
+def analyze_linear_two_points_question(question_text: str):
+    """Rozpoznaje zadanie 'wyznacz rownanie prostej przez 2 punkty' -
+    wymaga DOKLADNIE 2 par (x,y) w tresci i wzmianki o prostej/funkcji
+    liniowej (odroznienie od przypadkowych wspolrzednych w innym
+    kontekscie, np. geometrii). Zwraca {"x1","y1","x2","y2"} albo None."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+    text_lower = text.lower()
+    if not ('prost' in text_lower or ('funkcj' in text_lower and 'liniow' in text_lower)):
+        return None
+    points = _POINT_RE.findall(text)
+    if len(points) != 2:
+        return None
+    (x1, y1), (x2, y2) = points
+    x1, y1, x2, y2 = _to_num(x1), _to_num(y1), _to_num(x2), _to_num(y2)
+    if x1 is None or x2 is None or x1 == x2:
+        return None
+    return {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
+
+
+_OPTION_LINEAR_RE = re.compile(r'(?:[fgh]\s*\(\s*x\s*\)|y)\s*=\s*(.+)')
+
+
+def _option_linear_ab(option_text):
+    """Parsuje opcje sformatowana jako 'y=Ax+B'/'f(x)=Ax+B' (albo samo
+    wyrazenie bez prefiksu) na (a,b). None jesli sie nie da (nie stopnia
+    1 wzgledem x, blad parsowania)."""
+    text = _normalize_subscripts(_option_text(option_text)).strip().strip('$').strip()
+    m = _OPTION_LINEAR_RE.search(text)
+    rhs = m.group(1) if m else text
+    try:
+        expr = _parse_expr(rhs)
+        x = Symbol('x')
+        poly = Poly(expr, x)
+        if poly.degree() != 1:
+            return None
+        a, b = poly.all_coeffs()
+        return sp.nsimplify(a), sp.nsimplify(b)
+    except Exception:
+        return None
+
+
+def verify_linear_two_points_question(question_text: str, options: list):
+    """Warstwa 2: wyznaczenie (a,b) prostej y=ax+b przez 2 dane punkty,
+    dopasowanie do opcji sformatowanych jako 'y=Ax+B'/'f(x)=Ax+B'."""
+    parsed = analyze_linear_two_points_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    a_sym, b_sym = sp.symbols('a b')
+    try:
+        sol = sp.solve([
+            Eq(a_sym * parsed["x1"] + b_sym, parsed["y1"]),
+            Eq(a_sym * parsed["x2"] + b_sym, parsed["y2"]),
+        ], [a_sym, b_sym])
+        true_a, true_b = sp.nsimplify(sol[a_sym]), sp.nsimplify(sol[b_sym])
+    except Exception:
+        return {"status": "unverifiable"}
+
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        opt_ab = _option_linear_ab(opt)
+        if opt_ab is None:
+            continue
+        any_parsed = True
+        if opt_ab == (true_a, true_b):
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "unverifiable"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
+_LINEAR_PERPENDICULAR_PARALLEL_MARKERS = ('prostopadł', 'prostopadl', 'równoległ', 'rownolegl')
+_LINEAR_MONOTONICITY_MARKERS = ('rosnąc', 'rosnac', 'malejąc', 'malejac', 'monotoniczn', 'miejsce zerow')
+_LINEAR_SYSTEM_MARKERS = ('układ', 'uklad')
+
+
+def classify_linear_function_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1'..'5') pytania o funkcji liniowej, na
+    bazie wzorcow tekstowych + rozpoznanego wzoru. None jesli tresc nie
+    zawiera rozpoznawalnego wzorca (bezpieczny abstain)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text).lower()
+    parsed = analyze_linear_function_question(question_text)
+    two_points = analyze_linear_two_points_question(question_text)
+    has_perp_parallel = any(w in text for w in _LINEAR_PERPENDICULAR_PARALLEL_MARKERS)
+    has_system = any(w in text for w in _LINEAR_SYSTEM_MARKERS) and 'prost' in text
+    # NAPRAWIONE: pytania o prostej prostopadlej/rownoleglej/ukladzie
+    # prostych czesto NIE uzywaja "f(x)=" (pisza "y=...") ani nie maja 2
+    # par (x,y) w tresci - brama nie moze wymagac zadnego z powyzszych,
+    # gdy inny jednoznaczny marker kontekstu prostej juz jest obecny.
+    has_context = parsed is not None or two_points is not None or has_perp_parallel or has_system or (
+        'funkcj' in text and 'liniow' in text
+    )
+    if not has_context:
+        return None
+
+    has_param = bool(parsed and (parsed["a"].free_symbols or parsed["b"].free_symbols))
+    has_monotonicity = any(w in text for w in _LINEAR_MONOTONICITY_MARKERS)
+
+    if has_param:
+        return "5"
+    if has_system:
+        return "4"
+    if two_points is not None or has_perp_parallel:
+        return "3"
+    if has_monotonicity:
+        return "2"
+    if parsed is not None and _find_function_eval_target(question_text) is not None:
+        return "1"
+    return None
+
+
+_LINEAR_FUNCTION_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
+    "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
+}
+_LINEAR_FUNCTION_TIER_ORDER = ["1", "2", "3", "4", "5"]
+
+
+def validate_linear_function_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o funkcji liniowej odpowiada
+    ZADANEJ trudnosci - identyczny kontrakt do validate_trig_difficulty
+    (status ok/fail/not_linear_function + reason/detected_tier/requested_tier)."""
+    acceptable = _LINEAR_FUNCTION_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    detected_tier = classify_linear_function_difficulty(question_text)
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _LINEAR_FUNCTION_TIER_ORDER, "not_linear_function",
+        "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
+
+
+# =================================================================
+# 8b. FUNKCJA KWADRATOWA JAKO FUNKCJA (nie rownanie - patrz Iteracja 2
+# wyzej dla rozwiazywania ax^2+bx+c=0. Ten modul dotyczy WLASCIWOSCI
+# funkcji: wierzcholek, monotonicznosc, zbior wartosci, transformacje.
+# Gating (is_quadratic_function_topic w level_config.py) jest CELOWO
+# odrebny od is_quadratic_equation_topic, zeby oba modifiery NIE
+# nakladaly sie na to samo pytanie).
+# =================================================================
+def analyze_quadratic_function_question(question_text: str):
+    """Rozpoznaje funkcje kwadratowa f(x)=Ax^2+Bx+C (postac ogolna,
+    rozwinieta - dziala tez gdy zapisana byla w postaci kanonicznej,
+    Poly() i tak jest zawsze w postaci rozwinietej) w tresci pytania.
+    Zwraca {"x","A","B","C"} albo None."""
+    found = _find_function_poly(question_text, degree=2)
+    if not found:
+        return None
+    x, poly = found
+    A, B, C = poly.all_coeffs()
+    return {"x": x, "A": A, "B": B, "C": C}
+
+
+def verify_quadratic_function_vertex(question_text: str, options: list):
+    """Warstwa 2: wierzcholek (p,q) paraboli z postaci ogolnej -
+    p=-B/2A, q=f(p). Dopasowanie do opcji sformatowanych jako '(p,q)'."""
+    parsed = analyze_quadratic_function_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    A, B, C = parsed["A"], parsed["B"], parsed["C"]
+    if A.free_symbols or B.free_symbols or C.free_symbols:
+        return {"status": "unverifiable"}  # parametr - wierzcholek nie jest liczba
+    try:
+        p = sp.nsimplify(-B / (2 * A))
+        q = sp.nsimplify(A * p ** 2 + B * p + C)
+    except Exception:
+        return {"status": "unverifiable"}
+
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        text = _normalize_subscripts(_option_text(opt))
+        m = _POINT_RE.search(text)
+        if not m:
+            continue
+        try:
+            opt_p, opt_q = sp.nsimplify(_to_num(m.group(1))), sp.nsimplify(_to_num(m.group(2)))
+        except Exception:
+            continue
+        any_parsed = True
+        if opt_p == p and opt_q == q:
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "unverifiable"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
+# "wierzchołek" (mianownik/biernik) + rdzen "wierzchołk" (dopelniacz/
+# celownik/narzednik/miejscownik: wierzchołka/wierzchołkowi/wierzchołkiem/
+# wierzchołku) - polska odmiana z ruchoma samogloska "e" (wypada w
+# przypadkach zaleznych), wiec NIE ma jednego wspolnego podciagu
+# obejmujacego WSZYSTKIE formy - trzeba obu wariantow osobno.
+_QUAD_FUNC_VERTEX_MARKERS = (
+    'wierzchołek', 'wierzchołk', 'wierzcholek', 'wierzcholk',
+    'postać kanoniczn', 'postac kanoniczn',
+)
+_QUAD_FUNC_MONOTONICITY_MARKERS = ('monotoniczn', 'rosnąc', 'rosnac', 'malejąc', 'malejac', 'przedział')
+_QUAD_FUNC_RANGE_MARKERS = ('zbiór wartości', 'zbior wartosci')
+_QUAD_FUNC_OPTIMIZATION_MARKERS = ('maksymaln', 'minimaln', 'najwięks', 'najwieks', 'najmniejsz')
+_QUAD_FUNC_CANONICAL_RE = re.compile(r'\(\s*x\s*[+-]\s*\d+(?:[.,]\d+)?\s*\)\s*\^?\s*2')
+
+
+def classify_quadratic_function_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1'..'5') pytania o funkcji kwadratowej
+    JAKO FUNKCJI (wierzcholek/monotonicznosc/zbior wartosci - NIE
+    rozwiazywanie rownania). Wymaga co najmniej jednego markera
+    wlasciwosci funkcji - inaczej to prawdopodobnie rownanie (inny
+    modifier), nie ta klasyfikacja (bezpieczny abstain, brak nakladania
+    sie z classify_quadratic_difficulty)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text).lower()
+    has_vertex = any(w in text for w in _QUAD_FUNC_VERTEX_MARKERS)
+    has_mono = any(w in text for w in _QUAD_FUNC_MONOTONICITY_MARKERS)
+    has_range = any(w in text for w in _QUAD_FUNC_RANGE_MARKERS)
+    has_opt = any(w in text for w in _QUAD_FUNC_OPTIMIZATION_MARKERS)
+    if not (has_vertex or has_mono or has_range or has_opt):
+        return None
+
+    parsed = analyze_quadratic_function_question(question_text)
+    has_param = bool(parsed and (
+        parsed["A"].free_symbols or parsed["B"].free_symbols or parsed["C"].free_symbols
+    ))
+    if has_param or has_opt:
+        return "5"
+    is_canonical_given = bool(_QUAD_FUNC_CANONICAL_RE.search(text))
+    if has_vertex and is_canonical_given:
+        return "1"
+    if sum([has_vertex, has_mono, has_range]) >= 2:
+        return "3"
+    return "2"
+
+
+_QUADRATIC_FUNCTION_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
+    "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
+}
+_QUADRATIC_FUNCTION_TIER_ORDER = ["1", "2", "3", "4", "5"]
+
+
+def validate_quadratic_function_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o funkcji kwadratowej (JAKO
+    FUNKCJI) odpowiada ZADANEJ trudnosci - identyczny kontrakt do
+    validate_linear_function_difficulty."""
+    acceptable = _QUADRATIC_FUNCTION_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    detected_tier = classify_quadratic_function_difficulty(question_text)
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _QUADRATIC_FUNCTION_TIER_ORDER, "not_quadratic_function",
+        "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
+
+
+# =================================================================
+# 8c. FUNKCJA WYKLADNICZA PODSTAWOWA
+# =================================================================
+_EXP_DEF_RE = re.compile(r'[fgh]\s*\(\s*x\s*\)\s*=\s*(\d+(?:[.,]\d+)?)\s*\^\s*\{?\s*x\s*\}?')
+_EXP_EQ_RE = re.compile(r'(\d+(?:[.,]\d+)?)\s*\^\s*\{?\(?\s*([^=)}]+?)\s*\)?\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
+
+
+def analyze_exponential_function_question(question_text: str):
+    """Rozpoznaje funkcje wykladnicza f(x)=a^x (a - liczba > 0, a != 1)
+    w tresci pytania. Zwraca {"a"} albo None."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+    m = _EXP_DEF_RE.search(text)
+    if not m:
+        return None
+    a = _to_num(m.group(1))
+    if a is None or a <= 0 or a == 1:
+        return None
+    return {"a": a}
+
+
+def verify_exponential_function_evaluate(question_text: str, options: list):
+    """Warstwa 2: f(x)=a^x, pytanie 'oblicz f(k)' dla calkowitego k."""
+    parsed = analyze_exponential_function_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    k = _find_function_eval_target(question_text)
+    if k is None or k != int(k):
+        return {"status": "unverifiable"}
+    true_value = sp.nsimplify(sp.nsimplify(parsed["a"]) ** int(k))
+    return _match_single_value_option(true_value, options)
+
+
+def verify_exponential_same_base_equation(question_text: str, options: list):
+    """Warstwa 2: rownanie a^E(x) = L, gdzie L jest 'ladna' (wymierna)
+    potega a - closed form, rozwiazanie x przez porownanie wykladnikow
+    (log_a(L) = E(x), rozwiazane wzgledem x)."""
+    if not question_text:
+        return {"status": "unverifiable"}
+    text = _normalize_subscripts(question_text)
+    m = _EXP_EQ_RE.search(text)
+    if not m:
+        return {"status": "unverifiable"}
+    base = _to_num(m.group(1))
+    rhs = _to_num(m.group(3))
+    if base is None or base <= 0 or base == 1 or rhs is None or rhs <= 0:
+        return {"status": "unverifiable"}
+    try:
+        exponent_expr = _parse_expr(m.group(2))
+        k = sp.nsimplify(sp.log(rhs, base))
+        if not k.is_rational:
+            return {"status": "unverifiable"}
+        x = Symbol('x')
+        sol = sp.solve(Eq(exponent_expr, k), x)
+        real_sol = [s for s in sol if s.is_real]
+        if len(real_sol) != 1:
+            return {"status": "unverifiable"}
+        true_value = sp.nsimplify(real_sol[0])
+    except Exception:
+        return {"status": "unverifiable"}
+    return _match_single_value_option(true_value, options)
+
+
+_EXP_SUBSTITUTION_MARKERS = ('podstawiając', 'podstawiajac', 'podstawienie')
+_EXP_INEQUALITY_MARKERS = ('nierówność', 'nierownosc', '≤', '≥')
+_EXP_SHIFT_MARKERS = ('przesuni', 'wykres')
+_EXP_GROWTH_DECAY_MARKERS = ('rosnąc', 'rosnac', 'malejąc', 'malejac', 'wzrost', 'spadek')
+_EXP_EQUATION_MARKERS = ('równani', 'rownani', 'rozwiąż', 'rozwiaz')
+# Dwie alternatywy: liczbowa podstawa + '^' (dowolny wykladnik, np.
+# "2^x", "2^(x+1)") ALBO literowa podstawa (parametr) + '^' + wykladnik
+# zaczynajacy sie od x (np. "a^x") - bez tej drugiej alternatywy zadania
+# z parametryzowana podstawa ("dla jakich a rownanie a^x=8...") w ogole
+# nie byly rozpoznawane jako trescia o funkcji wykladniczej.
+_EXP_MENTION_RE = re.compile(r'\d+(?:[.,]\d+)?\s*\^|[a-zA-Z]\s*\^\s*\{?\(?\s*x\b', re.I)
+
+
+def classify_exponential_function_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1'..'5') pytania o funkcji
+    wykladniczej, na bazie wzorcow tekstowych. None jesli tresc nie
+    zawiera rozpoznawalnego wzorca (brak wzmianki 'liczba^...' -
+    bezpieczny abstain)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text).lower()
+    if not _EXP_MENTION_RE.search(text):
+        return None
+
+    has_param = bool(_ISOLATED_LETTER_PARAMETER_RE.search(text))
+    has_substitution = any(w in text for w in _EXP_SUBSTITUTION_MARKERS)
+    has_inequality = any(w in text for w in _EXP_INEQUALITY_MARKERS)
+    has_equation = any(w in text for w in _EXP_EQUATION_MARKERS)
+    has_shift = any(w in text for w in _EXP_SHIFT_MARKERS)
+    has_growth_decay = any(w in text for w in _EXP_GROWTH_DECAY_MARKERS)
+
+    if has_param or has_substitution or has_inequality:
+        return "5"
+    if has_equation:
+        return "3"
+    if has_shift or has_growth_decay:
+        return "2"
+    if _find_function_eval_target(question_text) is not None:
+        return "1"
+    return None
+
+
+_EXPONENTIAL_FUNCTION_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
+    "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
+}
+_EXPONENTIAL_FUNCTION_TIER_ORDER = ["1", "2", "3", "4", "5"]
+
+
+def validate_exponential_function_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o funkcji wykladniczej
+    odpowiada ZADANEJ trudnosci - identyczny kontrakt do
+    validate_linear_function_difficulty."""
+    acceptable = _EXPONENTIAL_FUNCTION_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    detected_tier = classify_exponential_function_difficulty(question_text)
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _EXPONENTIAL_FUNCTION_TIER_ORDER, "not_exponential_function",
         "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
         "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
     )

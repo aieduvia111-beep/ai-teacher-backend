@@ -162,3 +162,24 @@ SEQUENCE_MAX_SHIFT = 4
 # (patrz komentarz przy SEQUENCE_MAX_SHIFT).
 TRIG_BASELINE_LEVEL = "liceum_2"
 TRIG_MAX_SHIFT = 4
+
+
+# ---------------------------------------------------------------
+# ETAP 8: przesuniecie dla funkcji - patrz app/difficulty/modifiers/
+# math_functions_poly.py i math_functions_exponential.py. W ODROZNIENIU
+# od ciagow/trygonometrii, funkcja liniowa i kwadratowa-jako-funkcja sa
+# wprowadzone w liceum_1/technikum_1 (SUBJECT_SCOPE), a funkcja
+# wykladnicza dopiero w liceum_3/technikum_4 - DWA lata programu pozniej
+# (rownolegle sciezki technikum maja +1 rok dla liceum_1 vs technikum_1
+# na wspolnej osi "rok nauki", ale relacja liceum_1<liceum_3 zostaje).
+# Dlatego, w odroznieniu od SEQUENCE/TRIG (jeden wspolny baseline),
+# funkcje potrzebuja DWOCH oddzielnych par baseline/max_shift - jeden
+# wspolny baseline dla liniowej+kwadratowej-jako-funkcji nie mialby
+# sensu dla wykladniczej (przesuniecie liczone od zlego punktu
+# odniesienia zafalszowaloby "rok nauki" o 2 lata dla kazdego poziomu).
+LINEAR_FUNCTION_BASELINE_LEVEL = "liceum_1"
+LINEAR_FUNCTION_MAX_SHIFT = 4
+QUADRATIC_FUNCTION_BASELINE_LEVEL = "liceum_1"
+QUADRATIC_FUNCTION_MAX_SHIFT = 4
+EXPONENTIAL_FUNCTION_BASELINE_LEVEL = "liceum_3"
+EXPONENTIAL_FUNCTION_MAX_SHIFT = 4
