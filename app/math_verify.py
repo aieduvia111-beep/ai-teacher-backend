@@ -1794,6 +1794,181 @@ def force_correct_from_final_answer(question: dict, options_key: str = "options"
     return status
 
 
+# ---------------------------------------------------------------
+# NAPRAWA KRYTYCZNEGO BLEDU (zgloszony przez usera): zadania o
+# prawdopodobienstwie/kombinatoryce mialy ZERO pokrycia Warstwy 2 -
+# AI popelnilo blad arytmetyczny (P(oba tego samego koloru) dla urny
+# 5 bialych + 3 czarne, losowanie 2 bez zwracania: prawdziwy wynik
+# 13/28, AI podalo 10/28), a jego WLASNE pole final_answer bylo z tym
+# bledem spojne, wiec Warstwa 1 (czysto tekstowe dopasowanie
+# final_answer<->opcje) "poprawnie" wymusila bledna opcje - Warstwa 2
+# nie miala JAK tego zawetowac, bo nie rozpoznawala tematu w ogole.
+#
+# Ta funkcja dodaje Warstwe 2 dla WASKIEGO, ale OGOLNEGO podzbioru:
+# losowanie k elementow BEZ ZWRACANIA z populacji podzielonej na 2
+# kategorie, prawdopodobienstwo zdarzenia okreslonego LICZBA elementow
+# danej kategorii wsrod wylosowanych (rozklad hipergeometryczny) -
+# DOWOLNE liczby, DOWOLNE nazwy kategorii (nie "urna"/"kule" specjalnie
+# hardcodowane), NIE tylko k=2. Rownania/nierownosci prawdopodobienstwa,
+# losowanie ZE zwracaniem, >2 kategorie, warunkowe prawdopodobienstwo -
+# CELOWO poza zakresem (unverifiable/abstain), ta sama filozofia co
+# rownania/tozsamosci trygonometryczne w Etapie 7.
+# ---------------------------------------------------------------
+_HYPERGEOM_WITHOUT_REPLACEMENT_RE = re.compile(r'bez\s+zwracania|bez\s+zwrotu')
+_HYPERGEOM_NUM_WORD_RE = re.compile(r'(\d+)\s+((?:[a-ząćęłńóśźż]+\s*){1,2})', re.I)
+_HYPERGEOM_CARDINAL_WORDS = {
+    "jeden": 1, "jedną": 1, "jedna": 1,
+    "dwie": 2, "dwa": 2, "dwóch": 2, "dwoch": 2, "obie": 2, "obu": 2, "oba": 2,
+    "trzy": 3, "trzech": 3,
+    "cztery": 4, "czterech": 4,
+    "pięć": 5, "piec": 5, "pięciu": 5, "pieciu": 5,
+    "sześć": 6, "szesc": 6, "sześciu": 6, "szesciu": 6,
+}
+_HYPERGEOM_CARDINAL_ALT = '|'.join(sorted(_HYPERGEOM_CARDINAL_WORDS.keys(), key=len, reverse=True))
+_HYPERGEOM_DRAW_RE = re.compile(
+    r'losuj\w*[^.]*?\b(\d+|' + _HYPERGEOM_CARDINAL_ALT + r')\b', re.I,
+)
+_HYPERGEOM_SAME_CATEGORY_MARKERS = ('tego samego', 'tej samej', 'jednakowego', 'takiego samego')
+_HYPERGEOM_DIFFERENT_MARKERS = ('różnych', 'roznych', 'różne', 'rozne', 'różnego', 'roznego')
+# Opcjonalny czasownik-lacznik ("są"/"jest"/"będą") miedzy liczba a
+# etykieta kategorii - "dokladnie 2 SA biale", nie tylko "dokladnie 2 biale".
+_HYPERGEOM_EXACTLY_RE = re.compile(
+    r'dokładnie\s+(\d+|' + _HYPERGEOM_CARDINAL_ALT + r')\s+(?:są|jest|będą|beda)?\s*([a-ząćęłńóśźż]+)', re.I,
+)
+
+
+def _hypergeom_cardinal(word: str):
+    """'2'/'dwie'/'dwóch'... -> 2 (int). None jesli nierozpoznane."""
+    word = word.strip().lower()
+    if word.isdigit():
+        return int(word)
+    return _HYPERGEOM_CARDINAL_WORDS.get(word)
+
+
+def _hypergeom_label_matches(word: str, category_words: str) -> bool:
+    """Czy `word` (np. z 'dokladnie 2 bialych') pasuje do ktoregos ze
+    slow opisujacych kategorie (np. 'kul bialych') - dopasowanie po
+    4-znakowym rdzeniu, zeby tolerowac polska fleksje (bialych/biale/
+    biala/bialy dziela wspolny rdzen 'biał')."""
+    word = word.strip().lower()
+    for cw in category_words.split():
+        cw = cw.strip().lower()
+        if not cw:
+            continue
+        if word == cw:
+            return True
+        if len(word) >= 4 and len(cw) >= 4 and (word[:4] == cw[:4]):
+            return True
+    return False
+
+
+def _extract_hypergeom_categories(text: str):
+    """Znajduje DOKLADNIE 2 wystapienia '<liczba> <slowo(-a)>' w
+    PIERWSZYM zdaniu (populacja) - zwraca [(N1,slowa1),(N2,slowa2)]
+    albo None. Nie zaklada KONKRETNYCH nazw kategorii (kule/kolory) -
+    dziala dla dowolnych 2 grup (chlopcy/dziewczeta, wadliwe/sprawne,
+    itd)."""
+    first_sentence = text.split('.')[0]
+    matches = _HYPERGEOM_NUM_WORD_RE.findall(first_sentence)
+    if len(matches) != 2:
+        return None
+    (n1_s, w1), (n2_s, w2) = matches
+    n1, n2 = int(n1_s), int(n2_s)
+    if n1 <= 0 or n2 <= 0:
+        return None
+    return [(n1, w1.strip()), (n2, w2.strip())]
+
+
+def analyze_hypergeometric_probability_question(question_text: str):
+    """Rozpoznaje zadanie 'losujemy k elementow BEZ ZWRACANIA z populacji
+    2 kategorii (N1,N2), pytanie o prawdopodobienstwo zdarzenia
+    okreslonego liczba elementow danej kategorii wsrod wylosowanych'.
+    Zwraca {"n1","n2","k","event"} albo None (nie rozpoznano - abstain).
+    `event` to jeden z:
+      {"kind": "same_category"}          - "oba/wszystkie tego samego koloru"
+      {"kind": "different_category"}     - "rozne kolory" (co najmniej 1 z kazdej)
+      {"kind": "exactly", "which": 1|2, "j": int} - "dokladnie j <kategoria>"."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+    if not _HYPERGEOM_WITHOUT_REPLACEMENT_RE.search(text):
+        return None
+    cats = _extract_hypergeom_categories(text)
+    if not cats:
+        return None
+    (n1, words1), (n2, words2) = cats
+
+    m = _HYPERGEOM_DRAW_RE.search(text)
+    if not m:
+        return None
+    k = _hypergeom_cardinal(m.group(1))
+    if not k or k <= 0 or k > n1 + n2:
+        return None
+
+    text_lower = text.lower()
+    if any(w in text_lower for w in _HYPERGEOM_SAME_CATEGORY_MARKERS):
+        event = {"kind": "same_category"}
+    elif any(w in text_lower for w in _HYPERGEOM_DIFFERENT_MARKERS):
+        event = {"kind": "different_category"}
+    else:
+        m2 = _HYPERGEOM_EXACTLY_RE.search(text)
+        if not m2:
+            return None
+        j = _hypergeom_cardinal(m2.group(1))
+        label = m2.group(2)
+        if j is None:
+            return None
+        if _hypergeom_label_matches(label, words1):
+            which = 1
+        elif _hypergeom_label_matches(label, words2):
+            which = 2
+        else:
+            return None
+        event = {"kind": "exactly", "which": which, "j": j}
+
+    return {"n1": n1, "n2": n2, "k": k, "event": event}
+
+
+def _hypergeom_pmf(n_a, n_b, k, j):
+    """P(dokladnie j elementow kategorii A wsrod k losowan bez zwracania
+    z populacji n_a+n_b) - standardowy wzor rozkladu hipergeometrycznego,
+    DOWOLNE n_a/n_b/k/j (nie hardcodowane liczby)."""
+    n_total = n_a + n_b
+    if j < 0 or j > k or j > n_a or (k - j) > n_b or k > n_total:
+        return sp.Integer(0)
+    return sp.Rational(int(sp.binomial(n_a, j) * sp.binomial(n_b, k - j)), int(sp.binomial(n_total, k)))
+
+
+def verify_hypergeometric_probability_question(question_text: str, options: list):
+    """Warstwa 2: liczy PRAWDZIWE prawdopodobienstwo wzorem
+    hipergeometrycznym i porownuje MATEMATYCZNIE (sympy) z opcjami - ten
+    sam kontrakt co pozostale verify_X_question (match_index/
+    no_option_matches/unverifiable)."""
+    parsed = analyze_hypergeometric_probability_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    n1, n2, k = parsed["n1"], parsed["n2"], parsed["k"]
+    event = parsed["event"]
+    try:
+        if event["kind"] == "same_category":
+            true_value = _hypergeom_pmf(n1, n2, k, k) + _hypergeom_pmf(n2, n1, k, k)
+        elif event["kind"] == "different_category":
+            p_same = _hypergeom_pmf(n1, n2, k, k) + _hypergeom_pmf(n2, n1, k, k)
+            true_value = 1 - p_same
+        elif event["kind"] == "exactly":
+            j = event["j"]
+            if event["which"] == 1:
+                true_value = _hypergeom_pmf(n1, n2, k, j)
+            else:
+                true_value = _hypergeom_pmf(n2, n1, k, j)
+        else:
+            return {"status": "unverifiable"}
+        true_value = sp.nsimplify(true_value)
+    except Exception:
+        return {"status": "unverifiable"}
+    return _match_single_value_option(true_value, options)
+
+
 def verify_and_fix_math_question(question_text: str, options: list):
     """Glowna funkcja uzywana przez Quiz/Sprawdzian. Probuje najpierw
     wzorca z parametrem, potem czysto liczbowego. Zwraca dict:
@@ -1829,4 +2004,36 @@ def verify_and_fix_math_question(question_text: str, options: list):
     result4 = verify_trig_special_angle_question(question_text, options)
     if result4["status"] in ("match_index", "no_option_matches"):
         return {**result4, "explanation": None}
+
+    result5 = verify_hypergeometric_probability_question(question_text, options)
+    if result5["status"] in ("match_index", "no_option_matches"):
+        return {**result5, "explanation": None}
+
+    # NAPRAWIONE: Etap 8 (funkcje - liniowa/kwadratowa-jako-funkcja/
+    # wykladnicza) mial gotowe, przetestowane funkcje Warstwy 2, ale
+    # NIGDY nie zostaly podlaczone tutaj - byly wywolywane tylko
+    # bezposrednio w testach jednostkowych, nigdy w prawdziwym potoku
+    # Quiz/Sprawdzian. Skutek: cala Warstwa 2 dla funkcji byla martwym
+    # kodem w produkcji (Warstwa 3/tiery dzialaly, ale bez niezaleznej
+    # weryfikacji poprawnosci klucza odpowiedzi).
+    result6 = verify_linear_function_evaluate(question_text, options)
+    if result6["status"] in ("match_index", "no_option_matches"):
+        return {**result6, "explanation": None}
+
+    result7 = verify_linear_two_points_question(question_text, options)
+    if result7["status"] in ("match_index", "no_option_matches"):
+        return {**result7, "explanation": None}
+
+    result8 = verify_quadratic_function_vertex(question_text, options)
+    if result8["status"] in ("match_index", "no_option_matches"):
+        return {**result8, "explanation": None}
+
+    result9 = verify_exponential_function_evaluate(question_text, options)
+    if result9["status"] in ("match_index", "no_option_matches"):
+        return {**result9, "explanation": None}
+
+    result10 = verify_exponential_same_base_equation(question_text, options)
+    if result10["status"] in ("match_index", "no_option_matches"):
+        return {**result10, "explanation": None}
+
     return {"status": "unverifiable", "explanation": None}
