@@ -33,6 +33,7 @@ from .level_config import (
 from .math_verify import (
     verify_and_fix_math_question, match_final_answer_index,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
+    log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
 )
 from .difficulty import DifficultyAnalyzer
 
@@ -1019,6 +1020,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 fa_status, fa_idx = "no_final_answer", None
             if fa_status in ("no_match", "ambiguous", "no_final_answer"):
                 print(f"[MathVerify][Exam] USUNIETO zadanie (final_answer={fa_status}): '{tresc[:60]}...'")
+                log_final_answer_mismatch_diagnostic("[MathVerify][Exam]", data.get("tytul", ""), tresc, opcje, pyt.get("final_answer"), fa_status)
                 if metrics:
                     metrics.record_rejection("final_answer_no_match")
                 continue
@@ -1049,6 +1051,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 kept.append(pyt)
             elif result["status"] == "no_option_matches":
                 print(f"[MathVerify][Exam] USUNIETO zadanie (sympy: brak poprawnej opcji wsrod podanych): '{tresc[:60]}...'")
+                log_no_option_matches_diagnostic("[MathVerify][Exam]", data.get("tytul", ""), tresc, opcje, pyt.get("final_answer"))
                 if metrics:
                     metrics.record_rejection("sympy_mismatch")
             else:

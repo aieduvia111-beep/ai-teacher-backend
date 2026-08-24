@@ -154,9 +154,13 @@ print("=== DifficultyAnalyzer.analyze() end-to-end ===")
 
 analyzer = DifficultyAnalyzer()
 
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026): fixture
+# zmieniona z "(m-3)x" (parametr WEWNATRZ wyrazenia jako wspolczynnik
+# przy x - teraz slusznie 7-8, patrz classify_quadratic_difficulty) na
+# goly parametr "mx", zeby test dalej sprawdzal 5-6/medium jak zamierzone.
 r = analyzer.analyze(
-    "Dla jakich wartości parametru $m$ równanie $x^2+(m-3)x+m=0$ ma dwa różne pierwiastki?",
-    option_texts=["$m<1$", "$m>9$", "$m<1$ lub $m>9$", "$1<m<9$"],
+    "Dla jakich wartości parametru $m$ równanie $x^2+mx+3=0$ ma dwa różne pierwiastki?",
+    option_texts=["$m<-2\\sqrt{3}$", "$m>2\\sqrt{3}$", "$m<-2\\sqrt{3}$ lub $m>2\\sqrt{3}$", "$-2\\sqrt{3}<m<2\\sqrt{3}$"],
     requested_difficulty_word="medium", level="liceum_2",
 )
 check("medium+parametr+prosty warunek -> domain_verdict=ok", r.domain_verdict == "ok", r.domain_verdict)

@@ -201,7 +201,14 @@ check("rownanie TYLKO w opcjach, 'hard' vs tier 1-2 -> fail (za latwe)", r["stat
 
 # Rownanie w TRESCI pytania (dotychczasowy przypadek) dziala tak samo
 # jak przed zmiana, niezaleznie od tego, czy przekazano option_texts.
-stem_in_question = "Dla jakich wartości parametru $m$ równanie $x^2+(m-3)x+m=0$ ma dwa różne pierwiastki?"
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026): oryginalny
+# fixture "x^2+(m-3)x+m=0" mial parametr WEWNATRZ WYRAZENIA jako
+# wspolczynnik przy x ("(m-3)x") - realny test generacji pokazal, ze to
+# podpasmo jest SYSTEMATYCZNIE zbyt trudne dla AI na poziomie "medium"
+# (patrz nowy check w classify_quadratic_difficulty), wiec teraz slusznie
+# klasyfikuje sie jako 7-8, nie 5-6 - zmieniono na fixture z GOLYM
+# parametrem (bez zmiany celu tego testu: spojnosc tresc vs opcje).
+stem_in_question = "Dla jakich wartości parametru $m$ równanie $x^2+mx+3=0$ ma dwa różne pierwiastki?"
 r_no_opts = validate_quadratic_difficulty(stem_in_question, "medium")
 r_with_opts = validate_quadratic_difficulty(stem_in_question, "medium", option_texts=["$m > 1$", "$m < 1$ lub $m > 9$", "tak", "nie"])
 check("rownanie w tresci pytania: bez option_texts -> ok, tier 5-6 (brak regresji)", r_no_opts["status"] == "ok" and r_no_opts["detected_tier"] == "5-6", r_no_opts)

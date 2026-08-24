@@ -53,7 +53,28 @@ def _clean_latex(s: str) -> str:
     """Zamienia najczestsze konstrukcje LaTeX na skladnie parsowalna przez sympy."""
     s = s.strip().strip('$').strip()
     s = s.replace('\\left', '').replace('\\right', '')
+    # NAPRAWIONE (audyt realnej generacji, trygonometria): "\pi" (LaTeX)
+    # nie bylo w ogole normalizowane - sympy parse_expr rozpoznaje bare
+    # "pi" jako sp.pi natywnie, ale zostawiony backslash psul parsowanie
+    # calkowicie (SyntaxError). Bez tego kazdy argument w radianach
+    # (np. "\frac{\pi}{6}") byl nieparsowalny.
+    s = s.replace('\\pi', 'pi')
     s = s.replace('\\cdot', '*').replace('\\times', '*')
+    # NAPRAWIONE (audyt realnej generacji, sierpien 2026): "\sqrt{...}"
+    # NIGDZIE nie bylo normalizowane w calym module - sympy rozpoznaje
+    # bare "sqrt(...)" natywnie, ale zostawiony "\sqrt{" psul parsowanie
+    # CALKOWICIE (SyntaxError), tak samo jak nieobslugiwane "\pi" wyzej.
+    # To dotyczylo KAZDEJ opcji odpowiedzi z pierwiastkiem (np. "$\frac{
+    # \sqrt{2}}{2}$" - bardzo czeste w trygonometrii/deltcie rownan
+    # kwadratowych) w CALYM potoku _parse_expr/_clean_latex - opcja z
+    # pierwiastkiem po prostu nigdy sie nie parsowala (any_parsed=False
+    # dla NIEJ, choc inne opcje bez pierwiastka mogly sie parsowac, co
+    # prowadzilo do falszywego "no_option_matches" mimo obecnosci
+    # poprawnej odpowiedzi). MUSI byc PRZED petla \frac ponizej - inaczej
+    # zagniezdzone "\frac{\sqrt{2}}{2}" nie dopasowuje sie do regexu frac
+    # (klamry \sqrt psuja parowanie [^{}]*).
+    for _ in range(3):
+        s = re.sub(r'\\sqrt\{([^{}]*)\}', r'sqrt(\1)', s)
     for _ in range(3):
         s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'((\1)/(\2))', s)
     s = s.replace('\\leq', '<=').replace('\\geq', '>=').replace('\\neq', '!=')
@@ -350,6 +371,20 @@ def classify_quadratic_difficulty(question_text: str, option_texts=None):
     # Z parametrem.
     if param in A.free_symbols:
         return "7-8"  # parametr jako wspolczynnik wiodacy - zawsze zlozony przypadek
+    B = parsed["B"]
+    if param in B.free_symbols and B != param:
+        # NAPRAWIONE (audyt realnej generacji V1, sierpien 2026): parametr
+        # WEWNATRZ WYRAZENIA jako wspolczynnik przy x (np. "(m-4)x",
+        # "(2m-1)x", "(4-m)x"), nie sam parametr ("mx"). Wymaga rozwiniecia
+        # kwadratu dwumianu PRZED policzeniem delty (delta =
+        # (wyrazenie)^2 - 4AC) - realny test (n=10/20, "sredni") pokazal
+        # AI systematycznie zgaduje "ladny", symetryczny przedzial (np.
+        # "m<2 lub m>6") zamiast poprawnie rozwinac kwadrat i podac
+        # prawdziwy (czesto niesymetryczny/niewymierny) wynik - ~70-90%
+        # bledny klucz dla tego podwzorca mimo oznaczenia "sredni". Ten
+        # sam wzorzec fixu co linijka wyzej (parametr w A) i co wczesniej
+        # w tej sesji dla "parametr jako wspolczynnik przy x^2".
+        return "7-8"
     if any(marker in text_lower for marker in _SIGN_ANALYSIS_MARKERS):
         return "7-8"  # warunek na znak/sume/iloczyn pierwiastkow (Viete)
     if detect_discriminant_condition(question_text) is not None:
@@ -1064,22 +1099,12 @@ _TRIG_DEG_RE = re.compile(
 )
 
 
-def analyze_trig_special_angle_question(question_text: str):
-    """Rozpoznaje pytanie o wartosc funkcji trygonometrycznej dla KATA
-    SPECJALNEGO w STOPNIACH (wielokrotnosc 15°, np. 30/45/60/90/...).
-    Zwraca {"func", "deg", "value"} (value = dokladna wartosc sympy)
-    albo None (nie rozpoznano / kat nie jest "specjalny" / wartosc
-    niezdefiniowana np. tg(90°) - abstain, nie zgadujemy)."""
-    if not question_text:
-        return None
-    text = _normalize_subscripts(question_text)
-    m = _TRIG_DEG_RE.search(text)
-    if not m:
-        return None
-    func_name = m.group(1).lower()
-    deg = _to_num(m.group(2))
-    if deg is None or deg != int(deg):
-        return None
+def _trig_special_value_from_deg(func_name: str, deg: int):
+    """Wspolny 'ogon' rozpoznawania kata specjalnego - dzielony przez
+    sciezke stopniowa i radianowa (patrz analyze_trig_special_angle_question
+    nizej). Liczy dokladna wartosc sympy dla podanej funkcji i kata w
+    stopniach, albo None jesli kat nie jest "specjalny" (wielokrotnosc
+    15°) lub wartosc jest niezdefiniowana (np. tg(90°))."""
     deg = int(deg) % 360
     if deg % 15 != 0:
         return None  # nie jest to "kat specjalny" z programu nauczania
@@ -1093,6 +1118,63 @@ def analyze_trig_special_angle_question(question_text: str):
     if not value.is_finite or value.has(sp.zoo, sp.oo, -sp.oo):
         return None  # niezdefiniowane, np. tg(90°)/ctg(0°)
     return {"func": func_name, "deg": deg, "value": value}
+
+
+# NAPRAWIONE (wykryte realna generacja - audyt V1, sierpien 2026):
+# analyze_trig_special_angle_question rozpoznawal WYLACZNIE zapis w
+# STOPNIACH (np. "sin(30°)"). Realna generacja AI dla trygonometrii na
+# poziomie liceum pisze niemal ZAWSZE w RADIANACH jako wielokrotnosc pi
+# (np. "sin(pi/6)", "cos(3*pi/2)") - w praktyce Warstwa 2 dla katow
+# specjalnych byla wiec MARTWA na prawdziwych danych (0/26 rozpoznanych
+# w realnym tescie), mimo pelnego pokrycia testami jednostkowymi na
+# syntetycznych, stopniowych przykladach. Ten regex + petla ponizej
+# rozpoznaje argument w nawiasie po funkcji trygonometrycznej (np.
+# "\frac{\pi}{6}", "\pi", "3\pi/2"), parsuje go przez ISTNIEJACY
+# _parse_expr (ten sam, ktory juz parsuje opcje odpowiedzi gdzie
+# indziej) i sprawdza, czy odpowiada wielokrotnosci 15°.
+_TRIG_RAD_CALL_RE = re.compile(
+    r'\\?(sin|cos|tg|ctg|tan|cot|sec|csc)\s*\(\s*([^()]*?)\s*\)',
+    re.I,
+)
+
+
+def analyze_trig_special_angle_question(question_text: str):
+    """Rozpoznaje pytanie o wartosc funkcji trygonometrycznej dla KATA
+    SPECJALNEGO (wielokrotnosc 15°/pi/12) - w STOPNIACH (np. sin(30°))
+    ALBO w RADIANACH jako wielokrotnosc pi (np. sin(pi/6), cos(3*pi/2)).
+    Zwraca {"func", "deg", "value"} (value = dokladna wartosc sympy)
+    albo None (nie rozpoznano / kat nie jest "specjalny" / wartosc
+    niezdefiniowana np. tg(90°) - abstain, nie zgadujemy)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+
+    m = _TRIG_DEG_RE.search(text)
+    if m:
+        func_name = m.group(1).lower()
+        deg = _to_num(m.group(2))
+        if deg is None or deg != int(deg):
+            return None
+        return _trig_special_value_from_deg(func_name, int(deg))
+
+    for rm in _TRIG_RAD_CALL_RE.finditer(text):
+        arg = rm.group(2)
+        if 'pi' not in arg.replace('\\pi', 'pi').lower():
+            continue
+        func_name = rm.group(1).lower()
+        try:
+            deg_exact = sp.nsimplify(_parse_expr(arg) * 180 / sp.pi)
+        except Exception:
+            continue
+        if not deg_exact.is_number or not deg_exact.is_real:
+            continue
+        deg_float = float(deg_exact)
+        if abs(deg_float - round(deg_float)) > 1e-9:
+            continue
+        result = _trig_special_value_from_deg(func_name, int(round(deg_float)))
+        if result:
+            return result
+    return None
 
 
 def verify_trig_special_angle_question(question_text: str, options: list):
@@ -1908,6 +1990,45 @@ def log_unverifiable_diagnostic(prefix: str, topic: str, question_text: str, opt
     print(
         f"{prefix} UNVERIFIABLE (brak rozpoznanego wzorca weryfikacji - przechodzi "
         f"tylko na podstawie Warstwy 1): temat='{topic}' pytanie='{(question_text or '')[:150]}' "
+        f"opcje={opts_repr} final_answer='{final_answer}'"
+    )
+
+
+def log_final_answer_mismatch_diagnostic(prefix: str, topic: str, question_text: str, options: list, final_answer, fa_status: str) -> None:
+    """Diagnostyczny log dla odrzucen Warstwy 1 (final_answer nie
+    pasuje/brak/niejednoznaczny) - NAJWIEKSZA (najczestsza) kategoria
+    odrzucen w audycie realnej generacji (sierpien 2026, do 80% partii
+    dla jednego konkretnego wzorca rownan kwadratowych), a jednoczesnie
+    do tej pory BEZ zadnego szczegolowego logu (tylko obcieta do 60
+    znakow tresc pytania, bez opcji/final_answer) - uniemozliwialo to
+    odroznienie: (a) AI faktycznie nie skopiowalo final_answer 1:1 z
+    ktorejs opcji (naruszenie prompta) od (b) canonicalizacji w
+    match_final_answer_index zbyt scisle porownujacej tekst mimo
+    semantycznej rownowaznosci."""
+    opts_repr = " | ".join(f"[{i}]{str(o)[:80]}" for i, o in enumerate(options or []))
+    print(
+        f"{prefix} FINAL_ANSWER_{fa_status.upper()} (Warstwa 1: final_answer nie "
+        f"dopasowane do zadnej opcji - pytanie odrzucone): temat='{topic}' "
+        f"pytanie='{(question_text or '')[:150]}' opcje={opts_repr} final_answer='{final_answer}'"
+    )
+
+
+def log_no_option_matches_diagnostic(prefix: str, topic: str, question_text: str, options: list, final_answer) -> None:
+    """Diagnostyczny log - siostrzana funkcja log_unverifiable_diagnostic
+    dla PRZECIWNEGO przypadku: Warstwa 2 ROZPOZNALA wzorzec, policzyla
+    prawdziwa odpowiedz, ale ZADNA z 4 opcji AI jej nie odpowiada
+    ("no_option_matches" - pytanie odrzucone). Dotychczasowy print przy
+    odrzuceniu pokazywal TYLKO pierwsze 60 znakow tresci, bez opcji ani
+    final_answer - audyt realnej generacji (sierpien 2026) pokazal, ze
+    to uniemozliwia odroznienie realnego bledu AI (poprawna odpowiedz
+    faktycznie nie byla wsrod opcji) od bledu parsera (opcje sa
+    poprawne, ale weryfikator ich nie rozpoznal) bez ponownego
+    odtwarzania calego zapytania od zera."""
+    opts_repr = " | ".join(f"[{i}]{str(o)[:80]}" for i, o in enumerate(options or []))
+    print(
+        f"{prefix} NO_OPTION_MATCHES (wzorzec rozpoznany, prawdziwa odpowiedz "
+        f"policzona, ale ZADNA opcja jej nie odpowiada - pytanie odrzucone): "
+        f"temat='{topic}' pytanie='{(question_text or '')[:150]}' "
         f"opcje={opts_repr} final_answer='{final_answer}'"
     )
 

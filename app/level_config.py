@@ -904,20 +904,27 @@ QUADRATIC_DIFFICULTY_TIERS = {
         "kryterium": (
             "Jeden parametr, prosty warunek na delte - bezposrednie "
             "podstawienie do wzoru na delte i rozwiazanie nierownosci "
-            "LINIOWEJ wzgledem parametru. WYKLUCZONE na tym poziomie: "
-            "parametr jako WSPOLCZYNNIK PRZY x^2 (wzorce typu a*x^2+... =0 "
-            "albo a(k)x^2+...), ktory wymaga dodatkowego zalozenia "
-            "wspolczynnik != 0 - to nalezy do poziomu 7-8 (hard), NIE do "
-            "5-6 (medium). Na poziomie 5-6 parametr wystepuje WYLACZNIE "
-            "przy x^1 i/lub w wyrazie wolnym, nigdy przy x^2."
+            "LINIOWEJ wzgledem parametru. Parametr moze wystepowac WYLACZNIE "
+            "jako SAM SIEBIE (golym symbolem) przy x^1 i/lub w wyrazie "
+            "wolnym - np. 'x^2+mx+3=0' albo 'x^2+5x+m=0'. WYKLUCZONE na tym "
+            "poziomie (obydwa naleza do 7-8, NIE do 5-6): (1) parametr jako "
+            "WSPOLCZYNNIK PRZY x^2 (wzorce typu a*x^2+... =0), ktory wymaga "
+            "dodatkowego zalozenia wspolczynnik != 0; (2) parametr WEWNATRZ "
+            "WYRAZENIA jako wspolczynnik przy x^1 (wzorce typu "
+            "'(m-3)x', '(2m-1)x', '(4-m)x' zamiast samego 'mx') - to wymaga "
+            "rozwiniecia kwadratu dwumianu przed policzeniem delty i "
+            "REALNIE prowadzi do blednego klucza znacznie czesciej niz "
+            "gоly parametr (potwierdzone realnym testem generacji)."
         ),
-        "przyklad": "Dla jakich wartości parametru m równanie x²+(m-3)x+m=0 ma dwa różne pierwiastki?",
+        "przyklad": "Dla jakich wartości parametru m równanie x²+mx+3=0 ma dwa różne pierwiastki?",
     },
     "7-8": {
         "kryterium": (
             "Parametr + warunek ZLOZONY - znak pierwiastkow przez wzory "
             "Viete'a, ALBO parametr jako wspolczynnik wiodacy (wymaga "
-            "dodatkowego zalozenia wspolczynnik != 0)."
+            "dodatkowego zalozenia wspolczynnik != 0), ALBO parametr "
+            "WEWNATRZ WYRAZENIA jako wspolczynnik przy x^1 (np. '(m-3)x', "
+            "'(2m-1)x' - wymaga rozwiniecia kwadratu dwumianu przed delta)."
         ),
         "przyklad": "Dla jakich wartości parametru a równanie ax²-(2a+3)x+a+2=0 ma dwa różne pierwiastki dodatnie?",
     },
@@ -1057,7 +1064,15 @@ TRIG_DIFFICULTY_TIERS = {
             "Trojkat prostokatny (SOH-CAH-TOA) - jedna niewiadoma z danych "
             "pozostalych bokow/katow, ALBO prosta tozsamosc (Pitagorasa) w "
             "bezposrednim zastosowaniu, ALBO zamiana stopnie<->radiany, "
-            "ALBO twierdzenie sinusow/cosinusow w trojkacie dowolnym."
+            "ALBO twierdzenie sinusow/cosinusow w trojkacie dowolnym. "
+            "ZAKAZ na tym poziomie: rownanie trygonometryczne DO ROZWIAZANIA "
+            "(np. 'rozwiaz rownanie sin(x)=...' albo 'w przedziale [0,2pi)') "
+            "- to jest poziom 4-5, nie 2-3. ZAKAZ TAKZE: sama wartosc "
+            "POJEDYNCZEJ funkcji dla kata specjalnego bez zadnych "
+            "przeksztalcen (np. 'ile wynosi sin(30°)?') - to jest poziom 1, "
+            "nie 2-3. Kazde zadanie na tym poziomie musi wymagac "
+            "PRZYNAJMNIEJ jednego kroku (trojkat/tozsamosc/wyrazenie "
+            "zlozone z kilku wartosci/zamiana jednostek)."
         ),
         "przyklad": (
             "W trójkącie prostokątnym przeciwprostokątna ma długość 10, a "

@@ -12,6 +12,7 @@ from .level_config import (
 from .math_verify import (
     verify_and_fix_math_question, force_correct_from_final_answer,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
+    log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
 )
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
@@ -1214,6 +1215,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             fa_status = "no_final_answer"
         if fa_status in ("no_match", "ambiguous", "no_final_answer"):
             print(f"[MathVerify] USUNIETO pytanie (final_answer={fa_status}): '{text[:60]}...'")
+            log_final_answer_mismatch_diagnostic("[MathVerify]", quiz_data.get("title", ""), text, q.get("options", []), q.get("final_answer"), fa_status)
             if metrics:
                 metrics.record_rejection("final_answer_no_match")
             continue
@@ -1239,6 +1241,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             kept.append(q)
         elif result["status"] == "no_option_matches":
             print(f"[MathVerify] USUNIETO pytanie (sympy: brak poprawnej opcji wsrod podanych): '{text[:60]}...'")
+            log_no_option_matches_diagnostic("[MathVerify]", quiz_data.get("title", ""), text, options, q.get("final_answer"))
             if metrics:
                 metrics.record_rejection("sympy_mismatch")
         else:

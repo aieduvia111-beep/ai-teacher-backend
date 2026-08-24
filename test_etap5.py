@@ -152,7 +152,13 @@ print("=== KLUCZOWY TEST: rownanie kwadratowe (tier 5-6) dla roznych poziomow ==
 
 # Realny przyklad tier 5-6 (parametr + prosty warunek na delte) - uzywany
 # przez caly dzien do testowania (test_math_verify.py, test_difficulty_engine.py).
-tier_56_question = "Dla jakich wartości parametru $m$ równanie $x^2+(m-3)x+m=0$ ma dwa różne pierwiastki?"
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026): oryginalny
+# fixture mial parametr WEWNATRZ WYRAZENIA jako wspolczynnik przy x
+# ("(m-3)x") - realny test generacji pokazal ze to podpasmo jest
+# systematycznie zbyt trudne dla AI na "medium", wiec teraz slusznie
+# klasyfikuje sie jako 7-8 (patrz classify_quadratic_difficulty). Fixture
+# zmieniona na GOLY parametr, zeby nadal testowac tier 5-6 jak zamierzone.
+tier_56_question = "Dla jakich wartości parametru $m$ równanie $x^2+mx+3=0$ ma dwa różne pierwiastki?"
 detected = classify_quadratic_difficulty(tier_56_question)
 check("kontrola: tresc testowa faktycznie klasyfikuje sie jako tier 5-6", detected == "5-6", detected)
 
