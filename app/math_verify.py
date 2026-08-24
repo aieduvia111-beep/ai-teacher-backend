@@ -1828,8 +1828,38 @@ _HYPERGEOM_CARDINAL_ALT = '|'.join(sorted(_HYPERGEOM_CARDINAL_WORDS.keys(), key=
 _HYPERGEOM_DRAW_RE = re.compile(
     r'losuj\w*[^.]*?\b(\d+|' + _HYPERGEOM_CARDINAL_ALT + r')\b', re.I,
 )
-_HYPERGEOM_SAME_CATEGORY_MARKERS = ('tego samego', 'tej samej', 'jednakowego', 'takiego samego')
-_HYPERGEOM_DIFFERENT_MARKERS = ('różnych', 'roznych', 'różne', 'rozne', 'różnego', 'roznego')
+# NAPRAWIONE (zgloszony realny bug): pierwotna wersja byla lista
+# DOSLOWNYCH fraz w JEDNYM przypadku gramatycznym ('tego samego',
+# 'jednakowego'...) - polska fleksja ma wiele form tego samego
+# przymiotnika/zaimka ('ten sam'/'tego samego'/'tym samym'/'takie
+# same'...), wiec 5 z 7 realistycznych sformulowan AI nie bylo wcale
+# rozpoznawanych (analyze zwracalo None -> Warstwa 2 nie mogla nic
+# zawetowac -> bledny final_answer AI przechodzil bez kontroli - TEN
+# SAM mechanizm, ktory naprawialismy wczesniej, tym razem w NOWYM
+# kodzie). Naprawa: rdzenie odmiany zamiast calych sfleksowanych fraz.
+#
+# "jednego"/"innego" wymagaja bliskosci rzeczownika-kategorii (kolor/
+# rodzaj/typ/gatunek), bo same w sobie sa zbyt ogolnymi, czestymi
+# slowami (np. "innego ucznia") - zeby nie zgadywac tam, gdzie nie
+# mozna bezpiecznie rozpoznac (WAZNE: unverifiable ma zostac
+# domyslnym zachowaniem dla niejednoznacznych przypadkow).
+_HYPERGEOM_CATEGORY_NOUN_STEM = r'(?:kolor\w*|rodzaj\w*|typ\w*|gatunk\w*)'
+_HYPERGEOM_SAME_CATEGORY_RE = re.compile(
+    r'tego\s+samego\b'                                          # "tego samego (koloru)" - dopelniacz
+    r'|tej\s+samej\b'                                            # "tej samej (barwy)" - dopelniacz zenski
+    r'|tym\s+samym\b'                                            # "w tym samym (kolorze)" - narzednik/miejscownik
+    r'|ten\s+sam\b'                                               # "ten sam (kolor)" - mianownik
+    r'|tak\w*\s+sam\w*'                                           # "taki sam"/"takie same"/"taka sama"/"takim samym"...
+    r'|jednakow\w*'                                               # jednakowy/jednakowego/jednakowe...
+    r'|identyczn\w*'                                              # identyczny/identycznego/identyczne...
+    r'|jedn\w{0,3}\s+' + _HYPERGEOM_CATEGORY_NOUN_STEM,           # "jednego koloru"/"jednego rodzaju" (wymaga rzeczownika obok)
+    re.I,
+)
+_HYPERGEOM_DIFFERENT_CATEGORY_RE = re.compile(
+    r'różn\w*|rozn\w*'                                            # różny/różnych/różne/różnego... (jak wczesniej, tylko rdzen)
+    r'|inn\w*\s+' + _HYPERGEOM_CATEGORY_NOUN_STEM,                # "innego koloru" (wymaga rzeczownika obok - "inny" samo w sobie zbyt ogolne)
+    re.I,
+)
 # Opcjonalny czasownik-lacznik ("są"/"jest"/"będą") miedzy liczba a
 # etykieta kategorii - "dokladnie 2 SA biale", nie tylko "dokladnie 2 biale".
 _HYPERGEOM_EXACTLY_RE = re.compile(
@@ -1905,10 +1935,9 @@ def analyze_hypergeometric_probability_question(question_text: str):
     if not k or k <= 0 or k > n1 + n2:
         return None
 
-    text_lower = text.lower()
-    if any(w in text_lower for w in _HYPERGEOM_SAME_CATEGORY_MARKERS):
+    if _HYPERGEOM_SAME_CATEGORY_RE.search(text):
         event = {"kind": "same_category"}
-    elif any(w in text_lower for w in _HYPERGEOM_DIFFERENT_MARKERS):
+    elif _HYPERGEOM_DIFFERENT_CATEGORY_RE.search(text):
         event = {"kind": "different_category"}
     else:
         m2 = _HYPERGEOM_EXACTLY_RE.search(text)

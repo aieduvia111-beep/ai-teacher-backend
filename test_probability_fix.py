@@ -66,6 +66,72 @@ check("13/28 na INNEJ pozycji (index 1) -> match_index=1", r["status"] == "match
 print()
 
 # =================================================================
+# 1b. NAPRAWA #2 (zgloszony realny bug): rozpoznawanie ROZNYCH
+#     naturalnych polskich sformulowan tego samego zdarzenia -
+#     pierwotna wersja uzywala DOSLOWNYCH fraz w jednym przypadku
+#     gramatycznym, wiec 5 z 7 realistycznych sformulowan AI nie bylo
+#     wcale rozpoznawanych (analyze zwracalo None -> Warstwa 2 nie
+#     mogla nic zawetowac -> bledny final_answer AI ("5/14" = P(oba
+#     biale), TEN SAM blad co w Naprawie #1) przechodzil bez kontroli).
+# =================================================================
+print("=" * 70)
+print("1b. Rozpoznawanie wariantow zdarzenia 'ten sam kolor'/'rozne kolory'")
+print("=" * 70)
+
+_BASE_URN = "W urnie znajduje się 5 kul białych i 3 czarne. Losujemy bez zwracania dwie kule. Oblicz prawdopodobieństwo, że "
+
+SAME_CATEGORY_PHRASINGS = [
+    "obie są tego samego koloru.",
+    "obie kule są tego samego koloru.",
+    "obie kule będą miały ten sam kolor.",
+    "kule będą tego samego koloru.",
+    "kule są w tym samym kolorze.",
+    "wylosujemy kule tego samego koloru.",
+    "wylosowane kule są jednego koloru.",
+    "obie kule są jednakowego koloru.",
+    "obie kule mają jednakowy kolor.",
+    "obie kule mają taki sam kolor.",
+    "wylosowane kule mają identyczny kolor.",
+    "kolory obu kul są takie same.",
+]
+for phrase in SAME_CATEGORY_PHRASINGS:
+    parsed = analyze_hypergeometric_probability_question(_BASE_URN + phrase)
+    check(f"same_category: '{phrase}'", parsed is not None and parsed["event"]["kind"] == "same_category", parsed)
+
+DIFFERENT_CATEGORY_PHRASINGS = [
+    "obie kule są różnych kolorów.",
+    "kule mają różne kolory.",
+    "każda kula jest innego koloru.",
+    "wylosowane kule mają różne kolory.",
+    "kolory kul są różne.",
+]
+for phrase in DIFFERENT_CATEGORY_PHRASINGS:
+    parsed = analyze_hypergeometric_probability_question(_BASE_URN + phrase)
+    check(f"different_category: '{phrase}'", parsed is not None and parsed["event"]["kind"] == "different_category", parsed)
+
+# Dokladny przypadek ze zgloszenia: 5 bialych + 3 czarne, k=2, "obie
+# kule beda tego samego koloru" (WARIANT inny niz oryginalny test w
+# sekcji 1, celowo - sprawdza konkretnie sformulowanie z 2. zgloszenia).
+Q_URN_V2 = "W urnie znajduje się 5 kul białych i 3 czarne. Losujemy bez zwracania dwie kule. Obie kule będą tego samego koloru. Oblicz to prawdopodobieństwo."
+parsed_v2 = analyze_hypergeometric_probability_question(Q_URN_V2)
+check("dokladny zgloszony przypadek #2: rozpoznany jako same_category",
+      parsed_v2 is not None and parsed_v2["event"]["kind"] == "same_category", parsed_v2)
+
+r = verify_hypergeometric_probability_question(Q_URN_V2, ["5/14", "9/28", "1/2", "3/14"])
+check("przypadek #2: opcja 5/14 (BEZ 13/28 wsrod opcji) -> ODRZUCONA (no_option_matches)",
+      r["status"] == "no_option_matches", r)
+
+r = verify_hypergeometric_probability_question(Q_URN_V2, ["13/28", "5/14", "1/2", "3/14"])
+check("przypadek #2: 13/28 poprawnie rozpoznane (match_index=0)",
+      r["status"] == "match_index" and r["true_index"] == 0, r)
+
+r = verify_hypergeometric_probability_question(Q_URN_V2, ["26/56", "5/14", "1/2", "3/14"])
+check("przypadek #2: 26/56 rozpoznane jako rownowazne 13/28 (match_index=0)",
+      r["status"] == "match_index" and r["true_index"] == 0, r)
+
+print()
+
+# =================================================================
 # 2. PELNY PRZEPLYW: AI output -> Warstwa 1 -> Warstwa 2 -> PASS/FAIL
 # =================================================================
 print("=" * 70)
