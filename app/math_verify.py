@@ -28,6 +28,7 @@ based samo-weryfikacja zostaje jako jedyne (niepewne) zabezpieczenie dla
 tych przypadkow, zgodnie z decyzja uzytkownika.
 """
 import re
+import random
 import sympy as sp
 from sympy import Eq, Poly, S, Symbol
 from sympy.parsing.sympy_parser import (
@@ -38,6 +39,14 @@ from sympy.parsing.sympy_parser import (
 _TRANSFORMS = standard_transformations + (implicit_multiplication_application, convert_xor)
 
 _EQ_IN_DOLLARS = re.compile(r'\$([^$]+)\$')
+
+# Unicode operatory bez LaTeX odpowiednika juz obslugiwanego w _clean_latex
+# (ktore ma tam tylko "\leq"/"\geq" - forme LaTeX, nie znak unicode).
+_UNICODE_OPERATOR_MAP = str.maketrans({
+    "≤": "<=",  # ≤
+    "≥": ">=",  # ≥
+    "∞": "oo",  # ∞ (sympy rozpoznaje "oo" jako nieskonczonosc)
+})
 
 
 def _clean_latex(s: str) -> str:
@@ -63,6 +72,12 @@ def _clean_latex(s: str) -> str:
     # sciezce rownan kwadratowych (z parametrem i bez), wiec to
     # najbezpieczniejsze miejsce - dziala identycznie dla obu.
     s = _SUPERSCRIPT_RE.sub(lambda m: '^' + m.group(0).translate(_SUPERSCRIPT_MAP), s)
+    # NAPRAWIONE (przy tej samej okazji): pozostale czeste unicode
+    # operatory - LaTeX "\leq"/"\geq" juz obslugiwane wyzej, ale nie ich
+    # unicode odpowiedniki (ten sam wzorzec luki co przy "!="/superscript
+    # powyzej). Nieskonczonosc (unicode) -> "oo", ktore sympy rozpoznaje
+    # natywnie w parse_expr.
+    s = s.translate(_UNICODE_OPERATOR_MAP)
     s = s.replace('{', '(').replace('}', ')')
     return s.strip()
 
@@ -474,8 +489,14 @@ def verify_param_quadratic_question(question_text: str, options: list):
         any_option_parsed = True
         if _sets_equal(opt_set, true_set):
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug): true_set JEST JUZ policzone - gdy
+    # ZADNA z 4 opcji sie nie sparsowala, to nie jest "nie da sie
+    # zweryfikowac" tylko "znamy prawidlowa odpowiedz, ale AI nie
+    # dostarczylo zadnej parsowalnej opcji" = no_option_matches
+    # (odrzucenie), NIE cicha akceptacja. Patrz identyczna naprawa w
+    # _match_single_value_option.
     if not any_option_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches", "true_set": true_set}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0], "true_set": true_set}
     if len(matches) > 1:
@@ -551,8 +572,11 @@ def verify_numeric_quadratic_question(question_text: str, options: list):
         any_option_parsed = True
         if opt_roots == true_roots:
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug): true_roots JUZ policzone -
+    # brak parsowalnej opcji = no_option_matches (odrzucenie), nie
+    # cicha akceptacja. Patrz identyczna naprawa w _match_single_value_option.
     if not any_option_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches"}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
@@ -923,8 +947,11 @@ def verify_sequence_question(question_text: str, options: list):
         any_parsed = True
         if opt_val == true_value:
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug): true_value JUZ policzone -
+    # brak parsowalnej opcji = no_option_matches (odrzucenie), nie
+    # cicha akceptacja. Patrz identyczna naprawa w _match_single_value_option.
     if not any_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches"}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
@@ -1318,8 +1345,18 @@ def _match_single_value_option(true_value, options: list) -> dict:
             equal = False
         if equal:
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug - "verifier chroni tylko czasami"):
+    # tutaj `true_value` JEST JUZ policzone (skad wywolujacy zna
+    # prawidlowa odpowiedz) - jesli ZADNA z 4 opcji sie nie sparsowala,
+    # to NIE oznacza "nie da sie zweryfikowac" (co sugerowaloby wczesniej
+    # zwrocone "unverifiable" z INNYCH miejsc, gdzie faktycznie NIE
+    # wiadomo jaka jest prawidlowa odpowiedz) - oznacza "znamy prawde,
+    # ale AI nie dostarczylo ZADNEJ parsowalnej/poprawnej opcji", co jest
+    # rownowazne "no_option_matches" (odrzucenie + dogenerowanie), NIE
+    # cichej akceptacji. To byl bezposredni mechanizm zgloszonego bledu:
+    # "unverifiable" bylo tu traktowane jako bezpieczny sukces.
     if not any_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches"}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
@@ -1423,8 +1460,11 @@ def verify_linear_two_points_question(question_text: str, options: list):
         any_parsed = True
         if opt_ab == (true_a, true_b):
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug): (true_a,true_b) JUZ policzone -
+    # brak parsowalnej opcji = no_option_matches (odrzucenie), nie
+    # cicha akceptacja. Patrz identyczna naprawa w _match_single_value_option.
     if not any_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches"}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
@@ -1545,8 +1585,11 @@ def verify_quadratic_function_vertex(question_text: str, options: list):
         any_parsed = True
         if opt_p == p and opt_q == q:
             matches.append(idx)
+    # NAPRAWIONE (zgloszony realny bug): (p,q) JUZ policzone -
+    # brak parsowalnej opcji = no_option_matches (odrzucenie), nie
+    # cicha akceptacja. Patrz identyczna naprawa w _match_single_value_option.
     if not any_parsed:
-        return {"status": "unverifiable"}
+        return {"status": "no_option_matches"}
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
@@ -1807,6 +1850,66 @@ def force_correct_from_final_answer(question: dict, options_key: str = "options"
     if status == "forced":
         question[correct_key] = idx
     return status
+
+
+# ---------------------------------------------------------------
+# LOSOWANIE POZYCJI POPRAWNEJ ODPOWIEDZI (zgloszony problem: AI ma
+# tendencje umieszczac poprawna odpowiedz na okreslonych pozycjach,
+# np. A/B czesciej niz C/D - udokumentowana cecha modeli LLM, nie blad
+# w tym kodzie, ale system MA jej przeciwdzialac). Wywolywane PO
+# wszystkich warstwach weryfikacji (1/2/3) - w momencie wywolania
+# `correct_index` juz wskazuje NAPRAWDE poprawna opcje wzgledem
+# BIEZACEJ kolejnosci `options`. Tasowanie:
+#   - NIE zmienia tresci matematycznej zadnej opcji (tylko kolejnosc),
+#   - poprawnie przelicza correct_index na nowa pozycje,
+#   - jest bezpiecznym no-op gdy dane wejsciowe sa niepoprawne
+#     (correct_index poza zakresem, options nie jest lista) - NIGDY nie
+#     rzuca wyjatku i nigdy nie "zgaduje" nowego correct_index.
+# ---------------------------------------------------------------
+def shuffle_options_preserving_correct(options: list, correct_index, relabel_prefix: bool = False):
+    """Losowo tasuje `options`, zwraca (nowe_options, nowy_correct_index).
+    `relabel_prefix=True` (Sprawdzian/PDF, gdzie etykieta "a) "/"b) "/...
+    bywa zapisana WEWNATRZ tekstu opcji, bo PDF nie ma frontu ktory
+    dorysuje etykiete z pozycji w liscie) usuwa STARY litero-prefiks
+    kazdej opcji (jesli obecny) i doklada NOWY, zgodny z pozycja PO
+    przetasowaniu - to NIE jest zmiana tresci matematycznej, tylko
+    korekta etykiety pozycji, bez ktorej PDF pokazywalby "a) X" na
+    pozycji C. Quiz (`relabel_prefix=False`, domyslne) renderuje
+    etykiety A/B/C/D z pozycji w tablicy po stronie frontu, wiec tam
+    etykiety NIE sa zapisane w tekscie i nie trzeba ich przepisywac."""
+    if not isinstance(options, list) or not isinstance(correct_index, int):
+        return options, correct_index
+    n = len(options)
+    if n < 2 or not (0 <= correct_index < n):
+        return options, correct_index
+    texts = [_option_text(o) for o in options] if relabel_prefix else list(options)
+    order = list(range(n))
+    random.shuffle(order)
+    shuffled_texts = [texts[i] for i in order]
+    new_correct_index = order.index(correct_index)
+    if relabel_prefix:
+        letters = "abcdefghij"  # z zapasem - w praktyce zawsze 4 (a-d)
+        new_options = [f"{letters[i]}) {t}" for i, t in enumerate(shuffled_texts)]
+    else:
+        new_options = shuffled_texts
+    return new_options, new_correct_index
+
+
+def log_unverifiable_diagnostic(prefix: str, topic: str, question_text: str, options: list, final_answer) -> None:
+    """Diagnostyczny log dla przypadku, gdy Warstwa 2 zwraca
+    "unverifiable" (zaden domain modifier nie rozpoznal wzorca w tym
+    pytaniu, wiec przechodzi WYLACZNIE na podstawie Warstwy 1). Bez tego
+    "unverifiable" byl calkowicie niewidoczny (w odroznieniu od odrzucen,
+    ktore juz mialy print) - utrudnialo to diagnoze zgloszonych bledow
+    (patrz Naprawa #1/#2/#3 w tej sesji, kazda wymagala rekonstrukcji
+    "na slepo"). Same dane matematyczne (tresc zadania, opcje) - zero
+    danych osobowych/sekretow, wiec bezpieczne do logowania."""
+    opts_repr = " | ".join(f"[{i}]{str(o)[:80]}" for i, o in enumerate(options or []))
+    print(
+        f"{prefix} UNVERIFIABLE (brak rozpoznanego wzorca weryfikacji - przechodzi "
+        f"tylko na podstawie Warstwy 1): temat='{topic}' pytanie='{(question_text or '')[:150]}' "
+        f"opcje={opts_repr} final_answer='{final_answer}'"
+    )
 
 
 # ---------------------------------------------------------------

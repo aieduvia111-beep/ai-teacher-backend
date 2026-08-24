@@ -9,7 +9,10 @@ from .level_config import (
     get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
     get_exponential_function_difficulty_anchor, is_exponential_function_topic,
 )
-from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
+from .math_verify import (
+    verify_and_fix_math_question, force_correct_from_final_answer,
+    shuffle_options_preserving_correct, log_unverifiable_diagnostic,
+)
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
 import json
@@ -1224,6 +1227,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             kept.append(q)
             continue
         if result["status"] == "unverifiable":
+            log_unverifiable_diagnostic("[MathVerify]", quiz_data.get("title", ""), text, options, q.get("final_answer"))
             kept.append(q)
         elif result["status"] == "match_index":
             true_idx = result["true_index"]
@@ -1293,6 +1297,19 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             seen_fingerprints.add(fp)
             deduped.append(q)
         kept = deduped
+
+    # LOSOWANIE POZYCJI POPRAWNEJ ODPOWIEDZI - PO wszystkich warstwach
+    # weryfikacji (1/2/3), zeby `correct` uzyte tutaj bylo juz OSTATECZNE
+    # (ewentualnie poprawione przez Warstwe 2). Przeciwdziala tendencji AI
+    # do faworyzowania okreslonych pozycji (np. A/B) - patrz
+    # shuffle_options_preserving_correct.
+    for q in kept:
+        options = q.get("options")
+        correct = q.get("correct")
+        if isinstance(options, list) and isinstance(correct, int):
+            new_options, new_correct = shuffle_options_preserving_correct(options, correct)
+            q["options"] = new_options
+            q["correct"] = new_correct
 
     for i, q in enumerate(kept, start=1):
         q["id"] = i

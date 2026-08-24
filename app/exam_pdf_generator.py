@@ -30,7 +30,10 @@ from .level_config import (
     get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
     get_exponential_function_difficulty_anchor, is_exponential_function_topic,
 )
-from .math_verify import verify_and_fix_math_question, match_final_answer_index
+from .math_verify import (
+    verify_and_fix_math_question, match_final_answer_index,
+    shuffle_options_preserving_correct, log_unverifiable_diagnostic,
+)
 from .difficulty import DifficultyAnalyzer
 
 # ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
@@ -1031,6 +1034,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 kept.append(pyt)
                 continue
             if result["status"] == "unverifiable":
+                log_unverifiable_diagnostic("[MathVerify][Exam]", data.get("tytul", ""), tresc, opcje, pyt.get("final_answer"))
                 kept.append(pyt)
             elif result["status"] == "match_index":
                 true_idx = result["true_index"]
@@ -1098,6 +1102,23 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 seen_fingerprints.add(fp)
                 deduped.append(pyt)
             kept = deduped
+
+        # LOSOWANIE POZYCJI POPRAWNEJ ODPOWIEDZI - PO wszystkich warstwach
+        # weryfikacji (1/2/3), identycznie jak w Quizie (patrz
+        # openai_exam._verify_and_fix_quiz_math). relabel_prefix=True, bo
+        # "opcje" w Sprawdzianie czesto maja etykiete "a) "/"b) "
+        # zapisana W SAMYM TEKSCIE (PDF nie ma frontu, ktory dorysuje
+        # etykiete z pozycji) - shuffle_options_preserving_correct
+        # usuwa stara i doklada nowa, zgodna z pozycja po przetasowaniu.
+        for pyt in kept:
+            opcje = pyt.get("opcje")
+            current_idx = _LETTER_TO_IDX.get(str(pyt.get("odpowiedz", "")).strip().lower())
+            if isinstance(opcje, list) and current_idx is not None:
+                new_opcje, new_idx = shuffle_options_preserving_correct(opcje, current_idx, relabel_prefix=True)
+                new_letter = _IDX_TO_LETTER.get(new_idx)
+                if new_letter:
+                    pyt["opcje"] = new_opcje
+                    pyt["odpowiedz"] = new_letter
 
         sekcja["pytania"] = kept
 
