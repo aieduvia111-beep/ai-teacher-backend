@@ -38,8 +38,13 @@ print("=== Adaptacyjny oversampling: Quiz (_buffered_count) ===")
 r = _buffered_count(20, topic="Równania kwadratowe", difficulty="hard")
 check("hard + rownania kwadratowe (parametr) -> +60% (20+12=32)", r == 32, r)
 
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - problem N!=N):
+# medium+parametr (goly, po naprawie klasyfikacji) nadal ma podwyzszony
+# rejection rate (sympy_mismatch, normalna zmiennosc AI) - podniesiono
+# bufor z +30% do +50% (patrz komentarz w _buffered_count). Zaktualizowano
+# wartosc oczekiwana - to CELOWA, swiadoma zmiana, nie regresja.
 r = _buffered_count(20, topic="Równania kwadratowe", difficulty="medium")
-check("medium + rownania kwadratowe -> dotychczasowe +30% (20+6=26)", r == 26, r)
+check("medium + rownania kwadratowe -> podniesiony bufor +50% (20+10=30)", r == 30, r)
 
 r = _buffered_count(20, topic="Trygonometria", difficulty="hard")
 check("hard + INNY temat (nie kwadratowe) -> dotychczasowe +30% (26)", r == 26, r)

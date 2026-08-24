@@ -1101,20 +1101,38 @@ async def _generate_quiz_topic_once(
 # danych uzasadniajacych wieksze bufory gdzie indziej, nie zgadujemy).
 _HARD_DIFFICULTY_WORDS = {"hard", "trudny", "trudna"}
 
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - problem N!=N
+# mimo naprawy rownoleglosci/duplikatow): PO naprawie klasyfikacji
+# trudnosci (parametr wewnatrz wyrazenia -> hard, patrz commit a3545fc)
+# "medium" rownania kwadratowe z parametrem sa juz ZAWSZE golym
+# parametrem ("mx", nie "(m-4)x") - ALE nadal maja WYZSZY niz przecietny
+# rejection rate (sympy_mismatch) niz reszta tematow - realne testy
+# tego samego dnia pokazaly 12%-50% partii odrzucanej w roznych
+# przebiegach (normalna zmiennosc AI, nie blad weryfikatora - kazdy
+# sprawdzony recznie przypadek byl PRAWDZIWYM bledem matematycznym AI).
+# Nie tak ekstremalne jak "hard" (+60%), ale wyrazne ponad bazowe +30% -
+# dajemy posredni bufor +50%, zeby WIEKSZOSC partii miala wystarczajaco
+# kandydatow bez potrzeby rundy dogenerowania (ktora i tak ma niewiele
+# czasu, patrz limit 30s).
+_MEDIUM_DIFFICULTY_WORDS = {"medium", "sredni", "średni", "srednia", "średnia"}
+
 
 def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
     """Ile pytan zamowic za pierwszym razem, zeby po odrzuceniu blednych
     (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
     rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "hard" rownan
-    kwadratowych z parametrem (patrz komentarz wyzej). `topic`/`difficulty`
-    sa opcjonalne - gdy nieznane (np. sciezka z obrazka, gdzie temat nie
+    kwadratowych z parametrem, +50% dla "medium" rownan kwadratowych z
+    parametrem (patrz komentarze wyzej). `topic`/`difficulty` sa
+    opcjonalne - gdy nieznane (np. sciezka z obrazka, gdzie temat nie
     jest jeszcze znany), uzywa dotychczasowego +30%."""
-    is_hard_quadratic = (
-        topic is not None
-        and (difficulty or "").strip().lower() in _HARD_DIFFICULTY_WORDS
-        and is_quadratic_equation_topic(topic)
-    )
-    numerator = 6 if is_hard_quadratic else 3
+    is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    if is_quadratic and diff_word in _HARD_DIFFICULTY_WORDS:
+        numerator = 6
+    elif is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
+        numerator = 5
+    else:
+        numerator = 3
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
