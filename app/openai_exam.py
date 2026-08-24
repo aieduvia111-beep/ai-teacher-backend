@@ -1086,7 +1086,7 @@ async def _generate_quiz_topic_once(
         lambda n: _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
-        t_start=t_start, difficulty=difficulty, metrics=metrics, level=level,
+        t_start=t_start, difficulty=difficulty, metrics=metrics, level=level, topic=topic,
     )
     return quiz_data
 
@@ -1146,18 +1146,51 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
 _MIN_FILL_BATCH = 4
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None) -> dict:
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - swiadoma,
+# udokumentowana decyzja usera PO pelnej analizie, NIE ciche/globalne
+# podniesienie limitu): rownania kwadratowe z parametrem na poziomie
+# MEDIUM maja POTWIERDZONY REALNYMI TESTAMI wysoki i uporczywy wskaznik
+# odrzucen (sympy_mismatch - normalna zmiennosc trafnosci AI dla tego
+# KONKRETNEGO podwzorca, patrz komentarze przy _buffered_count i
+# QUADRATIC_DIFFICULTY_TIERS["5-6"] w level_config.py). Nawet po
+# zwiekszonym buforze (+50%) i rownoleglych wywolaniach (patrz
+# _raw_generate_quiz_topic_batch) pojedyncza partia czasem potrzebuje
+# JEDNEJ dodatkowej rundy dogenerowania, ktora juz nie miesci sie w
+# standardowych 30s. Zamiast cicho przekraczac limit (co system i tak
+# juz robil - runda w toku nie jest przerywana w polowie, patrz petla
+# nizej) - dla TEGO JEDNEGO, znanego przypadku budzet jest JAWNIE
+# ustawiony na 45s. Wszystko inne (inne tematy, "easy"/"hard", brak
+# tematu) zostaje przy dotychczasowych 30s - to NIE jest globalna zmiana.
+_EXTENDED_TIMEOUT_SECONDS = 45.0
+_DEFAULT_TIMEOUT_SECONDS = 30.0
+
+
+def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
+    """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
+    generowania+weryfikacji+dogenerowania. 45s TYLKO dla rownan
+    kwadratowych z parametrem na poziomie medium (patrz komentarz
+    wyzej) - 30s dla wszystkiego innego, bez zmian."""
+    is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    if is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
+        return _EXTENDED_TIMEOUT_SECONDS
+    return _DEFAULT_TIMEOUT_SECONDS
+
+
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None, topic: str = None) -> dict:
     """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
     poprawnosc sa wazniejsze niz szybkosc, wiec dogenerowujemy brakujace
     az osiagniemy `requested_count` ALBO wyczerpiemy `max_rounds` LUB
     `max_seconds` (bezpieczniki: user nigdy nie powinien czekac dluzej
-    niz ok. 30s NA CALY PROCES - `t_start` liczony jest od POCZATKU
-    pierwszego (buforowanego) wywolania AI, nie tylko od poczatku petli
-    dogenerowania, zeby limit faktycznie obejmowal caly czas generowania
-    zgodnie z wymaganiem, nie tylko rundy uzupelniajace. Jesli caller nie
-    poda t_start (np. stary kod), liczymy od tego miejsca jako fallback.
+    niz ok. 30s NA CALY PROCES (45s dla jednego, udokumentowanego
+    wyjatku - patrz _max_generation_seconds powyzej) - `t_start` liczony
+    jest od POCZATKU pierwszego (buforowanego) wywolania AI, nie tylko
+    od poczatku petli dogenerowania, zeby limit faktycznie obejmowal
+    caly czas generowania zgodnie z wymaganiem, nie tylko rundy
+    uzupelniajace. Jesli caller nie poda t_start (np. stary kod), liczymy
+    od tego miejsca jako fallback.
 
     ETAP 3: `seen_fingerprints` zyje przez CALA petle (jeden zbior,
     mutowany w kazdym wywolaniu _verify_and_fix_quiz_math) - dogenerowane
@@ -1179,7 +1212,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     seen_fingerprints = set()
     quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level)
     max_rounds = 10
-    max_seconds = 30.0
+    max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
         t_start = time.monotonic()
     for round_i in range(1, max_rounds + 1):
