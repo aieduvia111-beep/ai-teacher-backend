@@ -4,6 +4,7 @@ from .level_config import (
     describe_level, validate_generic_topic, get_forced_fallback_topic,
     get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
     get_sequence_difficulty_anchor, is_sequence_topic,
+    get_trig_difficulty_anchor, is_trigonometry_topic,
 )
 from .math_verify import verify_and_fix_math_question, force_correct_from_final_answer
 from .difficulty import DifficultyAnalyzer
@@ -734,6 +735,12 @@ async def _raw_generate_quiz_topic_once(
     # jako rownanie kwadratowe (temat nie moze byc jednoczesnie obiema).
     elif is_sequence_topic(topic):
         anchor_text = get_sequence_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+
+    # ETAP 7: analogiczna "gated injection" dla trygonometrii.
+    elif is_trigonometry_topic(topic):
+        anchor_text = get_trig_difficulty_anchor(difficulty)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 

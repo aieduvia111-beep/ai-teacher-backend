@@ -151,3 +151,14 @@ def level_adjusted_tier_shift(level: str) -> int:
 # za maly, zeby wykryc "7 klasa vs 2 LO"; 4 dziala).
 SEQUENCE_BASELINE_LEVEL = "liceum_2"
 SEQUENCE_MAX_SHIFT = 4
+
+
+# ---------------------------------------------------------------
+# ETAP 7: analogiczne przesuniecie dla trygonometrii - patrz
+# app/difficulty/modifiers/math_trigonometry.py. Ten sam baseline
+# (liceum_2 - trygonometria w pelni wprowadzona: tozsamosci, wykresy,
+# rownania, patrz SUBJECT_SCOPE w level_config.py) i ta sama skala 1-5/
+# 3 pasma co ciagi, wiec ten sam MAX_SHIFT=4 z tych samych powodow
+# (patrz komentarz przy SEQUENCE_MAX_SHIFT).
+TRIG_BASELINE_LEVEL = "liceum_2"
+TRIG_MAX_SHIFT = 4

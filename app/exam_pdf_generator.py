@@ -25,6 +25,7 @@ from pypdf import PdfWriter, PdfReader
 from .level_config import (
     describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
     get_sequence_difficulty_anchor, is_sequence_topic,
+    get_trig_difficulty_anchor, is_trigonometry_topic,
 )
 from .math_verify import verify_and_fix_math_question, match_final_answer_index
 from .difficulty import DifficultyAnalyzer
@@ -1213,10 +1214,10 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         else:
             blok = typ_instrukcja
 
-        # "gated injection" skali trudnosci - rownania kwadratowe (1-10) i
-        # ETAP 6: ciagi arytmetyczne/geometryczne (1-5), ten sam mechanizm
-        # co w Quizie (patrz openai_exam.py). Inne tematy dzialaja jak
-        # dotychczas (samo slowo trudnosci).
+        # "gated injection" skali trudnosci - rownania kwadratowe (1-10),
+        # ETAP 6: ciagi arytmetyczne/geometryczne (1-5), ETAP 7: trygonometria
+        # (1-5), ten sam mechanizm co w Quizie (patrz openai_exam.py). Inne
+        # tematy dzialaja jak dotychczas (samo slowo trudnosci).
         difficulty_anchor_blok = ""
         if is_quadratic_equation_topic(temat):
             anchor_text = get_quadratic_difficulty_anchor(trudnosc)
@@ -1224,6 +1225,10 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_sequence_topic(temat):
             anchor_text = get_sequence_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_trigonometry_topic(temat):
+            anchor_text = get_trig_difficulty_anchor(trudnosc)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
 

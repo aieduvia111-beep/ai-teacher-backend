@@ -1031,6 +1031,81 @@ def is_sequence_topic(topic: str) -> bool:
     return has_ciag and ("arytmetyczn" in t or "geometryczn" in t)
 
 
+# ETAP 7: analogiczna "gated injection" skala trudnosci dla trygonometrii -
+# patrz QUADRATIC_DIFFICULTY_TIERS/SEQUENCE_DIFFICULTY_TIERS wyzej po
+# uzasadnienie wzorca. Skala 1-5 (jak ciagi) - tyle pasm rozpoznaje dzis
+# classify_trig_difficulty w math_verify.py. Bezposredni powod Etapu 7:
+# "sin(30°)" bylo generowane jako "medium" mimo ze to wartosc z pamieci -
+# pasmo "1" jednoznacznie to lapie. "4-5" celowo obejmuje 2 rozne wzorce
+# (rownanie z/bez parametru ORAZ dowod tozsamosci), zeby "hard" nie bylo
+# jednym powtarzalnym typem zadania (ta sama zasada co przy ciagach).
+TRIG_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Wartosc funkcji trygonometrycznej dla kata specjalnego "
+            "(0°,30°,45°,60°,90°,...) - wartosc z pamieci, BEZ obliczen."
+        ),
+        "przyklad": "Ile wynosi sin(30°)?",
+    },
+    "2-3": {
+        "kryterium": (
+            "Trojkat prostokatny (SOH-CAH-TOA) - jedna niewiadoma z danych "
+            "pozostalych bokow/katow, ALBO prosta tozsamosc (Pitagorasa) w "
+            "bezposrednim zastosowaniu, ALBO zamiana stopnie<->radiany, "
+            "ALBO twierdzenie sinusow/cosinusow w trojkacie dowolnym."
+        ),
+        "przyklad": (
+            "W trójkącie prostokątnym przeciwprostokątna ma długość 10, a "
+            "jeden z kątów ostrych 35°. Oblicz długości przyprostokątnych."
+        ),
+    },
+    "4-5": {
+        "kryterium": (
+            "Rownanie trygonometryczne wymagajace przeksztalcenia (np. "
+            "sprowadzenia do rownania kwadratowego wzgledem sin/cos), Z "
+            "PARAMETREM albo BEZ, ALBO dowod tozsamosci trygonometrycznej. "
+            "Uzyj ROZNORODNYCH wzorcow z tej listy, nie zawsze tego samego."
+        ),
+        "przyklad": (
+            "Rozne przyklady na tym poziomie: 'Rozwiąż równanie "
+            "2sin²(x)-3cos(x)=0 dla x∈[0,2π), sprowadzając do równania "
+            "kwadratowego względem cos(x).' LUB 'Dla jakich wartości "
+            "parametru a równanie sin(x)=a ma rozwiązanie w [0,2π)?' LUB "
+            "'Udowodnij tożsamość (1-cos(2x))/sin(2x) = tan(x).'"
+        ),
+    },
+}
+
+_TRIG_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "2-3", "sredni": "2-3", "średni": "2-3", "srednia": "2-3", "średnia": "2-3",
+    "hard": "4-5", "trudny": "4-5", "trudna": "4-5",
+}
+
+
+def get_trig_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladow (skala 1-5) dla podanego slowa
+    trudnosci, analogicznie do get_sequence_difficulty_anchor. None jesli
+    slowo nierozpoznane (wtedy caller ma spasc na stare, generyczne
+    zachowanie)."""
+    tier = _TRIG_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = TRIG_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI {tier}/5 (skala dla trygonometrii): {data['kryterium']} "
+        f"Przyklady zadan na tym poziomie: {data['przyklad']}. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_trigonometry_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy trygonometrii - uzywane do
+    "gated injection" skali 1-5 (dziala TYLKO dla tego tematu)."""
+    t = (topic or "").lower()
+    return "trygonometri" in t
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

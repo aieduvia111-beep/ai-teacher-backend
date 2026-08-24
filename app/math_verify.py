@@ -200,6 +200,49 @@ def detect_discriminant_condition(question_text: str):
 
 
 # ---------------------------------------------------------------
+# ETAP 7 (audyt architektury): wspolny szkielet kontraktu Warstwy 3
+# ("czy wygenerowane pytanie odpowiada zadanej trudnosci") - wyodrebniony
+# po tym, jak validate_quadratic_difficulty/validate_sequence_difficulty
+# (i teraz validate_trig_difficulty) okazaly sie 3 niemal identycznymi
+# kopiami tej samej logiki (5 tematow docelowo = 5 kopii bez tego).
+# Wylacznie boilerplate kontraktu - detekcja tieru (classify_X_difficulty)
+# ZOSTAJE w pelni tematyczna, wolana PRZED tym helperem przez kazdy
+# validate_X_difficulty z osobna (temat nadal decyduje SAM, jak rozpoznac
+# swoj tier - to jest jedyna rzecz, ktora NIE jest uniwersalna).
+#
+# NAPRAWIONE PRZY OKAZJI: validate_quadratic_difficulty porownywal tiery
+# przez zwykle porownanie stringow ("7-8" < "9-10"), co dzialalo tylko
+# przypadkiem dla tej konkretnej etykiety pasm (kazda zaczyna sie od
+# rosnacej cyfry 1,3,5,7,9). validate_sequence_difficulty uzywal juz
+# bezpieczniejszego tier_order.index() - teraz WSZYSTKIE 3 tematy uzywaja
+# tej samej, poprawnej metody porownania (zero zmiany faktycznego wyniku -
+# dla obecnego zestawu etykiet obie metody dawaly identyczne odpowiedzi,
+# patrz snapshot przed/po w teście regresyjnym).
+# ---------------------------------------------------------------
+def _generic_validate_difficulty(
+    detected_tier, acceptable_tiers, tier_order: list,
+    abstain_status: str, too_easy_reason: str, too_hard_reason: str,
+) -> dict:
+    """Wspolny szkielet: `detected_tier` (albo None - abstain) i
+    `acceptable_tiers` (zbior stringow-tierow, albo pusty/None - abstain)
+    juz WYLICZONE przez wywolujacego (kazdy temat robi to po swojemu).
+    `tier_order` - pelna, uporzadkowana lista mozliwych tierow dla tego
+    tematu (np. ["1-2","3-4","5-6","7-8","9-10"] albo ["1".."5"]).
+    `too_easy_reason`/`too_hard_reason` - szablony z {detected_tier}/
+    {requested_label} do podstawienia (kazdy temat ma wlasny tekst)."""
+    if not acceptable_tiers or detected_tier is None:
+        return {"status": abstain_status}
+    requested_label = "/".join(sorted(acceptable_tiers))
+    if detected_tier in acceptable_tiers:
+        return {"status": "ok", "detected_tier": detected_tier, "requested_tier": requested_label}
+    if tier_order.index(detected_tier) < tier_order.index(min(acceptable_tiers, key=tier_order.index)):
+        reason = too_easy_reason.format(detected_tier=detected_tier, requested_label=requested_label)
+    else:
+        reason = too_hard_reason.format(detected_tier=detected_tier, requested_label=requested_label)
+    return {"status": "fail", "reason": reason, "detected_tier": detected_tier, "requested_tier": requested_label}
+
+
+# ---------------------------------------------------------------
 # ITERACJA 2: skala trudnosci 1-10 dla rownan kwadratowych -
 # walidacja PO wygenerowaniu, PRZED pokazaniem userowi (osobna od
 # weryfikacji poprawnosci klucza odpowiedzi powyzej). Klasyfikuje
@@ -224,6 +267,7 @@ _QUADRATIC_ACCEPTABLE_TIERS = {
     "medium": {"5-6"}, "sredni": {"5-6"}, "średni": {"5-6"}, "srednia": {"5-6"}, "średnia": {"5-6"},
     "hard": {"7-8", "9-10"}, "trudny": {"7-8", "9-10"}, "trudna": {"7-8", "9-10"},
 }
+_QUADRATIC_TIER_ORDER = ["1-2", "3-4", "5-6", "7-8", "9-10"]
 
 
 def classify_quadratic_difficulty(question_text: str, option_texts=None):
@@ -279,19 +323,12 @@ def validate_quadratic_difficulty(question_text: str, requested_difficulty_word:
       {"status": "fail", "reason": ..., "detected_tier": ...,
           "requested_tier": ...} - do odrzucenia/dogenerowania."""
     acceptable = _QUADRATIC_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
-    if not acceptable:
-        return {"status": "not_quadratic"}
     detected_tier = classify_quadratic_difficulty(question_text, option_texts=option_texts)
-    if detected_tier is None:
-        return {"status": "not_quadratic"}
-    requested_label = "/".join(sorted(acceptable))
-    if detected_tier in acceptable:
-        return {"status": "ok", "detected_tier": detected_tier, "requested_tier": requested_label}
-    if detected_tier < min(acceptable):
-        reason = f"za latwe - brak parametru/zlozonego warunku (wykryto {detected_tier}, oczekiwano {requested_label})"
-    else:
-        reason = f"za trudne - zbyt zlozona analiza jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})"
-    return {"status": "fail", "reason": reason, "detected_tier": detected_tier, "requested_tier": requested_label}
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _QUADRATIC_TIER_ORDER, "not_quadratic",
+        "za latwe - brak parametru/zlozonego warunku (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne - zbyt zlozona analiza jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
 
 
 def solve_discriminant_condition(A, B, C, param, kind):
@@ -869,6 +906,7 @@ _SEQUENCE_ACCEPTABLE_TIERS = {
     "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
     "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
 }
+_SEQUENCE_TIER_ORDER = ["1", "2", "3", "4", "5"]
 
 
 def classify_sequence_difficulty(question_text: str):
@@ -906,20 +944,236 @@ def validate_sequence_difficulty(question_text: str, requested_difficulty_word: 
     trudnosci - identyczny kontrakt do validate_quadratic_difficulty
     (status ok/fail/not_sequence + reason/detected_tier/requested_tier)."""
     acceptable = _SEQUENCE_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
-    if not acceptable:
-        return {"status": "not_sequence"}
     detected_tier = classify_sequence_difficulty(question_text)
-    if detected_tier is None:
-        return {"status": "not_sequence"}
-    requested_label = "/".join(sorted(acceptable))
-    if detected_tier in acceptable:
-        return {"status": "ok", "detected_tier": detected_tier, "requested_tier": requested_label}
-    tier_order = ["1", "2", "3", "4", "5"]
-    if tier_order.index(detected_tier) < tier_order.index(min(acceptable, key=tier_order.index)):
-        reason = f"za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})"
-    else:
-        reason = f"za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})"
-    return {"status": "fail", "reason": reason, "detected_tier": detected_tier, "requested_tier": requested_label}
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _SEQUENCE_TIER_ORDER, "not_sequence",
+        "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
+
+
+# ---------------------------------------------------------------
+# ETAP 7 Universal Difficulty Engine: trygonometria.
+#
+# Warstwa 2 (weryfikacja sympy) - SWIADOMIE zawezona do JEDNEGO,
+# bezpiecznego podzbioru: ewaluacja funkcji trygonometrycznej dla KATA
+# SPECJALNEGO w STOPNIACH (np. "sin(30°)=?") - dokladnie ten przypadek,
+# ktory wywolal ten Etap (zbyt latwe "sin(30)" akceptowane jako
+# "medium"). Rownania i tozsamosci CELOWO NIE sa tu weryfikowane
+# (unverifiable/abstain) - sympy.simplify/trigsimp moze nie zredukowac
+# rownowaznych wyrazen trygonometrycznych do wspolnej postaci, co
+# grozi FALSZYWYM odrzuceniem poprawnej odpowiedzi (gorsze niz brak
+# weryfikacji). Notacja radianowa (pi) rowniez CELOWO poza zakresem
+# Warstwy 2 na start - rzadsza dla pytan easy-tier, mozna dodac pozniej
+# na bazie realnych danych (ta sama filozofia co sparametryzowane ciagi
+# w Etapie 6 - abstain zamiast zgadywania).
+#
+# Warstwa 3 (klasyfikacja trudnosci) ma SZERSZY zakres niz Warstwa 2 -
+# rozpoznaje tez trojkat prostokatny, tozsamosci, rownania (z/bez
+# parametru) - do samej KLASYFIKACJI nie potrzeba symbolicznej
+# weryfikacji poprawnosci, tylko wzorcowego rozpoznania TYPU zadania
+# (tak jak detect_sequence_intent w Etapie 6).
+# ---------------------------------------------------------------
+# NAPRAWIONE (wykryte realna generacja): AI uzywa tez sec/csc (sekans/
+# kosekans) - rzadsze w polskim programie (czesciej 1/cos, 1/sin), ale
+# sympy obsluguje je natywnie (sp.sec/sp.csc), wiec dodanie kosztuje
+# zero dodatkowego ryzyka.
+_TRIG_FUNC_MAP = {
+    "sin": sp.sin, "cos": sp.cos,
+    "tg": sp.tan, "tan": sp.tan,
+    "ctg": sp.cot, "cot": sp.cot,
+    "sec": sp.sec, "csc": sp.csc,
+}
+_TRIG_DEG_RE = re.compile(
+    # NAPRAWIONE (wykryte realna generacja): "^{\circ}" (nawias klamrowy
+    # PRZED \circ, np. "30^{\circ}") jest tak samo powszechny jak
+    # "^\circ" (bez nawiasu) - oryginalny wzorzec dopuszczal nawias
+    # TYLKO po "circ", nie przed, wiec "^{\circ}" nie pasowalo w ogole.
+    r'\\?(sin|cos|tg|ctg|tan|cot|sec|csc)\s*\(?\s*(-?\d+(?:[.,]\d+)?)\s*(?:°|\^\s*\{?\s*\\?circ\}?|\^\s*o|stopni)',
+    re.I,
+)
+
+
+def analyze_trig_special_angle_question(question_text: str):
+    """Rozpoznaje pytanie o wartosc funkcji trygonometrycznej dla KATA
+    SPECJALNEGO w STOPNIACH (wielokrotnosc 15°, np. 30/45/60/90/...).
+    Zwraca {"func", "deg", "value"} (value = dokladna wartosc sympy)
+    albo None (nie rozpoznano / kat nie jest "specjalny" / wartosc
+    niezdefiniowana np. tg(90°) - abstain, nie zgadujemy)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text)
+    m = _TRIG_DEG_RE.search(text)
+    if not m:
+        return None
+    func_name = m.group(1).lower()
+    deg = _to_num(m.group(2))
+    if deg is None or deg != int(deg):
+        return None
+    deg = int(deg) % 360
+    if deg % 15 != 0:
+        return None  # nie jest to "kat specjalny" z programu nauczania
+    func = _TRIG_FUNC_MAP.get(func_name)
+    if not func:
+        return None
+    try:
+        value = sp.nsimplify(func(sp.rad(deg)))
+    except Exception:
+        return None
+    if not value.is_finite or value.has(sp.zoo, sp.oo, -sp.oo):
+        return None  # niezdefiniowane, np. tg(90°)/ctg(0°)
+    return {"func": func_name, "deg": deg, "value": value}
+
+
+def verify_trig_special_angle_question(question_text: str, options: list):
+    """Weryfikacja Warstwy 2 dla katow specjalnych w stopniach - ten sam
+    kontrakt co verify_sequence_question (match_index/no_option_matches/
+    unverifiable)."""
+    parsed = analyze_trig_special_angle_question(question_text)
+    if not parsed:
+        return {"status": "unverifiable"}
+    true_value = parsed["value"]
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = sp.nsimplify(_parse_expr(_option_text(opt)))
+        except Exception:
+            opt_val = None
+        if opt_val is None:
+            continue
+        any_parsed = True
+        try:
+            equal = bool(sp.simplify(opt_val - true_value) == 0)
+        except Exception:
+            equal = False
+        if equal:
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "unverifiable"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
+# Pasma trudnosci (skala 1-5, jak SEQUENCE_DIFFICULTY_TIERS) - rozpoznanie
+# WZORCOWE (regex/slowa kluczowe), nie symboliczne - patrz TRIG_DIFFICULTY_TIERS
+# w level_config.py po pelny opis kazdego pasma:
+#   1 - wartosc dla kata specjalnego (analyze_trig_special_angle_question)
+#   2-3 - trojkat prostokatny (SOH-CAH-TOA), tw. sinusow/cosinusow, prosta
+#         tozsamosc (Pitagorasa), zamiana stopnie<->radiany
+#   4-5 - rownanie trygonometryczne (4 bez parametru, 5 z parametrem ALBO
+#         dowod tozsamosci) - CELOWO 2 rozne wzorce w "hard", nie jeden
+#         powtarzalny typ (ta sama zasada co przy ciagach w Etapie 6)
+_TRIG_RIGHT_TRIANGLE_MARKERS = (
+    'przeciwprostokątn', 'przeciwprostokatn', 'przyprostokątn', 'przyprostokatn',
+    'trójkącie prostokątnym', 'trojkacie prostokatnym', 'twierdzeni sinus', 'twierdzeni cosinus',
+    'twierdzenie sinusów', 'twierdzenie sinusow', 'twierdzenie cosinusów', 'twierdzenie cosinusow',
+)
+_TRIG_CONVERSION_MARKERS = ('na radiany', 'na stopnie', 'zamień', 'zamien')
+_TRIG_PROOF_MARKERS = ('udowodnij', 'wykaż', 'wykaz', 'uzasadnij', 'udowodnic', 'udowodnić')
+# NAPRAWIONE (wykryte realna generacja): rdzen "równani"/"rownani" (nie
+# pelne slowo "równanie") - polski jest fleksyjny, "rozwiązania równania"
+# (dopelniacz) nie zawiera podciagu "równanie" (mianownik), przez co
+# rownania w tej formie gramatycznej przechodzily jako nierozpoznane
+# (abstain) zamiast poprawnie tier 4/5.
+_TRIG_EQUATION_MARKERS = ('równani', 'rownani', 'rozwiąż', 'rozwiaz')
+_TRIG_IDENTITY_MARKERS = ('tożsam', 'tozsam')
+_TRIG_FUNC_MENTION_RE = re.compile(r'\\?(sin|cos|tg|ctg|tan|cot|sec|csc)\b', re.I)
+# NAPRAWIONE (wykryte realna generacja): czesty wzorzec "medium" - dana
+# JEDNA wartosc funkcji trygonometrycznej ("sin(x)=3/5"), szukana INNA
+# (tozsamosc Pitagorasa/wzor na tangens) - BEZ slowa "rownanie"/"tozsamosc"
+# (AI pisze "znajdz"/"oblicz", nie uzywa tych slow-kluczy). Odrozniony od
+# rownania do ROZWIAZANIA (has_equation) przez brak markera rownania -
+# sprawdzany PO nim w classify_trig_difficulty.
+# NAPRAWIONE (wykryte realna generacja): AI czasem uzywa theta (\theta)
+# zamiast x jako nazwy zmiennej kata - rownie standardowa konwencja w
+# trygonometrii.
+_TRIG_GIVEN_VALUE_RE = re.compile(r'\\?(sin|cos|tg|ctg|tan|cot|sec|csc)\s*\(?\s*(?:x|\\?theta)\s*\)?\s*=', re.I)
+# Izolowana pojedyncza litera (nie x/y/z - zmienna glowna) - dzieki
+# lookaroundom NIE dopasowuje liter WEWNATRZ "sin"/"cos"/"tg"/"ctg" (te
+# sa wieloliterowe, wiec kazda ich litera ma sasiada-litere po jednej
+# ze stron). Ten sam wzorzec co _PARAMETER_SYMBOL_RE w features.py.
+# NAPRAWIONE: granice [a-zA-Z] NIE obejmowaly polskich znakow
+# diakrytycznych - "r" w "równanie" mial "ó" po prawej, ktore NIE jest
+# w [a-zA-Z], wiec lookahead falszywie uznawal "r" za IZOLOWANA litere
+# (parametr!). Rozszerzono klase o polskie znaki, zeby granica slowa
+# byla rozpoznawana poprawnie.
+# NAPRAWIONE (wykryte realna generacja): "w"/"i"/"o"/"u" sa czeste polskie
+# JEDNOLITEROWE przyimki/spojniki ("w przedziale", "i różnicę"...) - jako
+# izolowane litery falszywie lapaly sie jako "parametr". Wykluczone z
+# zakresu (nigdy nie sa realnymi nazwami parametrow w tej aplikacji -
+# konwencja to a/b/c/k/m/n/p/t). "a" ZOSTAJE mimo bycia tez spojnikiem
+# ("a nie") - to zbyt czesta, realna nazwa parametru, zeby ja wykluczyc
+# bez utraty wykrywania prawdziwych przypadkow.
+_TRIG_PARAMETER_RE = re.compile(r'(?<![a-zA-Ząćęłńóśźż\\])[a-hj-np-tvA-HJ-NP-TV](?![a-zA-Ząćęłńóśźż{])')
+
+
+def classify_trig_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci ('1'..'5') pytania o trygonometrii, na
+    bazie wzorcow tekstowych. None jesli tresc nie zawiera rozpoznawalnego
+    wzorca (nie wygenerowano falszywej klasyfikacji - bezpieczny abstain,
+    ta sama filozofia co classify_sequence_difficulty)."""
+    if not question_text:
+        return None
+    text = _normalize_subscripts(question_text).lower()
+    has_right_triangle = any(w in text for w in _TRIG_RIGHT_TRIANGLE_MARKERS)
+    has_func_mention = bool(_TRIG_FUNC_MENTION_RE.search(text))
+    has_conversion = any(w in text for w in _TRIG_CONVERSION_MARKERS)
+    # NAPRAWIONE: zadania o trojkacie prostokatnym (np. "przeciwprostokątna
+    # ma dlugosc 10...") oraz zamiana stopnie<->radiany czesto NIE pisza
+    # literalnie "sin("/"cos(" w tresci (funkcja trygonometryczna jest
+    # UKRYTA w sposobie rozwiazania albo nieistotna dla samej konwersji
+    # jednostek) - brama abstain nie moze wymagac tego od kazdego wzorca.
+    if not has_right_triangle and not has_func_mention and not has_conversion:
+        return None
+
+    if analyze_trig_special_angle_question(question_text) is not None:
+        return "1"
+
+    has_proof = any(w in text for w in _TRIG_PROOF_MARKERS)
+    has_identity = any(w in text for w in _TRIG_IDENTITY_MARKERS)
+    has_equation = any(w in text for w in _TRIG_EQUATION_MARKERS)
+
+    if has_func_mention and has_proof and has_identity:
+        return "5"
+    if has_func_mention and has_equation:
+        has_param = bool(_TRIG_PARAMETER_RE.search(text))
+        return "5" if has_param else "4"
+    if has_right_triangle:
+        return "3" if ('sinus' in text or 'cosinus' in text) else "2"
+    # NAPRAWIONE: zamiana stopnie<->radiany (has_conversion) czesto NIE
+    # wspomina zadnej funkcji trygonometrycznej - to pytanie o same
+    # jednostki kata, nie wymaga func_mention (inaczej niz prosta
+    # tozsamosc, ktora bez wzmianki sin/cos/tg nie ma sensu).
+    if has_conversion or (has_func_mention and has_identity):
+        return "2"
+    if bool(_TRIG_GIVEN_VALUE_RE.search(text)):
+        return "2"
+    return None
+
+
+_TRIG_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"2", "3"}, "sredni": {"2", "3"}, "średni": {"2", "3"}, "srednia": {"2", "3"}, "średnia": {"2", "3"},
+    "hard": {"4", "5"}, "trudny": {"4", "5"}, "trudna": {"4", "5"},
+}
+_TRIG_TIER_ORDER = ["1", "2", "3", "4", "5"]
+
+
+def validate_trig_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowane pytanie o trygonometrii odpowiada
+    ZADANEJ trudnosci - identyczny kontrakt do validate_sequence_difficulty
+    (status ok/fail/not_trig + reason/detected_tier/requested_tier)."""
+    acceptable = _TRIG_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    detected_tier = classify_trig_difficulty(question_text)
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _TRIG_TIER_ORDER, "not_trig",
+        "za latwe - brak zlozonosci oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
 
 
 # ---------------------------------------------------------------
@@ -1014,4 +1268,8 @@ def verify_and_fix_math_question(question_text: str, options: list):
     result3 = verify_sequence_question(question_text, options)
     if result3["status"] in ("match_index", "no_option_matches"):
         return {**result3, "explanation": None}
+
+    result4 = verify_trig_special_angle_question(question_text, options)
+    if result4["status"] in ("match_index", "no_option_matches"):
+        return {**result4, "explanation": None}
     return {"status": "unverifiable", "explanation": None}
