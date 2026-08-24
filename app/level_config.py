@@ -904,7 +904,12 @@ QUADRATIC_DIFFICULTY_TIERS = {
         "kryterium": (
             "Jeden parametr, prosty warunek na delte - bezposrednie "
             "podstawienie do wzoru na delte i rozwiazanie nierownosci "
-            "LINIOWEJ wzgledem parametru."
+            "LINIOWEJ wzgledem parametru. WYKLUCZONE na tym poziomie: "
+            "parametr jako WSPOLCZYNNIK PRZY x^2 (wzorce typu a*x^2+... =0 "
+            "albo a(k)x^2+...), ktory wymaga dodatkowego zalozenia "
+            "wspolczynnik != 0 - to nalezy do poziomu 7-8 (hard), NIE do "
+            "5-6 (medium). Na poziomie 5-6 parametr wystepuje WYLACZNIE "
+            "przy x^1 i/lub w wyrazie wolnym, nigdy przy x^2."
         ),
         "przyklad": "Dla jakich wartości parametru m równanie x²+(m-3)x+m=0 ma dwa różne pierwiastki?",
     },
