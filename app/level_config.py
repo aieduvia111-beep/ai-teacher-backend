@@ -914,7 +914,16 @@ QUADRATIC_DIFFICULTY_TIERS = {
             "'(m-3)x', '(2m-1)x', '(4-m)x' zamiast samego 'mx') - to wymaga "
             "rozwiniecia kwadratu dwumianu przed policzeniem delty i "
             "REALNIE prowadzi do blednego klucza znacznie czesciej niz "
-            "gоly parametr (potwierdzone realnym testem generacji)."
+            "gоly parametr (potwierdzone realnym testem generacji). "
+            "KRYTYCZNY, REALNIE ZAOBSERWOWANY BLAD przy postaci "
+            "x^2+mx+C=0 (goly parametr JAKO wspolczynnik przy x, C = "
+            "liczba): Delta = m^2 - 4*C, NIE m^2 - C - NIE ZGUB "
+            "CZYNNIKA 4 przed C. Warunek Delta>0 to m^2>4C, czyli "
+            "m<-2*sqrt(C) lub m>2*sqrt(C) (NIE m<-sqrt(C) lub "
+            "m>sqrt(C) - to jest realnie zaobserwowany blad: gubienie "
+            "mnoznika 2 przy pierwiastkowaniu obu stron m^2>4C). "
+            "Sprawdz na konkretnym przykladzie: x^2+mx+16=0 -> "
+            "Delta=m^2-64>0 -> m<-8 lub m>8 (NIE m<-4 lub m>4)."
         ),
         "przyklad": "Dla jakich wartości parametru m równanie x²+mx+3=0 ma dwa różne pierwiastki?",
     },
