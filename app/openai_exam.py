@@ -16,6 +16,7 @@ from .math_verify import (
 )
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
+import asyncio
 import json
 import time
 import re as _re_sanitize
@@ -716,7 +717,7 @@ WAŻNE:
 
 async def _raw_generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
-    num_questions: int, difficulty: str, wlasne_instrukcje: str
+    num_questions: int, difficulty: str, wlasne_instrukcje: str, diversity_hint: str = ""
 ) -> Dict:
     """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
     generate_quiz_from_topic - zbudowanie prompta, wywolanie modelu i
@@ -806,6 +807,7 @@ PARAMETRY:
 - Trudność: {trudnosc_opis}
 {difficulty_anchor_blok}
 {instrukcje_blok}
+{diversity_hint}
 {temat_instrukcja}
 SPOJNOSC TRUDNOSCI: wszystkie pytania w quizie musza byc na TYM SAMYM poziomie
 trudnosci - NIE mieszaj jednego trudnego pytania z parametrem/dowodem z drugim
@@ -951,6 +953,96 @@ ZASADY:
     return quiz_data
 
 
+# NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - znany problem
+# czasowy dla duzych partii): JEDNO wywolanie AI proszace o ~26 pytan
+# naraz (typowy bufor dla n=20) trwalo w praktyce 35-45s SAMO W SOBIE -
+# zjadalo to niemal caly globalny budzet 30s (_verify_and_fill_quiz_math),
+# zanim petla dogenerowania zdazyla wykonac choc jedna runde. Zmierzone
+# tempo generowania jest w przyblizeniu LINIOWE wzgledem liczby pytan
+# (~1.5-2s/pytanie, niezaleznie od tematu) - NIE ma sensu podnosic
+# limitu czasowego (user: nie podnosic slepo limitow), tylko skrocic
+# CZAS ZEGAROWY samego wywolania. Rozwiazanie: zamiast JEDNEGO
+# sekwencyjnego wywolania na `total_n` pytan, dzielimy na kilka
+# MNIEJSZYCH wywolan i odpalamy je ROWNOLEGLE (asyncio.gather) - laczna
+# liczba zamawianych pytan (i tokenow wyjsciowych/kosztu) jest
+# IDENTYCZNA, ale czas zegarowy spada do czasu NAJWOLNIEJSZEGO
+# pojedynczego wywolania zamiast sumy wszystkich.
+def _parallel_batch_sizes(total: int, target_chunk: int = 13, max_chunks: int = 3) -> list:
+    """Dzieli `total` na az `max_chunks` w przyblizeniu rownych czesci,
+    kazda okolo `target_chunk` pytan. Zwraca [total] bez zmian (brak
+    podzialu), jesli `total` juz miesci sie w jednym docelowym batchu -
+    male partie i typowe rundy dogenerowania (missing < target_chunk)
+    zachowuja sie DOKLADNIE jak przed ta zmiana, jeden request."""
+    if total <= target_chunk:
+        return [total]
+    n_chunks = min(max_chunks, -(-total // target_chunk))  # ceil division
+    base, remainder = divmod(total, n_chunks)
+    return [base + (1 if i < remainder else 0) for i in range(n_chunks)]
+
+
+_CHUNK_LETTER_POOLS = ["a, b, c, d, e, f, g, h", "i, j, k, l, m, n, o, p", "q, r, s, t, u, w, z"]
+
+
+def _chunk_diversity_hint(chunk_index: int, n_chunks: int) -> str:
+    """NAPRAWIONE (znaleziony PRZY WDRAZANIU rownoleglego generowania,
+    sierpien 2026): pierwsza wersja rownoleglych wywolan (bez tej
+    funkcji) NIE mowila kazdemu wywolaniu, ze jest jednym z kilku
+    ROWNOLEGLYCH, NIEZALEZNYCH wywolan na TEN SAM temat/trudnosc - w
+    realnym tescie (n=20, rownania kwadratowe, medium, 2 rownolegle
+    wywolania po 13) dalo to 17/34 DUPLIKATOW (obie partie "zgodnie"
+    wybraly niemal te same, "typowe" przyklady), co wymusilo dodatkowa
+    runde dogenerowania i skasowalo caly zysk czasowy z rownoleglosci.
+    Kazdy fragment dostaje WLASNA, ROZLACZNA pule liter parametrow i
+    zakres stalych liczbowych - naturalnie zmniejsza to
+    prawdopodobienstwo kolizji miedzy rownoleglymi partiami, bez
+    zadnej zmiany w weryfikacji/dedup/limitach czasowych."""
+    if n_chunks <= 1:
+        return ""
+    pool = _CHUNK_LETTER_POOLS[chunk_index % len(_CHUNK_LETTER_POOLS)]
+    lo = 2 + chunk_index * 15
+    hi = lo + 20
+    return (
+        f"\nROZNORODNOSC MIEDZY ROWNOLEGLYMI PARTIAMI (KRYTYCZNE): to jest "
+        f"czesc {chunk_index + 1} z {n_chunks} ROWNOLEGLYCH, NIEZALEZNYCH partii "
+        f"tego samego zamowienia, wygenerowanych OSOBNO - zeby uniknac "
+        f"duplikatow miedzy partiami, w TEJ partii uzywaj TYLKO liter "
+        f"parametrow z tej puli: {pool}, oraz stalych liczbowych "
+        f"(wspolczynniki, wyrazy wolne) w przyblizeniu z zakresu {lo}-{hi}.\n"
+    )
+
+
+async def _raw_generate_quiz_topic_batch(
+    topic: str, effective_topic_is_forced: bool, subject: str, level: str,
+    total_n: int, difficulty: str, wlasne_instrukcje: str
+) -> Dict:
+    """Jak _raw_generate_quiz_topic_once, ale dla wiekszych `total_n`
+    dzieli zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (patrz
+    _parallel_batch_sizes i komentarz wyzej) zamiast jednego, dlugiego.
+    Dla malych `total_n` (<= target_chunk) zachowanie jest DOKLADNIE
+    identyczne jak bezposrednie wywolanie _raw_generate_quiz_topic_once
+    (jeden request, bez zadnej zmiany). Zwraca dodatkowy, prywatny klucz
+    "_api_request_count" (ile faktycznych wywolan AI wykonano) - czytany
+    przez callerow do dokladnych metryk (patrz uzycie nizej)."""
+    sizes = _parallel_batch_sizes(total_n)
+    if len(sizes) == 1:
+        return await _raw_generate_quiz_topic_once(
+            topic, effective_topic_is_forced, subject, level, sizes[0], difficulty, wlasne_instrukcje
+        )
+    print(f"[MathVerify] rownolegle generowanie: {total_n} pytan podzielone na {len(sizes)} wywolan {sizes}")
+    results = await asyncio.gather(*[
+        _raw_generate_quiz_topic_once(
+            topic, effective_topic_is_forced, subject, level, size, difficulty, wlasne_instrukcje,
+            diversity_hint=_chunk_diversity_hint(i, len(sizes)),
+        )
+        for i, size in enumerate(sizes)
+    ])
+    merged_questions = []
+    for r in results:
+        merged_questions.extend(r.get("questions", []))
+    title = next((r.get("title") for r in results if r.get("title")), f"{topic} - Quiz")
+    return {"title": title, "questions": merged_questions, "_api_request_count": len(sizes)}
+
+
 async def _generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str
@@ -979,10 +1071,10 @@ async def _generate_quiz_topic_once(
     metrics = GenerationMetrics(requested_count=num_questions, batch_size=batch_size)
     try:
         with _Timer(metrics, "generation_time"):
-            quiz_data = await _raw_generate_quiz_topic_once(
+            quiz_data = await _raw_generate_quiz_topic_batch(
                 topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
             )
-        metrics.api_request_count += 1
+        metrics.api_request_count += quiz_data.pop("_api_request_count", 1)
         metrics.generated_count += len(quiz_data.get("questions", []))
     except Exception:
         metrics.record_rejection("json_crash")
@@ -991,7 +1083,7 @@ async def _generate_quiz_topic_once(
         raise
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions,
-        lambda n: _raw_generate_quiz_topic_once(
+        lambda n: _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
         ),
         t_start=t_start, difficulty=difficulty, metrics=metrics, level=level,
@@ -1086,7 +1178,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         try:
             with _Timer(metrics, "generation_time"):
                 extra_data = await regenerate(missing)
-            metrics.api_request_count += 1
+            metrics.api_request_count += extra_data.pop("_api_request_count", 1)
             metrics.generated_count += len(extra_data.get("questions", []))
         except Exception as e:
             print(f"[MathVerify] blad dogenerowania: {e}")
