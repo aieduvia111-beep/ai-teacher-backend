@@ -13,6 +13,7 @@ from .math_verify import (
     verify_and_fix_math_question, force_correct_from_final_answer,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
+    is_too_similar_diversity_tag,
 )
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
@@ -1233,7 +1234,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     if metrics is None:
         metrics = GenerationMetrics(requested_count=requested_count)
     seen_fingerprints = set()
-    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level)
+    seen_diversity_tags = []
+    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags)
     max_rounds = 10
     max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
@@ -1258,7 +1260,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             print(f"[MathVerify] blad dogenerowania: {e}")
             metrics.record_rejection("json_crash")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level)
+        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1305,7 +1307,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None) -> dict:
+def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -1466,6 +1468,34 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             seen_fingerprints.add(fp)
             deduped.append(q)
         kept = deduped
+
+    # UNIVERSAL DIVERSITY ENGINE (Krok 3) - wyzszy poziom abstrakcji niz
+    # dedup wyzej: dedup lapie IDENTYCZNY tekst (rozne liczby/litery to
+    # legalna, rozna wersja - patrz jego docstring), to sprawdza, czy
+    # dwa pytania maja TEN SAM SCHEMAT/TYP ROZUMOWANIA (np. "10 pytan o
+    # rownaniach kwadratowych, wszystkie ten sam podwzorzec, tylko z
+    # innymi literami parametru" - zgloszony problem, ktorego zwykly
+    # dedup NIE lapie z definicji). AI samo opisuje kazde pytanie
+    # 4-polowym tagiem "diversity_tag" (patrz prompt w
+    # _raw_generate_quiz_topic_once) - is_too_similar_diversity_tag
+    # porownuje go (Jaccard na znormalizowanych tokenach) z KAZDYM juz
+    # zaakceptowanym tagiem w TEJ SAME partii. Dziala dla KAZDEGO tematu
+    # bez zadnej konfiguracji per przedmiot - brak tagu (stary format,
+    # blad AI) -> nie da sie ocenic -> nie blokujemy (bezpieczny
+    # abstain, ta sama filozofia co reszta modulu).
+    if seen_diversity_tags is not None:
+        diverse = []
+        for q in kept:
+            too_similar, tokens = is_too_similar_diversity_tag(q.get("diversity_tag"), seen_diversity_tags)
+            if too_similar:
+                print(f"[MathVerify][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego pytania: '{q.get('question', '')[:60]}...' tag={q.get('diversity_tag')}")
+                if metrics:
+                    metrics.record_rejection("diversity_too_similar")
+                continue
+            if tokens:
+                seen_diversity_tags.append(tokens)
+            diverse.append(q)
+        kept = diverse
 
     # LOSOWANIE POZYCJI POPRAWNEJ ODPOWIEDZI - PO wszystkich warstwach
     # weryfikacji (1/2/3), zeby `correct` uzyte tutaj bylo juz OSTATECZNE
