@@ -68,8 +68,12 @@ print("=== Adaptacyjny oversampling: Sprawdzian (_buffered_question_count) ===")
 r = _buffered_question_count(10, temat="Matematyka: Równania kwadratowe", trudnosc="trudna")
 check("trudna + rownania kwadratowe (z prefiksem przedmiotu) -> +60% (10+6=16)", r == 16, r)
 
+# NAPRAWIONE (audyt Sprawdzian V1, sierpien 2026 - port fixu z Quizu):
+# srednia+parametr (rownania kwadratowe) dostal ten sam +50% bufor co w
+# Quizie (patrz test_etap3.py analogiczny fixture dla Quizu) - CELOWA,
+# swiadoma zmiana, nie regresja.
 r = _buffered_question_count(10, temat="Matematyka: Równania kwadratowe", trudnosc="srednia")
-check("srednia + rownania kwadratowe -> dotychczasowe +30% (10+3=13)", r == 13, r)
+check("srednia + rownania kwadratowe -> podniesiony bufor +50% (10+5=15)", r == 15, r)
 
 r = _buffered_question_count(10, temat="Fizyka: Dynamika", trudnosc="trudna")
 check("trudna + INNY temat -> dotychczasowe +30% (13)", r == 13, r)

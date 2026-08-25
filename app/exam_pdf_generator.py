@@ -4,7 +4,8 @@ Generuje profesjonalne sprawdziany PDF z GPT-4o
 Na tym samym poziomie co generator notatek.
 """
 
-import io, re, json, os, tempfile, datetime, time
+import io, re, json, os, tempfile, datetime, time, random
+import concurrent.futures as _cf
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib as _mpl
@@ -34,7 +35,9 @@ from .math_verify import (
     verify_and_fix_math_question, match_final_answer_index,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
+    is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
 )
+from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes
 from .difficulty import DifficultyAnalyzer
 
 # ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
@@ -195,6 +198,21 @@ poprawna odpowiedzia. NIE parafrazuj, NIE skracaj. System automatycznie
 sprawdza to pole i ODRZUCA zadanie, jesli "final_answer" nie jest
 identyczny z zadna opcja - wiec musi dokladnie pasowac.
 
+POLE "diversity_tag" (Czesc A) - NOWE, OBOWIAZKOWE (pomaga systemowi
+pilnowac roznorodnosci w sprawdzianie): dla KAZDEGO zadania zamknietego
+podaj obiekt z 4 KROTKIMI (kilka slow, NIE zdaniami) polami opisujacymi
+WLASNYMI slowami typ rozumowania w TYM zadaniu:
+  "skill" - glowna umiejetnosc/wzor uzyty (np. "wzor na delte", "wzory Viete'a", "twierdzenie sinusow")
+  "concept" - kluczowe pojecie/wariant (np. "parametr jako wspolczynnik liniowy", "parametr jako wyraz wolny")
+  "task_type" - co dokladnie trzeba zrobic (np. "wyznacz parametr z warunku na delte", "oblicz wartosc wyrazenia")
+  "reasoning" - krotki opis krokow (np. "oblicz delte, rozwiaz nierownosc, zapisz przedzial")
+KRYTYCZNE: jesli generujesz WIELE zadan tego samego tematu, CELOWO
+ROZNICUJ te 4 pola miedzy zadaniami - to jest sygnal dla systemu, ktory
+pilnuje, zeby sprawdzian nie skladal sie z wielu zadan o tym samym
+schemacie (tylko z innymi liczbami/literami). Jesli dwa zadania maja
+NAPRAWDE ten sam typ rozumowania - ich tagi tez powinny to szczerze
+odzwierciedlac.
+
 GRAMATYKA - KRYTYCZNE (czesty blad): gdy odpowiedzia jest ZBIOR/
 PRZEDZIAL/NIEROWNOSC (nie jedna liczba), pytanie o parametr MUSI byc w
 LICZBIE MNOGIEJ: "Dla jakich wartości parametru {{x}}..." - NIGDY "Dla
@@ -252,7 +270,12 @@ ZASADY:
           "odpowiedz": "b",
           "final_answer": "...(doslowna kopia tresci opcji b, BEZ prefiksu 'b) ')",
           "punkty": 1,
-          "wyjasnienie": "Krotkie wyjasnienie dlaczego b jest poprawne."
+          "wyjasnienie": "Krotkie wyjasnienie dlaczego b jest poprawne.",
+          "diversity_tag": {{
+            "skill": "wzor na delte", "concept": "parametr jako wyraz wolny",
+            "task_type": "wyznacz parametr z warunku na delte",
+            "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+          }}
         }}
       ]
     }},
@@ -286,6 +309,7 @@ ZASADY:
 - punkty lacznie: 25-35 pkt
 - trudnosc rosnaca w obrebie kazdej sekcji
 - final_answer (zadania zamkniete) = doslowna kopia tresci poprawnej opcji, BEZ prefiksu "a) " (patrz wyzej)
+- diversity_tag (zadania zamkniete) = 4 krotkie pola opisujace typ rozumowania (patrz wyzej) - ROZNE dla roznych zadan
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
 
 _MATH_INDICATOR_RE = re.compile(r'[\d\\=+\-*/^<>_{}]')
@@ -342,6 +366,34 @@ def _fix_latex(tekst: str) -> str:
         tekst = tekst.replace('$' + cmd + '{', '$\\' + cmd + '{')
         tekst = tekst.replace('\n' + cmd + '{', '\n\\' + cmd + '{')
     return tekst
+
+
+def _merge_exam_data_chunks(chunks: list) -> dict:
+    """Laczy wyniki kilku ROWNOLEGLYCH wywolan _get_exam_data_raw w
+    jeden dokument (patrz _get_exam_data_raw_parallel) - laczy pytania
+    PER TYP sekcji (zamkniete/otwarte osobno, nie mieszane), metadane
+    (tytul/przedmiot/klasa/czas/...) biora sie z pierwszego niepustego
+    wyniku. Numeracja "nr" jest i tak przeliczana pozniej (patrz
+    _fill_missing_exam_questions), wiec tutaj nie ma znaczenia."""
+    chunks = [c for c in chunks if c and c.get("sekcje")]
+    if not chunks:
+        return {}
+    if len(chunks) == 1:
+        return chunks[0]
+    merged = dict(chunks[0])
+    sekcje_by_typ = {}
+    order = []
+    for chunk in chunks:
+        for sekcja in chunk.get("sekcje", []):
+            typ = sekcja.get("typ")
+            if typ not in sekcje_by_typ:
+                sekcje_by_typ[typ] = dict(sekcja)
+                sekcje_by_typ[typ]["pytania"] = list(sekcja.get("pytania", []))
+                order.append(typ)
+            else:
+                sekcje_by_typ[typ]["pytania"].extend(sekcja.get("pytania", []))
+    merged["sekcje"] = [sekcje_by_typ[t] for t in order]
+    return merged
 
 
 def _fix_latex_in_exam_data(data: dict) -> dict:
@@ -927,18 +979,29 @@ def _build_exam_pages(data: dict) -> bytes:
 # co w openai_exam.py _buffered_count (patrz komentarz tam).
 _HARD_DIFFICULTY_WORDS = {"trudny", "trudna"}
 
+# PORT z Quizu (audyt Sprawdzian V1, sierpien 2026 - user zglosil 13
+# zamowionych, 8 dostarczonych): rownania kwadratowe z golym parametrem
+# na "medium" maja potwierdzony (w Quizie) wyzszy niz przecietny
+# rejection rate (sympy_mismatch - normalna zmiennosc trafnosci AI dla
+# tego konkretnego podwzorca) - ten sam +50% bufor co w openai_exam.py.
+_MEDIUM_DIFFICULTY_WORDS = {"srednia", "sredni", "średnia", "średni"}
+
 
 def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) -> int:
     """Ile zadan zamowic za pierwszym razem, zeby po odrzuceniu blednych
     (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
-    rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "trudna"
-    rownan kwadratowych z parametrem."""
-    is_hard_quadratic = (
-        temat is not None
-        and (trudnosc or "").strip().lower() in _HARD_DIFFICULTY_WORDS
-        and is_quadratic_equation_topic(temat)
-    )
-    numerator = 6 if is_hard_quadratic else 3
+    rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "trudna",
+    +50% dla "srednia" rownan kwadratowych z parametrem (port z Quizu)."""
+    is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
+    trudnosc_word = (trudnosc or "").strip().lower()
+    is_hard_quadratic = is_quadratic and trudnosc_word in _HARD_DIFFICULTY_WORDS
+    is_medium_quadratic = is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS
+    if is_hard_quadratic:
+        numerator = 6
+    elif is_medium_quadratic:
+        numerator = 5
+    else:
+        numerator = 3
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
@@ -947,6 +1010,41 @@ def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) ->
 # praktyce ~0% szans na przejscie weryfikacji dla tematow typu "rownania
 # kwadratowe z parametrem", podczas gdy wieksza partia miala ~50%.
 _MIN_FILL_BATCH_EXAM = 4
+
+# PORT z Quizu (swiadoma, udokumentowana decyzja usera po pelnej analizie
+# w Quizie tego samego dnia - NIE ciche/globalne podniesienie limitu):
+# rownania kwadratowe z parametrem na medium maja potwierdzony realnymi
+# testami wysoki i uporczywy wskaznik odrzucen - nawet po zwiekszonym
+# buforze (+50%) pojedyncza partia czasem potrzebuje jednej dodatkowej
+# rundy dogenerowania, ktora nie miesci sie w standardowych 30s. Dla TEGO
+# JEDNEGO, znanego przypadku budzet jest JAWNIE 45s - wszystko inne
+# zostaje przy dotychczasowych 30s.
+_EXTENDED_TIMEOUT_SECONDS_EXAM = 45.0
+_DEFAULT_TIMEOUT_SECONDS_EXAM = 30.0
+
+
+def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' - PORT z Quizu
+    (_is_medium_linear_param_quadratic w openai_exam.py), ten sam warunek
+    co _buffered_question_count/_max_generation_seconds_exam dla tego
+    samego przypadku. Uzywana TYLKO w rundach dogenerowania - pierwsza
+    partia zostaje wolna generacja (naturalny mix podwzorcow, dobry dla
+    roznorodnosci)."""
+    is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS
+
+
+def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
+    """Zwraca globalny budzet czasu (sekundy) dla calego procesu
+    generowania+weryfikacji+dogenerowania sprawdzianu. 45s TYLKO dla
+    rownan kwadratowych z parametrem na medium - 30s dla wszystkiego
+    innego, bez zmian (identyczny warunek co _buffered_question_count)."""
+    is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
+    trudnosc_word = (trudnosc or "").strip().lower()
+    if is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS:
+        return _EXTENDED_TIMEOUT_SECONDS_EXAM
+    return _DEFAULT_TIMEOUT_SECONDS_EXAM
 
 _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
@@ -964,7 +1062,7 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None) -> dict:
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -1116,6 +1214,34 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 deduped.append(pyt)
             kept = deduped
 
+        # UNIVERSAL DIVERSITY ENGINE (PORT z Quizu, audyt Sprawdzian V1,
+        # sierpien 2026) - identyczny mechanizm co openai_exam.py
+        # _verify_and_fix_quiz_math (patrz tam pelne uzasadnienie): wyzszy
+        # poziom abstrakcji niz dedup wyzej - dedup lapie IDENTYCZNY
+        # tekst, to sprawdza, czy dwa zadania maja TEN SAM SCHEMAT/TYP
+        # ROZUMOWANIA (AI samo opisuje kazde zadanie 4-polowym tagiem
+        # "diversity_tag" w promptcie). Zadania oznaczone prywatnym
+        # kluczem "_safe_generated" (patrz Safe Parameter Generation
+        # nizej) sa WYLACZONE z tej kontroli - celowo generujemy tam
+        # wiele zadan tego samego podwzorca, zeby niezawodnie osiagnac
+        # N==N dla najtrudniejszego przypadku.
+        if seen_diversity_tags is not None:
+            diverse = []
+            for pyt in kept:
+                if pyt.pop("_safe_generated", False):
+                    diverse.append(pyt)
+                    continue
+                too_similar, tokens = is_too_similar_diversity_tag(pyt.get("diversity_tag"), seen_diversity_tags)
+                if too_similar:
+                    print(f"[MathVerify][Exam][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego zadania: '{pyt.get('tresc', '')[:60]}...' tag={pyt.get('diversity_tag')}")
+                    if metrics:
+                        metrics.record_rejection("diversity_too_similar")
+                    continue
+                if tokens:
+                    seen_diversity_tags.append(tokens)
+                diverse.append(pyt)
+            kept = diverse
+
         # LOSOWANIE POZYCJI POPRAWNEJ ODPOWIEDZI - PO wszystkich warstwach
         # weryfikacji (1/2/3), identycznie jak w Quizie (patrz
         # openai_exam._verify_and_fix_quiz_math). relabel_prefix=True, bo
@@ -1158,45 +1284,46 @@ class ExamGenerator:
         self.client = OpenAI(api_key=openai_api_key)
 
     def _fix_json(self, raw: str) -> str:
-        """Naprawia JSON z GPT — backslashe, literalne newliny."""
+        """Naprawia JSON z GPT — backslashe, literalne newliny.
+
+        NAPRAWIONE (audyt Sprawdzian V1, sierpien 2026): ta metoda miala
+        WLASNA, zduplikowana kopie DOKLADNIE tego samego algorytmu co
+        sanitize_latex_json_backslashes w openai_exam.py (Quiz) - ta sama
+        dwuetapowa logika (regex per-komenda + skan znak-po-znaku), ale
+        z KROTSZA, nieaktualna lista chronionych komend (brak np.
+        "textbackslash", "mathbb", "underbrace" - dokladnie ta sama luka,
+        ktora zostala znaleziona i naprawiona w Quizie tego samego dnia -
+        patrz komentarz w openai_exam.py _LATEX_CMDS_AT_RISK). Zamiast
+        utrzymywac DWIE, rozjezdzajace sie kopie tej samej logiki,
+        wolamy TERAZ bezposrednio wspoldzielona, w pelni zaktualizowana
+        funkcje - jedno miejsce prawdy dla obu (Quiz i Sprawdzian)."""
         raw = re.sub(r'^```json\s*', '', raw, flags=re.MULTILINE)
         raw = re.sub(r'^```\s*', '', raw, flags=re.MULTILINE)
         raw = re.sub(r'\s*```$', '', raw, flags=re.MULTILINE)
         raw = raw.strip()
-
-        # KLUCZOWE: napraw komendy LaTeX które JSON traktuje jako escape sequence
-        # \frac -> \\frac, \sqrt -> \\sqrt itd. (tylko gdy pojedynczy backslash)
-        latex_cmds = ['frac', 'sqrt', 'cdot', 'times', 'div', 'sum', 'int',
-                      'left', 'right', 'alpha', 'beta', 'gamma', 'delta',
-                      'pi', 'theta', 'infty', 'leq', 'geq', 'neq', 'approx',
-                      'pm', 'text', 'mathrm', 'overline', 'over', 'vec',
-                      'hat', 'bar', 'dot', 'quad', 'qquad', 'ldots']
-        for cmd in latex_cmds:
-            # Zamień pojedynczy \cmd na \\cmd (unikaj podwójnego podwojenia).
-            # UWAGA: \b (word boundary) NIE dziala miedzy litera a cyfra (np. "4\times1"),
-            # bo obie strony sa \w - dlatego uzywamy negative lookahead zamiast \b.
-            raw = re.sub(r'(?<!\\)\\' + cmd + r'(?![a-zA-Z])', r'\\\\' + cmd, raw)
-
-        # Napraw backslashe LaTeX — pozostałe
-        B = chr(92)
-        result, i, in_str = [], 0, False
-        while i < len(raw):
-            c = raw[i]
-            if not in_str:
-                if c == '"': in_str = True
-                result.append(c); i += 1; continue
-            if c == '"': in_str = False; result.append(c); i += 1; continue
-            if c == B:
-                nc = raw[i+1] if i+1 < len(raw) else ''
-                if nc in (B, '"', 'n', 'r', 't', 'b', 'f', 'u'):
-                    result.append(c); result.append(nc); i += 2
-                else:
-                    result.append(B); result.append(B); i += 1
-            elif c == '\n': result.append('\\n'); i += 1
-            elif c == '\t': result.append('\\t'); i += 1
-            elif c == '\r': i += 1
-            else: result.append(c); i += 1
-        return ''.join(result)
+        # ZACHOWANE z oryginalnej wersji (NIE robi tego
+        # sanitize_latex_json_backslashes - tam niepotrzebne, bo Quiz
+        # uzywa response_format=json_object, ktory GWARANTUJE poprawny
+        # JSON): to wywolanie AI (ponizej) NIE uzywa json_object mode,
+        # wiec GPT czasem zwraca SUROWE znaki nowej linii/tabulacji
+        # wewnatrz wartosci stringow - to NIEPOPRAWNY JSON (json.loads
+        # odrzuca surowe znaki kontrolne w stringach). Escapujemy je
+        # PRZED wspoldzielonym sanitizerem ponizej.
+        result, in_str = [], False
+        for c in raw:
+            if c == '"':
+                in_str = not in_str
+                result.append(c)
+            elif in_str and c == '\n':
+                result.append('\\n')
+            elif in_str and c == '\t':
+                result.append('\\t')
+            elif in_str and c == '\r':
+                continue
+            else:
+                result.append(c)
+        raw = ''.join(result)
+        return sanitize_latex_json_backslashes(raw)
 
     def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) - wydzielone
@@ -1321,6 +1448,147 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
         return {}
 
+    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None) -> dict:
+        """Jak _get_exam_data_raw, ale dla wiekszych `total_n` dzieli
+        zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (PORT z
+        Quizu - _raw_generate_quiz_topic_batch w openai_exam.py, ta sama
+        _parallel_batch_sizes). ExamGenerator jest SYNCHRONICZNY
+        (self.client = OpenAI(...), nie AsyncOpenAI) - rownoleglosc idzie
+        wiec przez ThreadPoolExecutor (prawdziwa rownoleglosc siecowa dla
+        I/O-bound wywolan, ten sam efekt co asyncio.gather w Quizie,
+        inny mechanizm dopasowany do synchronicznej architektury tej
+        klasy). Dla malych `total_n` (<= target_chunk) zachowanie jest
+        DOKLADNIE identyczne jak bezposrednie wywolanie
+        _get_exam_data_raw (jeden request, bez zadnej zmiany)."""
+        sizes = _parallel_batch_sizes(total_n)
+        if len(sizes) == 1:
+            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot)
+        print(f"[MathVerify][Exam] rownolegle generowanie: {total_n} zadan podzielone na {len(sizes)} wywolan {sizes}")
+        with _cf.ThreadPoolExecutor(max_workers=len(sizes)) as ex:
+            futures = [
+                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot)
+                for size in sizes
+            ]
+            results = [f.result() for f in futures]
+        return _merge_exam_data_chunks(results)
+
+    # SAFE PARAMETER GENERATION (PORT z Quizu, audyt Sprawdzian V1,
+    # sierpien 2026) - dla JEDNEGO, potwierdzonego (w Quizie) najtrudniejszego
+    # podwzorca (rownanie x^2+mx+C=0, parametr jako goly wspolczynnik
+    # liniowy, medium): odwrocenie kolejnosci wzgledem reszty systemu.
+    # KOD (nie AI) wybiera C jako kwadrat idealny (gwarantuje wymierna,
+    # calkowita granice 2*sqrt(C)) i liczy PRAWDZIWY warunek PRZEZ
+    # ISTNIEJACY build_safe_linear_param_quadratic (math_verify.py - ta
+    # sama funkcja co w Quizie, zero duplikacji logiki matematycznej). AI
+    # dostaje gotowy, JUZ POPRAWNY wynik - jej jedyne zadanie to jezykowe
+    # sformulowanie pytania + 3 blednych dystraktorow. Warstwa 2
+    # (_verify_and_fix_exam_math) NADAL robi koncowa weryfikacje jako
+    # dodatkowe zabezpieczenie - ten kod NIE omija Warstwy 2.
+    def _raw_generate_safe_linear_param_quadratic_batch(self, n: int, klasa: str = None) -> dict:
+        """Generuje `n` zadan zamknietych dla podwzorca x^2+mx+C=0
+        (parametr jako goly wspolczynnik liniowy) metoda 'safe parameter
+        generation' - zwraca dane w KSZTALCIE sprawdzianu (sekcje/
+        pytania/opcje z prefiksem litery/odpowiedz jako litera), zeby
+        pasowalo bez zmian do _fill_missing_exam_questions."""
+        # Bufor +3 (identyczny wzorzec co w Quizie) - pojedyncza, rzadka
+        # kolizja fingerprintu miedzy rundami nie kosztuje calej brakujacej
+        # partii. Litery bez powtorzen w obrebie partii (dla n<=10).
+        buffered_n = n + 3
+        letters_pool = list("mnpqrstkbc")
+        random.shuffle(letters_pool)
+        squares_pool = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+        skeletons = [
+            build_safe_linear_param_quadratic(
+                param_letter=letters_pool[i % len(letters_pool)],
+                c_value=random.choice(squares_pool),
+            )
+            for i in range(buffered_n)
+        ]
+        items_desc = "\n".join(
+            f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
+            f"POPRAWNY, JUZ OBLICZONY warunek na dwa rozne pierwiastki (NIE PRZELICZAJ, NIE ZMIENIAJ): "
+            f"{sk['correct_text']}"
+            for i, sk in enumerate(skeletons)
+        )
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
+poprawny warunek na DWA ROZNE PIERWIASTKI zostal JUZ OBLICZONY (przez
+niezalezny system matematyczny) - Twoje jedyne zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie.
+2. Wymyslic 3 SENSOWNE, ale MATEMATYCZNIE BLEDNE dystraktory (inne
+   liczby/znaki, realistyczne, ale niepoprawne) - NIE kopiuj poprawnej
+   wartosci do dystraktorow.
+3. Napisac krotkie wyjasnienie (1-2 zdania) odwolujace sie do wzoru na
+   delte.
+4. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie
+   frazy) - dla WSZYSTKICH tych zadan concept to zawsze "parametr jako
+   wspolczynnik liniowy" (to jest ten sam podwzorzec, celowo).
+
+KRYTYCZNE: NIE PRZELICZAJ podanego warunku od nowa i NIE ZMIENIAJ go w
+zadnym stopniu - jest juz zweryfikowany przez niezalezny system. Twoja
+rola to TYLKO jezyk i dystraktory, nie matematyka.
+
+{items_desc}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "Dla jakich wartości parametru m równanie $x^2 + mx + 16 = 0$ ma dwa różne pierwiastki?",
+                    "opcje": ["a) $m < -8$ lub $m > 8$", "b) $m < -4$ lub $m > 4$", "c) $m = 8$", "d) $m < 8$"],
+                    "odpowiedz": "a",
+                    "final_answer": "$m < -8$ lub $m > 8$",
+                    "punkty": 1,
+                    "wyjasnienie": "Delta rownania to $m^2-64$, warunek $\\Delta>0$ daje $m<-8$ lub $m>8$.",
+                    "diversity_tag": {{
+                        "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
+                        "task_type": "wyznacz parametr z warunku na delte",
+                        "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- "opcje" ZAWSZE z prefiksem litery ("a) ", "b) ", "c) ", "d) ")
+- "final_answer" MUSI byc DOSLOWNA kopia podanego poprawnego warunku, BEZ prefiksu litery
+- "odpowiedz" = litera (a/b/c/d) poprawnej opcji (dowolna pozycja, urozmaicaj)
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(8000, max(2500, 400 + len(skeletons) * 300)),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation: {e}")
+            return {}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -1335,7 +1603,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         batch_size = _buffered_question_count(liczba_pytan, temat=temat, trudnosc=trudnosc)
         metrics = GenerationMetrics(requested_count=liczba_pytan, batch_size=batch_size)
         with _Timer(metrics, "generation_time"):
-            data = self._get_exam_data_raw(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
+            # PORT z Quizu: dla wiekszych partii (batch_size > target_chunk)
+            # dzielimy na rownolegle wywolania AI (ThreadPoolExecutor, bo
+            # ExamGenerator.client jest SYNCHRONICZNY - w przeciwienstwie do
+            # AsyncOpenAI w Quizie) - skraca czas oczekiwania proporcjonalnie.
+            data = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
         metrics.api_request_count += 1
         metrics.generated_count += sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if not data.get('sekcje'):
@@ -1347,11 +1619,12 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         # wszystkie rundy dogenerowania) - patrz openai_exam.py rownowazny
         # mechanizm dla Quizu.
         seen_fingerprints = set()
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics)
+        seen_diversity_tags = []
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None):
         """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
         temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
@@ -1371,7 +1644,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         from .metrics import GenerationMetrics, _Timer
         if metrics is None:
             metrics = GenerationMetrics(requested_count=liczba_pytan)
-        max_seconds = 30.0
+        max_seconds = _max_generation_seconds_exam(temat, trudnosc)
         if t_start is None:
             t_start = time.monotonic()
         for round_i in range(1, max_rounds + 1):
@@ -1387,7 +1660,15 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             metrics.retry_count += 1
             try:
                 with _Timer(metrics, "generation_time"):
-                    extra = self._get_exam_data_raw(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+                    # PORT z Quizu: dla TEGO JEDNEGO, potwierdzonego trudnego
+                    # tematu/trudnosci, rundy dogenerowania uzywaja metody z
+                    # gotowym, poprawnym wynikiem zamiast kolejnej proby
+                    # wolnej generacji, ktora regularnie zawodzi wlasnie dla
+                    # tego przypadku (stad w ogole te rundy sa potrzebne).
+                    if _is_medium_linear_param_quadratic_exam(temat, trudnosc):
+                        extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa)
+                    else:
+                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
                 metrics.api_request_count += 1
                 metrics.generated_count += sum(len(s.get('pytania', [])) for s in (extra or {}).get('sekcje', []))
             except Exception as e:
@@ -1397,7 +1678,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             if not extra or not extra.get('sekcje'):
                 metrics.record_rejection("json_crash")
                 continue
-            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':
