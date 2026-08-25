@@ -964,7 +964,25 @@ async function fetchWariant(temat,numQ,wariant){
   const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':'https://eduvia-backend-2.onrender.com';
   const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
   clearTimeout(examTimeoutId);
-  if(!res.ok)throw new Error('Błąd serwera '+res.status);
+  if(!res.ok){
+    // NAPRAWIONE: wczesniej tresc bledu byla ignorowana dla KAZDEJ
+    // odpowiedzi !res.ok - rzucalismy zawsze goly 'Blad serwera '+status,
+    // wiec np. przy 429 (dzienny limit Sprawdzianow wyczerpany - patrz
+    // usage_limits.py LIMIT_MESSAGES) FastAPI zwraca w ciele JSON
+    // {"detail": "Wykorzystales juz dzisiejszy darmowy limit..."}, ale ten
+    // tekst nigdy nie byl czytany - user dostawal goly "Blad serwera 429",
+    // ktory nie pasuje do ZADNEGO z bardziej szczegolowych komunikatow
+    // nizej (m.in. sprawdzenia .includes('limit')) i pokazywal sie jako
+    // mylacy, ogolny komunikat "Ups! Cos poszlo nie tak" - mimo ze
+    // prawidlowy, konkretny komunikat o limicie JUZ ISTNIAL w kodzie,
+    // po prostu nigdy nie byl osiagalny. Teraz czytamy faktyczna tresc
+    // bledu z odpowiedzi (FastAPI HTTPException -> pole "detail"), jesli
+    // jest dostepna - dzieki temu istniejaca logika ponizej (m.in.
+    // .includes('limit')) poprawnie dopasowuje wlasciwy komunikat.
+    let _detail='';
+    try{ const _errBody=await res.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+    throw new Error(_detail||('Błąd serwera '+res.status));
+  }
   const ct=res.headers.get('content-type')||'';
   if(!ct.includes('application/pdf')&&!ct.includes('application/zip')){
     const d=await res.json();
