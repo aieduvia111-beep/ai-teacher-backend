@@ -1104,11 +1104,25 @@ async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = N
     wspolczynnik liniowy) metoda 'safe parameter generation' - patrz
     komentarz wyzej. Jedno wywolanie AI dla calej partii (n <= ok. 15
     w praktyce, bo to tylko dogenerowanie brakujacych, nie caly quiz)."""
-    combos = [(letter, c) for letter in "mnpqrstkbc" for c in [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]]
-    random.shuffle(combos)
+    # NAPRAWIONE (znalezione PRZY realnym tescie n=20 - dokladna analiza
+    # utraconego 1 pytania): oryginalna wersja losowala (litera, C) jako
+    # PLASKA kombinacja z 10x10=100 par, wiec dla n<=10 (typowy rozmiar
+    # rundy dogenerowania) LITERA mogla sie powtorzyc kilka razy w tej
+    # samej partii (sparowana z INNA stala C) - dawalo to kosmetyczne
+    # powtorzenia szkieletu tresci (litera jest jedynym elementem, ktory
+    # szkielet NIE normalizuje - liczby sa zastepowane placeholderem).
+    # Litery sa teraz losowane BEZ POWTORZEN w obrebie jednej partii
+    # (dla n > liczba dostepnych liter, dopiero wtedy zaczynaja sie
+    # cyklicznie powtarzac, sparowane za kazdym razem z INNA stala C).
+    letters_pool = list("mnpqrstkbc")
+    random.shuffle(letters_pool)
+    squares_pool = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
     skeletons = [
-        build_safe_linear_param_quadratic(param_letter=letter, c_value=c)
-        for letter, c in combos[:n]
+        build_safe_linear_param_quadratic(
+            param_letter=letters_pool[i % len(letters_pool)],
+            c_value=random.choice(squares_pool),
+        )
+        for i in range(n)
     ]
     items_desc = "\n".join(
         f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
