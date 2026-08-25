@@ -870,6 +870,22 @@ wzor ma miec WLASNA, osobna pare $...$.
 POPRAWNIE: "Liczymy deltę: $\\Delta = (m-3)^2 - 4m = m^2 - 10m + 9$. Warunek na dwa różne pierwiastki: $\\Delta > 0$, czyli $m^2 - 10m + 9 > 0$, co daje $m < 1$ lub $m > 9$."
 BLEDNIE: "Liczymy deltę:$ $\\Delta = ...$ $\\newline Warunek$ $\\Delta > 0$$. \\newline ..." (zlamane dolary, \\newline, dublowanie).
 
+POLE "diversity_tag" - NOWE, OBOWIAZKOWE (pomaga systemowi pilnowac
+roznorodnosci w quizie): dla KAZDEGO pytania podaj obiekt z 4 KROTKIMI
+(kilka slow, NIE zdaniami) polami opisujacymi WLASNYMI slowami typ
+rozumowania w TYM pytaniu:
+  "skill" - glowna umiejetnosc/wzor uzyty (np. "wzor na delte", "wzory Viete'a", "twierdzenie sinusow")
+  "concept" - kluczowe pojecie/wariant (np. "parametr jako wspolczynnik liniowy", "parametr jako wyraz wolny", "kat specjalny w radianach")
+  "task_type" - co dokladnie trzeba zrobic (np. "wyznacz parametr z warunku na delte", "oblicz wartosc wyrazenia", "rozwiaz rownanie")
+  "reasoning" - krotki opis krokow (np. "oblicz delte, rozwiaz nierownosc, zapisz przedzial")
+KRYTYCZNE: jesli w JEDNEJ partii generujesz WIELE pytan, CELOWO
+ROZNICUJ te 4 pola miedzy pytaniami tego samego tematu - to jest
+sygnal dla systemu, ktory pilnuje, zeby quiz nie skladal sie z 10
+pytan o tym samym schemacie (tylko z innymi liczbami/literami).
+Jesli dwa pytania maja NAPRAWDE ten sam typ rozumowania - ich tagi
+tez powinny to szczerze odzwierciedlac (nie oszukuj systemu sztucznie
+roznymi slowami dla identycznego zadania).
+
 FORMAT (TYLKO JSON):
 {{
     "title": "{topic} - Quiz",
@@ -880,7 +896,13 @@ FORMAT (TYLKO JSON):
             "options": ["$x = 2$", "$x = -2$", "$x = \\pm 2$", "$x = 4$"],
             "correct": 2,
             "final_answer": "$x = \\pm 2$",
-            "explanation": "Bo $x = \\pm 2$"
+            "explanation": "Bo $x = \\pm 2$",
+            "diversity_tag": {{
+                "skill": "pierwiastkowanie rownania kwadratowego czystego",
+                "concept": "rownanie postaci x^2=a",
+                "task_type": "rozwiaz rownanie",
+                "reasoning": "pierwiastkuj obie strony, uwzglednij znak plus-minus"
+            }}
         }}
     ]
 }}
@@ -889,6 +911,7 @@ ZASADY:
 - Pytania konkretne i merytoryczne
 - correct = indeks (0-3)
 - final_answer = doslowna kopia poprawnej opcji z "options" (patrz wyzej)
+- diversity_tag = 4 krotkie pola opisujace typ rozumowania (patrz wyzej) - ROZNE dla roznych pytan w tej samej partii
 - Po polsku
 - TYLKO JSON"""
 

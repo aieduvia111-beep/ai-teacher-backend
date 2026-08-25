@@ -2305,3 +2305,103 @@ def verify_and_fix_math_question(question_text: str, options: list):
         return {**result10, "explanation": None}
 
     return {"status": "unverifiable", "explanation": None}
+
+
+# ---------------------------------------------------------------
+# UNIVERSAL DIVERSITY ENGINE (Krok 1-2, sierpien 2026): zgloszony
+# problem "AI generuje 10 pytan tym samym schematem, tylko z innymi
+# literami/liczbami" - dzisiejszy dedup (_question_fingerprint w
+# openai_exam.py/exam_pdf_generator.py) CELOWO ignoruje rozne litery/
+# liczby (to legalna, rozna wersja tego samego typu zadania wg jego
+# wlasnej dokumentacji) - dziala WIEC na innym poziomie niz potrzeba
+# tutaj: wykrywanie tego samego SCHEMATU/TYPU ROZUMOWANIA, nie tej
+# samej tresci slowo-w-slowo.
+#
+# Zamiast recznie definiowac warianty per temat (V2/Skills odrzucone
+# przez usera), AI SAMO opisuje kazde pytanie 4-polowym tagiem
+# ("diversity_tag": skill/concept/task_type/reasoning - patrz prompt w
+# _raw_generate_quiz_topic_once). Krok 1 (real test, ten sam dzien)
+# potwierdzil: AI wypelnia to pole UCZCIWIE - partia 10 pytan "medium
+# rownania kwadratowe" dala 9 identycznych tagow (naprawde ten sam
+# schemat: "parametr jako wyraz wolny") i 1 realnie inny (parametr
+# jako wspolczynnik liniowy) - dokladnie odzwierciedlajac faktyczna
+# (nisk) roznorodnosc surowej generacji. To dziala dla KAZDEGO tematu
+# bez zadnej dodatkowej konfiguracji - AI opisuje WLASNYMI slowami, nie
+# wybiera z zaszytej w kodzie listy.
+#
+# Porownanie: Jaccard similarity na znormalizowanym zbiorze tokenow z
+# 4 pol tagu - w pelni generyczne, topic-agnostic, zero logiki
+# specyficznej dla przedmiotu/tematu.
+_DIVERSITY_STOPWORDS = frozenset({
+    "i", "w", "z", "dla", "na", "do", "o", "a", "za", "przy", "po", "od", "ze",
+    "jak", "jakie", "jaki", "jaka", "ktory", "ktora", "ktore", "to", "sie",
+    "tego", "tej", "tym", "ten", "ta",
+})
+_DIVERSITY_TAG_FIELDS = ("skill", "concept", "task_type", "reasoning")
+_DIVERSITY_NON_WORD_RE = re.compile(r'[^a-ząćęłńóśźż]+')
+
+
+def diversity_tag_tokens(tag) -> frozenset:
+    """Zamienia diversity_tag (dict z polami skill/concept/task_type/
+    reasoning, kazde krotka fraza wygenerowana przez AI) na
+    znormalizowany zbior tokenow do porownania Jaccarda. Brakujace pola
+    -> pusty string (nie crashuje). Zwraca PUSTY frozenset, jesli `tag`
+    nie jest dictem w ogole (np. AI pominelo pole, albo stary format
+    bez tego pola) - pusty zbior oznacza "nie da sie ocenic
+    roznorodnosci tego pytania", NIE "identyczne z czymkolwiek" (patrz
+    is_too_similar_diversity_tag nizej - pusty zbior nigdy nie blokuje,
+    bezpieczny abstain, ta sama filozofia co reszta tego modulu)."""
+    if not isinstance(tag, dict):
+        return frozenset()
+    text = " ".join(str(tag.get(k, "") or "") for k in _DIVERSITY_TAG_FIELDS).lower()
+    text = _DIVERSITY_NON_WORD_RE.sub(' ', text)
+    tokens = [t for t in text.split() if t and t not in _DIVERSITY_STOPWORDS]
+    return frozenset(tokens)
+
+
+def jaccard_similarity(a: frozenset, b: frozenset) -> float:
+    """Podobienstwo Jaccarda dwoch zbiorow tokenow: |przeciecie|/|suma|.
+    0.0 jesli KTORYKOLWIEK zbior jest pusty (nie da sie ocenic ->
+    "nie podobne", nigdy nie blokuje - patrz diversity_tag_tokens)."""
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / union if union else 0.0
+
+
+# Prog PRZELICZONY (nie zgadniety) na podstawie Kroku 1 (realne tagi,
+# patrz test_diversity_engine.py, Czesc 4) - pierwsza wersja tego progu
+# (0.6) byla ZGADNIETA bez faktycznego przeliczenia i okazala sie
+# BLEDNA: dwa NAPRAWDE rozne schematy ("parametr jako wspolczynnik
+# liniowy" vs "parametr jako wyraz wolny") dzielily az 0.733 Jaccard,
+# bo pola "skill"/"task_type"/"reasoning" sa czesto GENERYCZNYM
+# szkieletem proceduralnym wspolnym dla CALEJ rodziny zadan na warunek
+# delty ("oblicz delte, rozwiaz nierownosc, zapisz przedzial") -
+# roznicuje je NAPRAWDE tylko pole "concept". 9 IDENTYCZNYCH tagow
+# mialo Jaccard=1.0. Prog 0.85 lezy bezpiecznie w luce miedzy
+# zmierzonym "rozne" (0.733) a "identyczne" (1.0) - WCIAZ do dalszej
+# kalibracji w Kroku 4 na WIEKSZEJ realnej probce (ta jedna partia nie
+# pokazala jeszcze przypadku "ten sam schemat, inne slowa" - realny
+# test moze pokazac, ze potrzeba jeszcze wyzej, albo wagowania pol).
+DIVERSITY_SIMILARITY_THRESHOLD = 0.85
+
+
+def is_too_similar_diversity_tag(tag, seen_tag_tokens: list, threshold: float = DIVERSITY_SIMILARITY_THRESHOLD):
+    """Sprawdza, czy `tag` (diversity_tag jednego pytania) jest ZBYT
+    PODOBNY (Jaccard >= threshold) do KTOREGOKOLWIEK juz zaakceptowanego
+    tagu w tej samej partii (`seen_tag_tokens` - lista frozensetow,
+    analogiczny wzorzec do seen_fingerprints w openai_exam.py, ale
+    LISTA nie SET, bo porownanie jest rozmyte/Jaccard, nie exact-match).
+    Zwraca (is_too_similar: bool, tokens: frozenset) - `tokens` ma byc
+    dopisany do `seen_tag_tokens` przez callera, JESLI pytanie zostanie
+    finalnie zaakceptowane (ten sam wzorzec co _question_fingerprint).
+    Brakujacy/niepoprawny tag -> zawsze (False, pusty frozenset) - NIE
+    blokujemy pytania, ktorego roznorodnosci nie da sie ocenic."""
+    tokens = diversity_tag_tokens(tag)
+    if not tokens:
+        return False, tokens
+    for prior in seen_tag_tokens:
+        if jaccard_similarity(tokens, prior) >= threshold:
+            return True, tokens
+    return False, tokens
