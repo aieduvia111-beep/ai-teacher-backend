@@ -1114,6 +1114,18 @@ async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = N
     # Litery sa teraz losowane BEZ POWTORZEN w obrebie jednej partii
     # (dla n > liczba dostepnych liter, dopiero wtedy zaczynaja sie
     # cyklicznie powtarzac, sparowane za kazdym razem z INNA stala C).
+    #
+    # NAPRAWIONE (znalezione PRZY realnym tescie PO powyzszej naprawie -
+    # litery-bez-powtorzen NIE wystarczyly): utracone pytanie okazalo
+    # sie kolizja MIEDZY RUNDAMI - ta funkcja nie wie, jakich (litera, C)
+    # juz probowala runda 1 (wolna generacja) ani co Diversity Engine juz
+    # tam odrzucil - jej fingerprint i tak zostal "zuzyty" w
+    # seen_fingerprints. Zamiast przekazywac cały stan miedzy rundami
+    # (inwazyjna zmiana kontraktu regenerate() w calym potoku), stosujemy
+    # TEN SAM, juz istniejacy wzorzec co _buffered_count (Etap 3) -
+    # maly bufor nadmiarowy, zeby pojedyncza, rzadka kolizja nie
+    # kosztowala calej brakujacej partii.
+    buffered_n = n + 3
     letters_pool = list("mnpqrstkbc")
     random.shuffle(letters_pool)
     squares_pool = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
@@ -1122,7 +1134,7 @@ async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = N
             param_letter=letters_pool[i % len(letters_pool)],
             c_value=random.choice(squares_pool),
         )
-        for i in range(n)
+        for i in range(buffered_n)
     ]
     items_desc = "\n".join(
         f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
