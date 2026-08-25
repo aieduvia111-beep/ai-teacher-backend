@@ -317,11 +317,22 @@ async def respond_stream(data: dict, current_user: User = Depends(get_current_ap
     if not text:
         return {"error":"brak tekstu"}
     system = SYSTEM_PROMPT
-    ctx = []
-    if level: ctx.append(f"Poziom: {level}")
-    if subject: ctx.append(f"Przedmiot: {subject}")
-    if topic: ctx.append(f"Temat: {topic}")
-    if ctx: system += "\n\n" + ". ".join(ctx) + "."
+    # NAPRAWIONE (audyt Voice AI - kod czytany zamiast zgadywany):
+    # to jest JEDYNY faktycznie uzywany endpoint konwersacji glosowej
+    # (frontend woluje wylacznie /respond/stream, nigdy /respond) - ale
+    # wczesniej wstrzykiwal SUROWY klucz poziomu ("Poziom: liceum_2")
+    # zamiast wolac describe_level()/SUBJECT_SCOPE jak Quiz/Sprawdzian/
+    # Plan Nauki/Notatki. AI nie dostawalo ani opisu wieku, ani zakresu
+    # materialu, ani klauzuli trudnosci - dokladnie ten sam wzorzec bledu
+    # co znaleziony i naprawiony wczesniej w Quizie i Planie Nauki.
+    # Teraz uzywa DOKLADNIE tego samego wzorca co juz-poprawny (ale
+    # martwy) endpoint /respond powyzej.
+    if level and is_known_level(level):
+        system += "\n\nKRYTYCZNE: " + describe_level(level, subject=subject or None) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
+    if subject:
+        system += f"\nPrzedmiot: {subject}"
+    if topic:
+        system += f"\nTemat sesji: {topic}"
     if profile_context: system += "\n\n" + profile_context
     messages = [{"role":"system","content":system}]
     for msg in history[-12:]:
