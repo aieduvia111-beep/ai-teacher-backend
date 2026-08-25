@@ -448,6 +448,59 @@ def solve_discriminant_condition(A, B, C, param, kind):
     return base
 
 
+# ---------------------------------------------------------------
+# SAFE PARAMETER GENERATION (sierpien 2026) - dla JEDNEGO, potwierdzonego
+# realnymi testami najtrudniejszego podwzorca: rownanie x^2+mx+C=0,
+# parametr JAKO GOLY WSPOLCZYNNIK LINIOWY (nie w wyrazie wolnym, nie
+# wewnatrz wyrazenia - te dzialaja juz dobrze, NIE SA tu ruszane).
+#
+# Odwrocenie kolejnosci: zamiast prosic AI o wygenerowanie CALEGO
+# pytania (rownanie + policzenie warunku Delta>0 + opcje) i dopiero
+# POTEM sprawdzac czy AI policzylo poprawnie (co dawalo ~50% odrzucen
+# w realnych testach - AI systematycznie gubilo czynnik 4 albo
+# wybieralo C, dla ktorego prawdziwa granica jest niewymierna, np.
+# C=20 -> 2*sqrt(20), i tak zgadywalo "ladna" bledna liczbe), KOD
+# (nie AI) wybiera C ze zbioru KWADRATOW IDEALNYCH - gwarantuje to, ze
+# 2*sqrt(C) jest ZAWSZE liczba calkowita - i liczy PRAWDZIWY warunek
+# PRZEZ ISTNIEJACY solve_discriminant_condition (bez duplikowania
+# logiki). AI dostaje JUZ POPRAWNY wynik i ma TYLKO sformulowac
+# pytanie + wymyslic 3 bledne dystraktory - nie liczy juz samej
+# matematyki, wiec nie ma jak jej pomylic.
+_SAFE_PERFECT_SQUARES = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+_SAFE_PARAM_LETTERS = list("mnpqrstkbc")
+
+
+def build_safe_linear_param_quadratic(param_letter: str = None, c_value: int = None) -> dict:
+    """Buduje JEDEN bezpieczny (gwarantowanie poprawny) szkielet pytania
+    dla x^2 + {param}x + {C} = 0 (parametr jako goly wspolczynnik
+    liniowy). C dobierany z kwadratow idealnych, jesli nie podano -
+    gwarantuje wymierna (calkowita) granice 2*sqrt(C). Warunek liczony
+    PRZEZ solve_discriminant_condition (ten sam kod co Warstwa 2 dla
+    zwyklej weryfikacji - zero duplikacji logiki). Zwraca dict z
+    gotowym tekstem pytania, poprawnym tekstem odpowiedzi i surowym
+    sympy Set (do ewentualnej dalszej weryfikacji)."""
+    if c_value is None:
+        c_value = random.choice(_SAFE_PERFECT_SQUARES)
+    if param_letter is None:
+        param_letter = random.choice(_SAFE_PARAM_LETTERS)
+    param = Symbol(param_letter)
+    true_set = solve_discriminant_condition(S.One, param, sp.Integer(c_value), param, 'pos')
+    bound = int(2 * sp.sqrt(c_value))
+    correct_text = f"${param_letter} < -{bound}$ lub ${param_letter} > {bound}$"
+    question_text = (
+        f"Dla jakich wartości parametru {param_letter} równanie "
+        f"$x^2 + {param_letter}x + {c_value} = 0$ ma dwa różne pierwiastki?"
+    )
+    return {
+        "param_letter": param_letter,
+        "c_value": c_value,
+        "bound": bound,
+        "question": question_text,
+        "correct_text": correct_text,
+        "true_set": true_set,
+    }
+
+
 def _sets_equal(a, b) -> bool:
     try:
         diff1 = a - b

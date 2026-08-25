@@ -13,12 +13,13 @@ from .math_verify import (
     verify_and_fix_math_question, force_correct_from_final_answer,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
-    is_too_similar_diversity_tag,
+    is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
 )
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
 import asyncio
 import json
+import random
 import time
 import re as _re_sanitize
 
@@ -1082,6 +1083,115 @@ async def _raw_generate_quiz_topic_batch(
     return {"title": title, "questions": merged_questions, "_api_request_count": len(sizes)}
 
 
+# SAFE PARAMETER GENERATION (sierpien 2026) - dla JEDNEGO, potwierdzonego
+# realnymi testami najtrudniejszego podwzorca (rownanie x^2+mx+C=0,
+# parametr jako goly wspolczynnik liniowy, medium): ODWROCENIE
+# kolejnosci wzgledem reszty systemu. Wszedzie indziej AI generuje
+# CALE pytanie (rownanie + wynik + opcje) i DOPIERO POTEM sympy
+# sprawdza, czy AI policzylo poprawnie. Dla TEGO JEDNEGO podwzorca
+# realne testy pokazaly ~50% odrzucen (AI systematycznie gubilo
+# czynnik 4 w delcie albo losowalo C, dla ktorego prawdziwa granica
+# jest niewymierna) - wiec tutaj KOD (build_safe_linear_param_quadratic
+# w math_verify.py) wybiera C jako kwadrat idealny i liczy PRAWDZIWY
+# warunek PRZED wywolaniem AI. AI dostaje gotowy, JUZ POPRAWNY wynik i
+# ma TYLKO sformulowac pytanie jezykowo + wymyslic 3 bledne dystraktory
+# - Warstwa 2 (verify_and_fix_math_question) NADAL robi koncowa
+# weryfikacje jako dodatkowe zabezpieczenie (patrz wywolanie w
+# _verify_and_fix_quiz_math - ten kod NIE omija Warstwy 2, tylko
+# radykalnie zmniejsza szanse, ze cokolwiek trafi do niej bledne).
+async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = None) -> Dict:
+    """Generuje `n` pytan dla podwzorca x^2+mx+C=0 (parametr jako goly
+    wspolczynnik liniowy) metoda 'safe parameter generation' - patrz
+    komentarz wyzej. Jedno wywolanie AI dla calej partii (n <= ok. 15
+    w praktyce, bo to tylko dogenerowanie brakujacych, nie caly quiz)."""
+    combos = [(letter, c) for letter in "mnpqrstkbc" for c in [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]]
+    random.shuffle(combos)
+    skeletons = [
+        build_safe_linear_param_quadratic(param_letter=letter, c_value=c)
+        for letter, c in combos[:n]
+    ]
+    items_desc = "\n".join(
+        f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
+        f"POPRAWNY, JUZ OBLICZONY warunek na dwa rozne pierwiastki (NIE PRZELICZAJ, NIE ZMIENIAJ): "
+        f"{sk['correct_text']}"
+        for i, sk in enumerate(skeletons)
+    )
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
+poprawny warunek na DWA ROZNE PIERWIASTKI zostal JUZ OBLICZONY (przez
+niezalezny system matematyczny) - Twoje jedyne zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie.
+2. Wymyslic 3 SENSOWNE, ale MATEMATYCZNIE BLEDNE dystraktory (inne
+   liczby/znaki, realistyczne, ale niepoprawne) - NIE kopiuj poprawnej
+   wartosci do dystraktorow.
+3. Napisac krotkie wyjasnienie (1-2 zdania) odwolujace sie do wzoru na
+   delte.
+4. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie
+   frazy) - dla WSZYSTKICH tych pytan concept to zawsze "parametr jako
+   wspolczynnik liniowy" (to jest ten sam podwzorzec, celowo).
+
+KRYTYCZNE: NIE PRZELICZAJ podanego warunku od nowa i NIE ZMIENIAJ go w
+zadnym stopniu - jest juz zweryfikowany przez niezalezny system. Twoja
+rola to TYLKO jezyk i dystraktory, nie matematyka.
+
+{items_desc}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Rownania kwadratowe - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Dla jakich wartości parametru m równanie $x^2 + mx + 16 = 0$ ma dwa różne pierwiastki?",
+            "options": ["$m < -8$ lub $m > 8$", "$m < -4$ lub $m > 4$", "$m = 8$", "$m < 8$"],
+            "correct": 0,
+            "final_answer": "$m < -8$ lub $m > 8$",
+            "explanation": "Delta rownania to $m^2-64$, warunek $\\Delta>0$ daje $m<-8$ lub $m>8$.",
+            "diversity_tag": {{
+                "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
+                "task_type": "wyznacz parametr z warunku na delte",
+                "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- "final_answer" MUSI byc DOSLOWNA kopia podanego poprawnego warunku (patrz wyzej)
+- "correct" = indeks poprawnej opcji w "options" (dowolna pozycja, urozmaicaj)
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(8000, max(2000, 400 + len(skeletons) * 300)),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    quiz_data = json.loads(raw)
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    return quiz_data
+
+
+def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
+    kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
+    _max_generation_seconds dla tego podwzorca). Nie odrozniamy tu
+    jeszcze SUBWZORCA (parametr jako wspolczynnik liniowy vs wyraz
+    wolny) na poziomie promptu - oba wystepuja naturalnie w wolnej
+    generacji (dobre dla roznorodnosci), safe-generation jest UZYWANA
+    TYLKO w rundach dogenerowania (patrz _generate_quiz_topic_once),
+    gdzie zastepuje wolna generacje CALKOWICIE dla tych rund - to
+    swiadomy wybor: skoro te rundy istnieja WLASNIE dlatego, ze wolna
+    generacja regularnie zawodzi dla tego tematu/trudnosci, bezpieczna
+    metoda jest tam lepszym zakladem niz kolejna proba wolnej generacji."""
+    is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    return is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS
+
+
 async def _generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str
@@ -1120,11 +1230,23 @@ async def _generate_quiz_topic_once(
         metrics.total_time = time.monotonic() - t_start
         metrics.log("[GenerationMetrics][Quiz]")
         raise
-    quiz_data = await _verify_and_fill_quiz_math(
-        quiz_data, num_questions,
-        lambda n: _raw_generate_quiz_topic_batch(
+    # SAFE PARAMETER GENERATION (patrz komentarz przy
+    # _raw_generate_safe_linear_param_quadratic_batch): dla rund
+    # dogenerowania TEGO JEDNEGO, potwierdzonego trudnego tematu/
+    # trudnosci, uzywamy metody z gotowym, poprawnym wynikiem zamiast
+    # kolejnej proby wolnej generacji, ktora regularnie zawodzi wlasnie
+    # dla tego przypadku (stad w ogole rundy dogenerowania sa
+    # potrzebne). Pierwsza partia (wyzej) zostaje WOLNA generacja -
+    # naturalny mix podwzorcow, dobry dla roznorodnosci; TYLKO
+    # uzupelnianie brakujacych przelacza sie na bezpieczna metode.
+    if _is_medium_linear_param_quadratic(topic, difficulty):
+        regenerate = lambda n: _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level)
+    else:
+        regenerate = lambda n: _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
-        ),
+        )
+    quiz_data = await _verify_and_fill_quiz_math(
+        quiz_data, num_questions, regenerate,
         t_start=t_start, difficulty=difficulty, metrics=metrics, level=level, topic=topic,
     )
     return quiz_data
