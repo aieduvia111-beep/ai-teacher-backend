@@ -598,8 +598,21 @@ def fix_latex_in_quiz(quiz_data):
     """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
     def fix(t):
         if not t: return t
-        # Napraw $1 jako pm/plus-minus
-        t = t.replace('$1 ', '$\\pm$').replace('=$1', '=$\\pm$').replace('= $1', '= $\\pm$')
+        # Napraw $1 jako pm/plus-minus - TYLKO gdy "1" jest CALA
+        # zawartoscia wyrazenia (np. "$1$", "$1 $", "=$1$") - NIGDY gdy
+        # jest czescia dluzszego, prawdziwego wyrazenia liczbowego.
+        # NAPRAWIONE (zgloszony realny bug, potwierdzony realnym testem
+        # generacji trygonometrii, sierpien 2026): poprzednia wersja
+        # robila BEZWARUNKOWY string-replace kazdego "$1 " GDZIEKOLWIEK
+        # w tekscie - psulo to KAZDE rownanie zaczynajace sie od cyfry 1
+        # (np. prawdziwa tozsamosc "$1 - 2\\sin^2(x) = \\cos(2x)$")
+        # zamieniajac na uszkodzone "$\\pm$- 2\\sin^2(x)...", z dodatkowym
+        # rozjechaniem parzystosci dolarow w reszcie tekstu (dokladnie
+        # zgloszony objaw "±±..." + polamane "$"). Regex z kotwicami do
+        # konca wyrazenia ($) eliminuje ten falszywy alarm, zachowujac
+        # oryginalny, historyczny przypadek (samotne "$1$" zamiast "±").
+        t = re_module.sub(r'\$\s*1\s*\$', '$\\\\pm$', t)
+        t = re_module.sub(r'=\s*\$\s*1\s*\$', '=$\\\\pm$', t)
         # Napraw spacje w frac
         import re as _r3
         t = _r3.sub(r'\\frac\{\s*-\s*', r'\\frac{-', t)
