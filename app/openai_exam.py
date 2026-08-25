@@ -1395,7 +1395,12 @@ def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
 
 
 async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None, topic: str = None) -> dict:
-    """Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
+    """STANDARD ARCHITEKTONICZNY (patrz komentarz nad SAFE PARAMETER
+    GENERATION w math_verify.py): `current`/`missing` ponizej sa liczone
+    WYLACZNIE przez len() na faktycznie zaakceptowanej liscie - kod, nie
+    AI, jest zrodlem prawdy ile juz mamy i ile dogenerowac.
+
+    Po weryfikacji sympy (_verify_and_fix_quiz_math) niektore pytania
     moga zostac usuniete (bledny klucz bez poprawki wsrod opcji). User
     zamawiajac np. 10 pytan MA DOSTAC 10, bez wyjatkow - kompletnosc i
     poprawnosc sa wazniejsze niz szybkosc, wiec dogenerowujemy brakujace

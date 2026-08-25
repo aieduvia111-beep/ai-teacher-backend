@@ -1625,7 +1625,14 @@ ZASADY:
         return data
 
     def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None):
-        """Gdy weryfikacja sympy usunela zadania (bledny klucz bez
+        """STANDARD ARCHITEKTONICZNY (patrz komentarz nad SAFE PARAMETER
+        GENERATION w math_verify.py): `current_total`/`missing` ponizej sa
+        liczone WYLACZNIE przez len() na faktycznie zaakceptowanej liscie
+        sekcji/pytan - kod, nie AI, jest zrodlem prawdy ile juz mamy i ile
+        dogenerowac. Identyczny wzorzec co _verify_and_fill_quiz_math w
+        openai_exam.py (Quiz).
+
+        Gdy weryfikacja sympy usunela zadania (bledny klucz bez
         poprawki wsrod opcji), dogenerowuje ZAMKNIETE zadania na ten sam
         temat/poziom, zeby finalna liczba pytan ZAWSZE zgadzala sie z
         `liczba_pytan` zamowiona przez usera - kompletnosc i poprawnosc

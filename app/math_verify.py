@@ -448,6 +448,45 @@ def solve_discriminant_condition(A, B, C, param, kind):
     return base
 
 
+# =================================================================
+# STANDARD ARCHITEKTONICZNY (sierpien 2026, obowiazuje w CALYM systemie -
+# Quiz i Sprawdzian, wszystkie tematy): BACKEND (kod) JEST ZRODLEM PRAWDY
+# DLA LICZB - AI NIGDY nie decyduje "ile juz mamy" ani "ile brakuje".
+#
+# Zasada: AI generuje TRESC (pytania/dystraktory/wyjasnienia), ale KAZDA
+# liczba uzywana do sterowania przeplywem (ile zaakceptowano, ile brakuje,
+# ile prosic w kolejnej rundzie) jest liczona WYLACZNIE przez prosty kod
+# (len() na FAKTYCZNIE zweryfikowanej/zaakceptowanej liscie), NIGDY nie
+# jest odczytywana z odpowiedzi AI ani AI nie jest pytane "ile
+# wygenerowales". Konkretnie, w petli dogenerowania (patrz
+# _verify_and_fill_quiz_math w openai_exam.py i
+# _fill_missing_exam_questions w exam_pdf_generator.py - obie maja
+# IDENTYCZNY wzorzec):
+#     current = len(zaakceptowane_pytania)          # KOD liczy, nie AI
+#     missing = requested_count - current            # KOD liczy brak
+#     extra = regenerate(missing)                     # KOD mowi AI ile ma dogenerowac
+# Po kazdej rundzie dogenerowania stosuje sie DOKLADNIE ta sama weryfikacja
+# (Warstwa 1/2/3 + Diversity Engine) co do pierwszej partii - AI nie
+# dostaje "kredytu zaufania" za to, ze to runda uzupelniajaca. Na koncu
+# ewentualna nadwyzka (rundy licza brakujace NIEZALEZNIE, wiec drobny
+# nadmiar jest mozliwy) jest przycinana rowniez PRZEZ KOD (slice/pop),
+# nigdy przez prosbe do AI "zostaw tylko N".
+#
+# Dlaczego to wazne: to DOKLADNIE ten sam powod co przy Safe Parameter
+# Generation ponizej - AI jest DOBRE w tresci, ale NIEWIARYGODNE jako
+# zrodlo prawdy dla liczb/matematyki pod presja (np. moze "zgubic" ile
+# faktycznie wygenerowalo w duzej partii, albo zaokraglic). Safe Parameter
+# Generation stosuje te zasade do POJEDYNCZEGO wyniku matematycznego
+# (kod liczy warunek na Delte, nie AI) - ta sekcja opisuje TA SAMA zasade
+# zastosowana do LICZENIA CALEJ PARTII zadan. Zweryfikowane realnym
+# testem (audyt Sprawdzian, user zglosil 13 zamowionych / 8 dostarczonych)
+# - przyczyna NIE byla w tej logice (juz poprawna, identyczna w Quizie
+# i Sprawdzianie), tylko w brakujacych Sprawdzianowi mechanizmach
+# (Diversity Engine/Safe Param Gen/bufor/timeout) ponizej - po ich
+# dodaniu realny test potwierdzil 13/13.
+# =================================================================
+
+
 # ---------------------------------------------------------------
 # SAFE PARAMETER GENERATION (sierpien 2026) - dla JEDNEGO, potwierdzonego
 # realnymi testami najtrudniejszego podwzorca: rownanie x^2+mx+C=0,
