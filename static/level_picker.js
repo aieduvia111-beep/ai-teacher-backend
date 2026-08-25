@@ -209,6 +209,15 @@
     var el = typeof container === 'string' ? document.getElementById(container) : container;
     if (!el) return;
 
+    // Niektore strony (np. voice_conversation.html: applyAutoLevel wywoluje
+    // ponownie initLevelPicker() po doczytaniu profilu ucznia) wolaja
+    // renderCompact DWA RAZY na tym samym kontenerze. Poniewaz panel jest
+    // teraz portalowany do document.body (patrz nizej), sam el.innerHTML=''
+    // juz go NIE usunie - trzeba jawnie posprzatac poprzednia instancje
+    // (usunac stary panel z body + zdjac jego globalne listenery), zeby
+    // nie zostawic osieroconego wezla i wyciekajacych listenerow.
+    if (el._lvlCompactCleanup) el._lvlCompactCleanup();
+
     var current = decodeKey(opts.value);
     el.classList.add('lvl-compact');
     el.innerHTML = '';
@@ -220,8 +229,32 @@
     btn.type = 'button';
     btn.className = 'lvl-compact-btn';
 
+    // NAPRAWIONE (audyt Voice AI, sierpien 2026 - user zglosil: rozwijana
+    // lista poziomu pojawia sie na dole ekranu, niemozliwa do przewiniecia/
+    // klikniecia): panel byl `position:absolute` WEWNATRZ `wrap`, wiec byl
+    // przycinany przez overflow:hidden KTOREGOKOLWIEK przodka (np.
+    // .form-panel w voice_conversation.html mial DWIE konfliktujace
+    // definicje - jedna z overflow-y:auto, druga, pozniejsza, z
+    // overflow:hidden, ktora wygrywala w kaskadzie) - a nawet bez
+    // overflow:hidden, panel (position:absolute) nie powieksza wysokosci
+    // rodzica (jest wyjety z flow), wiec przy przycisku blisko dolu
+    // widocznego obszaru panel renderowal sie POZA widoczna/przewijalna
+    // czescia strony. Ten sam komponent (renderCompact) jest uzywany
+    // IDENTYCZNIE na 7 stronach (quiz/sprawdziany/notatki/plan nauki/
+    // voice/tablica/onboarding) - blad nie byl specyficzny dla Voice AI,
+    // dotyczyl KAZDEJ strony, gdzie przycisk wypada blisko dolu ekranu.
+    //
+    // Naprawa: panel jest teraz "portalowany" do document.body z
+    // position:fixed - wspolrzedne liczone w JS wzgledem VIEWPORTU
+    // (getBoundingClientRect przycisku), wiec ZADEN przodek (overflow,
+    // position, wysokosc) nie moze go juz przycinac ani ograniczac. Przed
+    // kazdym otwarciem liczymy dostepne miejsce nad/pod przyciskiem i
+    // otwieramy w GORE, jesli na dole nie ma miejsca (dokladnie zadanie
+    // usera) - user NIGDY nie musi juz reczne przewijac, zeby zobaczyc
+    // liste.
     var panel = document.createElement('div');
     panel.style.display = 'none';
+    panel.style.position = 'fixed';
 
     function updateBtn() {
       var st = findStage(current.stageKey);
@@ -280,25 +313,102 @@
       }
     }
 
+    var VIEWPORT_MARGIN = 10; // odstep od krawedzi ekranu, zeby panel nigdy nie dotykal brzegu
+
+    function positionPanel() {
+      var r = btn.getBoundingClientRect();
+      var vw = document.documentElement.clientWidth;
+      var vh = document.documentElement.clientHeight;
+      // NAPRAWIONE (znalezione realnym testem na viewport 375px): szerokosc
+      // MUSI byc ustawiona PRZED zmierzeniem offsetHeight/uzyciem do
+      // pozycjonowania - bez width, panel (position:fixed, bez ograniczen)
+      // mierzy sie na podstawie WLASNEJ, niczym nieograniczonej szerokosci
+      // tresci (5 kafelkow etapu z white-space:nowrap na etykietach daje
+      // ~457px), co na telefonie WYCHODZI POZA EKRAN w bok - dokladnie
+      // ten sam rodzaj bledu co ten zglaszany przez usera, tylko w poziomie
+      // zamiast w pionie. Panel MA byc szerokosci przycisku (tak jak w
+      // oryginalnym CSS left:0;right:0 wzgledem .lvl-compact-wrap o
+      // szerokosci 100% - to odtwarza dokladnie ten sam efekt), a wewnetrzne
+      // flex/grid (majace juz min-width:0 i text-overflow:ellipsis) same
+      // zawijaja/skracaja tresc do tej szerokosci.
+      var panelW = Math.min(r.width, vw - 2 * VIEWPORT_MARGIN);
+      panel.style.width = panelW + 'px';
+      var panelH = panel.offsetHeight;
+
+      var spaceBelow = vh - r.bottom - VIEWPORT_MARGIN;
+      var spaceAbove = r.top - VIEWPORT_MARGIN;
+      // Otworz w gore TYLKO jesli na dole faktycznie brakuje miejsca NA
+      // CALY panel, a w gorze jest go wiecej - w przeciwnym razie
+      // domyslny kierunek (w dol) zostaje bez zmian.
+      var openUp = panelH > spaceBelow && spaceAbove > spaceBelow;
+
+      var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
+      // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
+      // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
+      // viewportu zamiast wyjechac poza ekran w druga strone.
+      top = Math.max(VIEWPORT_MARGIN, Math.min(top, vh - panelH - VIEWPORT_MARGIN));
+
+      var left = r.left;
+      left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - panelW - VIEWPORT_MARGIN));
+
+      panel.style.top = top + 'px';
+      panel.style.left = left + 'px';
+      panel.classList.toggle('lvl-compact-panel-up', openUp);
+    }
+
     function onDocClick(e) {
-      if (!wrap.contains(e.target)) closePanel();
+      if (!wrap.contains(e.target) && !panel.contains(e.target)) closePanel();
     }
     function onKeyDown(e) {
       if (e.key === 'Escape') closePanel();
     }
+    function onReposition() {
+      if (panel.style.display !== 'none') positionPanel();
+    }
     function openPanel() {
+      // Defensywnie: jesli przycisk jest czesciowo poza widocznym
+      // obszarem (np. na dole dlugiego formularza na telefonie),
+      // doscrolluj do niego NAJPIERW - per prosba usera ("auto-scroll do
+      // niej") - potem i tak liczymy dokladna pozycje ponizej.
+      // UWAGA: celowo 'instant', NIE 'smooth' - ponizej dopiero co
+      // otwarty panel zamyka sie na KAZDY scroll (patrz 'scroll' listener
+      // nizej, potrzebny zeby panel nie zostawal "przyklejony" w starym
+      // miejscu przy przewijaniu strony) - 'smooth' generowaloby wlasne
+      // zdarzenia scroll W TRAKCIE animacji, ktore ten sam listener
+      // wylapalby jako "user przewinal" i natychmiast zamykal dopiero co
+      // otwarty panel (znaleziono i naprawiono realnym testem w
+      // przegladarce - 'smooth' na stronach z html{scroll-behavior:smooth}
+      // powodowalo, ze panel migal i znikal ulamek sekundy po otwarciu).
+      // 'instant' konczy sie synchronicznie PRZED podpieciem listenera,
+      // wiec ten wyscig jest niemozliwy.
+      btn.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       renderPanel();
+      panel.style.visibility = 'hidden';
       panel.style.display = '';
+      if (panel.parentNode !== document.body) document.body.appendChild(panel);
+      positionPanel();
+      panel.style.visibility = '';
       btn.classList.add('open');
       document.addEventListener('mousedown', onDocClick, true);
       document.addEventListener('keydown', onKeyDown, true);
+      window.addEventListener('resize', onReposition);
+      // 'scroll' nie bąbelkuje, ale w fazie capture jest widoczny dla
+      // kazdego przewijanego przodka (np. .main{overflow-y:auto}) - stad
+      // capture:true zamiast (nieskutecznego tu) listenera na window.
+      document.addEventListener('scroll', closePanel, true);
     }
     function closePanel() {
       panel.style.display = 'none';
       btn.classList.remove('open');
       document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('resize', onReposition);
+      document.removeEventListener('scroll', closePanel, true);
     }
+    el._lvlCompactCleanup = function () {
+      closePanel();
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+    };
 
     btn.addEventListener('click', function () {
       if (panel.style.display === 'none') openPanel(); else closePanel();
@@ -306,7 +416,6 @@
 
     updateBtn();
     wrap.appendChild(btn);
-    wrap.appendChild(panel);
     el.appendChild(wrap);
 
     // Pozwala odswiezyc etykiete przycisku po auto-wypelnieniu z ankiety

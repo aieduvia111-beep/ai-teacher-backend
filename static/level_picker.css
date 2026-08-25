@@ -84,11 +84,21 @@
 .lvl-compact-chev{color:var(--muted2);transition:transform .2s;flex-shrink:0;}
 .lvl-compact-btn.open .lvl-compact-chev{transform:rotate(180deg);}
 
+/* NAPRAWIONE (audyt Voice AI, sierpien 2026): pozycja (position:fixed +
+   top/left/width) jest teraz liczona i ustawiana W JS (positionPanel()
+   w level_picker.js), wzgledem viewportu, nie najblizszego przodka -
+   dzieki temu ZADEN kontener z overflow:hidden/position/ograniczona
+   wysokoscia (na KTOREJKOLWIEK z 7 stron uzywajacych tego komponentu)
+   nie moze juz przycinac ani ukrywac rozwinietej listy, a panel moze
+   sam zdecydowac, czy otworzyc sie w dol czy w gore (gdy brak miejsca
+   na dole). CSS ponizej celowo NIE ustawia juz position/top/left/right -
+   patrz level_picker.js.*/
 .lvl-compact-panel{
-  position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:40;
+  z-index:9999;
   background:var(--s2);border:1.5px solid var(--border-hi);border-radius:16px;
   padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.45);
 }
+.lvl-compact-panel-up{box-shadow:0 -20px 40px rgba(0,0,0,.45);}
 
 .lvl-stage-row{display:flex;gap:6px;margin-bottom:8px;}
 .lvl-stage-chip{
