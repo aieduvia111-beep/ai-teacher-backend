@@ -1172,6 +1172,13 @@ ZASADY:
     raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
     quiz_data = json.loads(raw)
     quiz_data = fix_latex_in_quiz(quiz_data)
+    # Oznacz kazde pytanie jako bezpiecznie wygenerowane - czytane przez
+    # _verify_and_fix_quiz_math, zeby wylaczyc je z Diversity Engine
+    # (patrz komentarz tam) - CELOWO generujemy tu wiele pytan TEGO
+    # SAMEGO podwzorca, wiec ogolna kontrola roznorodnosci nie ma tu
+    # zastosowania.
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
     return quiz_data
 
 
@@ -1620,9 +1627,28 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
     # bez zadnej konfiguracji per przedmiot - brak tagu (stary format,
     # blad AI) -> nie da sie ocenic -> nie blokujemy (bezpieczny
     # abstain, ta sama filozofia co reszta modulu).
+    # NAPRAWIONE (znalezione PRZY realnym tescie Safe Parameter
+    # Generation, sierpien 2026): Safe Parameter Generation (patrz
+    # _raw_generate_safe_linear_param_quadratic_batch) CELOWO generuje
+    # WIELE pytan tego samego, jednego podwzorca (to jest cel - dogenerowac
+    # NIEZAWODNIE poprawne pytania dla tematu, w ktorym wolna generacja
+    # regularnie zawodzi) - to z definicji koliduje z Diversity Engine,
+    # ktora rowniez CELOWO odrzuca wiele pytan tego samego schematu.
+    # Realny test pokazal: prawie WSZYSTKIE bezpiecznie wygenerowane
+    # pytania byly odrzucane jako "zbyt podobne" do PIERWSZEGO
+    # bezpiecznie wygenerowanego pytania, przez co runda dogenerowania
+    # dawala 1-2 pytania zamiast potrzebnych kilkunastu. Safe-generated
+    # pytania (oznaczone prywatnym kluczem "_safe_generated" przez
+    # regenerate()) sa WYLACZONE z tej konkretnej kontroli - juz
+    # PRZESZLY etap "chcemy roznorodnosci" (byl w pierwszej, wolnej
+    # partii) i teraz swiadomie priorytetyzujemy KOMPLETNOSC+POPRAWNOSC
+    # nad dalsza roznorodnoscia dla tego jednego, trudnego przypadku.
     if seen_diversity_tags is not None:
         diverse = []
         for q in kept:
+            if q.pop("_safe_generated", False):
+                diverse.append(q)
+                continue
             too_similar, tokens = is_too_similar_diversity_tag(q.get("diversity_tag"), seen_diversity_tags)
             if too_similar:
                 print(f"[MathVerify][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego pytania: '{q.get('question', '')[:60]}...' tag={q.get('diversity_tag')}")
