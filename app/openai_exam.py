@@ -866,6 +866,16 @@ System automatycznie sprawdza to pole i ODRZUCA pytanie, jesli
 "final_answer" nie jest identyczny z zadna opcja - wiec musi dokladnie
 pasowac.
 
+GRAMATYKA - KRYTYCZNE (czesty blad): gdy odpowiedzia jest ZBIOR/
+PRZEDZIAL/NIEROWNOSC (nie jedna liczba), pytanie o parametr MUSI byc w
+LICZBIE MNOGIEJ: "Dla jakich wartości parametru {{x}}..." - NIGDY "Dla
+jakiej wartości parametru {{x}}..." (liczba pojedyncza jest gramatycznie
+bledna, bo sugeruje jedna wartosc, a szukamy calego zbioru). Ta sama
+zasada dotyczy KAZDEGO tematu z parametrem (rownania, funkcje,
+nierownosci, trygonometria), nie tylko rownan kwadratowych.
+POPRAWNIE: "Dla jakich wartości parametru m równanie ... ma dwa różne pierwiastki?"
+BLEDNIE: "Dla jakiej wartości parametru m równanie ... ma dwa różne pierwiastki?"
+
 WZORY MATEMATYCZNE - KRYTYCZNE:
 - Kazdy wzor w $...$ np: $x^2 + 3x = 0$
 - ZAWSZE \\frac{{ nie rac{{ nie \\rac{{
