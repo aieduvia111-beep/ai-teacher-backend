@@ -879,7 +879,23 @@ def detect_sequence_intent(question_text: str):
     if ('ile wyraz' in text or ('liczb' in text and 'wyraz' in text)) and 'przekracza' not in text:
         return {"intent": "find_n_from_last_term"}
 
-    if asks_for_a1 and ('różnic' in text or 'roznic' in text or 'iloraz' in text):
+    # NAPRAWIONE (KRYTYCZNY, POTWIERDZONY BLAD - audyt V1, sierpien 2026):
+    # ta galaz wymagala DOSLOWNEGO slowa "roznice"/"iloraz" w tresci,
+    # mimo ze wyznaczenie a1 z DWOCH podanych wyrazow MATEMATYCZNIE
+    # wymaga policzenia r/q jako kroku posredniego, niezaleznie czy
+    # pytanie o to prosi wprost. Realny, najbardziej naturalny wariant
+    # pytania ("Wyznacz pierwszy wyraz tego ciagu." - BEZ wzmianki o
+    # "roznicy") nigdy nie trafial do tej galezi -> intent=None ->
+    # verify_sequence_question zwracalo "unverifiable" -> ZERO
+    # weryfikacji Warstwy 2 -> AI mogl podac dowolnie bledne a1 bez
+    # zadnego zabezpieczenia (potwierdzony przypadek: a3=11, a7=27,
+    # prawdziwe a1=3, AI/Warstwa 1 przyjelo bledne a1=5 bez sprzeciwu).
+    # Usunieto wymog slowa-klucza - BEZPIECZNE, bo verify_sequence_question
+    # i tak NIEZALEZNIE sprawdza `len(idxs) != 2` przed faktycznym
+    # rozwiazywaniem (patrz galaz two_term_to_a1_ratio tam) - falszywe
+    # dopasowanie intencji nie moze wiec dac falszywego wyniku, tylko
+    # co najwyzej poprawne odrzucenie/abstain.
+    if asks_for_a1:
         return {"intent": "two_term_to_a1_ratio"}
     return None
 
