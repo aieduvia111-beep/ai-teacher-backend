@@ -36,6 +36,15 @@ _difficulty_analyzer = DifficultyAnalyzer()
 _LATEX_CMDS_AT_RISK = [
     # \t... (backslash+t bywa "zjadany" jako tabulator)
     'times', 'text', 'tan', 'theta', 'tau', 'triangle', 'to', 'top', 'tilde',
+    # NAPRAWIONE (audyt realnej generacji V1, sierpien 2026): "text" nie
+    # chroni "\textbackslash" ani innych wariantow "\text*" - regex ma
+    # negative lookahead (?![a-zA-Z]), ktory dla "\textbackslash" NIE
+    # przechodzi (po "text" jest litera "b", nie granica slowa), wiec
+    # pierwszy backslash "\t" byl mylony z prawdziwym escape'em JSON
+    # (tabulator) - obcinalo to reszte tekstu ("extbackslash..."). Kazdy
+    # taki dluzszy wariant potrzebuje WLASNEGO wpisu na liscie, nie
+    # dziedziczy ochrony po krotszym prefiksie.
+    'textbackslash', 'textbf', 'textit', 'textrm', 'texttt', 'textsf',
     # \b... (backslash+b bywa "zjadany" jako backspace)
     'beta', 'bar', 'binom', 'bmod', 'boxed', 'bullet',
     # \f... (backslash+f bywa "zjadany" jako formfeed)
@@ -44,9 +53,15 @@ _LATEX_CMDS_AT_RISK = [
     'neq', 'nabla', 'notin', 'nu',
     # \r... (backslash+r bywa "zjadany" jako powrot karetki)
     'rho', 'rightarrow',
+    # \u... (backslash+u bywa mylony z unicode escape \uXXXX)
+    'underline', 'underbrace', 'usepackage',
     # inne czeste, ktore i tak warto podwoic zawczasu
     'sqrt', 'cdot', 'div', 'sum', 'int', 'left', 'right', 'alpha', 'gamma',
     'delta', 'pi', 'infty', 'leq', 'geq', 'approx', 'pm', 'mathrm',
+    # NAPRAWIONE (ta sama luka co "text" wyzej): "mathrm" byl juz na
+    # liscie, ale inne warianty "\math*" (rowniez czeste w notacji
+    # zbiorow/funkcji, np. \mathbb{R}) nie byly - ta sama podatnosc.
+    'mathbf', 'mathit', 'mathcal', 'mathbb', 'mathfrak',
     'overline', 'over', 'vec', 'hat', 'dot', 'quad', 'qquad', 'ldots',
     'sigma', 'omega', 'lambda', 'partial', 'prod', 'mu', 'phi', 'chi', 'psi',
     'subset', 'cup', 'cap', 'exists', 'in',
