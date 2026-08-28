@@ -397,8 +397,12 @@ function checkFlashcardsLimit(){
   const uid = localStorage.getItem('eduvia_uid') || 'anon';
   const key = 'eduvia_limit_flashcards_'+uid+'_'+today;
   const used = parseInt(localStorage.getItem(key)||'0');
-  if(used >= 1){
-    showLimitPopup('flashcards', 1);
+  // NAPRAWIONE: Fiszki maja teraz WLASNY, prawdziwy limit (2/dzien) po
+  // stronie serwera (patrz app/api/flashcards_api.py) - dotychczasowy
+  // "1" byl niezgodny z tym, co ostatecznie ustalono jako wlasciwa,
+  // niezalezna od Quizu wartosc.
+  if(used >= 2){
+    showLimitPopup('flashcards', 2);
     return false;
   }
   localStorage.setItem(key, used+1);
@@ -432,9 +436,12 @@ async function generate(attempt=1){
     const timeout = setTimeout(()=>controller.abort(), 60000);
     // NAPRAWIONE: brakowalo tokenu logowania - patrz komentarz przy
     // inicjalizacji Firebase w <head>. Bez tego /generate-topic ZAWSZE
-    // zwracal 401, niezaleznie od proby/srodowiska.
+    // zwracal 401, niezaleznie od proby/srodowiska. DODATKOWO: wolalo
+    // /api/v1/quiz/generate-topic - dzielilo pule z Quizem zamiast miec
+    // wlasny limit - teraz uzywa dedykowanego /api/v1/flashcards/generate
+    // (patrz app/api/flashcards_api.py).
     const _idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
-    const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{signal:controller.signal,
+    const r = await fetch(BASE+'/api/v1/flashcards/generate',{signal:controller.signal,
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},
       body:JSON.stringify({
         topic:topic||'ogólne', subject, level,
@@ -457,7 +464,7 @@ async function generate(attempt=1){
       // Limit wyczerpany - ponawianie nie ma sensu (nie zniknie samo),
       // pokaz od razu popup z Pro zamiast 4 prob i myslacego "Blad generowania".
       document.getElementById('cardArea').innerHTML='';
-      showLimitPopup('flashcards', 1);
+      showLimitPopup('flashcards', 2);
     } else if(attempt < 4){
       setTimeout(()=>generate(attempt+1), 4000);
       document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Generuję fiszki...</div></div>';

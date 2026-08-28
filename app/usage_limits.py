@@ -26,6 +26,17 @@ FREE_DAILY_LIMITS = {
     # czyszczac localStorage lub wolajac API bezposrednio, bez
     # jakiegokolwiek ograniczenia po stronie serwera.
     "voice": 3,
+    # NAPRAWIONE (user zglosil: "klikam byle jaka funkcje i wszedzie limit
+    # wyczerpany, a nie uzywalem wcale"): Fiszki wolaly WPROST
+    # /api/v1/quiz/generate-topic, wiec po cichu dzielily TA SAMA pule co
+    # Quiz ("quiz": 3), mimo ze klient (LIMITS_FREE.flashcards, niespojne
+    # miedzy plikami: 1 lub 3) udawal osobny licznik. Efekt: generowanie
+    # Fiszek zjadalo realny slot Quizu (i odwrotnie) bez ostrzezenia -
+    # dawalo dokladnie ten losowy, mylacy wzorzec zgloszony przez usera.
+    # Teraz Fiszki maja WLASNY, prawdziwy limit - patrz nowy, dedykowany
+    # endpoint /api/v1/flashcards/generate w app/api/flashcards_api.py
+    # (reuzywa TA SAMA logike generowania co Quiz, ale liczy sie osobno).
+    "flashcards": 2,
 }
 
 LIMIT_MESSAGES = {
@@ -40,6 +51,7 @@ LIMIT_MESSAGES = {
     # WSZYSTKICH pozostalych funkcji.
     "vision": "Wykorzystałeś już dzisiejszy darmowy limit Vision AI (2 analizy). Kup Pro i ucz się bez limitów!",
     "voice": "Wykorzystałeś już dzisiejszy darmowy limit Voice AI (3 sesje). Kup Pro i ucz się bez limitów!",
+    "flashcards": "Wykorzystałeś już dzisiejszy darmowy limit Fiszek AI (2 zestawy). Kup Pro i ucz się bez limitów!",
 }
 
 def _load_usage(user: User) -> dict:

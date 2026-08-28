@@ -655,7 +655,10 @@ const LIMITS_FREE = {
   exam: 1,
   voice: 3,
   lesson: 2,
-  flashcards: 1
+  // NAPRAWIONE: teraz zgodne z backendem (usage_limits.py FREE_DAILY_LIMITS)
+  // - Fiszki maja WLASNY limit (patrz app/api/flashcards_api.py), nie
+  // dziela juz puli z Quizem.
+  flashcards: 2
 };
 
 async function checkLimit(feature) {
@@ -1437,24 +1440,44 @@ function startFcGen(cardId, topicEnc, level){
   else if(/równan|funkcj|pochodn|całk|trygon|geometr|algebra/.test(topicLow)) subject='matematyka';
   else if(/python|java|kod|programow|algorytm|baza danych|html|css|javascript/.test(topicLow)) subject='informatyka';
   
-  fetch(BACKEND_URL+'/api/v1/quiz/generate-topic',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      topic:topic,subject:subject,level:level,num_questions:10,difficulty:'medium',
-      wlasne_instrukcje:'Wygeneruj FISZKI edukacyjne. Poziom: '+level+'. Kazde pytanie to krotkie pojecie/termin (max 1 zdanie), wyjasnienie to definicja dopasowana do poziomu (max 2 zdania). Opcje A/B/C/D zostaw identyczne.'
+  // NAPRAWIONE (audyt limitow, sierpien 2026): dwa bledy naraz -
+  // (1) wolalo /api/v1/quiz/generate-topic, wiec po cichu dzielilo pule
+  // Quizu zamiast miec wlasny limit Fiszek (patrz nowy, dedykowany
+  // endpoint /api/v1/flashcards/generate w app/api/flashcards_api.py -
+  // identyczna naprawa jak w flashcards.html); (2) NIGDY nie wysylalo
+  // tokenu Authorization, mimo ze oba endpointy tego wymagaja - kazde
+  // wywolanie konczylo sie 401.
+  (window._currentUser() ? window._currentUser().getIdToken() : Promise.resolve('')).then(_idToken =>
+    fetch(BACKEND_URL+'/api/v1/flashcards/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},
+      body:JSON.stringify({
+        topic:topic,subject:subject,level:level,num_questions:10,difficulty:'medium',
+        wlasne_instrukcje:'Wygeneruj FISZKI edukacyjne. Poziom: '+level+'. Kazde pytanie to krotkie pojecie/termin (max 1 zdanie), wyjasnienie to definicja dopasowana do poziomu (max 2 zdania). Opcje A/B/C/D zostaw identyczne.'
+      })
     })
-  })
-  .then(r=>r.json())
-  .then(d=>{
+  )
+  .then(r=>r.json().then(d=>({ok:r.ok, d})))
+  .then(({ok, d})=>{
     clearInterval(interval);
+    if(!ok || !d.success){
+      const msg = d.detail || d.error || '';
+      if(msg.includes('limit')){
+        document.getElementById(cardId+'_title').textContent = topic;
+        bar.style.display='none';
+        showLimitPopup('flashcards', LIMITS_FREE.flashcards);
+      } else {
+        document.getElementById(cardId+'_title').textContent = 'Błąd generowania — spróbuj ponownie';
+      }
+      return;
+    }
     fill.style.width='100%';
     setTimeout(()=>{
       bar.style.display='none';
       document.getElementById(cardId+'_title').textContent = topic+' • 10 fiszek gotowych';
       const btn = document.getElementById(cardId+'_btn');
       btn.style.display='block';
-      btn.onclick=()=>{ 
+      btn.onclick=()=>{
         localStorage.setItem('fc_cards', JSON.stringify(d.quiz.questions.map(q=>({front:q.question,back:q.explanation}))));
         localStorage.setItem('fc_topic', topic);
         localStorage.setItem('fc_level', level);

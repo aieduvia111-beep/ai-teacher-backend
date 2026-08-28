@@ -101,6 +101,13 @@ except Exception as e:
     print(f"❌ quiz_api: {e}")
 
 try:
+    from .api.flashcards_api import router as flashcards_router
+    app.include_router(flashcards_router)
+    print("✅ flashcards_api OK")
+except Exception as e:
+    print(f"❌ flashcards_api: {e}")
+
+try:
     from .api.vision import router as vision_router
     app.include_router(vision_router)
     print("✅ vision OK")
