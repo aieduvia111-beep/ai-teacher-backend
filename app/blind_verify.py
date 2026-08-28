@@ -113,20 +113,40 @@ def _extract_single_value(s: str):
         return None
 
 
+def _normalize_text_for_compare(s: str) -> str:
+    """Normalizuje tekst do porownania NIE-liczbowego (case/whitespace/
+    interpunkcja-koncowa-insensitive) - patrz komentarz w values_match."""
+    s = str(s).strip().lower()
+    s = re.sub(r'\s+', ' ', s)
+    return s.strip('.,;:!?()[]{}')
+
+
 def values_match(claimed_a: str, claimed_b: str) -> bool:
-    """Porownuje dwa 'final_answer' stringi NUMERYCZNIE/SYMBOLICZNIE przez
-    sympy (tolerancyjne na format: 'm = -3' vs '-3', '5/7' vs '0.714...').
-    Dla wielo-wartosciowych odpowiedzi ('b = 2, c = 4') porownuje KAZDY
-    segment osobno (po przecinku), w KOLEJNOSCI - musza sie zgadzac
-    wszystkie. Zwraca False (niezgodnosc) gdy NIE DA SIE sparsowac -
-    caller decyduje, czy to ma blokowac (patrz komentarz w callerach:
-    nieparsowalne = 'nie blokuj', wiec ten przypadek jest obslugiwany
-    PRZED wywolaniem values_match, nie w niej samej)."""
+    """Porownuje dwa 'final_answer' stringi. Dla wielo-wartosciowych
+    odpowiedzi ('b = 2, c = 4') porownuje KAZDY segment osobno (po
+    przecinku), w KOLEJNOSCI - musza sie zgadzac wszystkie.
+
+    NAPRAWIONE (user: "a działa poza matematyka" - real-test na biologii
+    ujawnil, ze POPRAWNA odpowiedz "Mitochondrium" byla odrzucana jako
+    niezgodna z "mitochondrium" - sympy parsuje pojedyncze slowo jako
+    Symbol i porownuje go case-SENSITIVE, wiec ta funkcja dzialala
+    poprawnie TYLKO dla matematyki): najpierw PROSTE porownanie tekstowe
+    (case/whitespace-insensitive) - jesli sie zgadza, koniec, bez
+    dotykania sympy w ogole. Dopiero gdy tekst sie NIE zgadza, proba
+    numeryczna/symboliczna przez sympy (tolerancyjne na format: 'm = -3'
+    vs '-3', '5/7' vs '0.714...') - lapie przypadki, gdzie ten sam wynik
+    matematyczny jest zapisany inaczej. Zwraca False (niezgodnosc) gdy
+    NI JEDNO NI DRUGIE sie nie zgadza - caller decyduje, czy to ma
+    blokowac (patrz komentarz w callerach: nieparsowalne CLAIMED = 'nie
+    blokuj', wiec ten przypadek jest obslugiwany PRZED wywolaniem
+    values_match, nie w niej samej)."""
     parts_a = [p.strip() for p in str(claimed_a).split(',')]
     parts_b = [p.strip() for p in str(claimed_b).split(',')]
     if len(parts_a) != len(parts_b):
         return False
     for pa, pb in zip(parts_a, parts_b):
+        if _normalize_text_for_compare(pa) == _normalize_text_for_compare(pb):
+            continue
         va, vb = _extract_single_value(pa), _extract_single_value(pb)
         if va is None or vb is None:
             return False
