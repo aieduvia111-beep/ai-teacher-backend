@@ -1072,7 +1072,13 @@ function getPlanBadgeHTML(plan) {
 // GLOBALS
 // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 const IS_MOB = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
-const BACKEND_URL = 'https://eduvia-backend-2.onrender.com';
+// NAPRAWIONE (user: "ale ja testuje lokalnie" - identyczny bug jak w chat.html,
+// patrz komentarz tam): brak wykrywania localhost/LAN - kazde polaczenie
+// Voice AI zawsze lecialo na produkcje, nawet testowane lokalnie.
+const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const BACKEND_URL = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:8000'
+  : _isPrivateLAN ? location.origin
+  : 'https://eduvia-backend-2.onrender.com';
 const WS_URL = BACKEND_URL.replace('https://','wss://').replace('http://','ws://') + '/api/v1/realtime/ws';
 
 let selLevel = 'liceum_2', selSubject = 'Dowolny', selLang = 'polski';

@@ -1029,7 +1029,10 @@ window.generatePlan=async function generatePlan(){
   var topicStr=topics.join(', ');
 
   try{
-    var base='https://eduvia-backend-2.onrender.com';
+    // NAPRAWIONE (user: "ale ja testuje lokalnie" - identyczny bug jak w
+    // chat.html): brak wykrywania localhost/LAN.
+    var _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+    var base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
     var topicNote=topics.length>1?'WAZNE: masz '+topics.length+' OSOBNE tematy: '+topics.map(function(t,i){return(i+1)+'. '+t;}).join('; ')+'. Kazdy temat MUSI dostac OSOBNY blok dni - NIE mieszaj ich razem.':'';
     var lessonController = new AbortController();
     var lessonTimeoutId = setTimeout(function(){lessonController.abort();}, 120000);

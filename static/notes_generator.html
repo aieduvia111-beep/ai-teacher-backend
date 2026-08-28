@@ -1026,7 +1026,12 @@ async function generate(){
   const notesTimeoutId = setTimeout(()=>notesController.abort(), 120000);
   try{
     const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/notes-pdf/generate',{signal:notesController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
+    // NAPRAWIONE (user: "ale ja testuje lokalnie" - identyczny bug jak w
+    // chat.html): URL byl zaszyty na stale na produkcje, bez wykrywania
+    // localhost/LAN.
+    const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+    const _notesBase=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
+    const res=await fetch(_notesBase+'/api/v1/notes-pdf/generate',{signal:notesController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
     clearTimeout(notesTimeoutId);
     if(!res.ok){
       // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
