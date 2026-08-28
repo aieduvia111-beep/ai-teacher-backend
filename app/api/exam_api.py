@@ -1,7 +1,7 @@
 from ..error_logger import log_error
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from ..config import settings
 from ..exam_pdf_generator import ExamGenerator
@@ -20,7 +20,14 @@ class ExamRequest(BaseModel):
     klasa: str = "liceum"
     przedmiot: str = "Matematyka"
     trudnosc: str = "srednia"
-    liczba_pytan: int = 12
+    # NAPRAWIONE: suwak we frontendzie mial max=30, ale realny test (n=30,
+    # rownania kwadratowe z parametrem, srednia) pokazal, ze budzet
+    # czasowy generowania (60s) bywa przekraczany (~70s tresci + PDF),
+    # zostawiajac coraz cieńszy margines do timeoutu frontendu (120s).
+    # Frontend juz ma max=20 (patrz exam_generator.html), ten limit tutaj
+    # to autorytatywne wymuszenie po stronie serwera - zeby bezposrednie
+    # wywolanie API (z pominieciem frontendu) nie mogło obejsc ograniczenia.
+    liczba_pytan: int = Field(default=12, ge=1, le=20)
     wariant: Optional[str] = "A"
     wlasne_instrukcje: Optional[str] = None
     image: Optional[str] = None

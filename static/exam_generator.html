@@ -722,7 +722,14 @@ function getPlanBadgeHTML(plan) {
             Liczba pytań
           </span>
           <div class="slider-row">
-            <input type="range" id="liczbaPytan" min="5" max="30" value="15" oninput="document.getElementById('liczbaPytanVal').textContent=this.value">
+            <!-- NAPRAWIONE: max byl 30, ale realny test (n=30, rownania
+                 kwadratowe z parametrem, srednia) pokazal, ze budzet
+                 czasowy generowania (60s) bywa PRZEKRACZANY (realnie
+                 ~70s tresci + PDF), zostawiajac coraz cieńszy margines
+                 do timeoutu frontendu (120s). Dla n=20 (nowy max) ten
+                 sam test miescil sie wygodnie (~50s calosci, spory
+                 zapas) - patrz app/exam_pdf_generator.py -->
+            <input type="range" id="liczbaPytan" min="5" max="20" value="15" oninput="document.getElementById('liczbaPytanVal').textContent=this.value">
             <span class="slider-val" id="liczbaPytanVal">15</span>
           </div>
         </div>
