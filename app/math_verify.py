@@ -59,7 +59,7 @@ def _clean_latex(s: str) -> str:
     # calkowicie (SyntaxError). Bez tego kazdy argument w radianach
     # (np. "\frac{\pi}{6}") byl nieparsowalny.
     s = s.replace('\\pi', 'pi')
-    s = s.replace('\\cdot', '*').replace('\\times', '*')
+    s = s.replace('\\cdot', '*').replace('\\times', '*').replace('·', '*')
     # NAPRAWIONE (audyt realnej generacji, sierpien 2026): "\sqrt{...}"
     # NIGDZIE nie bylo normalizowane w calym module - sympy rozpoznaje
     # bare "sqrt(...)" natywnie, ale zostawiony "\sqrt{" psul parsowanie
@@ -1103,6 +1103,21 @@ def _option_a1_ratio(option_text: str, kind: str):
     return (_to_num(m1.group(1)), _to_num(m2.group(1)))
 
 
+def _option_value_after_equals(opt):
+    """'$a_{10} = 48$' -> 48 (wyciaga wartosc PO ostatnim '=', nie probuje
+    parsowac calego tekstu jako jedno wyrazenie sympy - bare '=' nie jest
+    poprawnym wyrazeniem, zawsze rzucaloby SyntaxError). PROMOWANE do
+    poziomu modulu (real-test, sierpien 2026) - byla to lokalna funkcja
+    zagniezdzona w verify_sequence_question, ale verify_sequence_formula_
+    parameter (INNA funkcja modulowa) tez jej potrzebowala - nie
+    duplikujemy identycznej logiki drugi raz."""
+    text = _normalize_subscripts(_option_text(opt)).strip().strip('$').strip()
+    m = re.search(r'=\s*(-?\d+(?:[.,]\d+)?)\s*$', text)
+    if m:
+        return _to_num(m.group(1))
+    return _parse_expr(text)
+
+
 # NAPRAWIONE (user zglosil realny przypadek, sierpien 2026): ciag
 # geometryczny podany WPROST jako wzor ogolny "$b_n = k^n$" (parametr k
 # jako WYKLADNIK) nie ma ZADNYCH konkretnych wyrazow (np. brak "b_1=..."),
@@ -1217,18 +1232,10 @@ def verify_sequence_question(question_text: str, options: list):
             return nn * (2 * a1 + (nn - 1) * rr) / 2
         return a1 * (rr ** nn - 1) / (rr - 1)
 
-    def _option_value_after_equals(opt):
-        # NAPRAWIONE (test regresyjny): "$a_{10} = 48$" ma $ na koncu, wiec
-        # kotwica konca-stringu \s*$ nie pasowala tuz po liczbie (byl tam
-        # jeszcze znak $) - regex nigdy nie trafial, a fallback probowal
-        # sparsowac CALY tekst "a_(10) = 48" jako JEDNO wyrazenie sympy,
-        # co zawsze rzucalo SyntaxError (bare "=" nie jest wyrazeniem) i
-        # bylo cicho polykane przez zewnetrzny except, dajac "unverifiable".
-        text = _normalize_subscripts(_option_text(opt)).strip().strip('$').strip()
-        m = re.search(r'=\s*(-?\d+(?:[.,]\d+)?)\s*$', text)
-        if m:
-            return _to_num(m.group(1))
-        return _parse_expr(text)
+    # _option_value_after_equals - patrz definicja modulowa wyzej (obok
+    # _option_a1_ratio) - promowana z lokalnej funkcji zagniezdzonej tutaj,
+    # bo verify_sequence_formula_parameter (inna funkcja modulowa) tez
+    # jej potrzebowala.
 
     try:
         if intent["intent"] == "find_nth_term":
@@ -1400,6 +1407,142 @@ def verify_sequence_question(question_text: str, options: list):
         return {"status": "match_index", "true_index": matches[0]}
     if len(matches) > 1:
         return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
+# NAPRAWIONE (real-test - user ocenial jakosc wygenerowanego Sprawdzianu
+# PDF (Ciagi, klasa 3 liceum, trudny) i znalazl, ze 3 z 6 zadan zamknietych
+# mialy zepsuty klucz odpowiedzi): zadania podajace wzor ciagu WPROST
+# jako funkcje n z JEDNYM nieznanym parametrem (np. "a_n=3n+m",
+# "c_n=pn+5") + JEDEN warunek liczbowy do rozwiazania wzgledem tego
+# parametru - CALKOWICIE inny ksztalt niz analyze_sequence_question
+# (ktora wymaga KONKRETNYCH wyrazow typu "a_1=5", nie samej formuly).
+# Skutek PRZED ta naprawa: verify_and_fix_math_question zwracalo
+# "unverifiable" dla tego wzorca -> ZERO niezaleznej weryfikacji ->
+# jesli pole "final_answer" od AI bylo niezgodne z wlasnym wyjasnieniem
+# AI (dokladnie ten sam blad klasy co "Zatem k=4, co daje k=2" z
+# wczesniejszej naprawy dzis) - nic tego nie lapalo. Potwierdzone
+# REALNYMI przypadkami z PDF: Zadanie 1 (a_n=3n+m, "ma pierwszy wyraz
+# rowny 7" -> poprawne m=4, ale klucz oznaczyl inna litere) i Zadanie 3
+# (c_n=pn+5, "roznica miedzy drugim a pierwszym wyrazem wynosi 3" ->
+# poprawne p=3, znow zla litera).
+#
+# Obsluguje 2 typy warunkow (oba z real-testu): (a) "ma [X-ty] wyraz
+# rowny V" - podstawia n=X do wzoru; (b) "roznica miedzy [X-tym] a
+# [Y-tym] wyrazem wynosi V" - odejmuje wzor(n=X)-wzor(n=Y). Rozpoznawanie
+# liczebnikow porzadkowych przez PREFIKS rdzenia (_ordinal_word_stem_to_
+# index), nie caly wyraz - odporne na polska odmiane przez przypadki
+# ("drugim"/"pierwszym" w bierniku, nie tylko mianownik "drugi"/
+# "pierwszy"). Abstain (unverifiable) gdy formula ma !=1 nieznany symbol
+# poza n, rownanie nie ma dokladnie 1 rozwiazania rzeczywistego, albo
+# zaden warunek nie zostal rozpoznany - bezpieczny domyslny abstain,
+# identyczny standard co reszta modulu.
+_SEQ_FORMULA_RE = re.compile(r'[a-z]_?\{?n\}?\s*=\s*(.+?)(?=\s*(?:ma\b|jest\b|wynosi\b|,|\.|$))')
+_SEQ_FORM_COND_TERM_RE = re.compile(r'\bma\s+(\w+)\s+wyraz\s+r[oó]wn\w*\s+(-?\d+(?:[.,]\d+)?)')
+_SEQ_FORM_COND_DIFF_RE = re.compile(r'r[oó]żnic\w*\s+między\s+(\w+)\s+a\s+(\w+)\s+wyrazem[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
+# Warunek C (dodany przy okazji - real-test PDF mial 2 zadania tego
+# ksztaltu: Zadanie 2 "suma pierwszych trzech wyrazow ... jest rowna 13"
+# geometryczne b_n=k^n oraz Zadanie 4 "sume pierwszych dwoch wyrazow
+# rowna 10" - oba reuzywaja juz istniejaca infrastrukture liczebnikow
+# glownych z _SEQ_CARDINAL_NUM_PATTERN/_cardinal_to_int, budowana
+# wczesniej dzisiaj dla innego celu (sum_given_n).
+# "jest" opcjonalne - obserwowano oba warianty: "suma ... jest rowna V"
+# (Zadanie 2) ORAZ "sume ... rowna V" bez "jest" (Zadanie 4, przymiotnik
+# "rowna"/"rowny" bezposrednio przy "sume", bez lacznika).
+_SEQ_FORM_COND_SUM_RE = re.compile(
+    r'sum[aeę]\s+pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')\s+wyraz\w*'
+    r'[^.]*?(?:(?:jest\s+)?r[oó]wn\w*|wynosi)\s+(-?\d+(?:[.,]\d+)?)'
+)
+_SEQ_ORDINAL_STEMS = [
+    ("pierwsz", 1), ("drug", 2), ("trzeci", 3), ("trzec", 3), ("czwart", 4),
+    ("piat", 5), ("piąt", 5), ("szost", 6), ("szóst", 6), ("siodm", 7), ("siódm", 7),
+    ("osm", 8), ("ósm", 8), ("dziewiat", 9), ("dziewiąt", 9), ("dziesiat", 10), ("dziesiąt", 10),
+]
+
+
+def _ordinal_word_stem_to_index(word: str):
+    """'drugim'/'drugiego'/'drugi' -> 2 (dopasowanie po PREFIKSIE rdzenia,
+    odporne na polska odmiane przez przypadki) - patrz komentarz przy
+    verify_sequence_formula_parameter."""
+    for stem, idx in _SEQ_ORDINAL_STEMS:
+        if word.startswith(stem):
+            return idx
+    return int(word) if word.isdigit() else None
+
+
+def verify_sequence_formula_parameter(question_text: str, options: list):
+    text = _normalize_subscripts(question_text).lower()
+    m_formula = _SEQ_FORMULA_RE.search(text)
+    if not m_formula:
+        return {"status": "unverifiable"}
+    n_sym = sp.symbols('n')
+    try:
+        rhs = _parse_expr(m_formula.group(1))
+    except Exception:
+        return {"status": "unverifiable"}
+    if n_sym not in rhs.free_symbols:
+        return {"status": "unverifiable"}
+    free = rhs.free_symbols - {n_sym}
+    if len(free) != 1:
+        return {"status": "unverifiable"}
+    param_sym = next(iter(free))
+
+    true_value = None
+    m_cond = _SEQ_FORM_COND_TERM_RE.search(text)
+    if m_cond:
+        idx = _ordinal_word_stem_to_index(m_cond.group(1))
+        if idx is not None:
+            try:
+                sol = sp.solve(Eq(rhs.subs(n_sym, idx), _to_num(m_cond.group(2))), param_sym)
+                real_sol = [s for s in sol if s.is_real]
+                if len(real_sol) == 1:
+                    true_value = sp.nsimplify(real_sol[0])
+            except Exception:
+                pass
+    if true_value is None:
+        m_cond = _SEQ_FORM_COND_DIFF_RE.search(text)
+        if m_cond:
+            idx1 = _ordinal_word_stem_to_index(m_cond.group(1))
+            idx2 = _ordinal_word_stem_to_index(m_cond.group(2))
+            if idx1 is not None and idx2 is not None:
+                try:
+                    sol = sp.solve(Eq(rhs.subs(n_sym, idx1) - rhs.subs(n_sym, idx2), _to_num(m_cond.group(3))), param_sym)
+                    real_sol = [s for s in sol if s.is_real]
+                    if len(real_sol) == 1:
+                        true_value = sp.nsimplify(real_sol[0])
+                except Exception:
+                    pass
+    if true_value is None:
+        m_cond = _SEQ_FORM_COND_SUM_RE.search(text)
+        if m_cond:
+            count = _cardinal_to_int(m_cond.group(1))
+            try:
+                total = sum((rhs.subs(n_sym, i) for i in range(1, count + 1)), sp.Integer(0))
+                sol = sp.solve(Eq(total, _to_num(m_cond.group(2))), param_sym)
+                real_sol = [s for s in sol if s.is_real]
+                if len(real_sol) == 1:
+                    true_value = sp.nsimplify(real_sol[0])
+            except Exception:
+                pass
+    if true_value is None:
+        return {"status": "unverifiable"}
+
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = _option_value_after_equals(opt)
+        except Exception:
+            opt_val = None
+        if opt_val is None:
+            continue
+        any_parsed = True
+        if opt_val == true_value:
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "no_option_matches"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
     return {"status": "no_option_matches"}
 
 
@@ -2677,6 +2820,10 @@ def verify_and_fix_math_question(question_text: str, options: list):
     result3 = verify_sequence_question(question_text, options)
     if result3["status"] in ("match_index", "no_option_matches"):
         return {**result3, "explanation": None}
+
+    result3b = verify_sequence_formula_parameter(question_text, options)
+    if result3b["status"] in ("match_index", "no_option_matches"):
+        return {**result3b, "explanation": None}
 
     result4 = verify_trig_special_angle_question(question_text, options)
     if result4["status"] in ("match_index", "no_option_matches"):
