@@ -112,11 +112,19 @@ r4 = verify_and_fix_math_question(q4, opts4)
 check("Pytanie 4 (d1=7,d5=19,oblicz roznice): d=3 poprawnie wykryte (byloby 'unverifiable' PRZED naprawa)",
       r4["status"] == "match_index" and r4["true_index"] == 1, r4)
 
+# ZMIENIONE (kolejna naprawa tego samego dnia - _disambiguate_multi_solution):
+# q^2=4 MA dwa matematycznie poprawne rozwiazania (+-2), ale TYLKO q=2
+# wystepuje wsrod podanych opcji (q=-2 nigdy nie jest wypisane) - zamiast
+# zawsze abstainowac, weryfikator teraz sprawdza to i bezpiecznie wybiera
+# JEDYNE rozwiazanie faktycznie obecne wsrod opcji (nie zgadywanie -
+# wyciaganie dodatkowej pewnosci z danych opcji). Patrz test_math_verify_
+# ratio_disambiguation.py po test samej funkcji _disambiguate_multi_solution
+# (w tym przypadek GDY oba rozwiazania sa wsrod opcji -> nadal abstain).
 q3 = "Dany jest ciąg geometryczny, w którym pierwszy wyraz jest $c_1 = 4$, a trzeci wyraz $c_3 = 16$. Oblicz iloraz tego ciągu."
 opts3 = ["$q = 2$", "$q = 3$", "$q = 4$", "$q = 5$"]
 r3 = verify_and_fix_math_question(q3, opts3)
-check("Pytanie 3 (c1=4,c3=16,oblicz iloraz - q^2=4 ma DWA rozwiazania +-2): bezpieczny abstain (unverifiable), NIE zgadywanie",
-      r3["status"] == "unverifiable", r3)
+check("Pytanie 3 (c1=4,c3=16,oblicz iloraz - q^2=4 ma DWA rozwiazania +-2, ale TYLKO q=2 jest wsrod opcji): q=2 bezpiecznie wybrane",
+      r3["status"] == "match_index" and r3["true_index"] == 0, r3)
 
 print()
 print("=" * 70)

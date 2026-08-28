@@ -822,6 +822,28 @@ _SEQ_LAST_TERM_RE = re.compile(r'[a-z]_?\{?n\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
 # miedzy "d" a "=" nie pasuje do tego wzorca (wymaga "d"/"r" WPROST przed "=").
 _SEQ_R_RE = re.compile(r'(?<![a-zA-Z])[rd]\s*=\s*(-?\d+(?:[.,]\d+)?)')
 _SEQ_Q_RE = re.compile(r'(?<![a-zA-Z])q\s*=\s*(-?\d+(?:[.,]\d+)?)')
+# NAPRAWIONE (real-test, sierpien 2026 - user real-testowal Quiz po
+# poprzedniej naprawie i wkleil kolejna partie, w ktorej WIELE pytan
+# bylo napisanych CZYSTA PROZA, bez ZADNEGO LaTeX/symbolu ("pierwszy
+# wyraz wynosi 7, ostatni wyraz wynosi 47, a różnica wynosi 4" zamiast
+# "$a_1=7$"/"$d=4$") - _SEQ_TERM_RE/_SEQ_R_RE/_SEQ_Q_RE/_SEQ_LAST_TERM_RE
+# wymagaja WSZYSTKIE formy "litera[_indeks]=liczba", wiec byly calkowicie
+# slepe na ta (rownie czesta) forme jezykowa. Dodano UZUPELNIAJACE
+# (nie zastepujace - patrz uzycie w analyze_sequence_question, TYLKO gdy
+# forma symboliczna nic nie znalazla) wzorce prozy dla najczestszych 4
+# danych: pierwszy wyraz, roznica/iloraz, ostatni wyraz. "(?:wynosi\s+)?"
+# jest OPCJONALNE, bo obserwowano oba warianty w tej samej partii:
+# "pierwszy wyraz wynosi 7" ORAZ "pierwszy wyraz 2" (bez czasownika).
+_SEQ_PROSE_A1_RE = re.compile(r'pierwsz\w+\s+wyraz\w*\s+(?:wynosi\s+)?(-?\d+(?:[.,]\d+)?)')
+_SEQ_PROSE_RATIO_ARITH_RE = re.compile(r'r[oó]żnic\w*\s+(?:wynosi\s+)?(-?\d+(?:[.,]\d+)?)')
+_SEQ_PROSE_RATIO_GEOM_RE = re.compile(r'iloraz\w*\s+(?:wynosi\s+)?(-?\d+(?:[.,]\d+)?)')
+_SEQ_PROSE_LAST_TERM_RE = re.compile(r'ostatni\s+wyraz\w*\s+(?:wynosi\s+)?(-?\d+(?:[.,]\d+)?)')
+# NAPRAWIONE (ten sam real-test jak wyzej): "suma jego pierwszych n
+# wyrazow wynosi 65" - slowo "jego"/"tego ciagu" miedzy "suma" a
+# "pierwszych" lamalo sztywne \s+ w _SEQ_SUM_VALUE_UNKNOWN_N_RE ponizej -
+# dodano OPCJONALNY, ograniczony zbior typowych wypelniaczy (nie
+# dowolny tekst - unika falszywych dopasowan).
+_SEQ_SUM_FILLER = r'(?:jego\s+|tego\s+ciągu\s+|tego\s+ciagu\s+)?'
 # NAPRAWIONE (ten sam real-test jak wyzej - Pytanie 7, "Oblicz sume
 # dziesieciu pierwszych wyrazow..."): 2 niezalezne luki naraz -
 # (1) tylko cyfra (\d+), nigdy slowna forma liczebnika ("dziesieciu",
@@ -855,11 +877,11 @@ _SEQ_CARDINAL_NUM_PATTERN = r'(?:\d+|' + '|'.join(_SEQ_CARDINAL_WORDS.keys()) + 
 # np. "Oblicz sumę pierwszych 6 wyrazów...") - ten sam sum_given_n,
 # inny przypadek gramatyczny zaleznie od pozycji w zdaniu.
 _SEQ_SUM_N_RE = re.compile(
-    r'sum[aeę]\s+(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
+    r'sum[aeę]\s+' + _SEQ_SUM_FILLER + r'(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
     r'|(' + _SEQ_CARDINAL_NUM_PATTERN + r')\s+pierwszych)\s+wyraz'
 )
 _SEQ_SUM_VALUE_RE = re.compile(
-    r'suma\s+(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
+    r'suma\s+' + _SEQ_SUM_FILLER + r'(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
     r'|(' + _SEQ_CARDINAL_NUM_PATTERN + r')\s+pierwszych)\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)'
 )
 # NAPRAWIONE (wykryte realna generacja Etapu 6): oprocz "oblicz" AI rowniez
@@ -890,7 +912,7 @@ _SEQ_NTH_ASK_ORDINAL_RE = re.compile(_SEQ_NTH_ASK_VERB + r'\s+(' + '|'.join(_SEQ
 # ETAP 6: "suma pierwszych N wyrazow ... wynosi X" GDZIE N JEST SZUKANE
 # (litera "n", nie cyfra) - odroznione od _SEQ_SUM_VALUE_RE (ktory
 # wymaga cyfry - tam N JEST DANE, szukane jest a1).
-_SEQ_SUM_VALUE_UNKNOWN_N_RE = re.compile(r'suma\s+pierwszych\s+n\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
+_SEQ_SUM_VALUE_UNKNOWN_N_RE = re.compile(r'suma\s+' + _SEQ_SUM_FILLER + r'pierwszych\s+n\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
 
 
 def analyze_sequence_question(question_text: str):
@@ -914,15 +936,34 @@ def analyze_sequence_question(question_text: str):
     m = _SEQ_LAST_TERM_RE.search(text)
     if m:
         last_term = _to_num(m.group(1))
+    else:
+        # NAPRAWIONE: fallback do prozy ("ostatni wyraz wynosi 47") -
+        # patrz komentarz przy _SEQ_PROSE_LAST_TERM_RE. TYLKO gdy forma
+        # symboliczna nic nie znalazla - zero ryzyka nadpisania.
+        m = _SEQ_PROSE_LAST_TERM_RE.search(text)
+        if m:
+            last_term = _to_num(m.group(1))
 
     terms = {}
     for m in _SEQ_TERM_RE.finditer(text):
         terms[int(m.group(1))] = _to_num(m.group(2))
+    if 1 not in terms:
+        # NAPRAWIONE: fallback do prozy ("pierwszy wyraz wynosi 7"/
+        # "pierwszy wyraz 2") - patrz komentarz przy _SEQ_PROSE_A1_RE.
+        m = _SEQ_PROSE_A1_RE.search(text)
+        if m:
+            terms[1] = _to_num(m.group(1))
 
     ratio = None
     m = (_SEQ_R_RE if kind == "arithmetic" else _SEQ_Q_RE).search(text)
     if m:
         ratio = _to_num(m.group(1))
+    else:
+        # NAPRAWIONE: fallback do prozy ("różnica wynosi 4"/"różnicę 3") -
+        # patrz komentarz przy _SEQ_PROSE_RATIO_ARITH_RE/_GEOM_RE.
+        m = (_SEQ_PROSE_RATIO_ARITH_RE if kind == "arithmetic" else _SEQ_PROSE_RATIO_GEOM_RE).search(text)
+        if m:
+            ratio = _to_num(m.group(1))
 
     sum_value = None
     m = _SEQ_SUM_VALUE_RE.search(text)
@@ -936,11 +977,21 @@ def analyze_sequence_question(question_text: str):
 
 
 def _sequence_a1_given(text: str) -> bool:
-    """True jesli a1 jest PODANE wprost w tresci (np. 'a_1=3', 'a1 = 3') -
+    """True jesli a1 jest PODANE wprost w tresci (np. 'a_1=3', 'a1 = 3',
+    LUB proza 'pierwszy wyraz wynosi 3' - patrz _SEQ_PROSE_A1_RE) -
     wywolywane na juz-lowercased/znormalizowanym tekscie (patrz
     detect_sequence_intent). Uzywane do odroznienia 'pierwszy wyraz' jako
-    OPISU danej wartosci od 'pierwszy wyraz' jako SZUKANEJ wartosci."""
-    return any(int(m.group(1)) == 1 for m in _SEQ_TERM_RE.finditer(text))
+    OPISU danej wartosci od 'pierwszy wyraz' jako SZUKANEJ wartosci.
+
+    NAPRAWIONE (real-test, sierpien 2026 - partia pytan w czystej prozie):
+    bez sprawdzania formy prozy, pytanie z a1 podanym WYLACZNIE prozą
+    ("pierwszy wyraz wynosi 7, ... oblicz różnicę") bylo BLEDNIE uznawane
+    za "a1 nie jest podane" (bo _SEQ_TERM_RE nic nie znalazlo) - fraza
+    'pierwszy wyraz' (ktora w rzeczywistosci tylko OPISUJE juz podane a1)
+    falszywie sygnalizowalaby "a1 jest szukane"."""
+    if any(int(m.group(1)) == 1 for m in _SEQ_TERM_RE.finditer(text)):
+        return True
+    return bool(_SEQ_PROSE_A1_RE.search(text))
 
 
 def detect_sequence_intent(question_text: str):
@@ -1027,10 +1078,17 @@ def detect_sequence_intent(question_text: str):
     # ZADNEGO intencji -> unverifiable, mimo ze to identyczny, w pelni
     # rozwiazywalny uklad 2 rownan/2 niewiadome co two_term_to_a1_ratio,
     # tylko interesuje nas DRUGA niewiadoma (r/q) zamiast pierwszej (a1).
-    asks_for_ratio_only = a1_given and ('różnic' in text or 'roznic' in text or 'iloraz' in text) and (
-        'oblicz' in text or 'wyznacz' in text or 'znajd' in text or 'jaki jest' in text
-    )
-    if asks_for_ratio_only:
+    #
+    # NAPRAWIONE (real-test, kolejna partia): pierwsza wersja tego
+    # sprawdzenia sprawdzala czasownik i "różnic"/"iloraz" NIEZALEZNIE
+    # gdziekolwiek w tekscie - falszywie lapala "Znajdź sumę wszystkich
+    # wyrazów..., a różnica wynosi 5" (pytanie o SUME, "różnica" tam
+    # tylko OPISUJE juz DANA wartosc, daleko od czasownika "znajdź").
+    # Wymagane teraz: czasownik BEZPOSREDNIO PRZED "różnicę"/"iloraz"
+    # (tak jak w faktycznych zgloszonych przypadkach: "oblicz różnicę
+    # tego ciągu", "oblicz iloraz tego ciągu") - eliminuje falszywe
+    # dopasowania, gdzie "różnica"/"iloraz" to tylko dana, nie pytanie.
+    if a1_given and re.search(r'(?:oblicz|wyznacz|znajd\w*|jaki jest)\s+(?:różnic\w*|roznic\w*|iloraz\w*)', text):
         return {"intent": "two_term_to_ratio_only"}
     return None
 
@@ -1093,6 +1151,43 @@ def verify_geometric_power_form_ratio(question_text: str, options: list):
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     return {"status": "no_option_matches"}
+
+
+def _disambiguate_multi_solution(real_sols, options, option_parser):
+    """NAPRAWIONE (real-test, sierpien 2026 - user real-testowal Quiz/
+    ciagi geometryczne po poprzednich naprawach): uklad rownan dla
+    two_term_to_a1_ratio/two_term_to_ratio_only czesto ma DWA
+    matematycznie poprawne rozwiazania (np. q^2=9 -> q=+-3), bo
+    parzysta potega ilorazu ma dwa pierwiastki - poprzednio kazdy
+    taki przypadek zawsze abstainowal (bezpiecznie, ale marnujac
+    informacje: pytanie z natury MA jedna, konkretna, zamierzona przez
+    AI odpowiedz miedzy podanymi opcjami).
+
+    Zamiast zawsze abstainowac, sprawdzamy, ktore z matematycznie
+    poprawnych rozwiazan FAKTYCZNIE wystepuje wsrod podanych opcji.
+    Jesli DOKLADNIE JEDNO z nich pasuje do DOKLADNIE JEDNEJ opcji -
+    to bezpieczna odpowiedz (reszta matematycznie poprawnych rozwiazan
+    po prostu nie byla WSROD wyboru, wiec nie moglaby byc "zamierzona"
+    przez AI). W kazdym innym przypadku (0 pasuje, >=2 rozne rozwiazania
+    pasuja, albo jedno rozwiazanie pasuje do >=2 opcji) - unverifiable,
+    identycznie jak wczesniej - to NIE jest zgadywanie, tylko wyciaganie
+    dodatkowej pewnosci z JUZ danych opcji."""
+    matched_distinct = set()
+    per_option = []
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = option_parser(opt)
+        except Exception:
+            opt_val = None
+        per_option.append((idx, opt_val))
+        if opt_val is not None and opt_val in real_sols:
+            matched_distinct.add(opt_val)
+    if len(matched_distinct) == 1:
+        only_val = next(iter(matched_distinct))
+        idxs = [idx for idx, v in per_option if v == only_val]
+        if len(idxs) == 1:
+            return idxs[0]
+    return None
 
 
 def verify_sequence_question(question_text: str, options: list):
@@ -1229,10 +1324,28 @@ def verify_sequence_question(question_text: str, options: list):
                 a1v, rv = (s[a1_sym], s[r_sym]) if isinstance(s, dict) else s
                 if a1v.is_real and rv.is_real:
                     real_sols.append((sp.nsimplify(a1v), sp.nsimplify(rv)))
-            if len(real_sols) != 1:
+            if not real_sols:
                 return {"status": "unverifiable"}
-            true_value = real_sols[0]
-            option_parser = lambda opt: _option_a1_ratio(opt, kind)
+            # NAPRAWIONE (real-test, sierpien 2026): opcje CZASEM podaja
+            # TYLKO a1 ("$a_1 = 3$"), nie pare a1+iloraz - _option_a1_ratio
+            # wymaga OBU wartosci w kazdej opcji, wiec dla tego formatu
+            # zawsze zwracal None (zero opcji do sparsowania, mimo ze
+            # true_value bylo poprawnie policzone). Sprawdz najpierw, czy
+            # JAKAKOLWIEK opcja w ogole zawiera wartosc ilorazu/roznicy -
+            # jesli NIE, porownuj TYLKO po a1 (jedyne, co mozna bezpiecznie
+            # zweryfikowac z tego, co user faktycznie widzi jako opcje).
+            pair_parser = lambda opt: _option_a1_ratio(opt, kind)
+            any_option_has_ratio = any(pair_parser(opt) is not None for opt in (options or []))
+            if any_option_has_ratio:
+                option_parser = pair_parser
+                candidates = real_sols
+            else:
+                option_parser = _option_value_after_equals
+                candidates = [a1v for a1v, _rv in real_sols]
+            if len(candidates) > 1:
+                idx = _disambiguate_multi_solution(candidates, options, option_parser)
+                return {"status": "match_index", "true_index": idx} if idx is not None else {"status": "unverifiable"}
+            true_value = candidates[0]
         elif intent["intent"] == "two_term_to_ratio_only":
             # Identyczny uklad rownan co two_term_to_a1_ratio (patrz
             # komentarz w detect_sequence_intent) - jedyna roznica to
@@ -1254,10 +1367,13 @@ def verify_sequence_question(question_text: str, options: list):
                 a1v, rv = (s[a1_sym], s[r_sym]) if isinstance(s, dict) else s
                 if a1v.is_real and rv.is_real:
                     real_sols.append(sp.nsimplify(rv))
+            option_parser = _option_value_after_equals
+            if len(real_sols) > 1:
+                idx = _disambiguate_multi_solution(real_sols, options, option_parser)
+                return {"status": "match_index", "true_index": idx} if idx is not None else {"status": "unverifiable"}
             if len(real_sols) != 1:
                 return {"status": "unverifiable"}
             true_value = real_sols[0]
-            option_parser = _option_value_after_equals
         else:
             return {"status": "unverifiable"}
     except Exception:
