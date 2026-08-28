@@ -46,8 +46,15 @@ check("hard + rownania kwadratowe (parametr) -> +60% (20+12=32)", r == 32, r)
 r = _buffered_count(20, topic="Równania kwadratowe", difficulty="medium")
 check("medium + rownania kwadratowe -> podniesiony bufor +50% (20+10=30)", r == 30, r)
 
+# ZMIENIONE (real-test, sierpien 2026 - user zglosil Quiz/ciagi
+# geometryczne/trudny/n=6 -> shortfall 5/6, "limit 30s" - patrz commit
+# "Napraw Quiz: budzet 30s za maly dla KAZDEGO tematu na poziomie
+# trudny"): "trudny"/"hard" NA KAZDYM temacie (nie tylko rownaniach
+# kwadratowych) dostal wlasny, umiarkowany bufor +40% (miedzy
+# domyslnym +30% a +50%/+60% rownan kwadratowych) - CELOWA, swiadoma
+# zmiana, nie regresja.
 r = _buffered_count(20, topic="Trygonometria", difficulty="hard")
-check("hard + INNY temat (nie kwadratowe) -> dotychczasowe +30% (26)", r == 26, r)
+check("hard + INNY temat (nie kwadratowe) -> podniesiony bufor +40% (20+8=28)", r == 28, r)
 
 r = _buffered_count(20)
 check("brak topic/difficulty (np. sciezka z obrazka) -> domyslne +30% (26)", r == 26, r)
