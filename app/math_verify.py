@@ -983,9 +983,63 @@ def _option_a1_ratio(option_text: str, kind: str):
     return (_to_num(m1.group(1)), _to_num(m2.group(1)))
 
 
+# NAPRAWIONE (user zglosil realny przypadek, sierpien 2026): ciag
+# geometryczny podany WPROST jako wzor ogolny "$b_n = k^n$" (parametr k
+# jako WYKLADNIK) nie ma ZADNYCH konkretnych wyrazow (np. brak "b_1=..."),
+# wiec analyze_sequence_question ponizej (ktora wymaga terms/last_term/
+# sum_value) zawsze zwraca None dla tego ksztaltu pytania - cala
+# weryfikacja Warstwy 2 dla ciagow byla wiec calkowicie slepa na ten
+# podwzorzec. Potwierdzony realny blad: AI poprawnie wyprowadzilo k=4 w
+# WYJASNIENIU, ale WSKAZALO (final_answer) blednie k=2 - Warstwa 1 nie
+# ma dostepu do tresci wyjasnienia (tylko final_answer vs opcje), wiec
+# nie mogla zlapac tej sprzecznosci.
+_SEQ_POWER_FORM_RE = re.compile(r'[a-z]_?\{?n\}?\s*=\s*[a-z]\s*\^\s*\{?n\}?')
+_SEQ_RATIO_VALUE_RE = re.compile(r'iloraz\w*\s+(?:r[oó]wn\w*|wynosi)\s+(-?\d+(?:[.,]\d+)?)')
+
+
+def verify_geometric_power_form_ratio(question_text: str, options: list):
+    """MINIMALNY, bezpieczny weryfikator dla JEDNEGO, potwierdzonego
+    podwzorca: ciag geometryczny b_n=k^n (parametr jako wykladnik),
+    pytanie o k dla ktorego iloraz kolejnych wyrazow rowna sie danej
+    liczbie. Matematyka jest tu trywialna i bezpieczna: dla b_n=k^n,
+    b_(n+1)/b_n = k^(n+1)/k^n = k dla KAZDEGO n - wiec "iloraz rowny X"
+    oznacza WPROST k=X, bez zadnego rownania do rozwiazywania. Abstain
+    (unverifiable) dla wszystkiego innego - patrz kontrakt
+    verify_sequence_question."""
+    text = _normalize_subscripts(question_text).lower()
+    if 'geometryczn' not in text or not _SEQ_POWER_FORM_RE.search(text):
+        return {"status": "unverifiable"}
+    m_ratio = _SEQ_RATIO_VALUE_RE.search(text)
+    if not m_ratio:
+        return {"status": "unverifiable"}
+    true_value = _to_num(m_ratio.group(1))
+
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = _parse_expr(_option_text(opt))
+        except Exception:
+            opt_val = None
+        if opt_val is None:
+            continue
+        any_parsed = True
+        if opt_val == true_value:
+            matches.append(idx)
+    if not any_parsed:
+        return {"status": "no_option_matches"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    return {"status": "no_option_matches"}
+
+
 def verify_sequence_question(question_text: str, options: list):
     """Weryfikacja zadan o ciagach arytmetycznych/geometrycznych - ten
     sam kontrakt zwracany co verify_param_quadratic_question."""
+    power_form_result = verify_geometric_power_form_ratio(question_text, options)
+    if power_form_result["status"] != "unverifiable":
+        return power_form_result
+
     parsed = analyze_sequence_question(question_text)
     if not parsed:
         return {"status": "unverifiable"}

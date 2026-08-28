@@ -314,6 +314,24 @@ ZASADY:
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
 
 _MATH_INDICATOR_RE = re.compile(r'[\d\\=+\-*/^<>_{}]')
+# NAPRAWIONE (user zglosil realny przypadek: "pierwszych n$ wyrazów" -
+# literalny "$" zostal w tresci): pojedyncza litera zmiennej w LaTeX,
+# np. "$n$" (bez cyfry/operatora/backslasha), nie pasowala do
+# _MATH_INDICATOR_RE powyzej - _strip_mistaken_dollar_pairs (nizej)
+# uznawala taka, w pelni poprawna pare $n$ za "pomylkowy" pojedynczy
+# dolar i usuwala TYLKO otwierajacy $, po czym - zgodnie z zamierzonym
+# dzialaniem algorytmu (wraca do skanowania OD zamykajacego $, bo moze
+# to byc prawdziwe otwarcie NASTEPNEGO wzoru) - ten "wolny" $ omylkowo
+# parowal sie z poczatkiem KOLEJNEGO, oddzielnego "$n$" gdzies dalej w
+# tym samym tekscie (tresc miedzy nimi zawierala cyfry, np. "wynosi 2,
+# a różnica wynosi 3", wiec falszywie przechodzila test "to matematyka").
+# Skutek: DRUGI "$n$" tracil swoj OTWIERAJACY dolar, zostawiajac sam
+# ZAMYKAJACY osierocony - i tak dokladnie powstawal literalny "n$" w
+# koncowym tekscie. Naprawa: pojedyncza litera (a-z/A-Z) MIEDZY dolarami
+# jest teraz TEZ uznawana za poprawna matematyke (typowa zmienna, np.
+# $n$/$k$/$x$) - taka para NIGDY nie trafia juz do galezi "pomylkowy
+# dolar", wiec kaskada nie moze sie zaczac.
+_BARE_VARIABLE_RE = re.compile(r'^[a-zA-Z]$')
 
 
 def _strip_mistaken_dollar_pairs(t: str) -> str:
@@ -333,7 +351,7 @@ def _strip_mistaken_dollar_pairs(t: str) -> str:
             i += 1
             continue
         content = t[i + 1:j]
-        if _MATH_INDICATOR_RE.search(content):
+        if _MATH_INDICATOR_RE.search(content) or _BARE_VARIABLE_RE.match(content):
             out.append(t[i:j + 1])
             i = j + 1
         else:
@@ -1434,8 +1452,26 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                     # ryzykowna po dodaniu bufora (_buffered_question_count
                     # moze prosic o 20+ zadan naraz), analogicznie do fixa w
                     # openai_exam.py (ucinanie odpowiedzi psulo caly JSON).
-                    temperature=0.5, max_tokens=min(10000, max(5500, 600 * liczba_pytan)),
+                    # ZWIEKSZONE (user zglosil: Pytanie 1 urwane w polowie
+                    # zdania - audyt matematyki nie wykazal, ze KONKRETNIE
+                    # TA generacja przekroczyla stary limit (partia byla
+                    # rownolegle dzielona na male kawalki, kazdy dostawal
+                    # wygodny zapas ~5500 tokenow), ale 600/pytanie to byl
+                    # ciasny szacunek (pelne pytanie zamkniete z 4 opcjami +
+                    # wyjasnieniem + diversity_tag to realnie blizej 700-800
+                    # tokenow dla bardziej rozbudowanych tematow jak ciagi) -
+                    # podniesiono margines bezpieczenstwa. Koszt: OpenAI
+                    # liczy oplate za FAKTYCZNIE zuzyte tokeny, nie za sam
+                    # max_tokens (sufit) - podniesienie sufitu jest wiec
+                    # "darmowe" o ile nie jest faktycznie potrzebne.
+                    temperature=0.5, max_tokens=min(12000, max(5500, 750 * liczba_pytan)),
                 )
+                # NOWE: diagnostyka na przyszlosc - jesli to KIEDYS sie
+                # powtorzy, log natychmiast pokaze DOKLADNA przyczyne
+                # (ucięcie przez limit tokenow) zamiast zgadywania po fakcie.
+                _finish_reason = getattr(r.choices[0], "finish_reason", None)
+                if _finish_reason == "length":
+                    print(f"[ExamGen][UWAGA] Odpowiedz AI URWANA przez limit tokenow (finish_reason=length) - liczba_pytan={liczba_pytan}, max_tokens uzyty powyzej. Tresc/JSON moze byc niekompletny.")
                 raw = r.choices[0].message.content.strip()
                 raw = self._fix_json(raw)
                 try:

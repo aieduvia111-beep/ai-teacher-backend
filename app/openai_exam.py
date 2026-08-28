@@ -556,6 +556,18 @@ def _wrap_naked_latex(t):
 
 
 _MATH_INDICATOR_RE = re_module.compile(r'[\d\\=+\-*/^<>_{}]')
+# NAPRAWIONE (port fixu ze Sprawdzianu, sierpien 2026 - user zglosil
+# realny przypadek "pierwszych n$ wyrazów"): pojedyncza litera zmiennej
+# w LaTeX, np. "$n$", nie pasowala do _MATH_INDICATOR_RE - w pelni
+# poprawna para $n$ byla wiec uznawana za "pomylkowy" pojedynczy dolar,
+# co (przez zamierzone dzialanie skanowania - wraca do sprawdzania OD
+# zamykajacego $, bo moze byc otwarciem kolejnego wzoru) kaskadowo
+# gubilo otwierajacy $ NASTEPNEGO, oddzielnego "$n$" gdzies dalej w
+# tekscie (jesli tresc miedzy nimi zawierala cyfry - falszywie zaliczana
+# jako "matematyka"), zostawiajac osierocony ZAMYKAJACY dolar - dajac
+# dokladnie literalny "n$" w koncowym tekscie. Pelne uzasadnienie i
+# identyczna naprawa - patrz komentarz w exam_pdf_generator.py.
+_BARE_VARIABLE_RE = re_module.compile(r'^[a-zA-Z]$')
 
 
 def _strip_mistaken_dollar_pairs(t):
@@ -588,7 +600,7 @@ def _strip_mistaken_dollar_pairs(t):
             i += 1
             continue
         content = t[i + 1:j]
-        if _MATH_INDICATOR_RE.search(content):
+        if _MATH_INDICATOR_RE.search(content) or _BARE_VARIABLE_RE.match(content):
             out.append(t[i:j + 1])
             i = j + 1
         else:
