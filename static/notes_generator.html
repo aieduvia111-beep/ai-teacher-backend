@@ -1058,9 +1058,17 @@ async function generate(){
     if(e.name==='AbortError') msg = 'Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';
     else if(e.message && e.message.includes('Failed to fetch')) msg = 'Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
     else if(e.message && e.message.includes('timeout')) msg = 'Generowanie trwa zbyt długo. Spróbuj z krótszym tematem.';
-    // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera CTA
-    // "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej informacji.
-    if(e.message && e.message.includes('limit')) msg = e.message;
+    // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+    // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+    // "Kup Pro -> pricing.html", nie sam tekst. Gdy to SERWER (nie
+    // kliencki pre-check checkLimit()) wykrywa limit (429) - np. bo
+    // licznik w localStorage byl nieaktualny wzgledem serwera - trafialismy
+    // do zwyklego showErr() z samym tekstem. Teraz pokazujemy TEN SAM
+    // popup niezaleznie od tego, ktora strona wykryla limit.
+    if(e.message && e.message.includes('limit')){
+      showLimitPopup('notes', LIMITS_FREE.notes);
+      return;
+    }
     showErr(msg);
   }
 }

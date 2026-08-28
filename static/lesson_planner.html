@@ -1071,11 +1071,15 @@ window.generatePlan=async function generatePlan(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      // NAPRAWIONE: patrz identyczny fix w exam_generator.html - zostawiamy
-      // prawdziwa tresc bledu z backendu (zawiera CTA "Kup Pro..."), zamiast
-      // ja nadpisywac krotszym tekstem bez tej informacji.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
-      else if(e.message.includes('limit')) _errMsg=e.message;
+      else if(e.message.includes('limit')){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+        // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+        // "Kup Pro -> pricing.html", nie sam tekst - patrz identyczny fix
+        // w exam_generator.html.
+        showLimitPopup('lesson', LIMITS_FREE.lesson);
+        return;
+      }
     }
     document.getElementById('errTxt').textContent=_errMsg;
     err.classList.add('show');

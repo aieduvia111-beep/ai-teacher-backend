@@ -1066,15 +1066,23 @@ async function generate(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      // NAPRAWIONE: wczesniej ten branch NADPISYWAL prawdziwy komunikat z
-      // backendu (ktory - patrz usage_limits.py LIMIT_MESSAGES - zawiera
-      // konkretna tresc PLUS CTA "Kup Pro i ucz sie bez limitow!") gotowym,
-      // krotszym tekstem bez zadnej wzmianki o Pro. Teraz zostawiamy
-      // prawdziwa tresc z backendu (juz poprawnie odczytana wyzej z
-      // res.json().detail) - ten branch tylko POTWIERDZA ze to na pewno
-      // przypadek limitu, nie zmienia juz tresci.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
-      else if(e.message.includes('limit')) _errMsg=e.message;
+      else if(e.message.includes('limit')){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+        // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+        // "Kup Pro -> pricing.html", nie sam tekst. Ten popup ISTNIEJE od
+        // dawna (wywolywany przez checkLimit() - klienckie, lokalne
+        // sprawdzenie PRZED wyslaniem requestu), ale gdy to SERWER
+        // (autorytatywne zrodlo, baza danych) odrzuca requestem 429 - bo
+        // np. licznik w localStorage na tym urzadzeniu/przegladarce byl
+        // nieaktualny wzgledem serwera - trafialismy tutaj, do galezi
+        // showErr(), ktora pokazuje TYLKO tekst (bez przycisku). Teraz
+        // pokazujemy TEN SAM popup co przy kliknieckowym pre-checku,
+        // niezaleznie od tego, KTORA strona (klient czy serwer) wykryla
+        // limit - user zawsze widzi ten sam, klikalny popup z Pro.
+        showLimitPopup('exam', LIMITS_FREE.exam);
+        return;
+      }
     }
     showErr(_errMsg);
   }

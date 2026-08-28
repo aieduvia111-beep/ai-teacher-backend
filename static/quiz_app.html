@@ -1128,11 +1128,15 @@ async function startQuiz(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera
-      // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
-      // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
-      else if(e.message.includes('limit')) _errMsg=e.message;
+      else if(e.message.includes('limit')){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+        // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+        // "Kup Pro -> pricing.html", nie sam tekst - patrz identyczny fix
+        // w exam_generator.html.
+        showLimitPopup('quiz', LIMITS_FREE.quiz);
+        return;
+      }
     };err.textContent=_errMsg;err.style.display='block';});
     return;
   }
@@ -1179,11 +1183,15 @@ async function startQuiz(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera
-      // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
-      // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
-      else if(e.message.includes('limit')) _errMsg=e.message;
+      else if(e.message.includes('limit')){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+        // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+        // "Kup Pro -> pricing.html", nie sam tekst - patrz identyczny fix
+        // w exam_generator.html.
+        showLimitPopup('quiz', LIMITS_FREE.quiz);
+        return;
+      }
     };err.textContent=_errMsg;err.style.display='block';});
 }
 

@@ -961,7 +961,14 @@ async function scanImage(){
       // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
       // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
-      else if(e.message.includes('limit')) _errMsg=e.message;
+      else if(e.message.includes('limit')){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+        // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+        // "Kup Pro -> pricing.html", nie sam tekst - patrz identyczny fix
+        // w exam_generator.html.
+        showLimitPopup('vision', LIMITS_FREE.vision);
+        return;
+      }
     }
     showErr(_errMsg);
   }
