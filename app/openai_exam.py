@@ -116,6 +116,112 @@ def sanitize_latex_json_backslashes(raw: str) -> str:
             result.append(c); i += 1
     return ''.join(result)
 
+
+# NAPRAWIONE (user, sierpien 2026: "będziemy naprawiać błędy pojedyncze,
+# których są miliard... cały system ma być profesjonalny" - po TRZECIM z
+# rzedu, waskim zgloszonym przypadku zlego renderowania $/LaTeX w tej
+# samej sesji - osierocony dolar, gola litera, literalny "\sqrt{3}" bez
+# $ - Question 6 real-testu Trygonometrii): zamiast bez konca dopisywac
+# kolejny waski regex-patch dla kolejnego KONKRETNEGO ksztaltu zlego
+# LaTeX-a (dokladnie ta sama slepa uliczka co przy matematyce, ktora
+# doprowadzila do Warstwy 2.5 - patrz blind_verify.py), JEDNA, OGOLNA
+# bramka walidacyjna: sprawdza STRUKTURALNA poprawnosc, nie konkretny
+# wzorzec. Zero AI - to czysta, deterministyczna walidacja tekstu,
+# uzywajaca JUZ istniejacej, wyczerpujacej listy komend
+# (_LATEX_CMDS_AT_RISK) jako zrodla prawdy "co jest komenda LaTeX".
+_LATEX_CMDS_AT_RISK_SET = frozenset(_LATEX_CMDS_AT_RISK)
+_LATEX_CMD_TOKEN_RE = _re_sanitize.compile(r'\\([a-zA-Z]+)')
+
+
+_OPTION_PREFIX_RE = _re_sanitize.compile(r'^([a-dA-D]\)\s*)')
+
+
+def auto_wrap_bare_latex(text: str) -> str:
+    """NAPRAWIONE (real-test, sierpien 2026 - Trygonometria: 15 z 20
+    wygenerowanych zadan mialy komende LaTeX POZA $ $ - 75%, NIE rzadki
+    przypadek): pierwsza wersja tej naprawy TYLKO wykrywala i ODRZUCALA
+    (patrz validate_latex_formatting) - przy tak wysokiej czestotliwosci
+    odrzucanie zamiast naprawy powodowalo powazny shortfall (4/10 zamiast
+    10/10, budzet czasowy wyczerpany na bezowocne rundy dogenerowania).
+    Zamiast tylko wykrywac, PROBUJEMY NAJPIERW naprawic automatycznie -
+    jesli caly tekst (typowo KROTKIE pole - opcja lub final_answer, NIE
+    tresc/wyjasnienie, ktore mieszaja proze z matematyka) ma ZERO znakow
+    '$' w ogole, ale ZAWIERA znana komende LaTeX, to (niemal na pewno)
+    CALA wartosc miala byc jednym wzorem, ktoremu AI zapomnialo dodac $.
+    Owijamy CALA tresc (po opcjonalnym prefiksie 'a) ') w $ ... $.
+    BEZPIECZNE: dziala TYLKO gdy $ jest ZERO (nie probuje zgadywac
+    granic w tekscie, ktory JUZ ma jakis $ - taki przypadek zostaje przy
+    walidacji/odrzuceniu, bo tam granice sa niejednoznaczne)."""
+    if not text or '$' in text:
+        return text
+    if not any(('\\' + cmd) in text for cmd in _LATEX_CMDS_AT_RISK_SET):
+        return text
+    m = _OPTION_PREFIX_RE.match(text)
+    if m:
+        return f"{m.group(1)}${text[m.end():]}$"
+    return f"${text}$"
+
+
+def auto_wrap_bare_latex_in_question(item: dict, text_fields: list) -> None:
+    """Stosuje auto_wrap_bare_latex do WSZYSTKICH podanych pol (w tym list -
+    opcje/options) - MUTUJE `item` w miejscu. Wywolac PRZED validate_
+    question_latex, zeby wiekszosc przypadkow byla naprawiona zanim
+    dojdzie do (kosztownego - marnuje juz wygenerowana tresc) odrzucenia."""
+    for field in text_fields:
+        val = item.get(field)
+        if val is None:
+            continue
+        if isinstance(val, list):
+            item[field] = [auto_wrap_bare_latex(str(v)) for v in val]
+        else:
+            item[field] = auto_wrap_bare_latex(str(val))
+
+
+def validate_latex_formatting(text: str):
+    """Zwraca (is_valid: bool, reason: str). Dwa niezalezne sprawdzenia:
+
+    1. Parzysta liczba znakow '$' - nieparzysta oznacza, ze renderowanie
+       na pewno sie rozjedzie (albo literalny '$' zostanie w tekscie,
+       albo cala reszta tekstu przypadkiem wpadnie "w tryb matematyczny"
+       matplotlib mathtext).
+    2. ZADNA znana komenda LaTeX (ta sama lista co sanityzacja JSON
+       wyzej - '\\sqrt', '\\frac', '\\cdot', itd.) nie wystepuje POZA
+       $ ... $ - jesli wystapi, matplotlib renderuje ja jako LITERALNY
+       tekst ("5\\sqrt{3}" zamiast symbolu pierwiastka), bo mathtext
+       parsuje TYLKO wnetrze $ $, nie zwykly tekst.
+
+    Zwraca PIERWSZY znaleziony problem - wystarczy jeden do odrzucenia."""
+    if not text:
+        return True, ""
+    if text.count('$') % 2 != 0:
+        return False, "nieparzysta liczba znakow '$' (renderowanie na pewno sie rozjedzie)"
+    for m in _LATEX_CMD_TOKEN_RE.finditer(text):
+        cmd = m.group(1)
+        if cmd not in _LATEX_CMDS_AT_RISK_SET:
+            continue
+        if text[:m.start()].count('$') % 2 == 0:
+            return False, f"komenda LaTeX '\\{cmd}' poza $ ... $ (bedzie wyrenderowana jako literalny tekst)"
+    return True, ""
+
+
+def validate_question_latex(item: dict, text_fields: list):
+    """Sprawdza validate_latex_formatting() na WSZYSTKICH podanych polach
+    pytania (w tym listach - np. opcje/options) - zwraca (is_valid, reason)
+    dla PIERWSZEGO znalezionego problemu, albo (True, '') jesli wszystko
+    OK. `text_fields` = lista nazw kluczy do sprawdzenia (rozne dla
+    Quiz/Sprawdzian, zamknietych/otwartych - patrz callerzy)."""
+    for field in text_fields:
+        val = item.get(field)
+        if val is None:
+            continue
+        values = val if isinstance(val, list) else [val]
+        for v in values:
+            ok, reason = validate_latex_formatting(str(v))
+            if not ok:
+                return False, f"pole '{field}': {reason}"
+    return True, ""
+
+
 async def generate_exam_from_image(
     image_data: str,
     difficulty: str = "medium",
@@ -1722,6 +1828,24 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
             log_final_answer_mismatch_diagnostic("[MathVerify]", quiz_data.get("title", ""), text, q.get("options", []), q.get("final_answer"), fa_status)
             if metrics:
                 metrics.record_rejection("final_answer_no_match")
+            continue
+
+        # WARSTWA 1.5 (NOWE): strukturalna poprawnosc LaTeX/$ - patrz
+        # validate_latex_formatting wyzej. NAJPIERW proba automatycznej
+        # naprawy dla "options" (real-test: 75% partii Trygonometrii mialo
+        # TU brakujacy $ - zbyt czeste, zeby po prostu odrzucac, patrz
+        # auto_wrap_bare_latex) - TYLKO dla options (krotka, pojedyncza
+        # wartosc), NIE dla "question"/"explanation" (mieszaja proze z
+        # matematyka - owijanie calosci byloby niebezpieczne zgadywanie
+        # granic). Sprawdzone PRZED Warstwa 2/2.5, zeby nie marnowac
+        # (platnego) blind-check na pytanie, ktore i tak nie wyrenderuje
+        # sie poprawnie.
+        auto_wrap_bare_latex_in_question(q, ["options"])
+        latex_ok, latex_reason = validate_question_latex(q, ["question", "options", "explanation"])
+        if not latex_ok:
+            print(f"[LatexValidate] USUNIETO pytanie ({latex_reason}): '{text[:60]}...'")
+            if metrics:
+                metrics.record_rejection("latex_malformed")
             continue
 
         # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec

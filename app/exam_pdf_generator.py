@@ -44,7 +44,7 @@ from .blind_verify import (
     parse_blind_verify_final_answer, safe_json_loads, values_match,
     _extract_single_value,
 )
-from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes
+from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes, validate_question_latex, auto_wrap_bare_latex_in_question
 from .difficulty import DifficultyAnalyzer
 
 # ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
@@ -1211,6 +1211,19 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
     needs_blind_check = []
     for pyt in pytania:
         tresc = pyt.get("tresc", "")
+        # WARSTWA 1.5 (identyczny mechanizm co dla zamknietych - patrz
+        # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
+        # NAJPIERW proba automatycznej naprawy dla "final_answer" (krotka,
+        # pojedyncza wartosc) - NIE dla "tresc"/"odpowiedz_modelowa"
+        # (mieszaja proze z matematyka). Potem walidacja strukturalna,
+        # sprawdzona PRZED sympy/blind-check.
+        auto_wrap_bare_latex_in_question(pyt, ["final_answer"])
+        latex_ok, latex_reason = validate_question_latex(pyt, ["tresc", "odpowiedz_modelowa", "final_answer"])
+        if not latex_ok:
+            print(f"[LatexValidate][Exam][Otwarte] USUNIETO zadanie ({latex_reason}): '{tresc[:60]}...'")
+            if metrics:
+                metrics.record_rejection("latex_malformed")
+            continue
         claimed = pyt.get("final_answer") or pyt.get("odpowiedz_modelowa", "")
         try:
             sympy_result = check_sequence_formula_open_answer(tresc, str(claimed))
@@ -1340,6 +1353,20 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
             new_letter = _IDX_TO_LETTER.get(fa_idx)
             if new_letter and pyt.get("odpowiedz") != new_letter:
                 pyt["odpowiedz"] = new_letter
+
+            # WARSTWA 1.5 (NOWE - identyczny mechanizm co w Quizie, patrz
+            # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
+            # NAJPIERW proba automatycznej naprawy dla "opcje" (real-test:
+            # 75% partii Trygonometrii mialo TU brakujacy $) - NIE dla
+            # "tresc"/"wyjasnienie" (mieszaja proze z matematyka). Potem
+            # walidacja strukturalna, sprawdzona PRZED Warstwa 2/2.5.
+            auto_wrap_bare_latex_in_question(pyt, ["opcje"])
+            latex_ok, latex_reason = validate_question_latex(pyt, ["tresc", "opcje", "wyjasnienie"])
+            if not latex_ok:
+                print(f"[LatexValidate][Exam] USUNIETO zadanie ({latex_reason}): '{tresc[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("latex_malformed")
+                continue
 
             # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec
             try:
