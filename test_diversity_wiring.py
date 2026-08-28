@@ -45,7 +45,8 @@ quiz = {"title": "Test", "questions": [
     _q(1, SAME_TAG), _q(2, SAME_TAG), _q(3, SAME_TAG), _q(4, DIFFERENT_TAG),
 ]}
 seen = []
-result = _verify_and_fix_quiz_math(quiz, seen_diversity_tags=seen)
+# NAPRAWIONE: _verify_and_fix_quiz_math jest teraz async (Warstwa 2.5).
+result = asyncio.run(_verify_and_fix_quiz_math(quiz, seen_diversity_tags=seen))
 kept_count = len(result["questions"])
 check("z 4 pytan (3x ten sam schemat + 1 rozny) -> zostaja 2 (1 pierwszy z grupy + 1 rozny)",
       kept_count == 2, result["questions"])
@@ -57,7 +58,7 @@ print("=" * 70)
 
 quiz2 = {"title": "Test", "questions": [_q(1, None), _q(2, None), _q(3, None)]}
 seen2 = []
-result2 = _verify_and_fix_quiz_math(quiz2, seen_diversity_tags=seen2)
+result2 = asyncio.run(_verify_and_fix_quiz_math(quiz2, seen_diversity_tags=seen2))
 check("3 pytania BEZ diversity_tag -> wszystkie 3 zaakceptowane (nie da sie ocenic)",
       len(result2["questions"]) == 3, result2["questions"])
 
@@ -67,7 +68,7 @@ print("3. seen_diversity_tags=None (domyslne) -> zero zmiany zachowania")
 print("=" * 70)
 
 quiz3 = {"title": "Test", "questions": [_q(1, SAME_TAG), _q(2, SAME_TAG), _q(3, SAME_TAG)]}
-result3 = _verify_and_fix_quiz_math(quiz3)  # brak seen_diversity_tags w ogole
+result3 = asyncio.run(_verify_and_fix_quiz_math(quiz3))  # brak seen_diversity_tags w ogole
 check("bez podania seen_diversity_tags -> mechanizm WYLACZONY, wszystkie 3 przechodza",
       len(result3["questions"]) == 3, result3["questions"])
 

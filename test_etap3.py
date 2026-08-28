@@ -15,6 +15,7 @@ z prawdziwym pipeline'em end-to-end.
 """
 import sys
 sys.path.insert(0, ".")
+import asyncio
 
 from app.openai_exam import _buffered_count, _question_fingerprint as _q_fp_quiz, _verify_and_fix_quiz_math
 from app.exam_pdf_generator import _buffered_question_count, _question_fingerprint as _q_fp_exam, _verify_and_fix_exam_math
@@ -130,16 +131,17 @@ def _make_q(text, correct_option):
     return {"question": text, "options": list(opts_lit), "correct": opts_lit.index(correct_option), "final_answer": correct_option}
 
 seen = set()
-result = _verify_and_fix_quiz_math(
+# NAPRAWIONE: _verify_and_fix_quiz_math jest teraz async (Warstwa 2.5).
+result = asyncio.run(_verify_and_fix_quiz_math(
     {"questions": [_make_q(lit1, "Bolesław Prus"), _make_q(lit1_dup, "Bolesław Prus"), _make_q(lit2, "Henryk Sienkiewicz")]},
     seen_fingerprints=seen,
-)
+))
 kept_texts = [q["question"] for q in result["questions"]]
 check("dedup: z 3 pytan (1 duplikat) zostaja 2 unikalne", len(result["questions"]) == 2, kept_texts)
 check("dedup: pierwsze wystapienie zachowane, duplikat usuniety", kept_texts == [lit1, lit2], kept_texts)
 
 # Bez seen_fingerprints (domyslne None) - brak regresji, duplikaty NIE usuwane
-result_no_dedup = _verify_and_fix_quiz_math({"questions": [_make_q(lit1, "Bolesław Prus"), _make_q(lit1_dup, "Bolesław Prus")]})
+result_no_dedup = asyncio.run(_verify_and_fix_quiz_math({"questions": [_make_q(lit1, "Bolesław Prus"), _make_q(lit1_dup, "Bolesław Prus")]}))
 check("bez seen_fingerprints (None) -> dedup wylaczony, brak regresji", len(result_no_dedup["questions"]) == 2, result_no_dedup["questions"])
 
 

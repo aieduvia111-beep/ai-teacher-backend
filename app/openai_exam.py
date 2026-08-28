@@ -16,6 +16,10 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values,
 )
+from .blind_verify import (
+    BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
+    parse_blind_verify_letter, safe_json_loads,
+)
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
 import asyncio
@@ -1495,7 +1499,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         metrics = GenerationMetrics(requested_count=requested_count)
     seen_fingerprints = set()
     seen_diversity_tags = []
-    quiz_data = _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags)
+    quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client)
     max_rounds = 10
     max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
@@ -1520,7 +1524,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             print(f"[MathVerify] blad dogenerowania: {e}")
             metrics.record_rejection("json_crash")
             continue
-        extra_data = _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags)
+        extra_data = await _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1572,9 +1576,75 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None) -> dict:
+_QUIZ_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
+
+
+# WARSTWA 2.5 (patrz app/blind_verify.py po pelne uzasadnienie architektury,
+# identyczny mechanizm co exam_pdf_generator._blind_verify_one_closed -
+# user: "QUIZ MUSI miec TEN SAM mechanizm co Sprawdzian"). Wersja ASYNC,
+# bo Quiz uzywa AsyncOpenAI (w odroznieniu od Sprawdzianu - sync klient).
+#
+# `client` jest jawnym PARAMETREM (nie bezposrednim uzyciem modulowego
+# globala) - domyslnie None = POMIN blind-check (identyczny wzorzec co
+# `client=None` w exam_pdf_generator._verify_and_fix_exam_math). KRYTYCZNE
+# dla testow: dziesiatki istniejacych testow jednostkowych (zero-AI)
+# wywoluja _verify_and_fix_quiz_math BEZPOSREDNIO na pytaniach spoza
+# rozpoznawanych wzorcow sympy (status "unverifiable") - bez tego
+# escape-hatcha KAZDY taki test zaczalby cicho robic PRAWDZIWE, PLATNE
+# wywolania API. Prawdziwa generacja (2 miejsca w
+# _verify_and_fill_quiz_math nizej) jawnie przekazuje modulowy `client`.
+async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
+    """True = zaakceptuj (brak client -> pominiete; AI-2 sie zgadza; LUB
+    wywolanie/parsowanie sie nie udalo - bezpieczny fallback, patrz
+    identyczny komentarz w exam_pdf_generator.py)."""
+    if client is None:
+        return True
+    try:
+        r = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_closed(q.get("question", ""), q.get("options", []))},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=600,
+        )
+        parsed = safe_json_loads(r.choices[0].message.content)
+    except Exception as e:
+        print(f"[BlindVerify] blad wywolania AI-2: {e}")
+        return True
+    letter = parse_blind_verify_letter(parsed)
+    if letter is None:
+        return True
+    ai2_idx = _QUIZ_LETTER_TO_IDX.get(letter)
+    if ai2_idx is None:
+        return True
+    return ai2_idx == q.get("correct")
+
+
+async def _blind_verify_batch_closed_quiz(candidates: list, client=None) -> list:
+    """Rownolegle (asyncio.gather), zeby dodatkowe wywolania NIE wydluzaly
+    liniowo czasu generacji. Zwraca liste bool w TEJ SAMEJ kolejnosci co
+    `candidates`."""
+    if not candidates:
+        return []
+    return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client) for q in candidates))
+
+
+async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
+
+    WARSTWA 2.5 (NOWE, sierpien 2026 - ten sam mechanizm co Sprawdzian,
+    patrz app/blind_verify.py i identyczny komentarz w
+    exam_pdf_generator._verify_and_fix_exam_math - user: "QUIZ MUSI miec
+    TEN SAM mechanizm co Sprawdzian"): "slepe" AI-2 rozwiazuje pytanie
+    samodzielnie, TYLKO gdy Warstwa 2 (sympy) nie ma zdania
+    ("unverifiable") - pytania juz potwierdzone/poprawione przez sympy z
+    pelna pewnoscia NIE dostaja dodatkowego wywolania. Rownolegle
+    (asyncio.gather - Quiz uzywa AsyncOpenAI), zeby nie wydluzac liniowo
+    czasu generacji.
 
     WARSTWA 1 (kazdy przedmiot): "correct" jest ZAWSZE przeliczany na
     nowo z dopasowania pola "final_answer" (doslowna kopia poprawnej
@@ -1637,6 +1707,7 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
     if _validation_timer:
         _validation_timer.__enter__()
     kept = []
+    needs_blind_check = []
     for q in questions:
         text = q.get("question", "")
 
@@ -1663,7 +1734,9 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
             continue
         if result["status"] == "unverifiable":
             log_unverifiable_diagnostic("[MathVerify]", quiz_data.get("title", ""), text, options, q.get("final_answer"))
-            kept.append(q)
+            # WARSTWA 2.5: sympy nie ma zdania - odlozone do blind-check
+            # AI-2 (batch, rownolegle, PO tej petli) - patrz nizej.
+            needs_blind_check.append(q)
         elif result["status"] == "match_index":
             true_idx = result["true_index"]
             if q.get("correct") != true_idx:
@@ -1679,6 +1752,18 @@ def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fing
                 metrics.record_rejection("sympy_mismatch")
         else:
             kept.append(q)
+
+    # WARSTWA 2.5 (patrz app/blind_verify.py): blind-check AI-2, TYLKO dla
+    # pytan, gdzie sympy nie mial zdania - batch, rownolegle (asyncio.gather).
+    if needs_blind_check:
+        agree_list = await _blind_verify_batch_closed_quiz(needs_blind_check, client=client)
+        for q, agree in zip(needs_blind_check, agree_list):
+            if agree:
+                kept.append(q)
+            else:
+                print(f"[BlindVerify] USUNIETO pytanie (AI-2 nie zgadza sie z AI-1): '{q.get('question', '')[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("blind_ai_mismatch")
 
     # WARSTWA 3: walidacja skali trudnosci (rownania kwadratowe skala 1-10,
     # ETAP 6: ciagi arytmetyczne/geometryczne skala 1-5) - topic-agnostyczne,

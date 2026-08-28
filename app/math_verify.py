@@ -1470,24 +1470,47 @@ def _ordinal_word_stem_to_index(word: str):
     return int(word) if word.isdigit() else None
 
 
-def verify_sequence_formula_parameter(question_text: str, options: list):
-    text = _normalize_subscripts(question_text).lower()
+# NAPRAWIONE (user zglosil, po real-tescie DRUGIEGO Sprawdzianu: "wszedzie
+# bledy w quizie i sprawdzianie"): odkryto, ze Warstwa 2 dla zadan
+# OTWARTYCH (Czesc B, "odpowiedz_modelowa") w OGOLE nie istniala (patrz
+# komentarz przy _verify_and_fix_exam_math: "Dziala tylko na sekcjach
+# zamkniete... zadania otwarte nie sa jeszcze objete") - 4 z 7 zadan
+# otwartych w zgloszonym PDF mialy BLEDNA odpowiedz koncowa (bledy
+# arytmetyczne AI), zero niezaleznej weryfikacji ich nie lapalo.
+#
+# _sequence_formula_true_value() wyodrebnia SAMO OBLICZENIE prawdziwej
+# wartosci (bez dopasowywania do opcji) z verify_sequence_formula_parameter,
+# zeby dokladnie ta sama logika mogla byc uzyta TAKZE dla zadan otwartych
+# (patrz check_sequence_formula_open_answer nizej) - jedno zrodlo prawdy,
+# zero duplikacji.
+#
+# Dodano tez WARUNEK D (suma NIESKOŃCZONEGO ciagu geometrycznego rowna V) -
+# real-test PDF pokazal Zadanie 2 tego ksztaltu z bledna odpowiedzia w
+# kluczu (P=8 zamiast poprawnego P=4), nieobslugiwane przez Warunki A/B/C.
+_SEQ_FORM_COND_INF_SUM_RE = re.compile(
+    r'sum[aeę]\s+niesk[oó]ńczon\w*\s+ci[aą]gu[^.]*?(?:(?:jest\s+)?r[oó]wn\w*|wynosi)\s+(-?\d+(?:[.,]\d+)?)'
+)
+
+
+def _sequence_formula_true_value(text: str):
+    """Zwraca (true_value, param_sym) albo (None, None) - patrz
+    verify_sequence_formula_parameter/check_sequence_formula_open_answer.
+    `text` juz znormalizowany/lowercase (_normalize_subscripts(...).lower())."""
     m_formula = _SEQ_FORMULA_RE.search(text)
     if not m_formula:
-        return {"status": "unverifiable"}
+        return None, None
     n_sym = sp.symbols('n')
     try:
         rhs = _parse_expr(m_formula.group(1))
     except Exception:
-        return {"status": "unverifiable"}
+        return None, None
     if n_sym not in rhs.free_symbols:
-        return {"status": "unverifiable"}
+        return None, None
     free = rhs.free_symbols - {n_sym}
     if len(free) != 1:
-        return {"status": "unverifiable"}
+        return None, None
     param_sym = next(iter(free))
 
-    true_value = None
     m_cond = _SEQ_FORM_COND_TERM_RE.search(text)
     if m_cond:
         idx = _ordinal_word_stem_to_index(m_cond.group(1))
@@ -1496,34 +1519,55 @@ def verify_sequence_formula_parameter(question_text: str, options: list):
                 sol = sp.solve(Eq(rhs.subs(n_sym, idx), _to_num(m_cond.group(2))), param_sym)
                 real_sol = [s for s in sol if s.is_real]
                 if len(real_sol) == 1:
-                    true_value = sp.nsimplify(real_sol[0])
+                    return sp.nsimplify(real_sol[0]), param_sym
             except Exception:
                 pass
-    if true_value is None:
-        m_cond = _SEQ_FORM_COND_DIFF_RE.search(text)
-        if m_cond:
-            idx1 = _ordinal_word_stem_to_index(m_cond.group(1))
-            idx2 = _ordinal_word_stem_to_index(m_cond.group(2))
-            if idx1 is not None and idx2 is not None:
-                try:
-                    sol = sp.solve(Eq(rhs.subs(n_sym, idx1) - rhs.subs(n_sym, idx2), _to_num(m_cond.group(3))), param_sym)
-                    real_sol = [s for s in sol if s.is_real]
-                    if len(real_sol) == 1:
-                        true_value = sp.nsimplify(real_sol[0])
-                except Exception:
-                    pass
-    if true_value is None:
-        m_cond = _SEQ_FORM_COND_SUM_RE.search(text)
-        if m_cond:
-            count = _cardinal_to_int(m_cond.group(1))
+
+    m_cond = _SEQ_FORM_COND_DIFF_RE.search(text)
+    if m_cond:
+        idx1 = _ordinal_word_stem_to_index(m_cond.group(1))
+        idx2 = _ordinal_word_stem_to_index(m_cond.group(2))
+        if idx1 is not None and idx2 is not None:
             try:
-                total = sum((rhs.subs(n_sym, i) for i in range(1, count + 1)), sp.Integer(0))
-                sol = sp.solve(Eq(total, _to_num(m_cond.group(2))), param_sym)
+                sol = sp.solve(Eq(rhs.subs(n_sym, idx1) - rhs.subs(n_sym, idx2), _to_num(m_cond.group(3))), param_sym)
                 real_sol = [s for s in sol if s.is_real]
                 if len(real_sol) == 1:
-                    true_value = sp.nsimplify(real_sol[0])
+                    return sp.nsimplify(real_sol[0]), param_sym
             except Exception:
                 pass
+
+    m_cond = _SEQ_FORM_COND_SUM_RE.search(text)
+    if m_cond:
+        count = _cardinal_to_int(m_cond.group(1))
+        try:
+            total = sum((rhs.subs(n_sym, i) for i in range(1, count + 1)), sp.Integer(0))
+            sol = sp.solve(Eq(total, _to_num(m_cond.group(2))), param_sym)
+            real_sol = [s for s in sol if s.is_real]
+            if len(real_sol) == 1:
+                return sp.nsimplify(real_sol[0]), param_sym
+        except Exception:
+            pass
+
+    m_cond = _SEQ_FORM_COND_INF_SUM_RE.search(text)
+    if m_cond:
+        try:
+            ratio_expr = sp.simplify(rhs.subs(n_sym, n_sym + 1) / rhs.subs(n_sym, n_sym))
+            if not ratio_expr.free_symbols and abs(ratio_expr) < 1:
+                a1_expr = rhs.subs(n_sym, 1)
+                total = a1_expr / (1 - ratio_expr)
+                sol = sp.solve(Eq(total, _to_num(m_cond.group(1))), param_sym)
+                real_sol = [s for s in sol if s.is_real]
+                if len(real_sol) == 1:
+                    return sp.nsimplify(real_sol[0]), param_sym
+        except Exception:
+            pass
+
+    return None, None
+
+
+def verify_sequence_formula_parameter(question_text: str, options: list):
+    text = _normalize_subscripts(question_text).lower()
+    true_value, _param_sym = _sequence_formula_true_value(text)
     if true_value is None:
         return {"status": "unverifiable"}
 
@@ -1544,6 +1588,36 @@ def verify_sequence_formula_parameter(question_text: str, options: list):
     if len(matches) == 1:
         return {"status": "match_index", "true_index": matches[0]}
     return {"status": "no_option_matches"}
+
+
+# NAPRAWIONE (patrz komentarz nad _sequence_formula_true_value wyzej):
+# odpowiednik verify_sequence_formula_parameter dla zadan OTWARTYCH -
+# zamiast dopasowywac do listy opcji, wyciaga OSTATNIA liczbe po "="
+# w "odpowiedz_modelowa" (typowo wynik koncowy w tekscie krok-po-kroku)
+# i porownuje z niezaleznie policzona prawdziwa wartoscia. Konserwatywne
+# z zalozenia: jesli nie da sie sparsowac ostatniej liczby, ABSTAIN
+# (nie falszywie odrzucaj z powodu wlasnej niezdolnosci parsowania)."""
+_TRAILING_EQUALS_NUMBER_RE = re.compile(r'=\s*(-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)\s*[^=\d]*$')
+
+
+def check_sequence_formula_open_answer(question_text: str, model_answer_text: str):
+    """Zwraca {"status": "match"|"mismatch"|"unverifiable", "true_value":...,
+    "claimed_value":...}. Uzywane WYLACZNIE dla zadan otwartych (Czesc B) -
+    patrz wywolanie w exam_pdf_generator._verify_and_fix_exam_math."""
+    text = _normalize_subscripts(question_text).lower()
+    true_value, _param_sym = _sequence_formula_true_value(text)
+    if true_value is None:
+        return {"status": "unverifiable"}
+    m = _TRAILING_EQUALS_NUMBER_RE.search(_normalize_subscripts(model_answer_text or ""))
+    if not m:
+        return {"status": "unverifiable"}
+    try:
+        claimed = _to_num(m.group(1).replace(' ', ''))
+    except Exception:
+        return {"status": "unverifiable"}
+    if claimed == true_value:
+        return {"status": "match", "true_value": true_value, "claimed_value": claimed}
+    return {"status": "mismatch", "true_value": true_value, "claimed_value": claimed}
 
 
 # ---------------------------------------------------------------

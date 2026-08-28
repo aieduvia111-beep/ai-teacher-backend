@@ -17,6 +17,7 @@ Plain script (bez pytest), wzorem test_etap6.py/test_probability_fix.py.
 ZERO wywolan AI."""
 import sys
 sys.path.insert(0, r"C:\Users\MI3\Desktop\eduvia-projekty\ai-teacher-backend")
+import asyncio
 import io
 import contextlib
 import sympy as sp
@@ -54,7 +55,9 @@ for correct_idx, letter in enumerate(["A", "B", "C", "D"]):
         "correct": 99,
         "final_answer": f"opcja{correct_idx}",
     }
-    result = _verify_and_fix_quiz_math({"questions": [q]})
+    # NAPRAWIONE: _verify_and_fix_quiz_math jest teraz async (Warstwa 2.5,
+    # patrz app/blind_verify.py) - opakowane w asyncio.run.
+    result = asyncio.run(_verify_and_fix_quiz_math({"questions": [q]}))
     kept = result["questions"]
     check(f"poprawna odpowiedz na pozycji {letter} (index {correct_idx}) rozpoznana",
           len(kept) == 1, kept)

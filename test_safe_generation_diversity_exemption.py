@@ -12,6 +12,7 @@ kilkunastu. Naprawiono: pytania oznaczone prywatnym kluczem
 sa WYLACZONE z kontroli Diversity Engine."""
 import sys
 sys.path.insert(0, r"C:\Users\MI3\Desktop\eduvia-projekty\ai-teacher-backend")
+import asyncio
 from app.openai_exam import _verify_and_fix_quiz_math
 
 FAILED = []
@@ -45,7 +46,8 @@ print("=" * 70)
 
 quiz = {"title": "Test", "questions": [_safe_q(i) for i in range(8)]}
 seen = []
-result = _verify_and_fix_quiz_math(quiz, seen_diversity_tags=seen)
+# NAPRAWIONE: _verify_and_fix_quiz_math jest teraz async (Warstwa 2.5).
+result = asyncio.run(_verify_and_fix_quiz_math(quiz, seen_diversity_tags=seen))
 check("8 pytan TEGO SAMEGO schematu, wszystkie _safe_generated=True -> WSZYSTKIE 8 zaakceptowane",
       len(result["questions"]) == 8, len(result["questions"]))
 
@@ -70,7 +72,7 @@ def _normal_q(n):
 
 quiz2 = {"title": "Test", "questions": [_normal_q(i) for i in range(5)]}
 seen2 = []
-result2 = _verify_and_fix_quiz_math(quiz2, seen_diversity_tags=seen2)
+result2 = asyncio.run(_verify_and_fix_quiz_math(quiz2, seen_diversity_tags=seen2))
 check("5 pytan TEGO SAMEGO schematu BEZ flagi -> tylko 1 zaakceptowane (Diversity Engine dziala normalnie)",
       len(result2["questions"]) == 1, len(result2["questions"]))
 
@@ -81,7 +83,7 @@ print("=" * 70)
 
 quiz3 = {"title": "Test", "questions": [_normal_q(0)] + [_safe_q(i) for i in range(1, 6)]}
 seen3 = []
-result3 = _verify_and_fix_quiz_math(quiz3, seen_diversity_tags=seen3)
+result3 = asyncio.run(_verify_and_fix_quiz_math(quiz3, seen_diversity_tags=seen3))
 check("1 normalne (przechodzi) + 5 safe-generated (wszystkie przechodza) -> 6 razem",
       len(result3["questions"]) == 6, len(result3["questions"]))
 

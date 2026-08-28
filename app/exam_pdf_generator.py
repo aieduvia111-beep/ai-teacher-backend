@@ -36,7 +36,13 @@ from .math_verify import (
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
-    pick_safe_param_values,
+    pick_safe_param_values, check_sequence_formula_open_answer,
+)
+from .blind_verify import (
+    BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
+    build_blind_verify_prompt_open, parse_blind_verify_letter,
+    parse_blind_verify_final_answer, safe_json_loads, values_match,
+    _extract_single_value,
 )
 from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes
 from .difficulty import DifficultyAnalyzer
@@ -296,7 +302,8 @@ ZASADY:
             "1 pkt — poprawne dodanie licznikow",
             "1 pkt — skrocenie wyniku do postaci nieskracalnej"
           ],
-          "odpowiedz_modelowa": "Pelne rozwiazanie krok po kroku z wynikiem."
+          "odpowiedz_modelowa": "Pelne rozwiazanie krok po kroku z wynikiem.",
+          "final_answer": "SAMA koncowa wartosc/wyrazenie z 'odpowiedz_modelowa', BEZ opisu i BEZ jednostek - np. '175' albo '5/7' albo 'm = -3'. Jesli zadanie ma dwie szukane wartosci, podaj obie oddzielone przecinkiem, np. 'b = 2, c = 4'. To pole MUSI byc SPOJNE z wynikiem w 'odpowiedz_modelowa' - to samo obliczenie, dwa razy zapisane."
         }}
       ]
     }}
@@ -1083,10 +1090,164 @@ def _question_fingerprint(text: str):
     return (skeleton, numbers)
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None) -> dict:
+# WARSTWA 2.5 (patrz app/blind_verify.py po pelne uzasadnienie
+# architektury) - "slepe" AI-2 rozwiazuje zadanie samodzielnie, wynik
+# porownywany z odpowiedzia AI-1. Uzywane WYLACZNIE tam, gdzie sympy
+# (Warstwa 2) nie ma zdania ("unverifiable") - jesli sympy juz
+# potwierdzilo/poprawilo odpowiedz z pelna pewnoscia, blind-check
+# jest pomijany (zbedny koszt na cos juz wiadomo poprawnego).
+def _blind_verify_one_closed(client, pyt) -> bool:
+    """True = zaakceptuj (AI-2 sie zgadza LUB wywolanie/parsowanie sie nie
+    udalo - bezpieczny fallback: NIE odrzucamy z powodu awarii sieci/AI-2,
+    tylko z powodu FAKTYCZNEJ, potwierdzonej niezgodnosci)."""
+    try:
+        r = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_closed(pyt.get("tresc", ""), pyt.get("opcje", []))},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=600,
+        )
+        parsed = safe_json_loads(r.choices[0].message.content)
+    except Exception as e:
+        print(f"[BlindVerify][Exam] blad wywolania AI-2: {e}")
+        return True
+    letter = parse_blind_verify_letter(parsed)
+    if letter is None:
+        return True
+    return letter == str(pyt.get("odpowiedz", "")).strip().lower()
+
+
+def _blind_verify_batch_closed(client, candidates: list) -> dict:
+    """Rownolegle (ThreadPoolExecutor - sync klient OpenAI), zeby dodatkowe
+    wywolania NIE wydluzaly liniowo czasu generacji. Zwraca {id(pyt): bool}."""
+    if not candidates:
+        return {}
+    results = {}
+    with _cf.ThreadPoolExecutor(max_workers=min(8, len(candidates))) as ex:
+        futures = {ex.submit(_blind_verify_one_closed, client, pyt): pyt for pyt in candidates}
+        for fut in _cf.as_completed(futures):
+            pyt = futures[fut]
+            try:
+                results[id(pyt)] = fut.result()
+            except Exception:
+                results[id(pyt)] = True
+    return results
+
+
+def _blind_verify_one_open(client, pyt) -> bool:
+    """Jak _blind_verify_one_closed, ale dla zadan OTWARTYCH (Czesc B) -
+    porownuje "final_answer" (nowe, wymagane pole - patrz zmiana promptu
+    generujacego) albo, transitional fallback, "odpowiedz_modelowa"
+    (stary format, pelna proza) przez values_match (patrz blind_verify.py)."""
+    claimed = pyt.get("final_answer") or pyt.get("odpowiedz_modelowa", "")
+    # Nieparsowalna odpowiedz modelowa (typowo brak pola final_answer u
+    # starszych/nieaktualizowanych generacji) - nie da sie bezpiecznie
+    # porownac, wiec NIE odrzucaj z tego powodu (identyczny standard co
+    # reszta modulu: brak danych = abstain, nie falszywe odrzucenie).
+    if not claimed or _extract_single_value(str(claimed).split(',')[0]) is None:
+        return True
+    try:
+        r = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_open(pyt.get("tresc", ""))},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=700,
+        )
+        parsed = safe_json_loads(r.choices[0].message.content)
+    except Exception as e:
+        print(f"[BlindVerify][Exam][Otwarte] blad wywolania AI-2: {e}")
+        return True
+    ai2_answer = parse_blind_verify_final_answer(parsed)
+    if ai2_answer is None:
+        return True
+    return values_match(str(claimed), ai2_answer)
+
+
+def _blind_verify_batch_open(client, candidates: list) -> dict:
+    if not candidates:
+        return {}
+    results = {}
+    with _cf.ThreadPoolExecutor(max_workers=min(8, len(candidates))) as ex:
+        futures = {ex.submit(_blind_verify_one_open, client, pyt): pyt for pyt in candidates}
+        for fut in _cf.as_completed(futures):
+            pyt = futures[fut]
+            try:
+                results[id(pyt)] = fut.result()
+            except Exception:
+                results[id(pyt)] = True
+    return results
+
+
+def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = "") -> list:
+    """NAPRAWIONE (user: "wszedzie bledy w quizie i sprawdzinie" - real-test
+    PDF pokazal 4 z 7 zadan otwartych z BLEDNA odpowiedzia koncowa, ZERO
+    niezaleznej weryfikacji): dla kazdego zadania otwartego, najpierw proba
+    sympy (check_sequence_formula_open_answer - jedyny dzis rozpoznawany
+    wzorzec dla zadan otwartych), potem blind-check AI-2 (batch, rownolegle)
+    dla wszystkiego, czego sympy nie rozpoznaje."""
+    kept = []
+    needs_blind_check = []
+    for pyt in pytania:
+        tresc = pyt.get("tresc", "")
+        claimed = pyt.get("final_answer") or pyt.get("odpowiedz_modelowa", "")
+        try:
+            sympy_result = check_sequence_formula_open_answer(tresc, str(claimed))
+        except Exception as e:
+            print(f"[MathVerify][Exam][Otwarte] blad weryfikacji sympy: {e}")
+            sympy_result = {"status": "unverifiable"}
+        if sympy_result["status"] == "match":
+            kept.append(pyt)
+        elif sympy_result["status"] == "mismatch":
+            print(
+                f"[MathVerify][Exam][Otwarte] USUNIETO zadanie (sympy: odpowiedz modelowa "
+                f"niezgodna - prawdziwa={sympy_result['true_value']}, "
+                f"podana={sympy_result['claimed_value']}): '{tresc[:60]}...'"
+            )
+            if metrics:
+                metrics.record_rejection("sympy_mismatch_open")
+        else:
+            needs_blind_check.append(pyt)
+
+    if needs_blind_check and client is not None:
+        agree = _blind_verify_batch_open(client, needs_blind_check)
+        for pyt in needs_blind_check:
+            if agree.get(id(pyt), True):
+                kept.append(pyt)
+            else:
+                print(f"[BlindVerify][Exam][Otwarte] USUNIETO zadanie (AI-2 nie zgadza sie z AI-1): '{pyt.get('tresc', '')[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("blind_ai_mismatch_open")
+    else:
+        kept.extend(needs_blind_check)
+    return kept
+
+
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
+
+    WARSTWA 2.5 (NOWE, sierpien 2026 - decyzja usera po ~2 tygodniach
+    naprawiania kolejnych, wciaz nowych wzorcow bledow): "slepa"
+    weryfikacja przez DRUGIE, niezalezne AI (patrz app/blind_verify.py po
+    pelne uzasadnienie architektury) - uruchamia sie TYLKO gdy Warstwa 2
+    (sympy) zwrocila "unverifiable" (brak pewnosci) - zadania juz
+    potwierdzone/poprawione przez sympy NIE dostaja dodatkowego wywolania
+    (zbedny koszt na cos juz wiadomo poprawnego). Wymaga `client` (sync
+    OpenAI) - bez niego (domyslnie None) zachowanie identyczne jak przed
+    ta zmiana (blind-check pominiety, nie blokujacy blad). Dziala TAKZE
+    dla sekcji "otwarte" (patrz nizej) - tam, w odroznieniu od zamknietych,
+    uruchamia sie ZAWSZE (poza waskim podzbiorem, ktory juz obslugu
+    _sequence_formula_true_value), bo Czesc B nigdy wczesniej nie miala
+    ZADNEJ niezaleznej weryfikacji.
 
     WARSTWA 1 (kazde zadanie zamkniete, kazdy przedmiot): "odpowiedz"
     jest ZAWSZE przeliczany na nowo z dopasowania "final_answer"
@@ -1112,9 +1273,14 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
     zadanie odrzucone (dogenerowywane w innym miejscu potoku, tak samo
     jak Warstwa 1/2).
 
-    Dziala tylko na sekcjach "zamkniete" (maja 4 opcje do porownania) -
-    zadania otwarte ("odpowiedz_modelowa", wolny tekst) nie sa jeszcze
-    objete, bo nie maja ustalonego zbioru opcji do sprawdzenia.
+    Warstwy 1/2/3 (sympy) dzialaly dotychczas WYLACZNIE na sekcjach
+    "zamkniete" (maja 4 opcje do porownania) - zadania otwarte
+    ("odpowiedz_modelowa", wolny tekst) nie mialy ZADNEGO pokrycia. NAPRAWIONE
+    (Warstwa 2.5 wyzej): sekcje "otwarte" sa teraz TEZ weryfikowane -
+    najpierw proba sympy (verify_sequence_formula_parameter/
+    check_sequence_formula_open_answer dla rozpoznanych wzorcow), potem
+    blind-check AI-2 dla wszystkiego innego. Wymaga pola "final_answer"
+    w kazdym zadaniu otwartym (patrz zmiana promptu generujacego).
 
     DEDUPLIKACJA (ETAP 3, opcjonalna - tylko gdy `seen_fingerprints`
     podane): identyczny mechanizm co w Quizie - patrz
@@ -1134,9 +1300,13 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
     if _validation_timer:
         _validation_timer.__enter__()
     for sekcja in data.get("sekcje", []):
+        if sekcja.get("typ") == "otwarte":
+            sekcja["pytania"] = _verify_open_section(sekcja.get("pytania", []), metrics=metrics, client=client, tytul=data.get("tytul", ""))
+            continue
         if sekcja.get("typ") != "zamkniete":
             continue
         kept = []
+        needs_blind_check = []
         for pyt in sekcja.get("pytania", []):
             tresc = pyt.get("tresc", "")
             opcje = pyt.get("opcje", [])
@@ -1166,7 +1336,9 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 continue
             if result["status"] == "unverifiable":
                 log_unverifiable_diagnostic("[MathVerify][Exam]", data.get("tytul", ""), tresc, opcje, pyt.get("final_answer"))
-                kept.append(pyt)
+                # WARSTWA 2.5: sympy nie ma zdania - odlozone do blind-check
+                # AI-2 (batch, rownolegle, PO tej petli) - patrz nizej.
+                needs_blind_check.append(pyt)
             elif result["status"] == "match_index":
                 true_idx = result["true_index"]
                 current_idx = _LETTER_TO_IDX.get(str(pyt.get("odpowiedz", "")).strip().lower())
@@ -1185,6 +1357,21 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                     metrics.record_rejection("sympy_mismatch")
             else:
                 kept.append(pyt)
+
+        # WARSTWA 2.5 (patrz app/blind_verify.py): blind-check AI-2, TYLKO
+        # dla zadan, gdzie sympy nie mial zdania - batch, rownolegle
+        # (ThreadPoolExecutor), zeby nie wydluzac liniowo czasu generacji.
+        if needs_blind_check and client is not None:
+            agree = _blind_verify_batch_closed(client, needs_blind_check)
+            for pyt in needs_blind_check:
+                if agree.get(id(pyt), True):
+                    kept.append(pyt)
+                else:
+                    print(f"[BlindVerify][Exam] USUNIETO zadanie (AI-2 nie zgadza sie z AI-1): '{pyt.get('tresc', '')[:60]}...'")
+                    if metrics:
+                        metrics.record_rejection("blind_ai_mismatch")
+        else:
+            kept.extend(needs_blind_check)
 
         # WARSTWA 3: walidacja skali trudnosci (rownania kwadratowe skala
         # 1-10, ETAP 6: ciagi arytmetyczne/geometryczne skala 1-5) -
@@ -1684,7 +1871,7 @@ ZASADY:
         # stala C=25, roznymi tylko literami).
         used_safe_letters = set()
         used_safe_constants = set()
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags)
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants)
         return data
 
