@@ -501,7 +501,7 @@ function go(u) { window.location.href = u; }
 // NAPRAWIONE (user: "ale ja testuje lokalnie" - identyczny bug jak w
 // chat.html): brak wykrywania localhost/LAN.
 const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
-const BACKEND = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:8000'
+const BACKEND = (location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:') ? 'http://localhost:8000'
   : _isPrivateLAN ? location.origin
   : 'https://eduvia-backend-2.onrender.com';
 
