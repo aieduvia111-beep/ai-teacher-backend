@@ -807,14 +807,61 @@ def _to_num(s: str):
 # _SEQ_R_RE/_SEQ_Q_RE, ktore nie maja indeksu).
 _SEQ_TERM_RE = re.compile(r'[a-z]_?\{?(\d+)\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
 _SEQ_LAST_TERM_RE = re.compile(r'[a-z]_?\{?n\}?\s*=\s*(-?\d+(?:[.,]\d+)?)')
-_SEQ_R_RE = re.compile(r'(?<![a-zA-Z])r\s*=\s*(-?\d+(?:[.,]\d+)?)')
+# NAPRAWIONE (real-test, sierpien 2026 - user zglosil Quiz/ciagi/klasa 3
+# liceum/trudny - real-test pokazal "S10=150" w wyjasnieniu, ale "S10=135"
+# oznaczone jako poprawne): ta generacja KONSEKWENTNIE uzywala litery "d"
+# ("$d = 3$", "$d = 4$") dla roznicy ciagu arytmetycznego - regex lapal
+# WYLACZNIE "r", nigdy "d", wiec `ratio` bylo ZAWSZE None dla kazdego
+# pytania o ciag arytmetyczny w calej tej partii (8/8 pytan), niezaleznie
+# od intencji - Warstwa 2 byla calkowicie slepa. "d" (od "roznica") jest
+# co najmniej tak samo standardowe w polskich podrecznikach jak "r" -
+# dodano jako rownowazna alternatywe. Bezpieczne: uzywane WYLACZNIE dla
+# kind=="arithmetic" (patrz analyze_sequence_question), zero ryzyka
+# kolizji z ciagami geometrycznymi (_SEQ_Q_RE). Nie koliduje tez z
+# zapisem wyrazu ciagu nazwanego "d" (np. "$d_1 = 7$") - underscore+cyfra
+# miedzy "d" a "=" nie pasuje do tego wzorca (wymaga "d"/"r" WPROST przed "=").
+_SEQ_R_RE = re.compile(r'(?<![a-zA-Z])[rd]\s*=\s*(-?\d+(?:[.,]\d+)?)')
 _SEQ_Q_RE = re.compile(r'(?<![a-zA-Z])q\s*=\s*(-?\d+(?:[.,]\d+)?)')
+# NAPRAWIONE (ten sam real-test jak wyzej - Pytanie 7, "Oblicz sume
+# dziesieciu pierwszych wyrazow..."): 2 niezalezne luki naraz -
+# (1) tylko cyfra (\d+), nigdy slowna forma liczebnika ("dziesieciu",
+# "pieciu" - dokladnie taki sam gatunek bledu jak juz naprawiony dla
+# _SEQ_NTH_ASK_ORDINAL_RE/_SEQ_ORDINAL_WORDS, ale to sa slowa w INNYM
+# przypadku gramatycznym - liczebnik glowny w dopelniaczu, nie porzadkowy);
+# (2) sztywna kolejnosc "pierwszych <N>" - naturalne polskie "sume <N>
+# pierwszych wyrazow" (liczebnik PRZED "pierwszych") nie pasowalo wcale.
+# Skutek: intent dla Pytania 7 (sum_given_n) nigdy nie zostal rozpoznany -
+# unverifiable, mimo ze to prosty, w pelni obliczalny przypadek.
+_SEQ_CARDINAL_WORDS = {
+    "dwóch": 2, "dwoch": 2, "trzech": 3, "czterech": 4,
+    "pięciu": 5, "pieciu": 5, "sześciu": 6, "szesciu": 6, "siedmiu": 7,
+    "ośmiu": 8, "osmiu": 8, "dziewięciu": 9, "dziewieciu": 9,
+    "dziesięciu": 10, "dziesieciu": 10, "jedenastu": 11, "dwunastu": 12,
+    "trzynastu": 13, "czternastu": 14, "piętnastu": 15, "pietnastu": 15,
+    "szesnastu": 16, "siedemnastu": 17, "osiemnastu": 18,
+    "dziewiętnastu": 19, "dziewietnastu": 19, "dwudziestu": 20,
+}
+
+
+def _cardinal_to_int(s: str) -> int:
+    """'10' -> 10, 'dziesięciu' -> 10 (patrz _SEQ_CARDINAL_WORDS)."""
+    s = s.strip()
+    return int(s) if s.isdigit() else _SEQ_CARDINAL_WORDS[s.lower()]
+
+
+_SEQ_CARDINAL_NUM_PATTERN = r'(?:\d+|' + '|'.join(_SEQ_CARDINAL_WORDS.keys()) + r')'
 # NAPRAWIONE (wykryte realna generacja Etapu 6): "suma" (mianownik, np.
 # "Ile wynosi suma pierwszych 6 wyrazów...") obok "sumę"/"sume" (biernik,
 # np. "Oblicz sumę pierwszych 6 wyrazów...") - ten sam sum_given_n,
 # inny przypadek gramatyczny zaleznie od pozycji w zdaniu.
-_SEQ_SUM_N_RE = re.compile(r'sum[aeę]\s+pierwszych\s+(\d+)\s+wyraz')
-_SEQ_SUM_VALUE_RE = re.compile(r'suma\s+pierwszych\s+(\d+)\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)')
+_SEQ_SUM_N_RE = re.compile(
+    r'sum[aeę]\s+(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
+    r'|(' + _SEQ_CARDINAL_NUM_PATTERN + r')\s+pierwszych)\s+wyraz'
+)
+_SEQ_SUM_VALUE_RE = re.compile(
+    r'suma\s+(?:pierwszych\s+(' + _SEQ_CARDINAL_NUM_PATTERN + r')'
+    r'|(' + _SEQ_CARDINAL_NUM_PATTERN + r')\s+pierwszych)\s+wyraz\w*[^.]*?wynosi\s+(-?\d+(?:[.,]\d+)?)'
+)
 # NAPRAWIONE (wykryte realna generacja Etapu 6): oprocz "oblicz" AI rowniez
 # naturalnie pisze "wyznacz"/"znajdz"/"jaki jest" N-ty wyraz - te same
 # pytanie o find_nth_term, inny czasownik.
@@ -880,7 +927,8 @@ def analyze_sequence_question(question_text: str):
     sum_value = None
     m = _SEQ_SUM_VALUE_RE.search(text)
     if m:
-        sum_value = {"n": int(m.group(1)), "value": _to_num(m.group(2))}
+        n_str = m.group(1) or m.group(2)
+        sum_value = {"n": _cardinal_to_int(n_str), "value": _to_num(m.group(3))}
 
     if not terms and last_term is None and sum_value is None:
         return None
@@ -947,7 +995,7 @@ def detect_sequence_intent(question_text: str):
 
     m = _SEQ_SUM_N_RE.search(text)
     if m and 'przekracza' not in text and 'najmniejsz' not in text:
-        return {"intent": "sum_given_n", "n": int(m.group(1))}
+        return {"intent": "sum_given_n", "n": _cardinal_to_int(m.group(1) or m.group(2))}
 
     if ('ile wyraz' in text or ('liczb' in text and 'wyraz' in text)) and 'przekracza' not in text:
         return {"intent": "find_n_from_last_term"}
@@ -970,6 +1018,20 @@ def detect_sequence_intent(question_text: str):
     # co najwyzej poprawne odrzucenie/abstain.
     if asks_for_a1:
         return {"intent": "two_term_to_a1_ratio"}
+
+    # NAPRAWIONE (ten sam real-test jak _SEQ_R_RE/_SEQ_SUM_N_RE wyzej -
+    # Pytania 3 i 4: "c1=4, c3=16, oblicz iloraz" / "d1=7, d5=19, oblicz
+    # roznice"): gdy a1 jest JUZ PODANE wprost (a1_given=True), asks_for_a1
+    # jest z definicji False, wiec zaden z powyzszych intentow nigdy sie
+    # nie dopasowywal - pytanie o SAM r/q (bez pytania tez o a1) nie mialo
+    # ZADNEGO intencji -> unverifiable, mimo ze to identyczny, w pelni
+    # rozwiazywalny uklad 2 rownan/2 niewiadome co two_term_to_a1_ratio,
+    # tylko interesuje nas DRUGA niewiadoma (r/q) zamiast pierwszej (a1).
+    asks_for_ratio_only = a1_given and ('różnic' in text or 'roznic' in text or 'iloraz' in text) and (
+        'oblicz' in text or 'wyznacz' in text or 'znajd' in text or 'jaki jest' in text
+    )
+    if asks_for_ratio_only:
+        return {"intent": "two_term_to_ratio_only"}
     return None
 
 
@@ -1093,7 +1155,13 @@ def verify_sequence_question(question_text: str, options: list):
             if 1 not in terms or ratio is None:
                 return {"status": "unverifiable"}
             true_value = sp.nsimplify(sn_expr(terms[1], ratio, intent["n"]))
-            option_parser = lambda opt: _parse_expr(_option_text(opt))
+            # NAPRAWIONE (real-test, sierpien 2026 - Pytanie 7: S10=150
+            # wyliczone poprawnie, ale "no_option_matches" mimo to): ten
+            # sam blad co juz naprawiony dla find_a1_given_sum
+            # (_option_value_after_equals) - opcje typu "$S_{10} = 150$"
+            # maja $ na koncu, wiec probowanie sparsowac CALY tekst jako
+            # jedno wyrazenie sympy zawsze rzucalo SyntaxError (bare "=").
+            option_parser = _option_value_after_equals
         elif intent["intent"] == "find_n_from_last_term":
             if 1 not in terms or ratio is None or parsed["last_term"] is None:
                 return {"status": "unverifiable"}
@@ -1102,7 +1170,9 @@ def verify_sequence_question(question_text: str, options: list):
             if len(real_sol) != 1:
                 return {"status": "unverifiable"}
             true_value = sp.nsimplify(real_sol[0])
-            option_parser = lambda opt: _parse_expr(_option_text(opt))
+            # NAPRAWIONE: ten sam blad co w sum_given_n wyzej - patrz
+            # komentarz tam.
+            option_parser = _option_value_after_equals
         elif intent["intent"] == "find_n_from_sum":
             # ETAP 6: dla arytmetycznych S_n jest kwadratowe wzgledem n -
             # ma jednoznaczne rozwiazanie sympy.solve. Dla geometrycznych
@@ -1117,7 +1187,9 @@ def verify_sequence_question(question_text: str, options: list):
             if len(real_sol) != 1:
                 return {"status": "unverifiable"}
             true_value = sp.nsimplify(real_sol[0])
-            option_parser = lambda opt: _parse_expr(_option_text(opt))
+            # NAPRAWIONE: ten sam blad co w sum_given_n wyzej - patrz
+            # komentarz tam.
+            option_parser = _option_value_after_equals
         elif intent["intent"] == "term_and_sum_to_a1_ratio":
             # ETAP 6: naturalne rozszerzenie two_term_to_a1_ratio - zamiast
             # DWOCH konkretnych wyrazow, mamy JEDEN wyraz + sume - wciaz
@@ -1161,6 +1233,31 @@ def verify_sequence_question(question_text: str, options: list):
                 return {"status": "unverifiable"}
             true_value = real_sols[0]
             option_parser = lambda opt: _option_a1_ratio(opt, kind)
+        elif intent["intent"] == "two_term_to_ratio_only":
+            # Identyczny uklad rownan co two_term_to_a1_ratio (patrz
+            # komentarz w detect_sequence_intent) - jedyna roznica to
+            # KTORA z 2 niewiadomych nas interesuje (r/q, nie a1) i jak
+            # parsowane sa opcje (pojedyncza wartosc "d = 3"/"q = 2", nie
+            # para a1+ratio).
+            idxs = sorted(terms.keys())
+            if len(idxs) != 2:
+                return {"status": "unverifiable"}
+            i, j = idxs
+            vi, vj = terms[i], terms[j]
+            sol = sp.solve([
+                Eq(an_expr(a1_sym, r_sym, i), vi),
+                Eq(an_expr(a1_sym, r_sym, j), vj),
+            ], [a1_sym, r_sym])
+            sols = sol if isinstance(sol, list) else [sol]
+            real_sols = []
+            for s in sols:
+                a1v, rv = (s[a1_sym], s[r_sym]) if isinstance(s, dict) else s
+                if a1v.is_real and rv.is_real:
+                    real_sols.append(sp.nsimplify(rv))
+            if len(real_sols) != 1:
+                return {"status": "unverifiable"}
+            true_value = real_sols[0]
+            option_parser = _option_value_after_equals
         else:
             return {"status": "unverifiable"}
     except Exception:
@@ -1231,7 +1328,7 @@ def classify_sequence_difficulty(question_text: str):
         return "1"
     if name in ("sum_given_n", "find_n_from_last_term", "find_a1_given_sum"):
         return "3" if kind == "geometric" else "2"
-    if name == "two_term_to_a1_ratio":
+    if name in ("two_term_to_a1_ratio", "two_term_to_ratio_only"):
         return "5" if kind == "geometric" else "4"
     if name == "term_and_sum_to_a1_ratio":
         return "4"
