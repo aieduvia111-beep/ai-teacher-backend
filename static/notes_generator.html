@@ -475,7 +475,11 @@ async function checkLimit(feature) {
   if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
 
   const today = new Date().toISOString().split('T')[0];
-  const key = `eduvia_limit_${feature}_${today}`;
+  // NAPRAWIONE: user zglosil - "logowalem sie na rozne konta i limit byl
+  // ten sam". Klucz NIE byl scope'owany per-user (tylko feature+data) -
+  // dwa rozne konta zalogowane w TEJ SAMEJ przegladarce dzielily jeden,
+  // wspolny licznik w localStorage. Dodano uid (juz mamy go wyzej) do klucza.
+  const key = `eduvia_limit_${feature}_${uid}_${today}`;
   const used = parseInt(localStorage.getItem(key) || '0');
   const limit = LIMITS_FREE[feature] || 5;
   const remaining = limit - used;
@@ -489,7 +493,8 @@ async function checkLimit(feature) {
 
 function useLimit(feature) {
   const today = new Date().toISOString().split('T')[0];
-  const key = `eduvia_limit_${feature}_${today}`;
+  const uid = localStorage.getItem('eduvia_uid') || 'anon';
+  const key = `eduvia_limit_${feature}_${uid}_${today}`;
   const used = parseInt(localStorage.getItem(key) || '0');
   localStorage.setItem(key, used + 1);
 }

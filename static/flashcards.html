@@ -13,6 +13,42 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script type="module">
+// NAPRAWIONE (user: "zawsze dzialalo, co sie stalo, napraw to"): ta strona
+// NIGDY nie mial inicjalizacji Firebase/logowania - wywolanie generowania
+// (patrz ponizej, generate()) nie wysylalo ZADNEGO tokenu Authorization,
+// mimo ze /api/v1/quiz/generate-topic (endpoint uzywany przez Fiszki -
+// reuzywa generatora Quizu) od dawna wymaga require_feature_limit("quiz"),
+// ktore z kolei wymaga prawdziwego tokenu Firebase. Potwierdzone bezposrednio:
+// dokladnie ten sam request bez auth -> 401 "Brak tokenu autoryzacji". User
+// prawdopodobnie pamieta dzialanie sprzed czasu, gdy ten endpoint wymagal
+// logowania - od tamtej pory Fiszki byly cicho zepsute (falszywy "Blad
+// generowania" po 4 probach, bez wskazania przyczyny).
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app = initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
+const auth = getAuth(app);
+const db = getFirestore(app);
+let currentUser = null;
+window._currentUser = () => currentUser;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  currentUser = user;
+  localStorage.setItem('eduvia_uid', user.uid);
+  // NAPRAWIONE: ta strona NIGDY nie synchronizowala prawdziwego planu
+  // (Pro/free) z Firestore - checkFlashcardsLimit() polegal WYLACZNIE na
+  // tym, co przypadkiem zostalo w localStorage z INNEJ, wczesniej
+  // odwiedzonej strony (albo na niczym - domyslnie "free"). User z realnym
+  // Pro moglby dostac falszywy popup limitu, gdyby ta strona byla
+  // pierwsza/jedyna odwiedzona w danej przegladarce.
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (snap.exists()) localStorage.setItem('eduvia_plan', snap.data().plan || 'free');
+  } catch (e) { console.warn('[Fiszki] nie udalo sie zsynchronizowac planu:', e); }
+  if (typeof window._startFlashcards === 'function') window._startFlashcards();
+});
+</script>
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;
@@ -324,7 +360,14 @@ function initSwipe(){
 
 // DZWIEK KARTY
 function playFlip(){
-  if(!checkFlashcardsLimit()) return;
+  // NAPRAWIONE (user zglosil: "limit mimo ze nie uzywalem fiszek"): ta
+  // funkcja to TYLKO dzwiek klikniecia przy odwracaniu JUZ WYGENEROWANEJ
+  // karty (zwykle, oczekiwane uzycie w trakcie nauki) - checkFlashcardsLimit()
+  // (ktora ZUZYWA dzienny limit) byla tu blednie wpieta, wiec KAZDE
+  // odwrocenie karty (nie generowanie nowych fiszek!) zuzywalo jedyny
+  // dostepny dzienny limit i pokazywalo popup "limit wyczerpany" po
+  // PIERWSZYM kliknieciu w karte. Sprawdzenie limitu przeniesiono do
+  // generate() (patrz nizej), gdzie faktycznie powinno sie znajdowac.
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
@@ -349,7 +392,10 @@ function checkFlashcardsLimit(){
   const plan = localStorage.getItem('eduvia_plan') || 'free';
   if(plan !== 'free') return true;
   const today = new Date().toISOString().split('T')[0];
-  const key = 'eduvia_limit_flashcards_'+today;
+  // NAPRAWIONE: klucz NIE byl scope'owany per-user (tylko feature+data) -
+  // patrz identyczny fix w exam_generator.html/chat.html/itd.
+  const uid = localStorage.getItem('eduvia_uid') || 'anon';
+  const key = 'eduvia_limit_flashcards_'+uid+'_'+today;
   const used = parseInt(localStorage.getItem(key)||'0');
   if(used >= 1){
     showLimitPopup('flashcards', 1);
@@ -372,12 +418,24 @@ async function generate(attempt=1){
       }
     }catch(e){}
   }
+  // NAPRAWIONE: sprawdzenie limitu przeniesione tutaj z playFlip() (patrz
+  // komentarz tam) - TU faktycznie generujemy nowe fiszki, wiec TU ma sens
+  // zuzywac dzienny limit. Tylko na PIERWSZEJ probie (attempt===1) - kolejne
+  // proby (ponawianie po bledzie sieci/serwera) to WCIAZ ta sama logiczna
+  // prosba usera, nie osobne uzycia. Sciezka z cache (fromCache='1' + trafienie)
+  // juz zakonczyla sie wczesniej (return powyzej) - tu jestesmy tylko gdy
+  // faktycznie zaraz zapytamy backend.
+  if(attempt === 1 && !checkFlashcardsLimit()) return;
 
   try{
     const controller = new AbortController();
     const timeout = setTimeout(()=>controller.abort(), 60000);
+    // NAPRAWIONE: brakowalo tokenu logowania - patrz komentarz przy
+    // inicjalizacji Firebase w <head>. Bez tego /generate-topic ZAWSZE
+    // zwracal 401, niezaleznie od proby/srodowiska.
+    const _idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
     const r = await fetch(BASE+'/api/v1/quiz/generate-topic',{signal:controller.signal,
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},
       body:JSON.stringify({
         topic:topic||'ogólne', subject, level,
         num_questions:10, difficulty:'medium',
@@ -386,11 +444,21 @@ async function generate(attempt=1){
     });
     clearTimeout(timeout);
     const d = await r.json();
-    if(!d.success) throw new Error(d.error);
+    // NAPRAWIONE: sprawdzalo tylko d.error (ksztalt "zwyklego" bledu
+    // endpointu), NIGDY d.detail (ksztalt HTTPException - m.in. 429 z
+    // limitem, ktory ma tam CTA "Kup Pro..."), wiec limit nigdy nie byl
+    // rozpoznany - kod po prostu probowal ponownie 4 razy, potem pokazywal
+    // generyczny "Blad generowania".
+    if(!d.success) throw new Error(d.detail || d.error || 'Blad generowania');
     cards = d.quiz.questions.map(q=>({f:q.question,b:q.explanation}));
     showCards();
   }catch(e){
-    if(attempt < 4){
+    if(e.message && e.message.includes('limit')){
+      // Limit wyczerpany - ponawianie nie ma sensu (nie zniknie samo),
+      // pokaz od razu popup z Pro zamiast 4 prob i myslacego "Blad generowania".
+      document.getElementById('cardArea').innerHTML='';
+      showLimitPopup('flashcards', 1);
+    } else if(attempt < 4){
       setTimeout(()=>generate(attempt+1), 4000);
       document.getElementById('cardArea').innerHTML='<div class="loading"><div class="spin"></div><div class="load-t">Generuję fiszki...</div></div>';
     } else {
@@ -398,6 +466,7 @@ async function generate(attempt=1){
     }
   }
 }
+window._startFlashcards = generate;
 
 function showCards(){
   cur=0;ok=0;fail=0;flipped=false;
@@ -486,7 +555,10 @@ function showResult(){
 }
 
 function restart(){ showCards(); }
-generate();
+// NAPRAWIONE: generate() bylo wolane natychmiast tutaj, PRZED rozstrzygnieciem
+// stanu logowania Firebase (async, ~100-500ms) - window._currentUser() bylby
+// wtedy jeszcze null, wiec token bylby pusty i tak i tak 401. Start jest teraz
+// wywolywany z onAuthStateChanged (patrz <head>) - window._startFlashcards.
 </script>
 <script>
 // Android back button - wroc do dashboard
