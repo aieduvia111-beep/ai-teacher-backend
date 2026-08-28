@@ -509,6 +509,40 @@ _SAFE_PERFECT_SQUARES = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
 _SAFE_PARAM_LETTERS = list("mnpqrstkbc")
 
 
+def pick_safe_param_values(pool: list, used: set, count: int) -> list:
+    """Losuje `count` wartosci z `pool`, BEZ POWTORZEN wzgledem `used`
+    (mutowany w miejscu - kolejne wywolania, np. w kolejnych rundach
+    dogenerowania TEGO SAMEGO dokumentu, "widza" juz zuzyte wartosci).
+
+    NAPRAWIONE (user zglosil: Pytanie 6 i 7 w wygenerowanym Sprawdzianie
+    uzywaly IDENTYCZNEJ stalej C=25, rozne tylko litery parametru) -
+    dotychczas litery byly losowane bez powtorzen TYLKO w obrebie
+    jednej partii (jednego wywolania _raw_generate_safe_linear_param_quadratic_batch),
+    a stale C w ogole (random.choice z powtorzeniami, nawet w obrebie
+    jednej partii) - zaden z nich nie pamietal, co zostalo juz uzyte w
+    POPRZEDNIEJ partii (np. pierwsza generacja + runda dogenerowania to
+    DWA OSOBNE wywolania w tym samym dokumencie). Te dwa
+    zestawy-dystraktory sa dokladnie tym samym schematem, ktory
+    Diversity Engine celowo POMIJA dla _safe_generated (patrz
+    _verify_and_fix_exam_math/_verify_and_fix_quiz_math) - wiec bez
+    tego mechanizmu nic innego nie chronilo przed powtorzeniem stalej.
+
+    Jesli pula (10 liter / 10 kwadratow) wyczerpie sie w obrebie
+    JEDNEGO dokumentu (rzadkie - trzeba by >10 zadan tego podwzorca w
+    jednym sprawdzianie/quizie) - dopiero WTEDY dopuszczamy powtorzenia
+    (cyklicznie), bo unikniecie ich staje sie matematycznie niemozliwe."""
+    fresh = [v for v in pool if v not in used]
+    random.shuffle(fresh)
+    fallback = list(pool)
+    random.shuffle(fallback)
+    picks = []
+    for i in range(count):
+        v = fresh[i] if i < len(fresh) else fallback[i % len(fallback)]
+        picks.append(v)
+    used.update(picks)
+    return picks
+
+
 def build_safe_linear_param_quadratic(param_letter: str = None, c_value: int = None) -> dict:
     """Buduje JEDEN bezpieczny (gwarantowanie poprawny) szkielet pytania
     dla x^2 + {param}x + {C} = 0 (parametr jako goly wspolczynnik

@@ -36,6 +36,7 @@ from .math_verify import (
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
+    pick_safe_param_values,
 )
 from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes
 from .difficulty import DifficultyAnalyzer
@@ -1484,23 +1485,41 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
     # sformulowanie pytania + 3 blednych dystraktorow. Warstwa 2
     # (_verify_and_fix_exam_math) NADAL robi koncowa weryfikacje jako
     # dodatkowe zabezpieczenie - ten kod NIE omija Warstwy 2.
-    def _raw_generate_safe_linear_param_quadratic_batch(self, n: int, klasa: str = None) -> dict:
+    def _raw_generate_safe_linear_param_quadratic_batch(self, n: int, klasa: str = None, used_letters: set = None, used_constants: set = None) -> dict:
         """Generuje `n` zadan zamknietych dla podwzorca x^2+mx+C=0
         (parametr jako goly wspolczynnik liniowy) metoda 'safe parameter
         generation' - zwraca dane w KSZTALCIE sprawdzianu (sekcje/
         pytania/opcje z prefiksem litery/odpowiedz jako litera), zeby
-        pasowalo bez zmian do _fill_missing_exam_questions."""
+        pasowalo bez zmian do _fill_missing_exam_questions.
+
+        `used_letters`/`used_constants` (opcjonalne, patrz _get_exam_data)
+        - jesli podane, zyja przez CALY dokument (pierwsza partia + WSZYSTKIE
+        rundy dogenerowania) i sa mutowane w miejscu, zeby ZADNA litera/stala
+        nie powtorzyla sie w obrebie tego samego sprawdzianu, dopoki starcza
+        unikalnych wartosci w puli (10/10) - patrz pick_safe_param_values w
+        math_verify.py. User zglosil realny przypadek (Pytanie 6 i 7 w
+        jednym PDF, oba $x^2+_x+25=0$, rozne tylko litery) - bez tego
+        mechanizmu KAZDE osobne wywolanie tej metody (np. pierwsza partia
+        vs runda dogenerowania) losowalo stala NIEZALEZNIE, wiec kolizja
+        MIEDZY wywolaniami byla mozliwa nawet gdy litery w OBREBIE jednego
+        wywolania juz nie powtarzaly sie."""
         # Bufor +3 (identyczny wzorzec co w Quizie) - pojedyncza, rzadka
         # kolizja fingerprintu miedzy rundami nie kosztuje calej brakujacej
-        # partii. Litery bez powtorzen w obrebie partii (dla n<=10).
+        # partii.
         buffered_n = n + 3
         letters_pool = list("mnpqrstkbc")
-        random.shuffle(letters_pool)
         squares_pool = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+        if used_letters is not None and used_constants is not None:
+            letters = pick_safe_param_values(letters_pool, used_letters, buffered_n)
+            constants = pick_safe_param_values(squares_pool, used_constants, buffered_n)
+        else:
+            random.shuffle(letters_pool)
+            letters = [letters_pool[i % len(letters_pool)] for i in range(buffered_n)]
+            constants = [random.choice(squares_pool) for _ in range(buffered_n)]
         skeletons = [
             build_safe_linear_param_quadratic(
-                param_letter=letters_pool[i % len(letters_pool)],
-                c_value=random.choice(squares_pool),
+                param_letter=letters[i],
+                c_value=constants[i],
             )
             for i in range(buffered_n)
         ]
@@ -1620,11 +1639,18 @@ ZASADY:
         # mechanizm dla Quizu.
         seen_fingerprints = set()
         seen_diversity_tags = []
+        # Zyje przez CALY dokument (patrz docstring _raw_generate_safe_linear_param_quadratic_batch)
+        # - zapobiega powtorzeniu tej samej litery/stalej C miedzy roznymi
+        # wywolaniami metody bezpiecznej generacji w OBREBIE tego samego
+        # sprawdzianu (user zglosil realny przypadek dwoch pytan z ta sama
+        # stala C=25, roznymi tylko literami).
+        used_safe_letters = set()
+        used_safe_constants = set()
         data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None, used_safe_letters=None, used_safe_constants=None):
         """STANDARD ARCHITEKTONICZNY (patrz komentarz nad SAFE PARAMETER
         GENERATION w math_verify.py): `current_total`/`missing` ponizej sa
         liczone WYLACZNIE przez len() na faktycznie zaakceptowanej liscie
@@ -1673,7 +1699,7 @@ ZASADY:
                     # wolnej generacji, ktora regularnie zawodzi wlasnie dla
                     # tego przypadku (stad w ogole te rundy sa potrzebne).
                     if _is_medium_linear_param_quadratic_exam(temat, trudnosc):
-                        extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa)
+                        extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
                 metrics.api_request_count += 1

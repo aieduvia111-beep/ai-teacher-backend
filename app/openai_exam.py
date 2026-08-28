@@ -14,6 +14,7 @@ from .math_verify import (
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
+    pick_safe_param_values,
 )
 from .difficulty import DifficultyAnalyzer
 from typing import List, Dict, Optional
@@ -1122,11 +1123,20 @@ async def _raw_generate_quiz_topic_batch(
 # weryfikacje jako dodatkowe zabezpieczenie (patrz wywolanie w
 # _verify_and_fix_quiz_math - ten kod NIE omija Warstwy 2, tylko
 # radykalnie zmniejsza szanse, ze cokolwiek trafi do niej bledne).
-async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = None) -> Dict:
+async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = None, used_letters: set = None, used_constants: set = None) -> Dict:
     """Generuje `n` pytan dla podwzorca x^2+mx+C=0 (parametr jako goly
     wspolczynnik liniowy) metoda 'safe parameter generation' - patrz
     komentarz wyzej. Jedno wywolanie AI dla calej partii (n <= ok. 15
-    w praktyce, bo to tylko dogenerowanie brakujacych, nie caly quiz)."""
+    w praktyce, bo to tylko dogenerowanie brakujacych, nie caly quiz).
+
+    `used_letters`/`used_constants` (opcjonalne, patrz call site w
+    _generate_quiz_topic_once - zyja przez CALY quiz jako closure nad
+    `regenerate`) - jesli podane, ZADNA litera/stala nie powtorzy sie w
+    obrebie tego samego quizu, MIEDZY roznymi wywolaniami tej funkcji
+    (kazda runda dogenerowania to osobne wywolanie) - patrz
+    pick_safe_param_values w math_verify.py. Ten sam mechanizm co w
+    porcie do Sprawdzianu (exam_pdf_generator.py) - user zglosil tam
+    realny przypadek dwoch pytan z ta sama stala C w jednym dokumencie."""
     # NAPRAWIONE (znalezione PRZY realnym tescie n=20 - dokladna analiza
     # utraconego 1 pytania): oryginalna wersja losowala (litera, C) jako
     # PLASKA kombinacja z 10x10=100 par, wiec dla n<=10 (typowy rozmiar
@@ -1150,12 +1160,18 @@ async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = N
     # kosztowala calej brakujacej partii.
     buffered_n = n + 3
     letters_pool = list("mnpqrstkbc")
-    random.shuffle(letters_pool)
     squares_pool = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+    if used_letters is not None and used_constants is not None:
+        letters = pick_safe_param_values(letters_pool, used_letters, buffered_n)
+        constants = pick_safe_param_values(squares_pool, used_constants, buffered_n)
+    else:
+        random.shuffle(letters_pool)
+        letters = [letters_pool[i % len(letters_pool)] for i in range(buffered_n)]
+        constants = [random.choice(squares_pool) for _ in range(buffered_n)]
     skeletons = [
         build_safe_linear_param_quadratic(
-            param_letter=letters_pool[i % len(letters_pool)],
-            c_value=random.choice(squares_pool),
+            param_letter=letters[i],
+            c_value=constants[i],
         )
         for i in range(buffered_n)
     ]
@@ -1296,7 +1312,13 @@ async def _generate_quiz_topic_once(
     # naturalny mix podwzorcow, dobry dla roznorodnosci; TYLKO
     # uzupelnianie brakujacych przelacza sie na bezpieczna metode.
     if _is_medium_linear_param_quadratic(topic, difficulty):
-        regenerate = lambda n: _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level)
+        # Zyje przez CALY quiz (closure nad `regenerate`, wywolywanym raz
+        # per runda dogenerowania) - patrz docstring
+        # _raw_generate_safe_linear_param_quadratic_batch i identyczny
+        # mechanizm w exam_pdf_generator.py.
+        used_safe_letters = set()
+        used_safe_constants = set()
+        regenerate = lambda n: _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
     else:
         regenerate = lambda n: _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
