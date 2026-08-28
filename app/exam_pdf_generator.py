@@ -1787,7 +1787,11 @@ ZASADY:
         final_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if final_total < liczba_pytan:
             total_elapsed = time.monotonic() - t_start
-            reason = "przekroczono limit czasu (30s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
+            # NAPRAWIONE: tekst mial ZASZYTE NA STALE "(30s)", pozostale
+            # jeszcze sprzed przejscia na jednolity budzet 60s (patrz
+            # _TIMEOUT_SECONDS_EXAM) - user widzial mylacy komunikat
+            # "limit 30s", mimo ze realnie egzekwowany budzet to juz 60s.
+            reason = f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
             data["_shortfall_warning"] = (
                 f"Udalo sie wygenerowac i zweryfikowac {final_total} z {liczba_pytan} "
                 f"zamowionych zadan - {reason}, pozostale okazaly sie bledne. "
