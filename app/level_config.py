@@ -973,9 +973,25 @@ def get_quadratic_difficulty_anchor(difficulty_word: str):
 def is_quadratic_equation_topic(topic: str) -> bool:
     """Proste wykrycie, czy temat dotyczy rownan kwadratowych - uzywane
     do "gated injection" skali 1-10 (dziala TYLKO dla tego tematu, inne
-    tematy sa niedotkniete - nie zmieniamy globalnego zachowania)."""
+    tematy sa niedotkniete - nie zmieniamy globalnego zachowania).
+
+    NAPRAWIONE (real-test, sierpien 2026 - user zglosil shortfall 8/11
+    z komunikatem 'przekroczono limit czasu (30s)'): temat zapisany z
+    literowka 'rownanai kwadratowe' (zamiast 'rownania') nie zawieral
+    substringa 'równani'/'rownani' - wykrywanie zwracalo False, wiec
+    TEN SAM podwzorzec (rownanie kwadratowe z parametrem, medium), dla
+    ktorego istnieja JUZ dedykowane mechanizmy (45s timeout, +50% bufor,
+    Safe Parameter Generation - patrz komentarze w exam_pdf_generator.py/
+    openai_exam.py), po cichu dostawal DOMYSLNE 30s/+30% i wpadal w
+    dokladnie ten sam, znany problem z wysokim odsetkiem odrzucen.
+    Skrocono sprawdzany rdzen z "równani"/"rownani" (7 znakow) do
+    "równan"/"rownan" (6 znakow) - to WCIAZ trafnie identyfikuje temat
+    (wspolny rdzen dla rownanie/rownania/rownaniami/rownaniom), ale jest
+    odporne na literowki w koncowce, takie jak zaobserwowana. Fix jest
+    czysto rozszerzajacy (superset istniejacego dopasowania), nie zawezajacy -
+    zero ryzyka przestania wykrywac cos, co dzialalo wczesniej."""
     t = (topic or "").lower()
-    return ("równani" in t or "rownani" in t) and "kwadratow" in t
+    return ("równan" in t or "rownan" in t) and "kwadratow" in t
 
 
 # ETAP 6: analogiczna "gated injection" skala trudnosci dla ciagow
