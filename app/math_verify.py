@@ -2969,9 +2969,10 @@ _DIVERSITY_STOPWORDS = frozenset({
 })
 _DIVERSITY_TAG_FIELDS = ("skill", "concept", "task_type", "reasoning")
 _DIVERSITY_NON_WORD_RE = re.compile(r'[^a-ząćęłńóśźż]+')
+_DIVERSITY_NUMBER_RE = re.compile(r'-?\d+(?:[.,]\d+)?')
 
 
-def diversity_tag_tokens(tag) -> frozenset:
+def diversity_tag_tokens(tag, question_text: str = None) -> frozenset:
     """Zamienia diversity_tag (dict z polami skill/concept/task_type/
     reasoning, kazde krotka fraza wygenerowana przez AI) na
     znormalizowany zbior tokenow do porownania Jaccarda. Brakujace pola
@@ -2980,13 +2981,37 @@ def diversity_tag_tokens(tag) -> frozenset:
     bez tego pola) - pusty zbior oznacza "nie da sie ocenic
     roznorodnosci tego pytania", NIE "identyczne z czymkolwiek" (patrz
     is_too_similar_diversity_tag nizej - pusty zbior nigdy nie blokuje,
-    bezpieczny abstain, ta sama filozofia co reszta tego modulu)."""
+    bezpieczny abstain, ta sama filozofia co reszta tego modulu).
+
+    NAPRAWIONE (user zglosil PONOWNIE ten sam blad - najpierw w ciagach
+    (Zadanie 4/5 "prawie duplikat" nie zlapany), potem w trygonometrii
+    (real-test tego samego dnia odtworzyl: "kat 30°, przyprostokatna
+    naprzeciw = 5" zadane DWA razy w jednym sprawdzianie, inaczej
+    ZWERBALIZOWANE przez AI - "Oblicz dlugosc przeciwprostokatnej, jesli
+    JEDNA Z przyprostokatnych ma dlugosc 5" vs "Jaka dlugosc ma
+    przeciwprostokatna, jesli przyprostokatna NAPRZECIW TEGO KATA ma
+    dlugosc 5" - te same 2 liczby {30, 5}, ale na tyle rozne slowa w
+    "reasoning"/"task_type", ze Jaccard calego tagu NIE przekraczal progu
+    0.85): opcjonalny `question_text` - liczby z TRESCI pytania (nie z
+    opcji) sa dolaczane jako DODATKOWE tokeny (prefiks "num_", zeby nie
+    mieszaly sie ze slowami z tagu). Uzywane przez is_too_similar_
+    diversity_tag ponizej jako NIEZALEZNY, dodatkowy sygnal - identyczny
+    zestaw >=2 liczb w DWOCH pytaniach jest silnym sygnalem duplikatu
+    SAM W SOBIE, niezaleznie od tego, jak roznie AI opisalo "reasoning".
+    Zweryfikowane na DOKLADNYM real przypadku (patrz wyzej) - zero
+    falszywych trafien wsrod pozostalych 6 pytan tego samego sprawdzianu
+    (kazde mialo inny zestaw liczb)."""
     if not isinstance(tag, dict):
-        return frozenset()
-    text = " ".join(str(tag.get(k, "") or "") for k in _DIVERSITY_TAG_FIELDS).lower()
-    text = _DIVERSITY_NON_WORD_RE.sub(' ', text)
-    tokens = [t for t in text.split() if t and t not in _DIVERSITY_STOPWORDS]
-    return frozenset(tokens)
+        base = frozenset()
+    else:
+        text = " ".join(str(tag.get(k, "") or "") for k in _DIVERSITY_TAG_FIELDS).lower()
+        text = _DIVERSITY_NON_WORD_RE.sub(' ', text)
+        base = frozenset(t for t in text.split() if t and t not in _DIVERSITY_STOPWORDS)
+    if question_text:
+        numbers = _DIVERSITY_NUMBER_RE.findall(question_text)
+        if numbers:
+            base = base | frozenset(f"num_{n}" for n in numbers)
+    return base
 
 
 def jaccard_similarity(a: frozenset, b: frozenset) -> float:
@@ -3017,7 +3042,7 @@ def jaccard_similarity(a: frozenset, b: frozenset) -> float:
 DIVERSITY_SIMILARITY_THRESHOLD = 0.85
 
 
-def is_too_similar_diversity_tag(tag, seen_tag_tokens: list, threshold: float = DIVERSITY_SIMILARITY_THRESHOLD):
+def is_too_similar_diversity_tag(tag, seen_tag_tokens: list, threshold: float = DIVERSITY_SIMILARITY_THRESHOLD, question_text: str = None):
     """Sprawdza, czy `tag` (diversity_tag jednego pytania) jest ZBYT
     PODOBNY (Jaccard >= threshold) do KTOREGOKOLWIEK juz zaakceptowanego
     tagu w tej samej partii (`seen_tag_tokens` - lista frozensetow,
@@ -3027,11 +3052,42 @@ def is_too_similar_diversity_tag(tag, seen_tag_tokens: list, threshold: float = 
     dopisany do `seen_tag_tokens` przez callera, JESLI pytanie zostanie
     finalnie zaakceptowane (ten sam wzorzec co _question_fingerprint).
     Brakujacy/niepoprawny tag -> zawsze (False, pusty frozenset) - NIE
-    blokujemy pytania, ktorego roznorodnosci nie da sie ocenic."""
-    tokens = diversity_tag_tokens(tag)
+    blokujemy pytania, ktorego roznorodnosci nie da sie ocenic.
+
+    NAPRAWIONE (patrz pelny komentarz w diversity_tag_tokens): DRUGI,
+    NIEZALEZNY warunek "za podobne" - identyczny zestaw liczb (>=2, z
+    tresci pytania, prefiks "num_") w dwoch pytaniach, NIEZALEZNIE od
+    Jaccarda calego tagu. Jaccard zostaje jako GLOWNY, ogolny sygnal
+    (dziala nawet bez `question_text`) - to jest DODATKOWA siatka
+    bezpieczenstwa dla przypadku, gdy AI opisuje TEN SAM material
+    liczbowy na tyle roznymi slowami, ze semantyczne podobienstwo tagu
+    nie wystarcza. `question_text` opcjonalny (domyslnie None) - bez
+    niego zachowanie identyczne jak wczesniej (tylko Jaccard tagu).
+
+    NAPRAWIONE (znalezione WLASNYM testem regresyjnym przy budowie tej
+    funkcji - test_diversity_wiring.py/test_exam_quiz_parity_port.py
+    zaczely FALSZYWIE PRZEPUSZCZAC znany, juz poprawnie wykrywany
+    duplikat): pierwsza wersja mieszala tokeny "num_X" do TEGO SAMEGO
+    zbioru, na ktorym liczony jest Jaccard z tagiem - to DEGRADOWALO
+    (nie poprawialo) wykrywanie, bo dwa pytania z IDENTYCZNYM tagiem
+    (Jaccard=1.0) ale ROZNYMI liczbami wlasnymi (np. syntetyczny test
+    "Testowe pytanie 1?" vs "Testowe pytanie 2?") dostawaly SZTUCZNIE
+    obnizony Jaccard (rozne "num_1"/"num_2" powiekszaly sume zbiorow),
+    czasem spadajac PONIZEJ progu 0.85 mimo identycznego tagu. Naprawiono:
+    Jaccard liczony WYLACZNIE na czesci slownej (bez prefiksu "num_") -
+    dokladnie jak przed ta zmiana - liczby sa DRUGIM, NIEZALEZNYM
+    warunkiem OR, nie skladnikiem tego samego zbioru."""
+    tokens = diversity_tag_tokens(tag, question_text)
     if not tokens:
         return False, tokens
+    my_words = frozenset(t for t in tokens if not t.startswith("num_"))
+    my_numbers = frozenset(t for t in tokens if t.startswith("num_"))
     for prior in seen_tag_tokens:
-        if jaccard_similarity(tokens, prior) >= threshold:
+        prior_words = frozenset(t for t in prior if not t.startswith("num_"))
+        if jaccard_similarity(my_words, prior_words) >= threshold:
             return True, tokens
+        if len(my_numbers) >= 2:
+            prior_numbers = frozenset(t for t in prior if t.startswith("num_"))
+            if my_numbers == prior_numbers:
+                return True, tokens
     return False, tokens

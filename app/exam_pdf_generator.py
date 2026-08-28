@@ -474,7 +474,18 @@ def _render_math_png(tekst: str, width_pt: float, fontsize: float = 11,
         rgba = _PIL.open(buf).convert("RGBA")
         out = io.BytesIO(); rgba.save(out, "PNG"); out.seek(0)
         return out.read()
-    except:
+    except Exception as e:
+        # NAPRAWIONE (user zglosil: polskie znaki diakrytyczne znikaja od
+        # pewnego pytania w PDF, powtarzajaco/pozycyjnie) - ten wyjatek byl
+        # CALKOWICIE CICHY (bare "except: return None"), wiec gdy renderowanie
+        # przez matplotlib zawodzi dla konkretnej linii, kod cicho spada do
+        # FALLBACK Paragraph() w _math_line (ktory NIE ma tej samej
+        # gwarancji poprawnego renderowania polskich znakow - patrz
+        # komentarz "Zawsze renderuje przez matplotlib PNG - polskie znaki
+        # 100%") - bez logu nie dalo sie stwierdzic, czy/kiedy/dlaczego to
+        # sie dzieje. Log ujawnia PRAWDZIWA przyczyne przy nastepnym
+        # wystapieniu, zamiast zgadywania.
+        print(f"[ExamPDF] _render_math_png BLAD ({type(e).__name__}: {e}) dla tekstu: '{tekst[:80]}...'")
         try: plt.close(fig)
         except: pass
         return None
@@ -503,7 +514,10 @@ def _render_formula_png(formula: str, width_pt: float = 400) -> bytes | None:
         rgb = PIL2.open(buf).convert('RGB')
         out = io.BytesIO(); rgb.save(out, 'PNG'); out.seek(0)
         return out.read()
-    except:
+    except Exception as e:
+        # NAPRAWIONE: identyczny brak logowania co w _render_math_png -
+        # patrz komentarz tam.
+        print(f"[ExamPDF] _render_formula_png BLAD ({type(e).__name__}: {e}) dla formuly: '{formula[:80]}...'")
         try: plt.close(fig)
         except: pass
         return None
@@ -1439,7 +1453,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 if pyt.pop("_safe_generated", False):
                     diverse.append(pyt)
                     continue
-                too_similar, tokens = is_too_similar_diversity_tag(pyt.get("diversity_tag"), seen_diversity_tags)
+                too_similar, tokens = is_too_similar_diversity_tag(pyt.get("diversity_tag"), seen_diversity_tags, question_text=pyt.get("tresc"))
                 if too_similar:
                     print(f"[MathVerify][Exam][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego zadania: '{pyt.get('tresc', '')[:60]}...' tag={pyt.get('diversity_tag')}")
                     if metrics:

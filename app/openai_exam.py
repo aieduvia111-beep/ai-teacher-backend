@@ -1855,7 +1855,7 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
             if q.pop("_safe_generated", False):
                 diverse.append(q)
                 continue
-            too_similar, tokens = is_too_similar_diversity_tag(q.get("diversity_tag"), seen_diversity_tags)
+            too_similar, tokens = is_too_similar_diversity_tag(q.get("diversity_tag"), seen_diversity_tags, question_text=q.get("question"))
             if too_similar:
                 print(f"[MathVerify][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego pytania: '{q.get('question', '')[:60]}...' tag={q.get('diversity_tag')}")
                 if metrics:
