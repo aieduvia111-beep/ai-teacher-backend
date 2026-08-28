@@ -1383,7 +1383,7 @@ function showLimitPopup(feature, limit) {
         Limit ${name} wyczerpany
       </div>
       <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
-        Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
+        ${feature==='voice' ? 'Wykorzystałeś dzisiejszy darmowy limit rozmów (5 minut).' : `Wykorzystałeś ${limit} darmowych użyć dzisiaj.`}<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
       </p>
       <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
         <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>
@@ -1516,7 +1516,16 @@ async function startSession(){
         method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken0},
         body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic, voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
       });
-      if(!cr.ok) return;
+      if(!cr.ok){
+        // NAPRAWIONE: user zglosil - przy wyczerpanym limicie 5 minut Voice AI
+        // powinien wyskoczyc TEN SAM popup co u wszystkich innych funkcji.
+        // Ta konkretna galaz (auto-powitanie AI na starcie sesji z tematem)
+        // wczesniej cicho przerywala (return) bez zadnego komunikatu.
+        let _detail='';
+        try{ const _errBody=await cr.json(); _detail=_errBody.detail||''; }catch(_){}
+        if(_detail.includes('limit')) showLimitPopup('voice', LIMITS_FREE.voice);
+        return;
+      }
       const reader=cr.body.getReader();
       const decoder=new TextDecoder();
       let buf='';
@@ -1636,7 +1645,13 @@ async function process(){
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken1},
       body: JSON.stringify({text: userTxt, history: hist.slice(-8), profile_context: (window._profileCtx||''), level: selLevel, subject: selSubject, topic: document.getElementById('sessionTopic')?.value?.trim()||'', voice_id: localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'}),
     });
-    if(!cr.ok) throw new Error('GPT '+cr.status);
+    if(!cr.ok){
+      // NAPRAWIONE: tresc odpowiedzi (w tym komunikat limitu z CTA "Kup Pro")
+      // byla ignorowana - patrz identyczny fix w exam_generator.html.
+      let _detail='';
+      try{ const _errBody=await cr.json(); _detail=_errBody.detail||''; }catch(_){}
+      throw new Error(_detail||('GPT '+cr.status));
+    }
         console.log('[STREAM] started', cr.status);
     const reader = cr.body.getReader();
     const decoder = new TextDecoder();
@@ -1689,7 +1704,14 @@ async function process(){
 
 
   } catch(err){
-    showErr(err.message||'Blad');
+    // NAPRAWIONE: user zglosil - przy wyczerpanym limicie 5 minut Voice AI
+    // powinien wyskoczyc TEN SAM popup co u wszystkich innych funkcji,
+    // nie zwykly banner bledu - patrz identyczny fix w exam_generator.html.
+    if(err.message && err.message.includes('limit')){
+      showLimitPopup('voice', LIMITS_FREE.voice);
+    } else {
+      showErr(err.message||'Blad');
+    }
   }
 
   isProc = false;
@@ -1771,7 +1793,11 @@ function openCamera(){
             method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken2},
             body:JSON.stringify({text:'Spojrz na zdjecie. Krotko (1-2 zdania) powiedz co widzisz (np. sprawdzian z biologii, 5 pytan o grzyby) i zapytaj uczennia z ktorym konkretnie pytaniem lub zagadnieniem potrzebuje pomocy. Zapamietaj DOKLADNIE tresc wszystkich pytan zebys mogl do nich wracac. Napisz TABLICE z trescia wszystkich zadan/pytan z zdjecia (min 3 punkty). [TABLICA: punkt1 | punkt2 | punkt3]',image:b64,history:hist.slice(-8),voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
           });
-          if(!r.ok) throw new Error('Blad '+r.status);
+          if(!r.ok){
+            let _detail='';
+            try{ const _errBody=await r.json(); _detail=_errBody.detail||''; }catch(_){}
+            throw new Error(_detail||('Blad '+r.status));
+          }
           const reader2=r.body.getReader();
           const dec2=new TextDecoder();
           let buf2='';
@@ -1809,7 +1835,12 @@ function openCamera(){
               }catch(e2){}
             }
           }
-        }catch(e){boardAddSection('Blad: '+e.message);}
+        }catch(e){
+          // NAPRAWIONE: patrz identyczny fix przy glownej sciezce rozmowy
+          // (process()) - limit powinien pokazac popup, nie wpis na tablicy.
+          if(e.message && e.message.includes('limit')) showLimitPopup('voice', LIMITS_FREE.voice);
+          else boardAddSection('Blad: '+e.message);
+        }
       };
       reader.readAsDataURL(file);
       inp.value='';

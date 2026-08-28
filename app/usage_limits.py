@@ -16,6 +16,16 @@ FREE_DAILY_LIMITS = {
     # NIEZGODNY z tym, co frontend (static/vision.html LIMITS_FREE)
     # od dawna zaklada (2/dzien) i pokazuje w swoim kliencie pre-check.
     "vision": 2,
+    # NAPRAWIONE: "voice" mial KOMPLETNY BRAK egzekwowania po stronie
+    # serwera - /api/v1/voice/respond/stream (jedyny faktycznie uzywany
+    # endpoint Voice AI, patrz app/api/voice.py) mial TYLKO
+    # Depends(get_current_app_user) (kto to jest), bez
+    # require_feature_limit (czy ma jeszcze uzycia). Klient mial ladny
+    # popup (checkLimit/showLimitPopup, LIMITS_FREE.voice=3), ale to byl
+    # WYLACZNIE kosmetyczny, lokalny licznik - kazdy user mogl go obejsc
+    # czyszczac localStorage lub wolajac API bezposrednio, bez
+    # jakiegokolwiek ograniczenia po stronie serwera.
+    "voice": 3,
 }
 
 LIMIT_MESSAGES = {
@@ -29,6 +39,7 @@ LIMIT_MESSAGES = {
     # w app/firebase_auth.py) - BEZ CTA do Pro, w przeciwienstwie do
     # WSZYSTKICH pozostalych funkcji.
     "vision": "Wykorzystałeś już dzisiejszy darmowy limit Vision AI (2 analizy). Kup Pro i ucz się bez limitów!",
+    "voice": "Wykorzystałeś już dzisiejszy darmowy limit Voice AI (3 sesje). Kup Pro i ucz się bez limitów!",
 }
 
 def _load_usage(user: User) -> dict:

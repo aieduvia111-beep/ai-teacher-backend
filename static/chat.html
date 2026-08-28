@@ -1197,7 +1197,14 @@ async function callAIhttp(text, hist, imgs=[]) {
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) throw new Error('Błąd serwera ' + res.status);
+  if (!res.ok) {
+    // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny fix
+    // w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy
+    // wyczerpanym limicie, ktore nigdy nie bylo czytane z ciala odpowiedzi).
+    let _detail = '';
+    try { const _errBody = await res.json(); _detail = _errBody.detail || _errBody.error || ''; } catch (_) {}
+    throw new Error(_detail || ('Błąd serwera ' + res.status));
+  }
 
   const data = await res.json();
   if (data.error) throw new Error(data.text || 'Błąd AI');
@@ -1777,8 +1784,20 @@ async function sendMessage() {
     scrollDown();
 
   } catch (err) {
-    const aiBubble = document.getElementById(thId) || aiGroup.querySelector('.bubble');
-    if (aiBubble) { aiBubble.removeAttribute('id'); aiBubble.innerHTML = `<span style="color:var(--red)">⚠️ ${err.message || 'Coś poszło nie tak. Sprawdź czy backend działa.'}</span>`; }
+    // NAPRAWIONE: user zglosil - przy wyczerpanym limicie kiedys zawsze
+    // wyskakiwal PELNY popup (showLimitPopup) z klikalnym przyciskiem
+    // "Kup Pro -> pricing.html" - patrz identyczny fix w exam_generator.html
+    // (tam limit wykryty przez SERWER pokazywal tylko plaski tekst zamiast
+    // popupu). Chat ma inny UI (bledy jako dymki w rozmowie, nie banner),
+    // ale ten sam popup ma sens rowniez tutaj - user zawsze widzi ten sam,
+    // klikalny popup z Pro niezaleznie od funkcji, w ktorej trafil na limit.
+    if (err.message && err.message.includes('limit')) {
+      aiGroup.remove();
+      showLimitPopup('chat', LIMITS_FREE.chat);
+    } else {
+      const aiBubble = document.getElementById(thId) || aiGroup.querySelector('.bubble');
+      if (aiBubble) { aiBubble.removeAttribute('id'); aiBubble.innerHTML = `<span style="color:var(--red)">⚠️ ${err.message || 'Coś poszło nie tak. Sprawdź czy backend działa.'}</span>`; }
+    }
     console.error('❌', err);
   }
 

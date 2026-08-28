@@ -76,7 +76,13 @@ def estimate_speech_seconds(text):
         return 0
     return max(len(text) / 15.0, 1.0)
 
-LIMIT_REACHED_MESSAGE = "Wykorzystales juz dzisiejszy darmowy limit Voice AI (5 minut)."
+# NAPRAWIONE (audyt "Kup Pro" CTA, sierpien 2026): brakowalo CTA "Kup Pro..."
+# obecnego we WSZYSTKICH pozostalych komunikatach limitu (patrz
+# usage_limits.py LIMIT_MESSAGES) - Voice AI uzywa wlasnego, bespoke
+# mechanizmu czasowego (check_voice_limit/add_voice_usage), nie
+# wspoldzielonego LIMIT_MESSAGES, wiec ta luka nie zostala zlapana przy
+# wczesniejszym audycie pozostalych funkcji.
+LIMIT_REACHED_MESSAGE = "Wykorzystałeś już dzisiejszy darmowy limit Voice AI (5 minut). Kup Pro i ucz się bez limitów!"
 
 SYSTEM_PROMPT = """Jesteś Eduvia — charyzmatyczny, ciepły AI korepetytor. Mówisz naturalnie jak najlepszy nauczyciel prywatny. Jeśli znasz imię ucznia — zawsze zwracaj się do niego po imieniu. Jeśli znasz jego postępy — odwołuj się do nich naturalnie. ADAPTUJ poziom języka automatycznie. Gdy uczeń prosi "jak dla 6-latka" lub "prościej" — natychmiast mów bardzo prostym językiem przez całą resztę rozmowy.
 
