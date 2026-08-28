@@ -1036,7 +1036,13 @@ window.generatePlan=async function generatePlan(){
     var res=await fetch(base+'/api/v1/lessons/create-plan',{signal:lessonController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({topic:topicStr,subject:subject,level:level,total_days:td,minutes_per_day:parseInt(minutes),user_id:localStorage.getItem('eduvia_uid'),additional_info:(topicNote+(extra?' '+extra:'')).trim()})});
     clearTimeout(lessonTimeoutId);
     if(res.status===429){const d=await res.json().catch(function(){return{};});throw new Error(d.detail||'Wykorzystałeś dzisiejszy darmowy limit Planu Nauki.');}
-    if(!res.ok)throw new Error('Blad serwera '+res.status);
+    if(!res.ok){
+      // NAPRAWIONE: dla innych bledow (nie-429) tresc odpowiedzi byla
+      // ignorowana - patrz identyczny fix w exam_generator.html.
+      let _detail='';
+      try{ const _errBody=await res.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+      throw new Error(_detail||('Blad serwera '+res.status));
+    }
     var data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad generowania planu');
     finishProgress();
@@ -1065,8 +1071,11 @@ window.generatePlan=async function generatePlan(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      // NAPRAWIONE: patrz identyczny fix w exam_generator.html - zostawiamy
+      // prawdziwa tresc bledu z backendu (zawiera CTA "Kup Pro..."), zamiast
+      // ja nadpisywac krotszym tekstem bez tej informacji.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+      else if(e.message.includes('limit')) _errMsg=e.message;
     }
     document.getElementById('errTxt').textContent=_errMsg;
     err.classList.add('show');

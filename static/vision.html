@@ -931,7 +931,14 @@ async function scanImage(){
   try{
     const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
     const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
-    if(!res.ok)throw new Error('Blad serwera '+res.status);
+    if(!res.ok){
+      // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
+      // fix w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy
+      // wyczerpanym limicie, ktore nigdy nie bylo czytane z ciala odpowiedzi).
+      let _detail='';
+      try{ const _errBody=await res.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+      throw new Error(_detail||('Blad serwera '+res.status));
+    }
     const data=await res.json();
     if(!data.success)throw new Error(data.error||'Blad analizy');
     finishProgress();
@@ -950,8 +957,11 @@ async function scanImage(){
     if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera
+      // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
+      // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+      else if(e.message.includes('limit')) _errMsg=e.message;
     }
     showErr(_errMsg);
   }

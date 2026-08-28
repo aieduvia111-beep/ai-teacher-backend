@@ -9,6 +9,13 @@ FREE_DAILY_LIMITS = {
     "notes": 2,
     "exam": 1,
     "lesson": 2,
+    # NAPRAWIONE (audyt "Kup Pro" CTA, sierpien 2026): "vision" byl juz
+    # od dawna chroniony przez require_feature_limit("vision") w
+    # app/api/vision.py, ale nie mial tu wpisu - w praktyce dostawal
+    # domyslny fallback FREE_DAILY_LIMITS.get(feature, 5) = 5/dzien,
+    # NIEZGODNY z tym, co frontend (static/vision.html LIMITS_FREE)
+    # od dawna zaklada (2/dzien) i pokazuje w swoim kliencie pre-check.
+    "vision": 2,
 }
 
 LIMIT_MESSAGES = {
@@ -17,6 +24,11 @@ LIMIT_MESSAGES = {
     "notes": "Wykorzystałeś już dzisiejszy darmowy limit Notatek AI (2 notatki). Kup Pro i ucz się bez limitów!",
     "exam": "Wykorzystałeś już dzisiejszy darmowy limit Sprawdzianów AI (1 sprawdzian). Kup Pro i ucz się bez limitów!",
     "lesson": "Wykorzystałeś już dzisiejszy darmowy limit Planu Nauki (2 plany). Kup Pro i ucz się bez limitów!",
+    # NAPRAWIONE: bez tego wpisu 429 dla Vision zwracal generyczny fallback
+    # "Wykorzystales dzisiejszy darmowy limit." (patrz require_feature_limit
+    # w app/firebase_auth.py) - BEZ CTA do Pro, w przeciwienstwie do
+    # WSZYSTKICH pozostalych funkcji.
+    "vision": "Wykorzystałeś już dzisiejszy darmowy limit Vision AI (2 analizy). Kup Pro i ucz się bez limitów!",
 }
 
 def _load_usage(user: User) -> dict:

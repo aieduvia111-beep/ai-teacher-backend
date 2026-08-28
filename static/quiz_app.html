@@ -1109,7 +1109,14 @@ async function startQuiz(){
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
-    .then(function(r){clearTimeout(quizTimeoutId1);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
+    .then(function(r){clearTimeout(quizTimeoutId1);if(!r.ok){
+      // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
+      // fix w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy
+      // wyczerpanym limicie, ktore nigdy nie bylo czytane z ciala
+      // odpowiedzi). r.json() zuzywa strumien, wiec robimy to raz i
+      // przekazujemy dalej jako odrzucona obietnica zamiast throw tutaj.
+      return r.json().catch(function(){return{};}).then(function(d){throw new Error(d.detail||d.error||('Błąd '+r.status));});
+    }return r.json();})
     .then(function(d){
       if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
       if(!d.success)throw new Error(d.error||'Błąd');
@@ -1121,8 +1128,11 @@ async function startQuiz(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera
+      // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
+      // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+      else if(e.message.includes('limit')) _errMsg=e.message;
     };err.textContent=_errMsg;err.style.display='block';});
     return;
   }
@@ -1152,7 +1162,12 @@ async function startQuiz(){
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })
-  .then(function(r){clearTimeout(quizTimeoutId2);if(!r.ok)throw new Error('Błąd '+r.status);return r.json();})
+  .then(function(r){clearTimeout(quizTimeoutId2);if(!r.ok){
+    // NAPRAWIONE: patrz identyczny fix przy pierwszym wywolaniu wyzej
+    // (quizController1) - r.json() musi byc uzyty raz, wiec throw idzie
+    // przez .then(), nie bezposrednio.
+    return r.json().catch(function(){return{};}).then(function(d){throw new Error(d.detail||d.error||('Błąd '+r.status));});
+  }return r.json();})
   .then(function(d){
     if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
     if(!d.success)throw new Error(d.error||'Błąd');
@@ -1164,8 +1179,11 @@ async function startQuiz(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      // NAPRAWIONE: zostawiamy prawdziwa tresc bledu z backendu (zawiera
+      // CTA "Kup Pro...") zamiast nadpisywac ja krotszym tekstem bez tej
+      // informacji - patrz identyczny fix w exam_generator.html.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+      else if(e.message.includes('limit')) _errMsg=e.message;
     };err.textContent=_errMsg;err.style.display='block';});
 }
 

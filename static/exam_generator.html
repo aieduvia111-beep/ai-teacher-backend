@@ -1059,8 +1059,15 @@ async function generate(){
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
-      else if(e.message.includes('limit')) _errMsg='Przekroczyłeś dzienny limit. Wróć jutro!';
+      // NAPRAWIONE: wczesniej ten branch NADPISYWAL prawdziwy komunikat z
+      // backendu (ktory - patrz usage_limits.py LIMIT_MESSAGES - zawiera
+      // konkretna tresc PLUS CTA "Kup Pro i ucz sie bez limitow!") gotowym,
+      // krotszym tekstem bez zadnej wzmianki o Pro. Teraz zostawiamy
+      // prawdziwa tresc z backendu (juz poprawnie odczytana wyzej z
+      // res.json().detail) - ten branch tylko POTWIERDZA ze to na pewno
+      // przypadek limitu, nie zmienia juz tresci.
       else if(e.message.includes('500')||e.message.includes('502')) _errMsg='Serwer chwilowo niedostępny. Spróbuj za kilka minut.';
+      else if(e.message.includes('limit')) _errMsg=e.message;
     }
     showErr(_errMsg);
   }
