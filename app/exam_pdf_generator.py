@@ -1012,16 +1012,20 @@ def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) ->
 # kwadratowe z parametrem", podczas gdy wieksza partia miala ~50%.
 _MIN_FILL_BATCH_EXAM = 4
 
-# PORT z Quizu (swiadoma, udokumentowana decyzja usera po pelnej analizie
-# w Quizie tego samego dnia - NIE ciche/globalne podniesienie limitu):
-# rownania kwadratowe z parametrem na medium maja potwierdzony realnymi
-# testami wysoki i uporczywy wskaznik odrzucen - nawet po zwiekszonym
-# buforze (+50%) pojedyncza partia czasem potrzebuje jednej dodatkowej
-# rundy dogenerowania, ktora nie miesci sie w standardowych 30s. Dla TEGO
-# JEDNEGO, znanego przypadku budzet jest JAWNIE 45s - wszystko inne
-# zostaje przy dotychczasowych 30s.
-_EXTENDED_TIMEOUT_SECONDS_EXAM = 45.0
-_DEFAULT_TIMEOUT_SECONDS_EXAM = 30.0
+# ZMIENIONE (jawna decyzja usera, sierpien 2026 - w odroznieniu od Quizu,
+# TO JEST celowe, globalne podniesienie limitu, NIE waska naprawa jednego
+# podwzorca): Sprawdzian - w przeciwienstwie do Quizu - dodatkowo buduje
+# PDF (okladka + strony + klucz odpowiedzi, kazda linia renderowana przez
+# matplotlib) PO zakonczeniu generowania/weryfikacji tresci - realnie
+# zmierzony narzut ~3s dla typowego sprawdzianu (patrz komentarz w
+# generate_exam), rosnacy z liczba pytan. User zdecydowal wprost:
+# jednolity budzet 60s dla WSZYSTKICH tematow/trudnosci "na wszelki
+# wypadek", zamiast wczesniejszego, waskiego dwupoziomowego systemu
+# (30s domyslnie / 45s TYLKO dla rownan kwadratowych z parametrem,
+# medium). Ta druga gatowana wartosc byla waskim wyjatkiem po analizie
+# realnych testow - TO jest inna, swiadoma decyzja: uproszczenie do
+# jednego, wiekszego budzetu dla calego Sprawdzianu.
+_TIMEOUT_SECONDS_EXAM = 60.0
 
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
@@ -1038,14 +1042,12 @@ def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
 
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
-    generowania+weryfikacji+dogenerowania sprawdzianu. 45s TYLKO dla
-    rownan kwadratowych z parametrem na medium - 30s dla wszystkiego
-    innego, bez zmian (identyczny warunek co _buffered_question_count)."""
-    is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
-    trudnosc_word = (trudnosc or "").strip().lower()
-    if is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS:
-        return _EXTENDED_TIMEOUT_SECONDS_EXAM
-    return _DEFAULT_TIMEOUT_SECONDS_EXAM
+    generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
+    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). Jednolite 60s dla
+    WSZYSTKICH tematow/trudnosci (jawna decyzja usera) - argumenty
+    (temat/trudnosc) zostaja w sygnaturze dla zgodnosci z callerami,
+    ktore nadal moga chciec przekazac te informacje w przyszlosci."""
+    return _TIMEOUT_SECONDS_EXAM
 
 _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}

@@ -93,13 +93,15 @@ check("n=13, rownania kwadratowe, trudna -> bufor +60% bez zmian",
 
 print()
 print("=" * 70)
-print("5. Limit czasowy 45s TYLKO dla medium quadratic (port z Quizu)")
+print("5. Limit czasowy: jednolite 60s dla WSZYSTKICH tematow (jawna decyzja")
+print("   usera - Sprawdzian dodatkowo buduje PDF, wiec potrzebuje wiecej")
+print("   marginesu niz Quiz; zastapilo wczesniejszy waski wyjatek 45s/30s)")
 print("=" * 70)
 
-check("rownania kwadratowe + srednia -> 45s", _max_generation_seconds_exam("Rownania kwadratowe", "srednia") == 45.0, None)
-check("rownania kwadratowe + trudna -> 30s (bez zmian)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 30.0, None)
-check("inny temat + srednia -> 30s (bez zmian)", _max_generation_seconds_exam("Trygonometria", "srednia") == 30.0, None)
-check("brak tematu -> 30s (bez zmian)", _max_generation_seconds_exam(None, "srednia") == 30.0, None)
+check("rownania kwadratowe + srednia -> 60s", _max_generation_seconds_exam("Rownania kwadratowe", "srednia") == 60.0, None)
+check("rownania kwadratowe + trudna -> 60s (jednolicie)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 60.0, None)
+check("inny temat + srednia -> 60s (jednolicie)", _max_generation_seconds_exam("Trygonometria", "srednia") == 60.0, None)
+check("brak tematu -> 60s (jednolicie)", _max_generation_seconds_exam(None, "srednia") == 60.0, None)
 
 print()
 print("=" * 70)
