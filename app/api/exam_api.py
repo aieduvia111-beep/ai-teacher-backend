@@ -114,13 +114,27 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
         # przy darmowym koncie drugie zadanie (wariant B) zawsze dostawalo odmowe
         # i cala funkcja "Wariant A+B" byla realnie zepsuta dla darmowych userow.
         if req.wariant == "AB":
-            filename_a, shortfall_a = await loop.run_in_executor(
-                _executor, _generate_blocking,
-                pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje
-            )
-            filename_b, shortfall_b = await loop.run_in_executor(
-                _executor, _generate_blocking,
-                pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
+            # NAPRAWIONE: Warianty A i B byly generowane SEKWENCYJNIE (najpierw
+            # cale A, potem cale B) mimo ze sa CALKOWICIE niezalezne od siebie
+            # (osobne wywolania ExamGenerator, osobne pliki, brak wspoldzielonego
+            # stanu miedzy nimi - kazde generate_exam tworzy wlasne
+            # seen_fingerprints/used_safe_letters/itd. lokalnie). Realny test
+            # (n=20, rownania kwadratowe z parametrem, srednia - najciezszy
+            # przypadek) pokazal 114.9s dla sekwencyjnego A+B, zaledwie 5.1s
+            # marginesu do timeoutu frontendu (120s, exam_generator.html) -
+            # niebezpiecznie ciasno. Uruchamiamy je teraz ROWNOLEGLE
+            # (asyncio.gather) - _executor ma max_workers=4, wystarczajaco na
+            # dwa jednoczesne zadania - calkowity czas to czas WOLNIEJSZEGO z
+            # dwoch, nie suma, wiec spodziewany spadek z ~115s do ~50-55s.
+            (filename_a, shortfall_a), (filename_b, shortfall_b) = await asyncio.gather(
+                loop.run_in_executor(
+                    _executor, _generate_blocking,
+                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje
+                ),
+                loop.run_in_executor(
+                    _executor, _generate_blocking,
+                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
+                ),
             )
             if shortfall_a or shortfall_b:
                 # Jesli KTORYKOLWIEK wariant ma niepelna liczbe zadan - nie
