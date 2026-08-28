@@ -1373,7 +1373,9 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
     (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
     rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "hard" rownan
     kwadratowych z parametrem, +50% dla "medium" rownan kwadratowych z
-    parametrem (patrz komentarze wyzej). `topic`/`difficulty` sa
+    parametrem (patrz komentarze wyzej), +40% dla "trudny"/"hard" NA
+    KAZDYM innym temacie (patrz _HARD_TIMEOUT_SECONDS - realny test,
+    sierpien 2026, ciagi geometryczne+trudny). `topic`/`difficulty` sa
     opcjonalne - gdy nieznane (np. sciezka z obrazka, gdzie temat nie
     jest jeszcze znany), uzywa dotychczasowego +30%."""
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
@@ -1382,6 +1384,8 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
         numerator = 6
     elif is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
         numerator = 5
+    elif diff_word in _HARD_DIFFICULTY_WORDS:
+        numerator = 4
     else:
         numerator = 3
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
@@ -1415,16 +1419,40 @@ _MIN_FILL_BATCH = 4
 _EXTENDED_TIMEOUT_SECONDS = 45.0
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 
+# NAPRAWIONE (user real-test, sierpien 2026 - zgloszony bug "5/6 pytan,
+# ciagi geometryczne, klasa 3 liceum, TRUDNY, limit 30s" - odtworzony
+# 1:1 realnym testem): w odroznieniu od rownan kwadratowych+medium
+# (wyzej), tu PIERWSZE, SUROWE wywolanie AI samo w sobie zajelo 35.3s -
+# wiecej niz caly budzet 30s - wiec petla dogenerowania (ponizej) nie
+# dostala ANI JEDNEJ szansy (retry_count=0), niezaleznie od tego, jak
+# dobry byl bufor. To NIE jest ten sam mechanizm co "wysoki rejection
+# rate" (choc czesciowo tez wystapil: 3/8 odrzucone) - to zwyczajnie
+# WOLNIEJSZA odpowiedz AI dla trudniejszych zadan (dluzsze rozumowanie
+# -> wiecej tokenow -> dluzej). User potwierdzil (po pokazaniu realnego
+# testu i pytaniu o zakres): zamiast waskiego wyjatku TYLKO dla ciagow,
+# rozszerzamy na KAZDY temat na poziomie "trudny"/"hard" - budzet 60s
+# (ta sama wartosc, ktora user juz wczesniej tego samego dnia
+# zaakceptowal jako jednolity budzet dla calego Sprawdzianu - nie nowy,
+# nieprzetestowany numer) + bufor +40% (patrz _buffered_count) zamiast
+# domyslnych +30%, zeby zmniejszyc szanse, ze w ogole potrzebna bedzie
+# runda dogenerowania. "Latwy"/"medium" (poza juz istniejacym, waskim
+# wyjatkiem rownan kwadratowych+medium) zostaja bez zmian.
+_HARD_TIMEOUT_SECONDS = 60.0
+
 
 def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
-    generowania+weryfikacji+dogenerowania. 45s TYLKO dla rownan
-    kwadratowych z parametrem na poziomie medium (patrz komentarz
-    wyzej) - 30s dla wszystkiego innego, bez zmian."""
+    generowania+weryfikacji+dogenerowania. 45s dla rownan kwadratowych
+    z parametrem na poziomie medium (waski, historyczny wyjatek - patrz
+    komentarz wyzej); 60s dla KAZDEGO tematu na poziomie "trudny"/"hard"
+    (patrz _HARD_TIMEOUT_SECONDS - realny test, sierpien 2026); 30s dla
+    wszystkiego innego."""
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     if is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
         return _EXTENDED_TIMEOUT_SECONDS
+    if diff_word in _HARD_DIFFICULTY_WORDS:
+        return _HARD_TIMEOUT_SECONDS
     return _DEFAULT_TIMEOUT_SECONDS
 
 
@@ -1501,7 +1529,12 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         # i nadal brakuje. Uczciwy komunikat zamiast cichego podania
         # niepelnego quizu.
         total_elapsed = time.monotonic() - t_start
-        reason = "przekroczono limit czasu (30s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
+        # NAPRAWIONE (ten sam blad co w exam_pdf_generator.py - patrz
+        # commit "Napraw myslacy komunikat shortfallu Sprawdzianu"):
+        # tekst NIE moze miec zaszytej na stale liczby - max_seconds
+        # teraz zalezy od tematu/trudnosci (patrz _max_generation_seconds),
+        # wiec musi byc pokazywana PRAWDZIWA wartosc.
+        reason = f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
         quiz_data["_shortfall_warning"] = (
             f"Udalo sie wygenerowac i zweryfikowac {final_count} z {requested_count} "
             f"zamowionych pytan - {reason}, pozostale okazaly sie bledne. "
