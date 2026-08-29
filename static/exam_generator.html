@@ -708,7 +708,7 @@ function getPlanBadgeHTML(plan) {
                czekania) -->
           <div class="hard-time-hint" id="hardTimeHint">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Trudny poziom może generować się do 2–3 minut — każde zadanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby klucz odpowiedzi na pewno się zgadzał.</span>
+            <span>Trudny poziom może generować się do 2–3 minut — każde zadanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby sprawdzian był jak najwyższej jakości.</span>
           </div>
         </div>
 
@@ -1049,7 +1049,7 @@ async function generate(){
   // zamiast userowi patrzec na ten sam podpis co dla latwego/sredniego,
   // podczas gdy realnie moze to potrwac 2-3x dluzej.
   const _subEl=document.getElementById('loadingSubtitle');
-  if(_subEl)_subEl.textContent=(vals.trudnosc==='trudna')?'Trudny poziom = dokładna weryfikacja przez dwa AI. To może potrwać do 2–3 minut.':'AI tworzy pytania i buduje PDF';
+  if(_subEl)_subEl.textContent=(vals.trudnosc==='trudna')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby sprawdzian był jak najwyższej jakości. To może potrwać do 2–3 minut.':'AI tworzy pytania i buduje PDF';
   startProgress();
   try{
     if(wariant==='AB'){

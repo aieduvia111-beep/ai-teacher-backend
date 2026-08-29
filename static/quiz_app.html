@@ -725,7 +725,7 @@ function getPlanBadgeHTML(plan) {
                czekania - identyczny hint co w exam_generator.html -->
           <div class="hard-time-hint" id="hardTimeHint">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Trudny poziom może generować się do 2–3 minut — każde pytanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby klucz odpowiedzi na pewno się zgadzał.</span>
+            <span>Trudny poziom może generować się do 2–3 minut — każde pytanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby quiz był jak najwyższej jakości.</span>
           </div>
         </div>
         <div class="field"><span class="field-label">Liczba pytań</span><div class="slider-wrap"><input type="range" id="numSlider" min="5" max="20" value="10" oninput="updateSlider(this)"><span class="slider-val" id="numVal">10</span></div></div>
@@ -1082,7 +1082,7 @@ function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEac
 function setQuizLoadingSubtitle(){
   var el=document.getElementById('quizLoadingSubtitle');
   if(!el)return;
-  el.textContent=(VALS.diff==='hard')?'Trudny poziom = dokładna weryfikacja przez dwa AI. To może potrwać do 2–3 minut.':'AI tworzy pytania dopasowane do Twojego poziomu';
+  el.textContent=(VALS.diff==='hard')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby quiz był jak najwyższej jakości. To może potrwać do 2–3 minut.':'AI tworzy pytania dopasowane do Twojego poziomu';
 }
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('quizLevelPicker')) return;
