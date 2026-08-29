@@ -44,16 +44,52 @@ def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wari
 
 
 def _shortfall_response(shortfall_info: dict):
-    """ETAP 2, Punkt 2: identyczny mechanizm co quiz_api._shortfall_response -
-    zamiast po cichu oddac niepelny PDF jako sukces, zwracamy kontrolowany
-    stan incomplete_generation. Zero PDF w odpowiedzi - user dostaje jasny
-    komunikat i moze sprobowac ponownie (patrz Punkt 3, frontend)."""
+    """Uzywane TYLKO gdy PDF faktycznie NIE powstal (np. 0 zaakceptowanych
+    zadan) - zero pliku w odpowiedzi, user dostaje jasny komunikat i moze
+    sprobowac ponownie. Dla przypadku "PDF powstal, ale z mniejsza niz
+    zamowiona liczba zadan" patrz _shortfall_headers ponizej - TEN
+    przypadek TERAZ oddaje PDF, nie ten JSON (patrz komentarz nizej)."""
     return {
         "success": False,
         "status": "incomplete_generation",
         "message": shortfall_info["message"],
         "requested_count": shortfall_info["requested_count"],
         "accepted_count": shortfall_info["accepted_count"],
+    }
+
+
+def _shortfall_headers(shortfall_info: dict) -> dict:
+    """NOWE (user, 29.08.2026 - po 3. z rzedu real-tescie trudnej
+    trygonometrii, ostatni raz 13/15 po PELNYCH 3 minutach oczekiwania):
+    "bez jaj nie mozemy tak zrobic ze czekac 5 minut kurwa na sprawdzian
+    musimy miec inne rozwiazanie". Podnoszenie budzetu czasowego bez
+    konca to slepy zaulek (identyczny wzorzec co przy matematyce/LaTeX-ie
+    wczesniej w tej samej sesji - patrz Warstwa 2.5/1.5) - PRAWDZIWY
+    problem byl gdzie indziej: _shortfall_response WYZEJ przez caly czas
+    WYRZUCAL caly, juz zbudowany i w pelni zweryfikowany PDF (generate_exam
+    buduje PDF normalnie NAWET przy niedoborze - patrz jego docstring),
+    zmuszajac usera do czekania od zera po raz drugi za KAZDYM razem, gdy
+    zabraklo choc 1 z zamowionych zadan - user placil pelnym czasem
+    oczekiwania i dostawal NIC.
+
+    Naprawiono: gdy PDF/ZIP FAKTYCZNIE powstal (patrz wywolania nizej),
+    oddajemy go userowi OD RAZU (dostaje 13 z 15 poprawnych, zweryfikowanych
+    zadan NATYCHMIAST, zamiast czekac druga probe od zera) - ale
+    NIEUCCIWIE-CICHO tego nie robimy: te naglowki niosa dokladna informacje
+    o niedoborze, a frontend (exam_generator.html) czyta je i pokazuje
+    WYRAZNE ostrzezenie (nie chowa faktu niedoboru) zamiast udawac pelny
+    sukces. To jest to samo, uczciwe rozroznienie co pierwotny projekt
+    _shortfall_response mial na celu ("nie oddawaj po cichu niepelnego PDF
+    jako cichy sukces") - tylko ZREALIZOWANE tak, zeby user NIE TRACIL
+    juz wykonanej, poprawnej pracy AI z powodu 1-2 brakujacych zadan.
+    Naglowki HTTP musza byc ASCII - polskie znaki w komunikacie kodujemy
+    percent-encoding (urllib.parse.quote), frontend dekoduje decodeURIComponent."""
+    from urllib.parse import quote
+    return {
+        "X-Shortfall": "1",
+        "X-Requested-Count": str(shortfall_info["requested_count"]),
+        "X-Accepted-Count": str(shortfall_info["accepted_count"]),
+        "X-Shortfall-Message": quote(shortfall_info["message"]),
     }
 
 async def _extract_topic_from_images(images: list) -> str:
@@ -139,37 +175,46 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
                     pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
                 ),
             )
+            # NAPRAWIONE (patrz _shortfall_headers - "bez jaj czekac 5 minut"):
+            # PDF/ZIP jest budowany normalnie NAWET przy niedoborze - jesli
+            # OBA pliki faktycznie istnieja, oddajemy ZIP z jawnymi
+            # naglowkami niedoboru zamiast wyrzucac cala, poprawna prace.
+            # _shortfall_response (bez pliku) zostaje TYLKO dla przypadku,
+            # gdy plik(i) naprawde nie powstaly.
+            if filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b):
+                zip_path = tempfile.mktemp(suffix=".zip")
+                with zipfile.ZipFile(zip_path, "w") as zf:
+                    zf.write(filename_a, arcname="wariant_A.pdf")
+                    zf.write(filename_b, arcname="wariant_B.pdf")
+                headers = {"Content-Disposition": "attachment; filename=sprawdzian_AB.zip"}
+                worse_shortfall = shortfall_a or shortfall_b
+                if worse_shortfall:
+                    headers.update(_shortfall_headers(worse_shortfall))
+                return FileResponse(path=zip_path, media_type="application/zip", filename="sprawdzian_AB.zip", headers=headers)
             if shortfall_a or shortfall_b:
-                # Jesli KTORYKOLWIEK wariant ma niepelna liczbe zadan - nie
-                # oddawaj po cichu ZIP-a z niekompletnym PDF-em w srodku.
                 return _shortfall_response(shortfall_a or shortfall_b)
-            if not (filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b)):
-                return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
-            zip_path = tempfile.mktemp(suffix=".zip")
-            with zipfile.ZipFile(zip_path, "w") as zf:
-                zf.write(filename_a, arcname="wariant_A.pdf")
-                zf.write(filename_b, arcname="wariant_B.pdf")
-            return FileResponse(
-                path=zip_path,
-                media_type="application/zip",
-                filename="sprawdzian_AB.zip",
-                headers={"Content-Disposition": "attachment; filename=sprawdzian_AB.zip"}
-            )
+            return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
 
         filename, shortfall = await loop.run_in_executor(
             _executor, _generate_blocking,
             pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje
         )
-        if shortfall:
-            return _shortfall_response(shortfall)
-
+        # NAPRAWIONE (patrz _shortfall_headers powyzej): jesli PDF FAKTYCZNIE
+        # powstal (generate_exam buduje go normalnie nawet przy niedoborze),
+        # oddajemy go OD RAZU z jawnymi naglowkami niedoboru - user nie traci
+        # juz wykonanej, poprawnej pracy AI z powodu 1-2 brakujacych zadan.
         if filename and os.path.exists(filename):
+            headers = {"Content-Disposition": "attachment; filename=sprawdzian.pdf"}
+            if shortfall:
+                headers.update(_shortfall_headers(shortfall))
             return FileResponse(
                 path=filename,
                 media_type="application/pdf",
                 filename=filename.encode('ascii', 'ignore').decode('ascii'),
-                headers={"Content-Disposition": "attachment; filename=sprawdzian.pdf"}
+                headers=headers,
             )
+        if shortfall:
+            return _shortfall_response(shortfall)
         return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
 
     except HTTPException:

@@ -813,6 +813,11 @@ function getPlanBadgeHTML(plan) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Pobierz PDF do druku
         </a>
+        <!-- NOWE (29.08.2026, user: "bez jaj czekac 5 minut na sprawdzian" -
+             PDF teraz jest dostarczany NAWET przy niedoborze zadan, patrz
+             _shortfall_headers w exam_api.py - ten banner jawnie o tym
+             informuje, zamiast po cichu udawac pelny sukces) -->
+        <div class="hard-time-hint" id="partialWarning" style="margin-top:14px;text-align:left;"></div>
         <button class="reset-btn" onclick="reset()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           Wygeneruj kolejny sprawdzian
@@ -961,6 +966,23 @@ function startProgress(){
 }
 function finishProgress(){clearInterval(stepTimer);['st0','st1','st2','st3','st4'].forEach(s=>{const el=document.getElementById(s);el.className='step-item done';el.style.opacity='1';});document.getElementById('progressFill').style.width='100%';}
 function showErr(msg){document.getElementById('errText').textContent=msg;document.getElementById('errMsg').classList.add('visible');}
+// NOWE (29.08.2026): pokazuje NIEBLOKUJACE ostrzezenie na widoku sukcesu,
+// gdy dostarczony PDF ma mniej zadan niz zamowiono (patrz X-Shortfall
+// naglowek w fetchWariant powyzej) - PDF i tak jest do pobrania, user
+// tylko widzi jasno, ile dokladnie zadan zawiera.
+function showPartialWarning(msg){
+  const el=document.getElementById('partialWarning');
+  if(!el)return;
+  el.textContent='';
+  if(!msg){el.classList.remove('visible');return;}
+  const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','2');
+  icon.style.cssText='width:15px;height:15px;stroke:var(--gold);flex-shrink:0;margin-top:1px;';
+  icon.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+  const span=document.createElement('span');span.textContent=msg;
+  el.appendChild(icon);el.appendChild(span);
+  el.classList.add('visible');
+}
 
 async function fetchWariant(temat,numQ,wariant){
   const wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
@@ -1021,19 +1043,34 @@ async function fetchWariant(temat,numQ,wariant){
   if(!ct.includes('application/pdf')&&!ct.includes('application/zip')){
     const d=await res.json();
     if(d.status==='incomplete_generation'){
+      // NAPRAWIONE (user: "bez jaj czekac 5 minut na sprawdzian"): TEN
+      // blad teraz oznacza, ze PDF naprawde NIE powstal w ogole (0
+      // zaakceptowanych zadan) - prawdziwy przypadek "13 z 15" NIZEJ
+      // dostaje PLIK z naglowkiem X-Shortfall, nie ten JSON blad.
       const _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' zadań.'));
       _ie.isIncomplete=true;
       throw _ie;
     }
     throw new Error(d.error||'Nieznany błąd');
   }
-  return await res.blob();
+  // NOWE (29.08.2026, patrz _shortfall_headers w exam_api.py): plik
+  // moze byc DOSTARCZONY mimo niedoboru zamowionej liczby zadan (np.
+  // 13 z 15) - naglowki niosa dokladna informacje, zeby frontend mogl
+  // pokazac WYRAZNE, ale NIEBLOKUJACE ostrzezenie zamiast kazac userowi
+  // czekac od zera po raz drugi za utrate calej juz wykonanej pracy AI.
+  let shortfallMessage=null;
+  if(res.headers.get('X-Shortfall')==='1'){
+    const _raw=res.headers.get('X-Shortfall-Message');
+    try{ shortfallMessage=_raw?decodeURIComponent(_raw):null; }catch(_){ shortfallMessage=_raw; }
+  }
+  return {blob:await res.blob(), shortfallMessage};
 }
 
 async function generate(){
   const _lim = await checkLimit('exam');
   if(!_lim.allowed) return;
   document.getElementById('errMsg').classList.remove('visible');
+  showPartialWarning(null);
   let temat=document.getElementById('temat').value.trim();
   if(photos.length>0&&!temat)temat='Analiza ze zdjecia';
   if(!temat && photos.length===0){showErr('Wpisz temat sprawdzianu lub dodaj zdjecie.');return;}
@@ -1060,7 +1097,7 @@ async function generate(){
       // wywolania endpointu (jedno zuzycie limitu) i zwraca je spakowane
       // w jednym pliku ZIP.
       document.getElementById('loadingView').querySelector('h3').textContent='Generuję Wariant A+B...';
-      const blobZip=await fetchWariant(temat,numQ,'AB');
+      const {blob:blobZip,shortfallMessage}=await fetchWariant(temat,numQ,'AB');
       finishProgress();
       saveExam(temat,numQ);
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
@@ -1075,9 +1112,9 @@ async function generate(){
         linkZip.download=nameZip;
         linkZip.click();
       }
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';renderStats();},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';showPartialWarning(shortfallMessage);renderStats();},600);
     } else {
-      const blob=await fetchWariant(temat,numQ,wariant);
+      const {blob,shortfallMessage}=await fetchWariant(temat,numQ,wariant);
       const url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
       const dlFilename=`Sprawdzian_${temat.replace(/\s+/g,'_')}_wariant${wariant}.pdf`;
       link.href=url;link.download=dlFilename;
@@ -1086,7 +1123,7 @@ async function generate(){
       const xp=parseInt(localStorage.getItem('eduvia_xp')||'0');
       if(typeof window._fbSave==='function')window._fbSave('examHistory',{temat:temat||'Sprawdzian'},60);
       useLimit('exam');localStorage.setItem('eduvia_xp',xp+60);
-      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';if(window.downloadViaNative)window.downloadViaNative(blob,dlFilename,'application/pdf');else link.click();renderStats();},600);
+      setTimeout(()=>{document.getElementById('loadingView').style.display='none';document.getElementById('successView').style.display='block';showPartialWarning(shortfallMessage);if(window.downloadViaNative)window.downloadViaNative(blob,dlFilename,'application/pdf');else link.click();renderStats();},600);
     }
   }catch(e){
     clearInterval(stepTimer);
@@ -1095,7 +1132,7 @@ async function generate(){
 
     var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.isIncomplete){_errMsg=e.message;}
-    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania. Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';

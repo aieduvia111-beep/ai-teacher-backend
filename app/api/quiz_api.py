@@ -19,19 +19,31 @@ _executor = ThreadPoolExecutor(max_workers=4)
 
 
 def _shortfall_response(quiz: dict, requested_count: int):
-    """ETAP 2, Punkt 2: quiz["_shortfall_warning"] (patrz openai_exam.py
-    _verify_and_fill_quiz_math) byl dotad MARTWYM polem - ustawiany przez
-    backend, ale nigdy nie czytany tutaj ani przez frontend, wiec user
-    dostawal cichy success:true z mniejsza liczba pytan niz zamowil, bez
-    zadnej informacji dlaczego. Teraz: jesli pole jest ustawione, zwracamy
-    KONTROLOWANY stan zamiast udawanego sukcesu - success:false,
-    status:"incomplete_generation", z dokladnymi requested/accepted, tak
-    zeby frontend mogl pokazac uczciwy komunikat (patrz Punkt 3).
-    Zwraca None, jesli wszystko w porzadku (pelna liczba pytan)."""
+    """ETAP 2, Punkt 2 (pierwotna wersja): quiz["_shortfall_warning"] byl
+    dotad MARTWYM polem - ustawiany przez backend, ale nigdy nie czytany
+    tutaj ani przez frontend, wiec user dostawal cichy success:true z
+    mniejsza liczba pytan niz zamowil, bez zadnej informacji dlaczego.
+
+    NAPRAWIONE PONOWNIE (user, 29.08.2026 - identyczny problem i naprawa
+    co w exam_api.py _shortfall_headers, patrz tam pelne uzasadnienie:
+    "bez jaj czekac 5 minut na sprawdzian musimy miec inne rozwiazanie"):
+    pierwotna wersja wracala success:false + "quiz" w ciele, ALE frontend
+    (quiz_app.html) na status=='incomplete_generation' po prostu rzucal
+    blad i NIGDY nie uzywal dolaczonego "quiz" - user placil pelnym
+    czasem oczekiwania i dostawal PUSTY ekran bledu, mimo ze quiz z
+    mniejsza (ale w pelni zweryfikowana) liczba pytan JUZ ISTNIAL w tej
+    samej odpowiedzi. Teraz: jesli jest CHOC JEDNO zaakceptowane pytanie,
+    zwracamy success:true (user dostaje quiz OD RAZU, nie czeka od zera
+    drugi raz) + osobne pole "shortfall_message" (frontend pokazuje
+    JAWNE, ale nieblokujace ostrzezenie - NIE chowa faktu niedoboru,
+    tylko nie wyrzuca juz wykonanej pracy). Zwraca None, jesli wszystko
+    w porzadku (pelna liczba pytan) - BEZ zmian wzgledem wczesniej."""
     warning = quiz.get("_shortfall_warning")
     if not warning:
         return None
     accepted = len(quiz.get("questions", []))
+    if accepted > 0:
+        return {"success": True, "quiz": quiz, "shortfall_message": warning}
     return {
         "success": False,
         "status": "incomplete_generation",

@@ -407,6 +407,9 @@ button:active{transform:scale(.95)!important;}
 .edu-error{position:fixed;bottom:80px;left:16px;right:16px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.25);border-radius:14px;padding:14px 16px;color:#f87171;font-size:.82em;z-index:9998;display:none;animation:fadeInUp .3s cubic-bezier(.22,1,.36,1);}
 .edu-error.show{display:flex;align-items:center;gap:10px;}
 .edu-error svg{flex-shrink:0;}
+.edu-warn{position:fixed;bottom:80px;left:16px;right:16px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:14px;padding:14px 16px;color:var(--text);font-size:.82em;z-index:9998;display:none;animation:fadeInUp .3s cubic-bezier(.22,1,.36,1);}
+.edu-warn.show{display:flex;align-items:flex-start;gap:10px;}
+.edu-warn svg{flex-shrink:0;stroke:var(--gold);margin-top:1px;}
 
 
 .timer-wrap{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -1151,10 +1154,11 @@ async function startQuiz(){
       if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
       if(!d.success)throw new Error(d.error||'Błąd');
       quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
+      if(d.shortfall_message)setTimeout(function(){window.showPartialToast(d.shortfall_message);},400);
     })
     .catch(function(e){clearTimeout(quizTimeoutId1);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.isIncomplete){_errMsg=e.message;}
-    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania. Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
@@ -1209,10 +1213,11 @@ async function startQuiz(){
     if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
     if(!d.success)throw new Error(d.error||'Błąd');
     quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
+    if(d.shortfall_message)setTimeout(function(){window.showPartialToast(d.shortfall_message);},400);
   })
   .catch(function(e){clearTimeout(quizTimeoutId2);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.isIncomplete){_errMsg=e.message;}
-    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania (2 minuty). Spróbuj ponownie.';}
+    else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania. Spróbuj ponownie.';}
     else if(e.message){
       if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')) _errMsg='Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.';
       else if(e.message.includes('timeout')) _errMsg='Generowanie trwa zbyt długo. Spróbuj ponownie za chwilę.';
@@ -1649,6 +1654,25 @@ window.showError = function(msg) {
   el.querySelector('span').textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3500);
+};
+
+// NOWE (29.08.2026, user: "bez jaj czekac 5 minut na sprawdzian" -
+// identyczna naprawa co exam_api.py _shortfall_headers, patrz tam pelne
+// uzasadnienie): quiz z mniejsza niz zamowiona liczba pytan jest TERAZ
+// dostarczany od razu (nie wyrzucany), ten toast JAWNIE o tym informuje
+// (nieblokujaco - quiz i tak startuje normalnie).
+window.showPartialToast = function(msg) {
+  let el = document.getElementById('eduWarn');
+  if(!el) {
+    el = document.createElement('div');
+    el.id = 'eduWarn';
+    el.className = 'edu-warn';
+    el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span></span>';
+    document.body.appendChild(el);
+  }
+  el.querySelector('span').textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 6000);
 };
 
 window.animateCounter = animateCounter;
