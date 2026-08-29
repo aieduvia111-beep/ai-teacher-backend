@@ -1000,6 +1000,90 @@ def verify_sequence_two_terms(a1: int, r: int, m: int, n: int, a_m_val: int, a_n
     return sol.get(A1) == a1 and sol.get(R) == r
 
 
+# SAFE PARAMETER GENERATION - ROWNANIE Z WARTOSCIA BEZWZGLEDNA, TRUDNY
+# (29.08.2026, user: "idziemy dalej, rob to dobrze" - piate rozszerzenie
+# tego samego dnia). OFICJALNY przyklad "trudny" w level_config.py
+# (matura_rozszerzona) to $|2x-3|+|x+1|\\le 6$ - nierownosc z DWIEMA
+# wartosciami bezwzglednymi (3 przedzialy do analizy) - ZBYT zlozone,
+# zeby dzis niezawodnie zbudowac (za duzo przypadkow brzegowych do
+# poprawnego pokrycia w jednym dniu). SWIADOMA, UCZCIWA redukcja
+# zakresu: rownanie $|x+b|=cx+d$ (JEDNA wartosc bezwzgledna, ale
+# rownanie, nie nierownosc) - nadal wymaga TEGO SAMEGO rdzenia
+# umiejetnosci (rozbicie na przypadki wedlug znaku wyrazenia w module +
+# SPRAWDZENIE, ktory przypadek jest w swojej dziedzinie, odrzucajac
+# pierwiastek pozorny) - to jest DOKLADNIE ten sam blad koncepcyjny,
+# ktory user chcial pokryc, tylko na prostszym (1 modul, nie 2)
+# przypadku brzegowym.
+#
+# KONSTRUKCJA (odwrotna, jak wszystkie dzisiejsze archetypy): x1
+# (docelowe rozwiazanie) wybrane JAKO PIERWSZE, d WYLICZONE tak, zeby
+# x1 bylo DOKLADNIE rozwiazaniem "przypadku 1" (x+b>=0). Rownanie MA
+# TYLKO JEDNO poprawne rozwiazanie z definicji tego wzorca (przypadek 2
+# jest SPRAWDZANY i musi wypasc POZA swoja dziedzina - jesli nie,
+# PROBUJEMY PONOWNIE z innymi parametrami, nie akceptujemy
+# dwuznacznosci) - matematycznie prostsze niz ciagi geometryczne (tam
+# 'zla' polowa byla wykluczona z GORY przez ograniczenie q>0, tu jest
+# SPRAWDZANA empirycznie przy KAZDEJ probie, bo nie ma prostego,
+# ogolnego warunku na wspolczynniki, ktory by to z gory gwarantowal).
+_ABS_B_POOL = [v for v in range(-8, 9) if v != 0]
+_ABS_C_POOL = [v for v in range(-4, 5) if v not in (0, 1, -1)]
+_ABS_X1_POOL = [v for v in range(-9, 10) if v != 0]
+
+
+def build_safe_abs_value_equation(max_tries: int = 100) -> dict:
+    """Buduje JEDEN bezpieczny szkielet rownania $|x+b|=cx+d$ z
+    DOKLADNIE JEDNYM poprawnym rozwiazaniem x1 (patrz komentarz wyzej).
+    Losuje (b,c,x1) i ODRZUCA (probuje ponownie) kombinacje, dla ktorych
+    "przypadek 2" wypada rowniez w swojej dziedzinie (dwuznaczne) - albo
+    ktore daja kolizje miedzy ktoryms z 4 tekstow opcji. Zwraca None w
+    (praktycznie niemozliwym) przypadku wyczerpania `max_tries`."""
+    x = sp.Symbol('x')
+    for _ in range(max_tries):
+        b = random.choice(_ABS_B_POOL)
+        c = random.choice(_ABS_C_POOL)
+        x1 = random.choice(_ABS_X1_POOL)
+        if x1 < -b:
+            continue  # x1 musi byc W dziedzinie przypadku 1 (x+b>=0)
+        d = x1 * (1 - c) + b  # z rownania przypadku 1: x1+b = c*x1+d
+        # Przypadek 2 (x+b<0): -(x+b)=cx+d -> x2 = -(d+b)/(1+c)
+        x2 = sp.Rational(-(d + b), (1 + c))
+        if x2 < -b:
+            continue  # przypadek 2 TEZ wypada w swojej dziedzinie - dwuznaczne, odrzuc
+        distractor_sign_b = sp.Rational(d + b, 1 - c)  # bledny znak b przy rozwiazywaniu przypadku 1
+        candidates = [sp.Integer(x1), x2, sp.Integer(-x1), distractor_sign_b]
+        if len(set(candidates)) != 4:
+            continue  # kolizja miedzy ktoras z 4 opcji - odrzuc, probuj ponownie
+        b_sign = '+' if b >= 0 else '-'
+        d_sign = '+' if d >= 0 else '-'
+        equation_latex = f"|x {b_sign} {abs(b)}| = {c}x {d_sign} {abs(d)}"
+        correct_text = f"x = {x1}"
+        distractors = [f"x = {v}" for v in candidates[1:]]
+        question_text = f"Rozwiąż równanie ${equation_latex}$."
+        return {
+            "b": b, "c": c, "d": d, "x1": x1,
+            "equation_latex": equation_latex,
+            "question_text": question_text,
+            "correct_text": correct_text,
+            "distractors": distractors,
+        }
+    return None
+
+
+def verify_abs_value_equation(b: int, c: int, d: int, x1: int, claimed_text: str) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka niz
+    build_safe_abs_value_equation) - rozwiazuje $|x+b|=cx+d$ PRZEZ
+    sympy solveset (z zalozeniem x rzeczywiste) i sprawdza, ze
+    ZBIOR rozwiazan to DOKLADNIE {{x1}} (jedno, jednoznaczne
+    rozwiazanie - zgodnie z zalozeniem tego archetypu)."""
+    x = sp.Symbol('x', real=True)
+    sols = sp.solveset(sp.Eq(sp.Abs(x + b), c * x + d), x, domain=sp.S.Reals)
+    try:
+        claimed_val = sp.Rational(claimed_text.replace("x", "").replace("=", "").strip())
+    except Exception:
+        return False
+    return sols == sp.FiniteSet(claimed_val) and claimed_val == x1
+
+
 def build_safe_trig_skeleton() -> dict:
     """Losuje JEDEN z dwoch dostepnych, bezpiecznych archetypow trudnej
     trygonometrii (build_safe_trig_quadratic_equation lub
