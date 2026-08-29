@@ -1033,15 +1033,29 @@ def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) ->
     """Ile zadan zamowic za pierwszym razem, zeby po odrzuceniu blednych
     (weryfikacja sympy/trudnosc) prawdopodobnie zostalo >= n bez potrzeby
     rund dogenerowania. Domyslnie +30% (min +2) - +60% dla "trudna",
-    +50% dla "srednia" rownan kwadratowych z parametrem (port z Quizu)."""
+    +50% dla "srednia" rownan kwadratowych z parametrem (port z Quizu).
+
+    ZWIEKSZONE (29.08.2026, user: "ALE TO DUZO CZEKANIA" - real dane:
+    trudna trygonometria potrzebowala AZ 5 SEKWENCYJNYCH rund
+    dogenerowania, kazda ~15-25s, zeby dobic do 10/13): +40% dla
+    "trudny"/"trudna" na KAZDYM innym temacie (nie tylko rownaniach
+    kwadratowych) - PORT z Quizu (_buffered_count w openai_exam.py, tam
+    juz istnial od dawna, tutaj brakowalo - luka parytetu). Wiekszy
+    bufor w PIERWSZEJ, ROWNOLEGLEJ partii oznacza mniej POTRZEBNYCH
+    sekwencyjnych rund pozniej - to skraca TYPOWY czas oczekiwania (nie
+    tylko podnosi bezpiecznik czasowy z poprzedniego commita, ktory
+    zostaje jako ostatecznosc dla najgorszych przypadkow)."""
     is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
     trudnosc_word = (trudnosc or "").strip().lower()
     is_hard_quadratic = is_quadratic and trudnosc_word in _HARD_DIFFICULTY_WORDS
     is_medium_quadratic = is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS
+    is_hard_other = (not is_quadratic) and trudnosc_word in _HARD_DIFFICULTY_WORDS
     if is_hard_quadratic:
         numerator = 6
     elif is_medium_quadratic:
         numerator = 5
+    elif is_hard_other:
+        numerator = 4
     else:
         numerator = 3
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2

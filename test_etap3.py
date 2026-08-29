@@ -83,8 +83,13 @@ check("trudna + rownania kwadratowe (z prefiksem przedmiotu) -> +60% (10+6=16)",
 r = _buffered_question_count(10, temat="Matematyka: Równania kwadratowe", trudnosc="srednia")
 check("srednia + rownania kwadratowe -> podniesiony bufor +50% (10+5=15)", r == 15, r)
 
+# ZWIEKSZONE (29.08.2026 - port fixu z Quizu, patrz test analogiczny
+# nizej "trudny + INNY temat" - Sprawdzian mial tu luke parytetu,
+# Quiz juz dawno mial +40% dla KAZDEGO trudnego tematu, nie tylko
+# rownan kwadratowych): trudna + inny temat -> +40% (10+4=14), nie
+# dawne +30% (13) - CELOWA, swiadoma zmiana, nie regresja.
 r = _buffered_question_count(10, temat="Fizyka: Dynamika", trudnosc="trudna")
-check("trudna + INNY temat -> dotychczasowe +30% (13)", r == 13, r)
+check("trudna + INNY temat -> podniesiony bufor +40% (10+4=14)", r == 14, r)
 
 r = _buffered_question_count(10)
 check("brak temat/trudnosc -> domyslne +30% (13)", r == 13, r)
