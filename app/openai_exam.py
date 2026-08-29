@@ -2293,6 +2293,10 @@ async def _generate_quiz_topic_once(
         quiz_data, num_questions, regenerate,
         t_start=t_start, difficulty=difficulty, metrics=metrics, level=level, topic=topic,
     )
+    quiz_data = await _apply_b2_difficulty_downgrade(
+        quiz_data, num_questions, topic, effective_topic_is_forced, subject, level, difficulty,
+        wlasne_instrukcje, metrics=metrics,
+    )
     return quiz_data
 
 
@@ -2320,6 +2324,75 @@ _HARD_DIFFICULTY_WORDS = {"hard", "trudny", "trudna"}
 # kandydatow bez potrzeby rundy dogenerowania (ktora i tak ma niewiele
 # czasu, patrz limit 30s).
 _MEDIUM_DIFFICULTY_WORDS = {"medium", "sredni", "średni", "srednia", "średnia"}
+
+# "B2" (30.08.2026, user: po "B1" wciaz mozliwy jest niedobor dla
+# tematow, gdzie nawet dodatkowe rundy nie pomagaja - user zapytal, czy
+# w takim przypadku dolozenie LATWIEJSZEJ wersji tego samego tematu
+# byloby nieprofesjonalne. Odpowiedz: TYLKO jesli zrobione PO CICHU -
+# jawnie ujawnione (patrz _difficulty_downgrade_notice), to standardowa,
+# profesjonalna praktyka "graceful degradation", nie oszustwo).
+# AWARYJNE wyjscie - uruchamia sie WYLACZNIE gdy B1 (_verify_and_fill_
+# quiz_math) rowniez nie dowiozl pelnej liczby. Jeden krok w dol
+# trudnosci (nie kaskada do najlatwiejszego), jedna proba - jesli i to
+# zawiedzie, user dostaje normalny, uczciwy komunikat o niedoborze.
+_DIFFICULTY_STEP_DOWN = {
+    "hard": "medium", "trudny": "sredni", "trudna": "srednia",
+    "medium": "easy", "sredni": "latwy", "średni": "latwy", "srednia": "latwa", "średnia": "latwa",
+}
+
+
+def _step_down_difficulty(difficulty: str):
+    """Zwraca JEDEN poziom trudnosci nizej, albo None jesli juz
+    najlatwiejszy (lub nierozpoznany) - wtedy B2 nie ma gdzie schodzic."""
+    return _DIFFICULTY_STEP_DOWN.get((difficulty or "").strip().lower())
+
+
+async def _apply_b2_difficulty_downgrade(
+    quiz_data: dict, requested_count: int, topic: str, effective_topic_is_forced: bool,
+    subject: str, level: str, difficulty: str, wlasne_instrukcje: str, metrics=None,
+) -> dict:
+    """"B2" - patrz komentarz nad _DIFFICULTY_STEP_DOWN. Wywolywana PO
+    _verify_and_fill_quiz_math (B1) - jesli TAM nadal zostal niedobor,
+    JEDNA proba wolnej generacji na JEDEN poziom trudnosci nizej (ta sama
+    tematyka), z jawnym ujawnieniem w _difficulty_downgrade_notice.
+    Uzywa WYLACZNIE wolnej generacji (nie archetypow safe-param - te sa
+    zwiazane z KONKRETNYM, trudnym wzorcem, "latwiejszy archetyp" nie ma
+    sensu). Nigdy nie podnosi wyjatku dalej - blad tutaj oznacza po
+    prostu "B2 tez sie nie udalo", nie powinien zepsuc calej odpowiedzi."""
+    current = len(quiz_data.get("questions", []))
+    missing = requested_count - current
+    if missing <= 0:
+        return quiz_data
+    easier = _step_down_difficulty(difficulty)
+    if not easier:
+        return quiz_data
+    print(f"[MathVerify] B2: po B1 nadal brakuje {missing} pytan - probuje poziom '{easier}' zamiast '{difficulty}'")
+    try:
+        extra_data = await _raw_generate_quiz_topic_batch(
+            topic, effective_topic_is_forced, subject, level, max(missing, _MIN_FILL_BATCH), easier, wlasne_instrukcje,
+        )
+        extra_data = await _verify_and_fix_quiz_math(extra_data, difficulty=easier, metrics=metrics, level=level)
+    except Exception as e:
+        print(f"[MathVerify] B2: blad wywolania - {e}")
+        return quiz_data
+    added = extra_data.get("questions", [])[:missing]
+    if not added:
+        return quiz_data
+    quiz_data.setdefault("questions", []).extend(added)
+    added_count = len(added)
+    quiz_data["_difficulty_downgrade_notice"] = (
+        f"{added_count} z {requested_count} pytan jest na poziomie '{easier}' zamiast '{difficulty}' - "
+        f"nie udalo sie wygenerowac ich na zamowionym poziomie mimo dodatkowych prob. "
+        f"Pelny komplet zostal dostarczony."
+    )
+    final_count = len(quiz_data.get("questions", []))
+    if final_count >= requested_count:
+        quiz_data.pop("_shortfall_warning", None)
+    questions = quiz_data.get("questions", [])[:requested_count]
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+    quiz_data["questions"] = questions
+    return quiz_data
 
 
 def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:

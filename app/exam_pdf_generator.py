@@ -1054,6 +1054,16 @@ _HARD_DIFFICULTY_WORDS = {"trudny", "trudna"}
 # tego konkretnego podwzorca) - ten sam +50% bufor co w openai_exam.py.
 _MEDIUM_DIFFICULTY_WORDS = {"srednia", "sredni", "średnia", "średni"}
 
+# "B2" - PORT z Quizu (patrz _DIFFICULTY_STEP_DOWN/_apply_b2_difficulty_
+# downgrade w openai_exam.py po pelne uzasadnienie). Jeden krok w dol
+# trudnosci, TYLKO zamkniete (jak "B1" - brak mechanizmu dogenerowania
+# otwartych w ogole), jawnie ujawnione w _difficulty_downgrade_notice.
+_DIFFICULTY_STEP_DOWN_EXAM = {"trudna": "srednia", "trudny": "sredni", "srednia": "latwa", "sredni": "latwy"}
+
+
+def _step_down_difficulty_exam(trudnosc: str):
+    return _DIFFICULTY_STEP_DOWN_EXAM.get((trudnosc or "").strip().lower())
+
 
 def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) -> int:
     """Ile zadan zamowic za pierwszym razem, zeby po odrzuceniu blednych
@@ -2970,6 +2980,7 @@ ZASADY:
         used_safe_constants = set()
         data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
+        data = self._apply_b2_difficulty_downgrade(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, metrics=metrics)
         return data
 
     def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None, used_safe_letters=None, used_safe_constants=None, seen_diversity_tag_dicts=None):
@@ -3246,6 +3257,73 @@ ZASADY:
 
         return data
 
+    def _apply_b2_difficulty_downgrade(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, metrics=None):
+        """"B2" - PORT z Quizu (patrz _apply_b2_difficulty_downgrade w
+        openai_exam.py po pelne uzasadnienie - user zapytal, czy dolozenie
+        latwiejszej wersji jest nieprofesjonalne; odpowiedz: TYLKO jesli
+        zrobione po cichu - jawnie ujawnione, to standardowa praktyka
+        "graceful degradation"). AWARYJNE wyjscie - WYLACZNIE gdy B1
+        (_fill_missing_exam_questions) rowniez nie dowiozl pelnej liczby.
+        Jeden krok w dol trudnosci, jedna proba, TYLKO zamkniete (jak B1 -
+        brak mechanizmu dogenerowania otwartych w ogole). UWAGA: wywolywana
+        PO tym, jak _fill_missing_exam_questions juz zalogowala metryki/
+        _shortfall_warning dla stanu SPRZED B2 - telemetria pokazuje wiec
+        stan "bez B2" (przydatne samo w sobie - widac jak czesto B2 w ogole
+        byl potrzebny), ale zwracane `data` (i finalny PDF) juz zawiera
+        efekt B2, jesli sie udal."""
+        current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+        missing = liczba_pytan - current_total
+        if missing <= 0:
+            return data
+        easier = _step_down_difficulty_exam(trudnosc)
+        if not easier:
+            return data
+        target_closed = round(liczba_pytan * 0.6)
+        current_closed = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'zamkniete')
+        closed_headroom = target_closed - current_closed
+        if closed_headroom <= 0:
+            return data
+        missing_capped = min(missing, closed_headroom)
+        print(f"[MathVerify][Exam] B2: po B1 nadal brakuje {missing} zadan - probuje poziom '{easier}' zamiast '{trudnosc}'")
+        try:
+            extra = self._get_exam_data_raw_parallel(temat, klasa, easier, max(missing_capped, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+            extra = _verify_and_fix_exam_math(extra, trudnosc=easier, metrics=metrics, level=klasa, client=self.client)
+        except Exception as e:
+            print(f"[MathVerify][Exam] B2: blad wywolania - {e}")
+            return data
+        extra_closed = []
+        for s in extra.get('sekcje', []):
+            if s.get('typ') == 'zamkniete':
+                extra_closed.extend(s.get('pytania', []))
+        extra_closed = extra_closed[:missing_capped]
+        if not extra_closed:
+            return data
+        target = next((s for s in data['sekcje'] if s.get('typ') == 'zamkniete'), None)
+        if target is None:
+            target = {
+                "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
+                "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
+                "pytania": [],
+            }
+            data.setdefault('sekcje', []).insert(0, target)
+        target['pytania'].extend(extra_closed)
+        added_count = len(extra_closed)
+        data["_difficulty_downgrade_notice"] = (
+            f"{added_count} z {liczba_pytan} zadan jest na poziomie '{easier}' zamiast '{trudnosc}' - "
+            f"nie udalo sie wygenerowac ich na zamowionym poziomie mimo dodatkowych prob. "
+            f"Pelny komplet zostal dostarczony."
+        )
+        nr = 1
+        for s in data.get('sekcje', []):
+            for pyt in s.get('pytania', []):
+                pyt['nr'] = nr
+                nr += 1
+        data['punkty_lacznie'] = sum(pyt.get('punkty', 1) for s in data.get('sekcje', []) for pyt in s.get('pytania', []))
+        new_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+        if new_total >= liczba_pytan:
+            data.pop("_shortfall_warning", None)
+        return data
+
     def generate_exam(self, temat: str, klasa: str = "liceum",
                       trudnosc: str = "srednia", liczba_pytan: int = 12,
                       wariant: str = "A", wlasne_instrukcje: str = None,
@@ -3265,11 +3343,18 @@ ZASADY:
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
         shortfall_info = None
+        # "B2": _difficulty_downgrade_notice moze byc obecne NAWET gdy
+        # _shortfall_warning juz nie ma (B2 w pelni domknal luke) - user
+        # i tak powinien wiedziec, ze CZESC zadan jest latwiejsza niz
+        # zamowiona, wiec oba komunikaty (jesli oba istnieja) laczymy w
+        # JEDEN banner zamiast pokazywac tylko jeden z nich.
         shortfall_message = data.get("_shortfall_warning")
-        if shortfall_message:
+        downgrade_message = data.get("_difficulty_downgrade_notice")
+        combined_message = " ".join(m for m in (shortfall_message, downgrade_message) if m) or None
+        if combined_message:
             accepted = sum(len(s.get("pytania", [])) for s in data.get("sekcje", []))
             shortfall_info = {
-                "message": shortfall_message,
+                "message": combined_message,
                 "requested_count": liczba_pytan,
                 "accepted_count": accepted,
             }

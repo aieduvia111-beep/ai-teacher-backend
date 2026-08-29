@@ -38,7 +38,14 @@ def _shortfall_response(quiz: dict, requested_count: int):
     JAWNE, ale nieblokujace ostrzezenie - NIE chowa faktu niedoboru,
     tylko nie wyrzuca juz wykonanej pracy). Zwraca None, jesli wszystko
     w porzadku (pelna liczba pytan) - BEZ zmian wzgledem wczesniej."""
-    warning = quiz.get("_shortfall_warning")
+    # "B2" (30.08.2026): _difficulty_downgrade_notice moze byc obecne
+    # NAWET gdy _shortfall_warning juz nie ma (B2 w pelni domknal luke) -
+    # user i tak powinien wiedziec, ze CZESC pytan jest latwiejsza niz
+    # zamowiona, wiec oba komunikaty (jesli oba istnieja) laczymy w JEDEN,
+    # zamiast pokazywac tylko jeden z nich.
+    shortfall_warning = quiz.get("_shortfall_warning")
+    downgrade_notice = quiz.get("_difficulty_downgrade_notice")
+    warning = " ".join(m for m in (shortfall_warning, downgrade_notice) if m) or None
     if not warning:
         return None
     accepted = len(quiz.get("questions", []))
