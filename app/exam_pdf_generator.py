@@ -2236,6 +2236,24 @@ ZASADY:
                 pyt['nr'] = nr
                 nr += 1
 
+        # NAPRAWIONE (user zglosil real przypadek: naglowek sprawdzianu
+        # pokazywal "30 pkt" mimo ze suma faktycznych "punkty" w
+        # zadaniach wynosila 21 albo 24) - "punkty_lacznie" bylo
+        # WYLACZNIE tym, co AI zgadlo w SUROWEJ, pierwszej odpowiedzi
+        # (patrz przyklad "punkty_lacznie": 30 w EXAM_PROMPT), NIGDY
+        # nie przeliczane na nowo mimo ze finalna lista zadan zmienia
+        # sie pozniej wielokrotnie (odrzucenia Warstwy 1/2/2.5/LaTeX,
+        # dedup, diversity, dogenerowanie, przyciecie nadmiaru) -
+        # praktycznie ZAWSZE rozjezdzalo sie z prawdziwa suma. Teraz
+        # liczone PO WSZYSTKICH tych krokach, jako zrodlo prawdy zamiast
+        # zgadywania - identyczny standard co reszta tego pliku (kod,
+        # nie AI, jest zrodlem prawdy o finalnej liczbie/tresci zadan).
+        data['punkty_lacznie'] = sum(
+            pyt.get('punkty', 1)
+            for s in data.get('sekcje', [])
+            for pyt in s.get('pytania', [])
+        )
+
         final_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if final_total < liczba_pytan:
             total_elapsed = time.monotonic() - t_start
