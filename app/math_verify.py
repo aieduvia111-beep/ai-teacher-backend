@@ -1171,6 +1171,93 @@ def verify_law_of_sines_triangle(a: int, angle_a_deg: int, angle_b_deg: int, cla
     return abs(round(true_val, _LOS_ROUND_DIGITS) - claimed_val) <= 0.01
 
 
+# SAFE PARAMETER GENERATION - ROWNANIE KWADRATOWE Z PARAMETREM, DWA
+# ROZNE PIERWIASTKI DODATNIE, TRUDNY (29.08.2026, osme rozszerzenie tego
+# samego dnia). Oficjalny "trudny" przyklad programowy dla liceum_1
+# (level_config.py) to DOKLADNIE ten wzorzec: "Dla jakich wartości
+# parametru m równanie x²-(m+1)x+m=0 ma dwa różne pierwiastki dodatnie?"
+# - silniejszy warunek niz istniejacy medium-tier archetyp
+# (build_safe_linear_param_quadratic, x^2+mx+C=0), ktory sprawdza TYLKO
+# dyskryminanta>0 ("dwa rozne pierwiastki", bez wymogu dodatniosci).
+#
+# KLUCZOWA OBSERWACJA (znaleziona PRZED kodowaniem): rownanie
+# x^2-(K+m)x+K*m=0 (K - DOWOLNA stala) faktoryzuje sie ZAWSZE jako
+# (x-K)(x-m) - sprawdzenie: (x-K)(x-m) = x^2-(K+m)x+Km, dokladnie ta
+# sama postac. Pierwiastki sa wiec DOKLADNIE {K, m} dla KAZDEJ wartosci
+# m - SILNIEJSZA gwarancja niz analiza dyskryminanty (nie trzeba
+# solve_discriminant_condition w ogole, wiec nie trzeba tez martwic sie
+# o przypadek zespolony/podwojny pierwiastek osobno - wynika wprost z
+# faktoryzacji). Warunek "dwa rozne pierwiastki dodatnie" (K juz
+# dodatnie z konstrukcji): m>0 (drugi pierwiastek dodatni) i m!=K
+# (rozne) -> $0<m<K$ lub $m>K$ (rownowazny zapis bez "i m!=").
+_QP_K_POOL = list(range(1, 11))  # K w [1,10] - K=1 odtwarza oficjalny przyklad programowy dokladnie
+
+
+def build_safe_quadratic_two_positive_roots(param_letter: str = None, k_value: int = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet pytania dla x^2-(param+K)x+K*param=0
+    (K - stala dodatnia z _QP_K_POOL) - patrz komentarz wyzej o
+    gwarantowanej faktoryzacji (x-K)(x-param). Distraktory to typowe,
+    czesciowe bledy uczniow: pominieta dodatniosc (tylko "rozne"),
+    pominiete wykluczenie param=K (tylko "dodatnie"), odwrocony znak."""
+    if k_value is None:
+        k_value = random.choice(_QP_K_POOL)
+    if param_letter is None:
+        param_letter = random.choice(_SAFE_PARAM_LETTERS)
+    p = param_letter
+    correct_text = f"$0 < {p} < {k_value}$ lub ${p} > {k_value}$"
+    distractors = [
+        f"${p} \\neq {k_value}$",  # pominieta dodatniosc - tylko warunek "rozne"
+        f"${p} > 0$",  # pominiete wykluczenie param=K - tylko warunek "dodatnie"
+        f"${p} < 0$",  # odwrocony znak
+    ]
+    # "1m" wyglada niezrecznie (wspolczynnik 1 pomija sie w standardowym
+    # zapisie, np. oficjalny przyklad programowy pisze "+m", nie "+1m").
+    k_coeff_str = p if k_value == 1 else f"{k_value}{p}"
+    question_text = (
+        f"Dla jakich wartości parametru {p} równanie "
+        f"$x^2 - ({p} + {k_value})x + {k_coeff_str} = 0$ ma dwa różne pierwiastki dodatnie?"
+    )
+    return {
+        "param_letter": p, "k_value": k_value,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+def verify_quadratic_two_positive_roots(param_letter: str, k_value: int, claimed_bound) -> bool:
+    """Niezalezna weryfikacja PRZEZ PROBKOWANIE (INNA sciezka niz
+    build_safe_quadratic_two_positive_roots - NIE zaklada znanej
+    faktoryzacji): dla wielu konkretnych wartosci parametru (calkowite
+    w szerokim zakresie + polowki na granicach) liczy PRAWDZIWE
+    pierwiastki OD ZERA (sympy solve na oryginalnym wielomianie) i
+    sprawdza, ze 'dwa rozne pierwiastki dodatnie' zachodzi DOKLADNIE
+    wtedy, gdy wartosc miesci sie w twierdzonym przedziale
+    (0, claimed_bound) union (claimed_bound, +inf)."""
+    x = sp.Symbol('x')
+    # NAPRAWIONE (znalezione WLASNYM testem - test_safe_quadratic_two_
+    # positive_roots_generation.py "wisial" wiele minut, nie na zawsze,
+    # tylko BARDZO WOLNO): ~25 kolejnych liczb calkowitych na wywolanie
+    # x sp.solve() ma realny koszt (sympy dispatch/simplify), a stress-test
+    # wywoluje ta funkcje 540 razy = ~15 600 wywolan solve() lacznie.
+    # Zawezono do punktow GRANICZNYCH (wokol 0 i K, gdzie bledy w warunku
+    # najlatwiej by sie ujawnily) + kilku reprezentatywnych "daleko" -
+    # ta sama sila diagnostyczna (kazdy z 4 typow bledu w dystraktorach
+    # zmienia WYNIK dla punktow blisko granicy), 3x mniej wywolan solve().
+    test_values = [-2, -1, 1, k_value - 1, k_value + 1, k_value + 5]
+    test_values += [k_value - sp.Rational(1, 2), k_value + sp.Rational(1, 2), sp.Rational(1, 2), sp.Rational(-1, 2)]
+    for m_val in test_values:
+        roots = sp.solve(sp.Eq(x ** 2 - (m_val + k_value) * x + m_val * k_value, 0), x)
+        two_distinct_positive = (
+            len(roots) == 2 and roots[0] != roots[1]
+            and all(r.is_real and r > 0 for r in roots)
+        )
+        claimed_in_range = (0 < m_val < claimed_bound) or (m_val > claimed_bound)
+        if two_distinct_positive != bool(claimed_in_range):
+            return False
+    return True
+
+
 def build_safe_trig_skeleton() -> dict:
     """Losuje JEDEN z dwoch dostepnych, bezpiecznych archetypow trudnej
     trygonometrii (build_safe_trig_quadratic_equation lub

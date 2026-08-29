@@ -40,7 +40,7 @@ from .math_verify import (
     format_avoid_diversity_block, build_safe_trig_skeleton,
     build_safe_sequence_two_terms, build_safe_law_of_cosines_triangle,
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
-    build_safe_law_of_sines_triangle,
+    build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1129,7 +1129,37 @@ _TIMEOUT_SECONDS_EXAM = 60.0
 # chce mniej niedoborow): "musimy podniesc do 3 minut dla mnie to za
 # duzo ale jak trzeba to trzeba dawaj". 120s->180s, identyczna zmiana w
 # _HARD_TIMEOUT_SECONDS (openai_exam.py) i we frontendowych timeoutach.
+# NAPRAWIONE (user, 29.08.2026 - zlapal WLASNA niespojnosc): docstring
+# _max_generation_seconds_exam ponizej dlugo mowil "120s dla trudny",
+# mimo ze TA stala byla juz podniesiona do 180.0 - nikt nie zaktualizowal
+# komentarza przy poprzedniej zmianie. To realnie zmylilo projektowanie
+# B1 (patrz _GRACE_MAX_SECONDS_EXAM nizej) - user zauwazyl, ze "sufit
+# 150-180s" bylby faktycznie ZEREM rozszerzenia przy prawdziwej,
+# aktualnej wartosci 180s. Lekcja: PRZY KAZDEJ zmianie tej stalej,
+# zaktualizuj TEZ docstring _max_generation_seconds_exam - nie tylko kod.
 _HARD_TIMEOUT_SECONDS_EXAM = 180.0
+
+# "B1" - GRACE EXTENSION (29.08.2026, user: "15 z 15, nie 13 z 15" -
+# najtwardsze wymaganie z poczatku dzisiejszej sesji, teraz rozszerzone
+# na TEMATY SPOZA listy archetypow, ktore realnie moga wyczerpac
+# standardowy budzet). WASKI, WARUNKOWY wyjatek - NIE ogolne podniesienie
+# limitu dla kazdego requestu (to user JUZ ODRZUCIL wczesniej w tej
+# sesji jako nieskuteczne rozwiazanie). Uruchamia sie TYLKO gdy po
+# wyczerpaniu standardowego budzetu (rundy LUB czas) brakuje BARDZO
+# NIEWIELE (<=2 zadan) - wieksza luka oznacza fundamentalny problem z
+# tematem (jak znaleziony i naprawiony dzis blad z ujemnym polem w
+# tw. cosinusow), gdzie dalsze probowanie prawdopodobnie i tak zawiedzie,
+# wiec NIE przedluzamy czekania usera bez gwarancji sukcesu - od razu
+# oddajemy uczciwy komunikat.
+_GRACE_MAX_MISSING_EXAM = 2  # rozszerzenie TYLKO gdy brakuje <=2 zadan
+_GRACE_EXTRA_ROUNDS_EXAM = 3  # ile dodatkowych rund ponad max_rounds
+# Sufit 220s to CALKOWITY czas requestu od t_start (NIE 180+220=400s) -
+# daje +40s ponad istniejacy budzet "trudny" (180s). Frontend
+# (exam_generator.html examTimeoutId) musi zostac PODNIESIONY W PARZE
+# do >=260s (margines na budowe PDF + siec) - identyczna zasada jak przy
+# KAZDEJ poprzedniej zmianie budzetu w tej sesji (frontend zawsze
+# WYRAZNIE ponad backendowym sufitem, nigdy rowno).
+_GRACE_MAX_SECONDS_EXAM = 220.0
 
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
@@ -1201,12 +1231,23 @@ def _is_hard_law_of_sines_exam(temat: str, trudnosc: str) -> bool:
     return is_los and trudnosc_word in _HARD_DIFFICULTY_WORDS
 
 
+def _is_hard_quadratic_two_positive_roots_exam(temat: str, trudnosc: str) -> bool:
+    """PORT z Quizu (_is_hard_quadratic_two_positive_roots w
+    openai_exam.py) - patrz tam pelne uzasadnienie. Uzywana TYLKO w
+    rundach dogenerowania."""
+    is_quadratic = temat is not None and is_quadratic_equation_topic(temat)
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_quadratic and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
-    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 120s dla tematow na
-    poziomie "trudny"/"trudna" (patrz _HARD_TIMEOUT_SECONDS_EXAM -
-    real-test, sierpien 2026), 60s dla wszystkiego innego (pierwotna,
+    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 180s dla tematow na
+    poziomie "trudny"/"trudna" (patrz _HARD_TIMEOUT_SECONDS_EXAM - wartosc
+    PODNIESIONA 29.08.2026 ze 120s, ten docstring byl przez jakis czas
+    NIEAKTUALNY po tamtej zmianie - user to zlapal przy projektowaniu B1,
+    patrz _GRACE_MAX_SECONDS_EXAM), 60s dla wszystkiego innego (pierwotna,
     jednolita decyzja usera - nadal w mocy dla latwy/sredni)."""
     diff_word = (trudnosc or "").strip().lower()
     if diff_word in _HARD_DIFFICULTY_WORDS:
@@ -2756,6 +2797,129 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - ROWNANIE KWADRATOWE Z PARAMETREM, DWA
+    # ROZNE PIERWIASTKI DODATNIE (29.08.2026, port na Sprawdzian) - patrz
+    # pelne uzasadnienie w math_verify.build_safe_quadratic_two_positive_roots
+    # i openai_exam._raw_generate_safe_quadratic_two_positive_roots_batch
+    # (Quiz, ten sam mechanizm).
+    def _raw_generate_safe_quadratic_two_positive_roots_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla archetypu 'rownanie
+        x^2-(p+K)x+Kp=0 -> dla jakich p dwa rozne pierwiastki dodatnie'
+        metoda 'safe parameter generation' - zwraca dane w KSZTALCIE
+        sprawdzianu, analogicznie do _raw_generate_safe_law_of_sines_batch."""
+        buffered_n = n + 3
+        skeletons = [build_safe_quadratic_two_positive_roots() for _ in range(buffered_n)]
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            p, k = sk["param_letter"], sk["k_value"]
+            k_coeff_str = p if k == 1 else f"{k}{p}"
+            items_desc.append(
+                f"{i + 1}. Rownanie: $$x^2 - ({p} + {k})x + {k_coeff_str} = 0$$ (parametr {p}). "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
+tresc zadania, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalna, poprawna tresc zadania po polsku (np. "Dla jakich wartości parametru ... równanie ... ma dwa różne pierwiastki dodatnie?").
+2. Napisac krotkie wyjasnienie krok po kroku - zauwazenie, ze rownanie
+   faktoryzuje sie jako (x-K)(x-parametr)=0 (pierwiastki to K i parametr),
+   warunek dodatniosci drugiego pierwiastka (parametr>0) i roznicy
+   pierwiastkow (parametr!=K).
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ rownania, liczb ani opcji odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO
+jezyk, nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "Dla jakich wartości parametru $m$ równanie $x^2 - (m + 5)x + 5m = 0$ ma dwa różne pierwiastki dodatnie?",
+                    "punkty": 1,
+                    "wyjasnienie": "Równanie faktoryzuje się jako $(x-5)(x-m)=0$, więc pierwiastki to $5$ i $m$. Aby oba były dodatnie i różne: $m>0$ oraz $m\\neq 5$, czyli $0<m<5$ lub $m>5$.",
+                    "diversity_tag": {{
+                        "skill": "rownanie kwadratowe z parametrem", "concept": "faktoryzacja i warunek na znak pierwiastkow",
+                        "task_type": "wyznacz przedzial parametru",
+                        "reasoning": "rozloz na czynniki, zaloz dodatniosc i roznorodnosc pierwiastkow"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(8000, max(2000, 450 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (kwadratowe dwa dodatnie pierwiastki): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or sk["question_text"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -2860,7 +3024,10 @@ ZASADY:
         # dopelnianie zamknietych) i user dostaje uczciwy, PROPORCJONALNY
         # niedobor zamiast "pelnej liczby, ale 100% zamknietych".
         target_closed = round(liczba_pytan * 0.6)
-        for round_i in range(1, max_rounds + 1):
+        round_i = 0
+        grace_rounds_used = 0
+        while True:
+            round_i += 1
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
             missing = liczba_pytan - current_total
             if missing <= 0:
@@ -2876,11 +3043,33 @@ ZASADY:
                     f"przerywam dogenerowanie (uczciwy, proporcjonalny niedobor zamiast 100% zamknietych)"
                 )
                 break
-            missing = min(missing, closed_headroom)
+            missing_capped = min(missing, closed_headroom)
             elapsed = time.monotonic() - t_start
-            if elapsed >= max_seconds:
-                print(f"[MathVerify][Exam] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
-                break
+            # "B1" grace extension (patrz komentarz nad _GRACE_MAX_SECONDS_EXAM):
+            # w standardowym budzecie (round_i<=max_rounds ORAZ elapsed<max_seconds)
+            # dziala DOKLADNIE jak wczesniej. Po jego wyczerpaniu - WASKI,
+            # WARUNKOWY wyjatek: jesli brakuje NAPRAWDE niewiele (<=2), user
+            # dostaje do _GRACE_EXTRA_ROUNDS_EXAM dodatkowych rund, ograniczonych
+            # TWARDYM sufitem _GRACE_MAX_SECONDS_EXAM (sprawdzanym TU, PRZED
+            # startem kazdej rundy - nie tylko po jej zakonczeniu, wiec
+            # rzeczywisty czas nigdy nie zaczyna nowej rundy juz po sufitcie,
+            # choc ostatnia juz rozpoczeta runda moze go nieznacznie przekroczyc
+            # w trakcie swojego wykonania - identyczny charakter jak standardowy
+            # budzet, uwzgledniony w marginesie frontendowego timeoutu).
+            in_standard_budget = round_i <= max_rounds and elapsed < max_seconds
+            if not in_standard_budget:
+                if missing > _GRACE_MAX_MISSING_EXAM:
+                    print(f"[MathVerify][Exam] przekroczono standardowy budzet ({elapsed:.1f}s, runda {round_i}), brakuje {missing} (>{_GRACE_MAX_MISSING_EXAM}) - zbyt duzo na rozszerzenie, przerywam dogenerowanie")
+                    break
+                if grace_rounds_used >= _GRACE_EXTRA_ROUNDS_EXAM:
+                    print(f"[MathVerify][Exam] wyczerpano {_GRACE_EXTRA_ROUNDS_EXAM} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
+                    break
+                if elapsed >= _GRACE_MAX_SECONDS_EXAM:
+                    print(f"[MathVerify][Exam] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {_GRACE_MAX_SECONDS_EXAM}s) - przerywam dogenerowanie")
+                    break
+                grace_rounds_used += 1
+                print(f"[MathVerify][Exam] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS_EXAM}): standardowy budzet wyczerpany, ale brakuje tylko {missing} zadan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
+            missing = missing_capped
             print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
             metrics.retry_count += 1
             # NOWE (patrz format_avoid_diversity_block w math_verify.py):
@@ -2930,6 +3119,12 @@ ZASADY:
                         # patrz _is_hard_law_of_sines_exam i
                         # _raw_generate_safe_law_of_sines_batch.
                         extra = self._raw_generate_safe_law_of_sines_batch(max(missing, _MIN_FILL_BATCH_EXAM))
+                    elif _is_hard_quadratic_two_positive_roots_exam(temat, trudnosc):
+                        # Port tego samego wzorca na trudne rownania
+                        # kwadratowe z parametrem - patrz
+                        # _is_hard_quadratic_two_positive_roots_exam i
+                        # _raw_generate_safe_quadratic_two_positive_roots_batch.
+                        extra = self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing, _MIN_FILL_BATCH_EXAM))
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1
@@ -3031,6 +3226,11 @@ ZASADY:
             # _TIMEOUT_SECONDS_EXAM) - user widzial mylacy komunikat
             # "limit 30s", mimo ze realnie egzekwowany budzet to juz 60s.
             reason = f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
+            # "B1": jesli probowano dodatkowych rund (grace_rounds_used>0) i
+            # MIMO TEGO nadal jest niedobor, mowimy o tym userowi wprost -
+            # nie chowamy faktu, ze system probowal dobic do pelnej liczby.
+            if grace_rounds_used > 0:
+                reason += f" (w tym {grace_rounds_used} dodatkowych prob rozszerzenia)"
             data["_shortfall_warning"] = (
                 f"Udalo sie wygenerowac i zweryfikowac {final_total} z {liczba_pytan} "
                 f"zamowionych zadan - {reason}, pozostale okazaly sie bledne. "

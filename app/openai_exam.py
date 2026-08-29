@@ -18,6 +18,7 @@ from .math_verify import (
     build_safe_trig_skeleton, build_safe_sequence_two_terms,
     build_safe_law_of_cosines_triangle, build_safe_geometric_sequence_two_terms,
     build_safe_abs_value_equation, build_safe_law_of_sines_triangle,
+    build_safe_quadratic_two_positive_roots,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1981,6 +1982,101 @@ ZASADY:
     return quiz_data
 
 
+async def _raw_generate_safe_quadratic_two_positive_roots_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla archetypu 'rownanie kwadratowe z parametrem
+    x^2-(p+K)x+Kp=0 -> dla jakich p dwa rozne pierwiastki dodatnie' metoda
+    'safe parameter generation' - patrz komentarz w math_verify.py.
+    Jedno wywolanie AI dla calej partii, analogicznie do
+    _raw_generate_safe_law_of_sines_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_quadratic_two_positive_roots() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        p, k = sk["param_letter"], sk["k_value"]
+        k_coeff_str = p if k == 1 else f"{k}{p}"
+        items_desc.append(
+            f"{i + 1}. Rownanie: $$x^2 - ({p} + {k})x + {k_coeff_str} = 0$$ (parametr {p}). "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
+tresc pytania, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (np. "Dla jakich wartości parametru ... równanie ... ma dwa różne pierwiastki dodatnie?").
+2. Napisac krotkie wyjasnienie krok po kroku - zauwazenie, ze rownanie
+   faktoryzuje sie jako (x-K)(x-parametr)=0 (pierwiastki to K i parametr),
+   warunek dodatniosci drugiego pierwiastka (parametr>0) i roznicy
+   pierwiastkow (parametr!=K).
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ rownania, liczb ani opcji odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO
+jezyk, nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Równania kwadratowe z parametrem - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Dla jakich wartości parametru m równanie $x^2 - (m + 5)x + 5m = 0$ ma dwa różne pierwiastki dodatnie?",
+            "explanation": "Równanie faktoryzuje się jako $(x-5)(x-m)=0$, więc pierwiastki to $5$ i $m$. Aby oba były dodatnie i różne: $m>0$ oraz $m\\neq 5$, czyli $0<m<5$ lub $m>5$.",
+            "diversity_tag": {{
+                "skill": "rownanie kwadratowe z parametrem", "concept": "faktoryzacja i warunek na znak pierwiastkow",
+                "task_type": "wyznacz przedzial parametru", "reasoning": "rozloz na czynniki, zaloz dodatniosc i roznorodnosc pierwiastkow"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(8000, max(2000, 450 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["question_text"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Równania kwadratowe z parametrem - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -2088,6 +2184,20 @@ def _is_hard_law_of_sines(topic: str, difficulty: str) -> bool:
     return is_los and diff_word in _HARD_DIFFICULTY_WORDS
 
 
+def _is_hard_quadratic_two_positive_roots(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla ROWNAN
+    KWADRATOWYCH Z PARAMETREM na poziomie trudny/hard (siodme rozszerzenie
+    tego samego dnia). Port _is_medium_linear_param_quadratic (ten sam
+    warunek is_quadratic_equation_topic), ale dla TRUDNEGO poziomu -
+    oficjalny "trudny" przyklad programowy liceum_1 wymaga SILNIEJSZEGO
+    warunku (dwa rozne pierwiastki DODATNIE, nie tylko dyskryminanta>0),
+    stad OSOBNY archetyp (build_safe_quadratic_two_positive_roots) zamiast
+    ponownego uzycia medium-tier build_safe_linear_param_quadratic."""
+    is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    return is_quadratic and diff_word in _HARD_DIFFICULTY_WORDS
+
+
 async def _generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str
@@ -2169,6 +2279,11 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na twierdzenie sinusow - patrz
         # _is_hard_law_of_sines i _raw_generate_safe_law_of_sines_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_sines_batch(max(n, _MIN_FILL_BATCH))
+    elif _is_hard_quadratic_two_positive_roots(topic, difficulty):
+        # Port tego samego wzorca na trudne rownania kwadratowe z
+        # parametrem - patrz _is_hard_quadratic_two_positive_roots i
+        # _raw_generate_safe_quadratic_two_positive_roots_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
@@ -2297,14 +2412,28 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 # nie powtorzyc buga z kolizja timeoutow z poprzedniej rundy naprawy.
 _HARD_TIMEOUT_SECONDS = 180.0
 
+# "B1" - GRACE EXTENSION (29.08.2026, port z exam_pdf_generator.py - patrz
+# tam pelne uzasadnienie nad _GRACE_MAX_SECONDS_EXAM). WASKI, WARUNKOWY
+# wyjatek (NIE ogolne podniesienie limitu dla kazdego requestu): gdy po
+# standardowym budzecie brakuje <=2 pytania, daje do 3 dodatkowych rund,
+# ograniczonych twardym sufitem 220s (CALKOWITY czas requestu, nie
+# dodatkowe 220s ponad 180s). Frontend (quiz_app.html) musi byc PODNIESIONY
+# W PARZE do >=250s.
+_GRACE_MAX_MISSING = 2
+_GRACE_EXTRA_ROUNDS = 3
+_GRACE_MAX_SECONDS = 220.0
+
 
 def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
     generowania+weryfikacji+dogenerowania. 45s dla rownan kwadratowych
     z parametrem na poziomie medium (waski, historyczny wyjatek - patrz
-    komentarz wyzej); 60s dla KAZDEGO tematu na poziomie "trudny"/"hard"
-    (patrz _HARD_TIMEOUT_SECONDS - realny test, sierpien 2026); 30s dla
-    wszystkiego innego."""
+    komentarz wyzej); 180s dla KAZDEGO tematu na poziomie "trudny"/"hard"
+    (patrz _HARD_TIMEOUT_SECONDS - wartosc PODNIESIONA 29.08.2026 z 60s,
+    ten docstring byl przez jakis czas NIEAKTUALNY po tamtej zmianie -
+    identyczny blad zlapany rownolegle w exam_pdf_generator.py przy
+    projektowaniu B1, patrz _GRACE_MAX_SECONDS); 30s dla wszystkiego
+    innego."""
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     if is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
@@ -2364,15 +2493,33 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
         t_start = time.monotonic()
-    for round_i in range(1, max_rounds + 1):
+    round_i = 0
+    grace_rounds_used = 0
+    while True:
+        round_i += 1
         current = len(quiz_data.get("questions", []))
         missing = requested_count - current
         if missing <= 0:
             break
         elapsed = time.monotonic() - t_start
-        if elapsed >= max_seconds:
-            print(f"[MathVerify] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
-            break
+        # "B1" grace extension - patrz komentarz nad _GRACE_MAX_SECONDS.
+        # Sprawdzane TU, PRZED startem kazdej rundy (nie tylko po jej
+        # zakonczeniu) - nowa runda nigdy nie startuje juz po sufitcie,
+        # choc runda JUZ w trakcie moze go nieznacznie przekroczyc przy
+        # zakonczeniu (uwzgledniane w marginesie timeoutu frontendu).
+        in_standard_budget = round_i <= max_rounds and elapsed < max_seconds
+        if not in_standard_budget:
+            if missing > _GRACE_MAX_MISSING:
+                print(f"[MathVerify] przekroczono standardowy budzet ({elapsed:.1f}s, runda {round_i}), brakuje {missing} (>{_GRACE_MAX_MISSING}) - zbyt duzo na rozszerzenie, przerywam dogenerowanie")
+                break
+            if grace_rounds_used >= _GRACE_EXTRA_ROUNDS:
+                print(f"[MathVerify] wyczerpano {_GRACE_EXTRA_ROUNDS} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
+                break
+            if elapsed >= _GRACE_MAX_SECONDS:
+                print(f"[MathVerify] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {_GRACE_MAX_SECONDS}s) - przerywam dogenerowanie")
+                break
+            grace_rounds_used += 1
+            print(f"[MathVerify] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS}): standardowy budzet wyczerpany, ale brakuje tylko {missing} pytan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
         print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
         metrics.retry_count += 1
         avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
@@ -2400,6 +2547,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         # teraz zalezy od tematu/trudnosci (patrz _max_generation_seconds),
         # wiec musi byc pokazywana PRAWDZIWA wartosc.
         reason = f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
+        if grace_rounds_used > 0:
+            reason += f" (w tym {grace_rounds_used} dodatkowych prob rozszerzenia)"
         quiz_data["_shortfall_warning"] = (
             f"Udalo sie wygenerowac i zweryfikowac {final_count} z {requested_count} "
             f"zamowionych pytan - {reason}, pozostale okazaly sie bledne. "

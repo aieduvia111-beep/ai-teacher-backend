@@ -1113,11 +1113,12 @@ async function startQuiz(){
     showPage('pageLoading');
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
-    // ZWIEKSZONE PONOWNIE (29.08.2026): backendowy budzet dla "hard"
-    // podniesiony 120s->180s (patrz _HARD_TIMEOUT_SECONDS w
-    // openai_exam.py, user: "musimy podniesc do 3 minut"). Timeout
-    // frontendu musi zostac PONAD nowym budzetem z realnym marginesem.
-    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 210000);
+    // ZWIEKSZONE PONOWNIE (29.08.2026, "B1" grace extension - patrz
+    // _GRACE_MAX_SECONDS w openai_exam.py): standardowy budzet 180s moze
+    // dostac do 3 dodatkowych rund (sufit 220s CALKOWITEGO czasu), gdy
+    // brakuje juz tylko <=2 pytania. Timeout frontendu musi zostac PONAD
+    // tym nowym sufitem z realnym marginesem.
+    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 250000);
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
@@ -1175,9 +1176,8 @@ async function startQuiz(){
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
   var quizController2 = new AbortController();
-  // ZWIEKSZONE PONOWNIE (29.08.2026): identyczny powod co quizTimeoutId1
-  // wyzej - backendowy budzet dla "hard" podniesiony 120s->180s.
-  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 210000);
+  // ZWIEKSZONE PONOWNIE (29.08.2026): identyczny powod co quizTimeoutId1 wyzej.
+  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 250000);
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })
