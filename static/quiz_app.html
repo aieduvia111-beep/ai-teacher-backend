@@ -725,7 +725,7 @@ function getPlanBadgeHTML(plan) {
                czekania - identyczny hint co w exam_generator.html -->
           <div class="hard-time-hint" id="hardTimeHint">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Trudny poziom może generować się do 2–3 minut — każde pytanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby quiz był jak najwyższej jakości.</span>
+            <span>Trudny poziom może generować się do 3 minut — każde pytanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby quiz był jak najwyższej jakości.</span>
           </div>
         </div>
         <div class="field"><span class="field-label">Liczba pytań</span><div class="slider-wrap"><input type="range" id="numSlider" min="5" max="20" value="10" oninput="updateSlider(this)"><span class="slider-val" id="numVal">10</span></div></div>
@@ -1082,7 +1082,7 @@ function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEac
 function setQuizLoadingSubtitle(){
   var el=document.getElementById('quizLoadingSubtitle');
   if(!el)return;
-  el.textContent=(VALS.diff==='hard')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby quiz był jak najwyższej jakości. To może potrwać do 2–3 minut.':'AI tworzy pytania dopasowane do Twojego poziomu';
+  el.textContent=(VALS.diff==='hard')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby quiz był jak najwyższej jakości. To może potrwać do 3 minut.':'AI tworzy pytania dopasowane do Twojego poziomu';
 }
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('quizLevelPicker')) return;
@@ -1131,12 +1131,11 @@ async function startQuiz(){
     setQuizLoadingSubtitle();
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
-    // ZWIEKSZONE (29.08.2026): backendowy budzet dla trudnosci "hard"
-    // podniesiony 60s->120s (patrz _HARD_TIMEOUT_SECONDS w
-    // openai_exam.py) - stary timeout 120000 byl DOKLADNIE na granicy
-    // nowego budzetu (zero marginesu), wiec frontend przerywalby
-    // polaczenie w momencie, gdy backend jest bliski sukcesu.
-    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 150000);
+    // ZWIEKSZONE PONOWNIE (29.08.2026): backendowy budzet dla "hard"
+    // podniesiony 120s->180s (patrz _HARD_TIMEOUT_SECONDS w
+    // openai_exam.py, user: "musimy podniesc do 3 minut"). Timeout
+    // frontendu musi zostac PONAD nowym budzetem z realnym marginesem.
+    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 210000);
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
@@ -1194,10 +1193,9 @@ async function startQuiz(){
   showPage('pageLoading');
   setQuizLoadingSubtitle();
   var quizController2 = new AbortController();
-  // ZWIEKSZONE (29.08.2026): identyczny powod co quizTimeoutId1 wyzej -
-  // backendowy budzet dla "hard" podniesiony 60s->120s, stary timeout
-  // 120000 nie zostawial zadnego marginesu.
-  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 150000);
+  // ZWIEKSZONE PONOWNIE (29.08.2026): identyczny powod co quizTimeoutId1
+  // wyzej - backendowy budzet dla "hard" podniesiony 120s->180s.
+  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 210000);
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })

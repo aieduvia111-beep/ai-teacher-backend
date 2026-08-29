@@ -1562,7 +1562,15 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 # tematy (duzy rejection rate + dluzsze rozumowanie) regularnie nie
 # miescily sie w starym budzecie nawet bez ukonczenia. User: priorytet
 # to niezawodnosc/kompletnosc ponad szybkosc dla trudnych tematow.
-_HARD_TIMEOUT_SECONDS = 120.0
+#
+# ZWIEKSZONE PONOWNIE (user, 29.08.2026 - kolejny real-test, n=15,
+# trudna trygonometria: 11/15 po 120s, dokladnie w oczekiwanym zakresie,
+# ale user chce mniej niedoborow): "musimy podniesc do 3 minut dla mnie
+# to za duzo ale jak trzeba to trzeba dawaj". 120s->180s, identyczna
+# zmiana w _HARD_TIMEOUT_SECONDS_EXAM (exam_pdf_generator.py) i we
+# frontendowych timeoutach (exam_generator.html, quiz_app.html), zeby
+# nie powtorzyc buga z kolizja timeoutow z poprzedniej rundy naprawy.
+_HARD_TIMEOUT_SECONDS = 180.0
 
 
 def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:

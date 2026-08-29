@@ -708,7 +708,7 @@ function getPlanBadgeHTML(plan) {
                czekania) -->
           <div class="hard-time-hint" id="hardTimeHint">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Trudny poziom może generować się do 2–3 minut — każde zadanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby sprawdzian był jak najwyższej jakości.</span>
+            <span>Trudny poziom może generować się do 3 minut — każde zadanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby sprawdzian był jak najwyższej jakości.</span>
           </div>
         </div>
 
@@ -987,15 +987,13 @@ async function fetchWariant(temat,numQ,wariant){
   const finalInstr=auto+(wlasneInstr||'');
   const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
   const examController = new AbortController();
-  // ZWIEKSZONE (29.08.2026): backendowy budzet dla tematow "trudny"
-  // zostal podniesiony 60s->120s (patrz _HARD_TIMEOUT_SECONDS_EXAM w
-  // exam_pdf_generator.py) - real-test pokazal 132s SAMEJ tresci (bez
-  // budowy PDF) dla trudnej trygonometrii. Stary timeout 120000 byl
-  // wiec DOKLADNIE na granicy nowego backendowego budzetu (zero
-  // marginesu) - frontend przerywalby polaczenie w momencie, gdy
-  // backend jest bliski sukcesu. 180s daje realny margines na PDF +
-  // siec, dla A i A+B (rownolegle, patrz exam_api.py).
-  const examTimeoutId = setTimeout(()=>examController.abort(), 180000);
+  // ZWIEKSZONE PONOWNIE (29.08.2026): backendowy budzet dla tematow
+  // "trudny" podniesiony 120s->180s (patrz _HARD_TIMEOUT_SECONDS_EXAM w
+  // exam_pdf_generator.py, user: "musimy podniesc do 3 minut"). Timeout
+  // frontendu musi zostac PONAD nowym budzetem (jak poprzednio - stary
+  // byl DOKLADNIE na granicy, zero marginesu) - 240s daje margines na
+  // budowe PDF + siec, dla A i A+B (rownolegle, patrz exam_api.py).
+  const examTimeoutId = setTimeout(()=>examController.abort(), 240000);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
   const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':'https://eduvia-backend-2.onrender.com';
   const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
@@ -1049,7 +1047,7 @@ async function generate(){
   // zamiast userowi patrzec na ten sam podpis co dla latwego/sredniego,
   // podczas gdy realnie moze to potrwac 2-3x dluzej.
   const _subEl=document.getElementById('loadingSubtitle');
-  if(_subEl)_subEl.textContent=(vals.trudnosc==='trudna')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby sprawdzian był jak najwyższej jakości. To może potrwać do 2–3 minut.':'AI tworzy pytania i buduje PDF';
+  if(_subEl)_subEl.textContent=(vals.trudnosc==='trudna')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby sprawdzian był jak najwyższej jakości. To może potrwać do 3 minut.':'AI tworzy pytania i buduje PDF';
   startProgress();
   try{
     if(wariant==='AB'){

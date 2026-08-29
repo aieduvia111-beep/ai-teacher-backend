@@ -101,7 +101,7 @@ print("   _HARD_TIMEOUT_SECONDS_EXAM w exam_pdf_generator.py)")
 print("=" * 70)
 
 check("rownania kwadratowe + srednia -> 60s", _max_generation_seconds_exam("Rownania kwadratowe", "srednia") == 60.0, None)
-check("rownania kwadratowe + trudna -> 120s (podwyzszone dla trudnych)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 120.0, None)
+check("rownania kwadratowe + trudna -> 180s (podwyzszone ponownie 29.08.2026)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 180.0, None)
 check("inny temat + srednia -> 60s (jednolicie)", _max_generation_seconds_exam("Trygonometria", "srednia") == 60.0, None)
 check("brak tematu -> 60s (jednolicie)", _max_generation_seconds_exam(None, "srednia") == 60.0, None)
 

@@ -1097,7 +1097,13 @@ _TIMEOUT_SECONDS_EXAM = 60.0
 # niezawodnosc/kompletnosc ponad szybkosc - podwojony budzet, IDENTYCZNA
 # wartosc i logika co w Quizie (parytet Quiz/Sprawdzian). Wszystko
 # ponizej "trudny"/"trudna" zostaje przy jednolitym 60s bez zmian.
-_HARD_TIMEOUT_SECONDS_EXAM = 120.0
+#
+# ZWIEKSZONE PONOWNIE (user, 29.08.2026 - kolejny real-test, n=15,
+# trudna trygonometria: 11/15 po 120s, w oczekiwanym zakresie, ale user
+# chce mniej niedoborow): "musimy podniesc do 3 minut dla mnie to za
+# duzo ale jak trzeba to trzeba dawaj". 120s->180s, identyczna zmiana w
+# _HARD_TIMEOUT_SECONDS (openai_exam.py) i we frontendowych timeoutach.
+_HARD_TIMEOUT_SECONDS_EXAM = 180.0
 
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
