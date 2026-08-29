@@ -121,7 +121,10 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
             # seen_fingerprints/used_safe_letters/itd. lokalnie). Realny test
             # (n=20, rownania kwadratowe z parametrem, srednia - najciezszy
             # przypadek) pokazal 114.9s dla sekwencyjnego A+B, zaledwie 5.1s
-            # marginesu do timeoutu frontendu (120s, exam_generator.html) -
+            # marginesu do ONCZESNIE OBOWIAZUJACEGO timeoutu frontendu
+            # (120s wtedy - patrz NOWSZY komentarz w exam_generator.html:
+            # timeout frontendu podniesiony do 180s 29.08.2026, razem z
+            # backendowym budzetem dla "trudny" 60s->120s) -
             # niebezpiecznie ciasno. Uruchamiamy je teraz ROWNOLEGLE
             # (asyncio.gather) - _executor ma max_workers=4, wystarczajaco na
             # dwa jednoczesne zadania - calkowity czas to czas WOLNIEJSZEGO z

@@ -1110,7 +1110,12 @@ async function startQuiz(){
     showPage('pageLoading');
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
-    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 120000);
+    // ZWIEKSZONE (29.08.2026): backendowy budzet dla trudnosci "hard"
+    // podniesiony 60s->120s (patrz _HARD_TIMEOUT_SECONDS w
+    // openai_exam.py) - stary timeout 120000 byl DOKLADNIE na granicy
+    // nowego budzetu (zero marginesu), wiec frontend przerywalby
+    // polaczenie w momencie, gdy backend jest bliski sukcesu.
+    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 150000);
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
@@ -1167,7 +1172,10 @@ async function startQuiz(){
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
   var quizController2 = new AbortController();
-  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 120000);
+  // ZWIEKSZONE (29.08.2026): identyczny powod co quizTimeoutId1 wyzej -
+  // backendowy budzet dla "hard" podniesiony 60s->120s, stary timeout
+  // 120000 nie zostawial zadnego marginesu.
+  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 150000);
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })
