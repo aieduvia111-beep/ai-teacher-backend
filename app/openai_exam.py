@@ -15,7 +15,7 @@ from .math_verify import (
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, format_avoid_diversity_block,
-    build_safe_trig_skeleton,
+    build_safe_trig_skeleton, build_safe_sequence_two_terms,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1480,6 +1480,102 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
+# Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
+# Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
+# poprawna odpowiedz, pisze TYLKO tresc pytania po polsku + wyjasnienie
+# + diversity_tag.
+async def _raw_generate_safe_sequence_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla archetypu 'w ciagu arytmetycznym a_m=X,
+    a_n=Y - wyznacz a1 i r' metoda 'safe parameter generation' - patrz
+    komentarz wyzej. Jedno wywolanie AI dla calej partii, analogicznie
+    do _raw_generate_safe_trig_quadratic_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_sequence_two_terms() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. Dane: {sk['question_text']} "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o ciagach arytmetycznych,
+zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie (1-2 zdania) - ulozenie ukladu dwoch
+   rownan z wzoru $a_n = a_1 + (n-1)r$ i rozwiazanie go.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Ciągi arytmetyczne - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "W ciągu arytmetycznym $a_3 = 10$, $a_7 = 22$. Wyznacz pierwszy wyraz i różnicę tego ciągu.",
+            "explanation": "Z warunkow ukladamy uklad rownan: $a_1+2r=10$ i $a_1+6r=22$. Odejmujac stronami: $4r=12$, wiec $r=3$, a stad $a_1=4$.",
+            "diversity_tag": {{
+                "skill": "wzor na n-ty wyraz ciagu arytmetycznego", "concept": "uklad dwoch rownan z dwoch wyrazow",
+                "task_type": "wyznacz a1 i r", "reasoning": "ulóż uklad rownan, odejmij stronami, rozwiaz"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["question_text"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Ciągi arytmetyczne - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -1509,6 +1605,22 @@ def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
     is_trig = topic is not None and is_trigonometry_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     return is_trig and diff_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_hard_arithmetic_sequence(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla CIAGOW
+    ARYTMETYCZNYCH na poziomie trudny/hard (port wzorca z
+    _is_hard_trig_quadratic wyzej - user: "rozszerz... aby caly system
+    byl profesjonalny", kontynuacja po trygonometrii). Archetyp
+    (build_safe_sequence_two_terms w math_verify.py) jest SPECYFICZNY
+    dla ciagow ARYTMETYCZNYCH (wzor a1+(n-1)r) - CELOWO wymaga
+    "arytmetyczn" w temacie I BRAKU "geometryczn" (is_sequence_topic
+    dopasowuje OBA rodzaje, ale ten archetyp matematycznie dziala TYLKO
+    dla arytmetycznych - geometryczne maja inny wzor, a1*q^(n-1))."""
+    t = (topic or "").lower()
+    is_arithmetic = ("ciąg" in t or "ciag" in t) and "arytmetyczn" in t and "geometryczn" not in t
+    diff_word = (difficulty or "").strip().lower()
+    return is_arithmetic and diff_word in _HARD_DIFFICULTY_WORDS
 
 
 async def _generate_quiz_topic_once(
@@ -1570,6 +1682,10 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na trygonometrie - patrz
         # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_trig_quadratic_batch(max(n, _MIN_FILL_BATCH))
+    elif _is_hard_arithmetic_sequence(topic, difficulty):
+        # Port tego samego wzorca na ciagi arytmetyczne - patrz
+        # _is_hard_arithmetic_sequence i _raw_generate_safe_sequence_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,

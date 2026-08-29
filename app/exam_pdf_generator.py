@@ -38,6 +38,7 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, check_sequence_formula_open_answer,
     format_avoid_diversity_block, build_safe_trig_skeleton,
+    build_safe_sequence_two_terms,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1126,6 +1127,17 @@ def _is_hard_trig_quadratic_exam(temat: str, trudnosc: str) -> bool:
     return is_trig and trudnosc_word in _HARD_DIFFICULTY_WORDS
 
 
+def _is_hard_arithmetic_sequence_exam(temat: str, trudnosc: str) -> bool:
+    """PORT z Quizu (_is_hard_arithmetic_sequence w openai_exam.py) -
+    patrz tam pelne uzasadnienie (CELOWO tylko ciagi ARYTMETYCZNE, nie
+    geometryczne - archetyp jest matematycznie specyficzny dla wzoru
+    a1+(n-1)r). Uzywana TYLKO w rundach dogenerowania."""
+    t = (temat or "").lower()
+    is_arithmetic = ("ciąg" in t or "ciag" in t) and "arytmetyczn" in t and "geometryczn" not in t
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_arithmetic and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
@@ -2067,6 +2079,126 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
+    # Sprawdzian) - patrz pelne uzasadnienie w
+    # math_verify.build_safe_sequence_two_terms i
+    # openai_exam._raw_generate_safe_sequence_batch (Quiz, ten sam
+    # mechanizm).
+    def _raw_generate_safe_sequence_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla archetypu 'w ciagu
+        arytmetycznym a_m=X, a_n=Y - wyznacz a1 i r' metoda 'safe
+        parameter generation' - zwraca dane w KSZTALCIE sprawdzianu,
+        analogicznie do _raw_generate_safe_trig_quadratic_batch."""
+        buffered_n = n + 3
+        skeletons = [build_safe_sequence_two_terms() for _ in range(buffered_n)]
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            items_desc.append(
+                f"{i + 1}. Dane: {sk['question_text']} "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o ciagach arytmetycznych,
+zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie (1-2 zdania) - ulozenie ukladu dwoch
+   rownan z wzoru $a_n = a_1 + (n-1)r$ i rozwiazanie go.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "W ciągu arytmetycznym $a_3 = 10$, $a_7 = 22$. Wyznacz pierwszy wyraz i różnicę tego ciągu.",
+                    "punkty": 1,
+                    "wyjasnienie": "Z warunkow ukladamy uklad rownan: $a_1+2r=10$ i $a_1+6r=22$. Odejmujac stronami: $4r=12$, wiec $r=3$, a stad $a_1=4$.",
+                    "diversity_tag": {{
+                        "skill": "wzor na n-ty wyraz ciagu arytmetycznego", "concept": "uklad dwoch rownan z dwoch wyrazow",
+                        "task_type": "wyznacz a1 i r",
+                        "reasoning": "ulóż uklad rownan, odejmij stronami, rozwiaz"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (ciagi): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or sk["question_text"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -2180,6 +2312,11 @@ ZASADY:
                         # _is_hard_trig_quadratic_exam i
                         # _raw_generate_safe_trig_quadratic_batch.
                         extra = self._raw_generate_safe_trig_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM))
+                    elif _is_hard_arithmetic_sequence_exam(temat, trudnosc):
+                        # Port tego samego wzorca na ciagi arytmetyczne -
+                        # patrz _is_hard_arithmetic_sequence_exam i
+                        # _raw_generate_safe_sequence_batch.
+                        extra = self._raw_generate_safe_sequence_batch(max(missing, _MIN_FILL_BATCH_EXAM))
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1

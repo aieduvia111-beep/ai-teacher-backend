@@ -749,6 +749,84 @@ def build_safe_trig_solvability_range(func: str = None, letter: str = None) -> d
     }
 
 
+# SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE, TRUDNY (29.08.2026,
+# user: "rozszerz... aby caly system byl profesjonalny" - kontynuacja
+# tego samego wzorca na kolejny temat po trygonometrii). Archetyp
+# wybrany na podstawie OFICJALNEGO, juz istniejacego w tym systemie
+# kryterium poziomu 4-5 dla ciagow (patrz SEQUENCE_DIFFICULTY_TIERS w
+# level_config.py): "Uklad DWOCH warunkow jednoczesnie... dwa rozne
+# wyrazy ciagu" - przyklad tam wprost: "W ciagu arytmetycznym a3=10,
+# a7=22. Wyznacz pierwszy wyraz i roznice." - DOKLADNIE ten wzorzec.
+#
+# KOD wybiera a1 i r (pierwszy wyraz i roznica) JAKO PIERWSZE, liczy
+# PRAWDZIWE wartosci dwoch wyrazow a_m, a_n z tych parametrow (m<n,
+# oba >= 2 - patrz nizej dlaczego), i DOPIERO wtedy formuluje pytanie
+# "podane sa a_m i a_n, wyznacz a1 i r" - student (i AI formulujace
+# pytanie) widzi problem w ODWROTNEJ kolejnosci niz go zbudowano,
+# ale poprawnosc jest gwarantowana przez konstrukcje (identyczny
+# wzorzec co build_safe_linear_param_quadratic/
+# build_safe_trig_quadratic_equation).
+_SEQ_A1_POOL = list(range(-9, 10))  # -9..9, wyklucza tylko przez retry a1==r
+_SEQ_R_POOL = [v for v in range(-6, 7) if v != 0]  # roznica NIGDY 0 (nie byloby "ciagiem" w praktyce zadania)
+_SEQ_INDEX_POOL = list(range(2, 10))  # m,n >= 2 - GWARANTUJE a_m != a1 (patrz distraktor 3 nizej)
+
+
+def build_safe_sequence_two_terms(a1: int = None, r: int = None, m: int = None, n: int = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania 'w ciagu arytmetycznym
+    a_m=X, a_n=Y - wyznacz pierwszy wyraz i roznice' (patrz komentarz
+    wyzej). a1/r wybrane PRZED policzeniem a_m/a_n - poprawnosc
+    gwarantowana przez konstrukcje, nie przez odwrotne rozwiazywanie
+    ukladu rownan (student/AI musi to zrobic, kod nie musi)."""
+    if a1 is None:
+        a1 = random.choice(_SEQ_A1_POOL)
+    if r is None:
+        r = random.choice(_SEQ_R_POOL)
+        while r == a1:  # unika kolizji z dystraktorem 1 (zamiana a1<->r)
+            r = random.choice(_SEQ_R_POOL)
+    if m is None or n is None:
+        m, n = sorted(random.sample(_SEQ_INDEX_POOL, 2))
+    a_m_val = a1 + (m - 1) * r
+    a_n_val = a1 + (n - 1) * r
+    correct_text = f"a_1 = {a1}, r = {r}"
+    # DYSTRAKTORY - typowe, realne bledy uczniow przy tym wzorcu (nie
+    # losowy tekst): (1) zamiana a1 i r miejscami, (2) zly znak roznicy,
+    # (3) potraktowanie PIERWSZEGO podanego wyrazu jako a1 wprost
+    # (zapomnienie przesuniecia o (m-1)) - m>=2 gwarantuje, ze a_m_val
+    # jest RZECZYWISCIE inne od a1, wiec ten dystraktor nigdy nie
+    # koliduje z poprawna odpowiedzia.
+    distractors = [
+        f"a_1 = {r}, r = {a1}",
+        f"a_1 = {a1}, r = {-r}",
+        f"a_1 = {a_m_val}, r = {r}",
+    ]
+    question_text = (
+        f"W ciągu arytmetycznym $a_{{{m}}} = {a_m_val}$, $a_{{{n}}} = {a_n_val}$. "
+        f"Wyznacz pierwszy wyraz i różnicę tego ciągu."
+    )
+    return {
+        "a1": a1, "r": r, "m": m, "n": n, "a_m_val": a_m_val, "a_n_val": a_n_val,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+def verify_sequence_two_terms(a1: int, r: int, m: int, n: int, a_m_val: int, a_n_val: int) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka obliczeniowa
+    niz build_safe_sequence_two_terms - rozwiazuje uklad rownan PRZEZ
+    sympy zamiast ufac, ze konstrukcja byla poprawna) - sprawdza, czy
+    (a1, r) jest JEDYNYM rozwiazaniem ukladu a1+(m-1)*r=a_m_val,
+    a1+(n-1)*r=a_n_val."""
+    A1, R = sp.symbols('A1 R')
+    sol = sp.solve([
+        Eq(A1 + (m - 1) * R, a_m_val),
+        Eq(A1 + (n - 1) * R, a_n_val),
+    ], [A1, R])
+    if not sol:
+        return False
+    return sol.get(A1) == a1 and sol.get(R) == r
+
+
 def build_safe_trig_skeleton() -> dict:
     """Losuje JEDEN z dwoch dostepnych, bezpiecznych archetypow trudnej
     trygonometrii (build_safe_trig_quadratic_equation lub
