@@ -40,6 +40,7 @@ from .math_verify import (
     format_avoid_diversity_block, build_safe_trig_skeleton,
     build_safe_sequence_two_terms, build_safe_law_of_cosines_triangle,
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
+    build_safe_law_of_sines_triangle,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -374,6 +375,18 @@ def _fix_latex(tekst: str) -> str:
     """Naprawia brakujące backslashe w LaTeX — prosta zamiana stringiem."""
     if not tekst:
         return tekst
+    # NAPRAWIONE (real-test archetypu twierdzenia sinusow, sierpien
+    # 2026): AI czasem uzywa "\( ... \)"/"\[ ... \]" (rowniez poprawny,
+    # powszechny LaTeX) zamiast "$...$" - _render_math_png (jedyny
+    # renderer matematyki w PDF) rozpoznaje WYLACZNIE "$" jako granice
+    # trybu matematycznego (patrz petla "if ch == '$': in_m = not in_m"),
+    # wiec cala zawartosc "\( \)" byla renderowana jako DOSLOWNY tekst
+    # (np. "\frac{a}{\sin A}" zamiast rzeczywistego ulamka) - CICHY,
+    # kosmetyczny blad (bez wyjatku), znaleziony przez recznie obejrzany
+    # PNG, nie przez log bledu. Zamieniamy PRZED reszta funkcji (ktora
+    # operuje juz na granicach "$").
+    tekst = tekst.replace('\\(', '$').replace('\\)', '$')
+    tekst = tekst.replace('\\[', '$').replace('\\]', '$')
     # Usun \newline / \\ - model czasem wstawia je jako separator krokow w
     # wielokrokowych wyjasnieniach (Viete itp.), co psuje parzystosc dolarow
     # i renderowanie (patrz identyczny fix w openai_exam.py fix_latex_in_quiz).
@@ -1177,6 +1190,15 @@ def _is_hard_abs_value_exam(temat: str, trudnosc: str) -> bool:
     is_av = "bezwzględn" in t or "bezwzgledn" in t
     trudnosc_word = (trudnosc or "").strip().lower()
     return is_av and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_hard_law_of_sines_exam(temat: str, trudnosc: str) -> bool:
+    """PORT z Quizu (_is_hard_law_of_sines w openai_exam.py) - patrz tam
+    pelne uzasadnienie. Uzywana TYLKO w rundach dogenerowania."""
+    t = (temat or "").lower()
+    is_los = "sinus" in t and "cosin" not in t and "kosin" not in t
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_los and trudnosc_word in _HARD_DIFFICULTY_WORDS
 
 
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
@@ -2612,6 +2634,128 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - TWIERDZENIE SINUSOW (29.08.2026, port
+    # na Sprawdzian) - patrz pelne uzasadnienie w
+    # math_verify.build_safe_law_of_sines_triangle i
+    # openai_exam._raw_generate_safe_law_of_sines_batch (Quiz, ten sam
+    # mechanizm).
+    def _raw_generate_safe_law_of_sines_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla archetypu 'dwa katy + bok
+        naprzeciw jednego -> bok naprzeciw drugiego' (twierdzenie
+        sinusow) metoda 'safe parameter generation' - zwraca dane w
+        KSZTALCIE sprawdzianu, analogicznie do
+        _raw_generate_safe_law_of_cosines_batch."""
+        buffered_n = n + 3
+        skeletons = [sk for sk in (build_safe_law_of_sines_triangle() for _ in range(buffered_n)) if sk is not None]
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            items_desc.append(
+                f"{i + 1}. Trojkat: kat A={sk['angle_a_deg']}°, kat B={sk['angle_b_deg']}°, "
+                f"bok a={sk['a']} (naprzeciw A), szukamy boku b (naprzeciw B). "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o trojkacie (twierdzenie sinusow),
+tresc zadania, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalna, poprawna tresc zadania po polsku (np. "W trójkącie kąt A=..., kąt B=..., bok a=... Oblicz długość boku b.").
+2. Napisac krotkie wyjasnienie krok po kroku - trzeci kat C=180°-A-B,
+   proporcja z twierdzenia sinusow $\\frac{{a}}{{\\sin A}}=\\frac{{b}}{{\\sin B}}$,
+   wyznaczenie b.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ liczb (katow, boku a) ani opcji odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO
+jezyk, nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "W trójkącie kąt $A = 50°$, kąt $B = 75°$, bok $a = 7$ (naprzeciw kąta $A$). Oblicz długość boku $b$ (naprzeciw kąta $B$), z dokładnością do dwóch miejsc po przecinku.",
+                    "punkty": 1,
+                    "wyjasnienie": "Z twierdzenia sinusów: $\\frac{{a}}{{\\sin A}}=\\frac{{b}}{{\\sin B}}$, stąd $b=\\frac{{a\\sin B}}{{\\sin A}}=\\frac{{7\\sin 75°}}{{\\sin 50°}}\\approx 8.83$.",
+                    "diversity_tag": {{
+                        "skill": "twierdzenie sinusow", "concept": "proporcja boku i sinusa kata przeciwleglego",
+                        "task_type": "wyznacz bok trojkata",
+                        "reasoning": "zastosuj proporcje z tw. sinusow dla znanych katow i boku"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(8000, max(2000, 450 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (twierdzenie sinusow): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or sk["question_text"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -2781,6 +2925,11 @@ ZASADY:
                         # patrz _is_hard_abs_value_exam i
                         # _raw_generate_safe_abs_value_batch.
                         extra = self._raw_generate_safe_abs_value_batch(max(missing, _MIN_FILL_BATCH_EXAM))
+                    elif _is_hard_law_of_sines_exam(temat, trudnosc):
+                        # Port tego samego wzorca na twierdzenie sinusow -
+                        # patrz _is_hard_law_of_sines_exam i
+                        # _raw_generate_safe_law_of_sines_batch.
+                        extra = self._raw_generate_safe_law_of_sines_batch(max(missing, _MIN_FILL_BATCH_EXAM))
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1

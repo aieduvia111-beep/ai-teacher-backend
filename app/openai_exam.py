@@ -17,7 +17,7 @@ from .math_verify import (
     pick_safe_param_values, format_avoid_diversity_block,
     build_safe_trig_skeleton, build_safe_sequence_two_terms,
     build_safe_law_of_cosines_triangle, build_safe_geometric_sequence_two_terms,
-    build_safe_abs_value_equation,
+    build_safe_abs_value_equation, build_safe_law_of_sines_triangle,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1885,6 +1885,102 @@ ZASADY:
     return quiz_data
 
 
+async def _raw_generate_safe_law_of_sines_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla archetypu 'dwa katy + bok naprzeciw
+    jednego -> bok naprzeciw drugiego' (twierdzenie sinusow) metoda
+    'safe parameter generation' - patrz komentarz w math_verify.py.
+    Jedno wywolanie AI dla calej partii, analogicznie do
+    _raw_generate_safe_law_of_cosines_batch."""
+    buffered_n = n + 3
+    skeletons = [sk for sk in (build_safe_law_of_sines_triangle() for _ in range(buffered_n)) if sk is not None]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. Trojkat: kat A={sk['angle_a_deg']}°, kat B={sk['angle_b_deg']}°, "
+            f"bok a={sk['a']} (naprzeciw A), szukamy boku b (naprzeciw B). "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o trojkacie (twierdzenie sinusow),
+tresc zadania, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalna, poprawna tresc zadania po polsku (np. "W trójkącie kąt A=..., kąt B=..., bok a=... Oblicz długość boku b.").
+2. Napisac krotkie wyjasnienie krok po kroku - trzeci kat C=180°-A-B,
+   proporcja z twierdzenia sinusow $\\frac{{a}}{{\\sin A}}=\\frac{{b}}{{\\sin B}}$,
+   wyznaczenie b.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ liczb (katow, boku a) ani opcji odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO
+jezyk, nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Twierdzenie sinusów - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "W trójkącie kąt $A = 50°$, kąt $B = 75°$, bok $a = 7$ (naprzeciw kąta $A$). Oblicz długość boku $b$ (naprzeciw kąta $B$), z dokładnością do dwóch miejsc po przecinku.",
+            "explanation": "Z twierdzenia sinusów: $\\frac{{a}}{{\\sin A}}=\\frac{{b}}{{\\sin B}}$, stąd $b=\\frac{{a\\sin B}}{{\\sin A}}=\\frac{{7\\sin 75°}}{{\\sin 50°}}\\approx 8.83$.",
+            "diversity_tag": {{
+                "skill": "twierdzenie sinusow", "concept": "proporcja boku i sinusa kata przeciwleglego",
+                "task_type": "wyznacz bok trojkata", "reasoning": "zastosuj proporcje z tw. sinusow dla znanych katow i boku"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        # Mnoznik 450/pytanie - ta sama poprawka co przy archetypie
+        # wartosci bezwzglednej (patrz komentarz wyzej), zeby uniknac
+        # "Unterminated string" przy dluzszych wyjasnieniach.
+        max_tokens=min(8000, max(2000, 450 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["question_text"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Twierdzenie sinusów - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -1976,6 +2072,22 @@ def _is_hard_abs_value(topic: str, difficulty: str) -> bool:
     return is_av and diff_word in _HARD_DIFFICULTY_WORDS
 
 
+def _is_hard_law_of_sines(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla TWIERDZENIA
+    SINUSOW na poziomie trudny/hard (szoste rozszerzenie tego samego
+    dnia - user: "idziemy dalej, rob to dobrze"). Waskie dopasowanie
+    (TYLKO "sinus", NIE ogolne "trojkat"/"planimetria") - "bezpieczny
+    abstain": wolimy NIE zlapac przypadku niz falszywie zlapac
+    twierdzenie cosinusow (juz ma WLASNY, osobny archetyp) albo inna
+    czesc planimetrii. Patrz build_safe_law_of_sines_triangle
+    (math_verify.py) po uzasadnienie swiadomej redukcji zakresu (ASA/AAS,
+    nie SSA - przypadek dwuznaczny)."""
+    t = (topic or "").lower()
+    is_los = "sinus" in t and "cosin" not in t and "kosin" not in t
+    diff_word = (difficulty or "").strip().lower()
+    return is_los and diff_word in _HARD_DIFFICULTY_WORDS
+
+
 async def _generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str
@@ -2053,6 +2165,10 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na wartosc bezwzgledna - patrz
         # _is_hard_abs_value i _raw_generate_safe_abs_value_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_abs_value_batch(max(n, _MIN_FILL_BATCH))
+    elif _is_hard_law_of_sines(topic, difficulty):
+        # Port tego samego wzorca na twierdzenie sinusow - patrz
+        # _is_hard_law_of_sines i _raw_generate_safe_law_of_sines_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_sines_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,

@@ -1084,6 +1084,93 @@ def verify_abs_value_equation(b: int, c: int, d: int, x1: int, claimed_text: str
     return sols == sp.FiniteSet(claimed_val) and claimed_val == x1
 
 
+# SAFE PARAMETER GENERATION - TWIERDZENIE SINUSOW, TRUDNY (29.08.2026,
+# user: "idziemy dalej rob to dobrze prosze" - szoste rozszerzenie tego
+# samego dnia). Kolejny podtemat "Fali 1" po planimetrii/tw. cosinusow -
+# "twierdzenie sinus" jest JAWNIE wymienione jako dozwolony temat
+# liceum_2/technikum_3 w GENERIC_TOPIC_KEYWORDS (level_config.py).
+#
+# SWIADOMA REDUKCJA ZAKRESU (jak przy kazdym archetypie, ustalona PRZED
+# kodowaniem): przypadek SSA (dwa boki + kat NIE miedzy nimi) jest w
+# ogolnosci NIEJEDNOZNACZNY ("przypadek dwuznaczny" - 0, 1 albo 2
+# trojkaty moga spelniac te same dane). Zamiast tego uzywamy DWOCH
+# KATOW + boku NAPRZECIW jednego z nich (ASA/AAS) - trzeci kat jest
+# WYZNACZONY jednoznacznie (180-A-B), wiec caly trojkat (a wiec i szukany
+# bok) jest jednoznaczny - zero ryzyka dwuznacznosci, ten sam rdzen
+# umiejetnosci (proporcja a/sin(A)=b/sin(B)) co material programowy.
+#
+# Katy z tej samej puli co twierdzenie cosinusow (_LOC_ANGLE_POOL_DEG) -
+# celowo "nieladne" (bez 30/45/60/90/120/135/150), wymusza prawdziwe
+# liczenie sin (nie pamieciowe wartosci specjalne) i - kluczowe dla tego
+# archetypu - NIE zawiera 90°, wiec cos(A)/cos(B) w dystraktorze
+# "cos_confuse" ponizej nigdy nie dzieli przez zero.
+_LOS_ANGLE_POOL_DEG = _LOC_ANGLE_POOL_DEG
+_LOS_SIDE_POOL = _LOC_SIDE_POOL
+_LOS_ROUND_DIGITS = _LOC_ROUND_DIGITS
+
+
+def build_safe_law_of_sines_triangle(a: int = None, angle_a_deg: int = None,
+                                      angle_b_deg: int = None, max_tries: int = 100) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania 'dwa katy + bok naprzeciw
+    jednego z nich -> bok naprzeciw drugiego' (ASA/AAS, ZAWSZE
+    jednoznaczny - patrz komentarz wyzej o unikanym przypadku SSA).
+    Retry (max_tries) odrzuca zdegenerowane trojkaty (A+B blisko 180°)
+    ORAZ kazda kolizje miedzy poprawna odpowiedzia i dystraktorami
+    (np. gdy A=B lub sin(A)=sin(B) przypadkowo, patrz sin(180-x)=sin(x) -
+    wtedy 'odwrocona proporcja' zbiega sie z poprawna odpowiedzia) -
+    ten sam ogolny wzorzec 'bezpiecznego abstynowania' co inne archetypy."""
+    for _ in range(max_tries):
+        A = angle_a_deg if angle_a_deg is not None else random.choice(_LOS_ANGLE_POOL_DEG)
+        B = angle_b_deg if angle_b_deg is not None else random.choice(_LOS_ANGLE_POOL_DEG)
+        if A + B >= 175:  # margines >=5° na kat C - unika zdegenerowanego trojkata
+            continue
+        side_a = a if a is not None else random.choice(_LOS_SIDE_POOL)
+        C = 180 - A - B
+        sin_A, sin_B, sin_C = sp.sin(sp.rad(A)), sp.sin(sp.rad(B)), sp.sin(sp.rad(C))
+        cos_A, cos_B = sp.cos(sp.rad(A)), sp.cos(sp.rad(B))
+        b_val = round(float(side_a * sin_B / sin_A), _LOS_ROUND_DIGITS)
+        # DYSTRAKTORY - typowe, realne bledy uczniow (nie losowy tekst):
+        b_swap = round(float(side_a * sin_A / sin_B), _LOS_ROUND_DIGITS)  # odwrocona proporcja (a/sinB=b/sinA)
+        b_wrong_angle = round(float(side_a * sin_C / sin_A), _LOS_ROUND_DIGITS)  # pomylony kat (C zamiast B)
+        # abs() - ten sam powod co area_cos_confuse w tw. cosinusow: dla
+        # katow rozwartych (>90°, obecnych w tej puli) cos jest ujemny,
+        # wiec bez abs() dystraktor mogby wyjsc ujemny - oczywiscie
+        # bledna (wiec bezuzyteczna jako pulapka) dlugosc boku.
+        b_cos_confuse = round(abs(float(side_a * cos_B / cos_A)), _LOS_ROUND_DIGITS)  # cos zamiast sin (mylenie z tw. cosinusow)
+        candidates_fmt = [f"{v:.2f}" for v in (b_val, b_swap, b_wrong_angle, b_cos_confuse)]
+        if len(set(candidates_fmt)) != 4:
+            continue
+        question_text = (
+            f"W trójkącie kąt $A = {A}°$, kąt $B = {B}°$, bok $a = {side_a}$ "
+            f"(naprzeciw kąta $A$). Oblicz długość boku $b$ (naprzeciw kąta $B$), "
+            f"z dokładnością do dwóch miejsc po przecinku."
+        )
+        return {
+            "angle_a_deg": A, "angle_b_deg": B, "a": side_a,
+            "b_val": b_val,
+            "question_text": question_text,
+            "correct_text": candidates_fmt[0],
+            "distractors": candidates_fmt[1:],
+        }
+    return None
+
+
+def verify_law_of_sines_triangle(a: int, angle_a_deg: int, angle_b_deg: int, claimed_text: str) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka niz
+    build_safe_law_of_sines_triangle) - liczy PRAWDZIWA wartosc b od
+    zera z surowych a/angle_a_deg/angle_b_deg i porownuje z tekstem
+    odpowiedzi z tolerancja +-0.01 (ta sama konwencja zaokraglania co
+    pozostale archetypy geometryczne - twierdzenie cosinusow)."""
+    sin_A = sp.sin(sp.rad(angle_a_deg))
+    sin_B = sp.sin(sp.rad(angle_b_deg))
+    true_val = float(a * sin_B / sin_A)
+    try:
+        claimed_val = float(claimed_text)
+    except (TypeError, ValueError):
+        return False
+    return abs(round(true_val, _LOS_ROUND_DIGITS) - claimed_val) <= 0.01
+
+
 def build_safe_trig_skeleton() -> dict:
     """Losuje JEDEN z dwoch dostepnych, bezpiecznych archetypow trudnej
     trygonometrii (build_safe_trig_quadratic_equation lub
