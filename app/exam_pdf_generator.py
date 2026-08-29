@@ -1068,6 +1068,23 @@ _MIN_FILL_BATCH_EXAM = 4
 # jednego, wiekszego budzetu dla calego Sprawdzianu.
 _TIMEOUT_SECONDS_EXAM = 60.0
 
+# NOWE (user, 29.08.2026 - real-test Sprawdzianu z trudnej trygonometrii
+# PO naprawie avoid-block i buga z brakujacym `client` w rundach
+# dogenerowania - patrz commit "Napraw pominieta Warstwe 2.5 w rundach
+# Sprawdzianu"): jednolite 60s wyzej bylo ustalone PRZED ta naprawa,
+# kiedy Warstwa 2.5 (slepa weryfikacja przez drugie, niezalezne AI) byla
+# PO CICHU pomijana w kazdej rundzie dogenerowania. Po naprawie kazda
+# runda robi DWA realne wywolania AI (generacja + weryfikacja) zamiast
+# jednego - real-test pokazal 80s i NADAL niepelny wynik dla trudnej
+# trygonometrii (wysoki rejection rate + dluzsze rozumowanie AI dla
+# trudnych zadan, ten sam mechanizm co juz wczesniej udokumentowany w
+# Quizie - patrz _HARD_TIMEOUT_SECONDS w openai_exam.py). User
+# potwierdzil: dla tematow na poziomie "trudny"/"trudna" priorytet to
+# niezawodnosc/kompletnosc ponad szybkosc - podwojony budzet, IDENTYCZNA
+# wartosc i logika co w Quizie (parytet Quiz/Sprawdzian). Wszystko
+# ponizej "trudny"/"trudna" zostaje przy jednolitym 60s bez zmian.
+_HARD_TIMEOUT_SECONDS_EXAM = 120.0
+
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - PORT z Quizu
@@ -1084,10 +1101,13 @@ def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
-    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). Jednolite 60s dla
-    WSZYSTKICH tematow/trudnosci (jawna decyzja usera) - argumenty
-    (temat/trudnosc) zostaja w sygnaturze dla zgodnosci z callerami,
-    ktore nadal moga chciec przekazac te informacje w przyszlosci."""
+    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 120s dla tematow na
+    poziomie "trudny"/"trudna" (patrz _HARD_TIMEOUT_SECONDS_EXAM -
+    real-test, sierpien 2026), 60s dla wszystkiego innego (pierwotna,
+    jednolita decyzja usera - nadal w mocy dla latwy/sredni)."""
+    diff_word = (trudnosc or "").strip().lower()
+    if diff_word in _HARD_DIFFICULTY_WORDS:
+        return _HARD_TIMEOUT_SECONDS_EXAM
     return _TIMEOUT_SECONDS_EXAM
 
 _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}

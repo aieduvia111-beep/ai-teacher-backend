@@ -44,7 +44,7 @@ check("polska odmiana 'sredni' + rownania kwadratowe -> 45s", r == 45.0, r)
 # ZMIENIONE: rownania kwadratowe+hard teraz tez 60s (patrz docstring) -
 # wyjety z ponizszej petli "30s bez zmian", bo juz NIE jest bez zmian.
 r = _max_generation_seconds("Rownania kwadratowe", "hard")
-check("rownania kwadratowe + hard -> 60s (nowy, ogolny wyjatek dla 'trudny')", r == 60.0, r)
+check("rownania kwadratowe + hard -> 120s (ZWIEKSZONE 29.08.2026, patrz _HARD_TIMEOUT_SECONDS)", r == 120.0, r)
 
 for topic, diff in [
     ("Rownania kwadratowe", "easy"),

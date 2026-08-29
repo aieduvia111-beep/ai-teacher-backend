@@ -93,13 +93,15 @@ check("n=13, rownania kwadratowe, trudna -> bufor +60% bez zmian",
 
 print()
 print("=" * 70)
-print("5. Limit czasowy: jednolite 60s dla WSZYSTKICH tematow (jawna decyzja")
-print("   usera - Sprawdzian dodatkowo buduje PDF, wiec potrzebuje wiecej")
-print("   marginesu niz Quiz; zastapilo wczesniejszy waski wyjatek 45s/30s)")
+print("5. Limit czasowy: 60s dla latwy/sredni (jawna decyzja usera - Sprawdzian")
+print("   dodatkowo buduje PDF, wiec potrzebuje wiecej marginesu niz Quiz),")
+print("   120s dla trudny/trudna (ZWIEKSZONE 29.08.2026 po naprawie buga z")
+print("   pominieta Warstwa 2.5 w rundach dogenerowania - patrz komentarz nad")
+print("   _HARD_TIMEOUT_SECONDS_EXAM w exam_pdf_generator.py)")
 print("=" * 70)
 
 check("rownania kwadratowe + srednia -> 60s", _max_generation_seconds_exam("Rownania kwadratowe", "srednia") == 60.0, None)
-check("rownania kwadratowe + trudna -> 60s (jednolicie)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 60.0, None)
+check("rownania kwadratowe + trudna -> 120s (podwyzszone dla trudnych)", _max_generation_seconds_exam("Rownania kwadratowe", "trudna") == 120.0, None)
 check("inny temat + srednia -> 60s (jednolicie)", _max_generation_seconds_exam("Trygonometria", "srednia") == 60.0, None)
 check("brak tematu -> 60s (jednolicie)", _max_generation_seconds_exam(None, "srednia") == 60.0, None)
 

@@ -1551,7 +1551,18 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 # domyslnych +30%, zeby zmniejszyc szanse, ze w ogole potrzebna bedzie
 # runda dogenerowania. "Latwy"/"medium" (poza juz istniejacym, waskim
 # wyjatkiem rownan kwadratowych+medium) zostaja bez zmian.
-_HARD_TIMEOUT_SECONDS = 60.0
+#
+# ZWIEKSZONE (user, 29.08.2026 - real-test Sprawdzianu z trudnej
+# trygonometrii PO naprawie avoid-block/client buga, patrz komentarz nad
+# _HARD_TIMEOUT_SECONDS_EXAM w exam_pdf_generator.py - IDENTYCZNA zmiana
+# tutaj dla parytetu Quiz/Sprawdzian): 60s bylo ustalone PRZED Warstwa
+# 2.5 (slepa weryfikacja przez drugie AI) dzialala poprawnie w kazdej
+# rundzie dogenerowania - teraz kazda taka runda robi DWA realne
+# wywolania AI (generacja + weryfikacja) zamiast jednego, wiec trudne
+# tematy (duzy rejection rate + dluzsze rozumowanie) regularnie nie
+# miescily sie w starym budzecie nawet bez ukonczenia. User: priorytet
+# to niezawodnosc/kompletnosc ponad szybkosc dla trudnych tematow.
+_HARD_TIMEOUT_SECONDS = 120.0
 
 
 def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:

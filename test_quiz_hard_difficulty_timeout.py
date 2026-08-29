@@ -15,6 +15,15 @@ rozszerz na KAZDY temat na poziomie "trudny"/"hard" (nie tylko ciagi) -
 budzet 60s (ta sama wartosc, ktora user juz zaakceptowal jako budzet
 Sprawdzianu tego samego dnia) + bufor +40% zamiast domyslnych +30%.
 
+ZWIEKSZONE (29.08.2026, patrz komentarz nad _HARD_TIMEOUT_SECONDS w
+openai_exam.py): 60s bylo ustalone PRZED Warstwa 2.5 dzialala poprawnie
+w kazdej rundzie dogenerowania Sprawdzianu (byla buga, po cichu
+pomijana) - po naprawie tego buga kazda runda robi DWA realne wywolania
+AI zamiast jednego, wiec real-test trudnej trygonometrii pokazal 80s i
+nadal niepelny wynik. User potwierdzil podniesienie do 120s dla
+"trudny"/"hard" (Quiz i Sprawdzian identycznie) - testy ponizej
+zaktualizowane do nowej wartosci.
+
 Testy ponizej sa JEDNOSTKOWE (zero AI)."""
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
@@ -34,7 +43,7 @@ from app.openai_exam import _max_generation_seconds, _buffered_count, _HARD_TIME
 
 # Dokladny zgloszony przypadek: ciagi geometryczne (NIE kwadratowe), trudny
 r = _max_generation_seconds(topic="Matematyka: ciągi geometryczne", difficulty="trudny")
-check("ciagi geometryczne + trudny -> 60s (nie 30s jak wczesniej)", r == 60.0, r)
+check("ciagi geometryczne + trudny -> 120s (nie 30s jak wczesniej)", r == 120.0, r)
 
 r2 = _buffered_count(6, topic="Matematyka: ciągi geometryczne", difficulty="trudny")
 check("bufor dla ciagi+trudny: +40% (6 -> 9, nie 6->8 jak wczesniej)", r2 == 9, r2)
@@ -52,13 +61,13 @@ check("Regresja: bufor dla latwy/domyslny -> nadal +30% (10 -> 13)", r5 == 13, r
 
 # NOWE: dowolny inny temat + trudny -> tez 60s (generalizacja, nie tylko ciagi)
 r6 = _max_generation_seconds(topic="Matematyka: trygonometria", difficulty="trudny")
-check("NOWE: dowolny inny temat + trudny -> tez 60s (generalizacja)", r6 == 60.0, r6)
+check("NOWE: dowolny inny temat + trudny -> tez 120s (generalizacja)", r6 == 120.0, r6)
 
 # Boczny efekt (POPRAWA, nie regresja): rownania kwadratowe + hard - wczesniej
 # 30s (luka, nigdy nie mialo wlasnego wyjatku w _max_generation_seconds,
-# mimo najwiekszego bufora +60% w _buffered_count) - teraz tez 60s.
+# mimo najwiekszego bufora +60% w _buffered_count) - teraz tez 120s.
 r7 = _max_generation_seconds(topic="Matematyka: równania kwadratowe z parametrem", difficulty="trudny")
-check("Efekt uboczny (poprawa): rownania kwadratowe+hard teraz tez 60s (wczesniej luka: 30s)", r7 == 60.0, r7)
+check("Efekt uboczny (poprawa): rownania kwadratowe+hard teraz tez 120s (wczesniej luka: 30s)", r7 == 120.0, r7)
 
 print()
 print("=" * 70)
