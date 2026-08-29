@@ -137,9 +137,6 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .sel-btn:hover{border-color:var(--border-hi);color:var(--text);}
 .sel-btn.active{background:rgba(124,106,255,.12);border-color:rgba(124,106,255,.4);color:var(--accent2);}
 .sel-btn .dot{display:block;width:8px;height:8px;border-radius:50%;margin:0 auto 5px;transition:transform .2s;}
-.hard-time-hint{display:none;align-items:flex-start;gap:7px;margin-top:9px;padding:9px 11px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:10px;font-size:.78em;line-height:1.4;color:var(--text);}
-.hard-time-hint.visible{display:flex;}
-.hard-time-hint svg{width:15px;height:15px;stroke:var(--gold);flex-shrink:0;margin-top:1px;}
 .sel-btn:hover .dot,.sel-btn.active .dot{transform:scale(1.3);}
 .dot-easy{background:#22d3a0;}.dot-med{background:#f5a623;}.dot-hard{background:#f87171;}
 .start-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#5040c8);border:none;border-radius:13px;color:white;font-family:var(--h);font-size:.9em;font-weight:700;cursor:pointer;transition:all .25s;margin-top:4px;box-shadow:0 6px 24px rgba(124,106,255,.3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;}
@@ -722,15 +719,7 @@ function getPlanBadgeHTML(plan) {
         <div class="field"><span class="field-label">Temat quizu</span><div class="input-wrap"><input type="text" id="topic" placeholder="np. Fotosynteza, Równania kwadratowe..." autocomplete="off"></div></div>
         <div class="field"><span class="field-label">Przedmiot</span><div class="input-wrap"><select id="subject"><option value="matematyka">Matematyka</option><option value="fizyka">Fizyka</option><option value="chemia">Chemia</option><option value="biologia">Biologia</option><option value="historia">Historia</option><option value="polski">Język polski</option><option value="geografia">Geografia</option><option value="informatyka">Informatyka</option><option value="angielski">Angielski</option><option value="inne">Inne</option></select></div></div>
         <div class="field"><span class="field-label">Poziom</span><div id="quizLevelPicker"></div></div>
-        <div class="field"><span class="field-label">Trudność</span><div class="grid-3"><button class="sel-btn" data-g="diff" data-v="easy" onclick="sel(this,'diff')"><span class="dot dot-easy"></span>Łatwa</button><button class="sel-btn active" data-g="diff" data-v="medium" onclick="sel(this,'diff')"><span class="dot dot-med"></span>Średnia</button><button class="sel-btn" data-g="diff" data-v="hard" onclick="sel(this,'diff')"><span class="dot dot-hard"></span>Trudna</button></div>
-          <!-- NOWE (29.08.2026, user: "duzo czekania na trudny" - Opcja 1:
-               jawnie ustawiamy oczekiwanie zamiast cichego, dlugiego
-               czekania - identyczny hint co w exam_generator.html -->
-          <div class="hard-time-hint" id="hardTimeHint">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Trudny poziom może generować się do 3 minut — każde pytanie jest dokładnie sprawdzane przez dwa niezależne AI, żeby quiz był jak najwyższej jakości.</span>
-          </div>
-        </div>
+        <div class="field"><span class="field-label">Trudność</span><div class="grid-3"><button class="sel-btn" data-g="diff" data-v="easy" onclick="sel(this,'diff')"><span class="dot dot-easy"></span>Łatwa</button><button class="sel-btn active" data-g="diff" data-v="medium" onclick="sel(this,'diff')"><span class="dot dot-med"></span>Średnia</button><button class="sel-btn" data-g="diff" data-v="hard" onclick="sel(this,'diff')"><span class="dot dot-hard"></span>Trudna</button></div></div>
         <div class="field"><span class="field-label">Liczba pytań</span><div class="slider-wrap"><input type="range" id="numSlider" min="5" max="20" value="10" oninput="updateSlider(this)"><span class="slider-val" id="numVal">10</span></div></div>
         <div class="field">
           <span class="field-label">Zdjęcia notatek <span style="color:var(--muted);font-weight:400;">(opcjonalne)</span></span>
@@ -820,7 +809,7 @@ function getPlanBadgeHTML(plan) {
     <div class="card loading-card">
       <div class="spinner"></div>
       <h3>Przygotowuję quiz...</h3>
-      <p id="quizLoadingSubtitle">AI tworzy pytania dopasowane do Twojego poziomu</p>
+      <p>AI tworzy pytania dopasowane do Twojego poziomu</p>
     </div>
   </div>
 
@@ -1077,16 +1066,7 @@ function math(raw){
 }
 function setMath(el,text){if(el)el.innerHTML=math(text);}
 
-function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');VALS[group]=btn.dataset.v;
-  if(group==='diff'){var h=document.getElementById('hardTimeHint');if(h)h.classList.toggle('visible',btn.dataset.v==='hard');}
-}
-// NOWE (29.08.2026): jak w exam_generator.html - jawnie ustawiamy
-// oczekiwanie co do czasu na ekranie ladowania dla trudnosci "hard".
-function setQuizLoadingSubtitle(){
-  var el=document.getElementById('quizLoadingSubtitle');
-  if(!el)return;
-  el.textContent=(VALS.diff==='hard')?'Trudny poziom = dokładna weryfikacja przez dwa AI, żeby quiz był jak najwyższej jakości. To może potrwać do 3 minut.':'AI tworzy pytania dopasowane do Twojego poziomu';
-}
+function sel(btn,group){document.querySelectorAll('[data-g="'+group+'"]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');VALS[group]=btn.dataset.v;}
 function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('quizLevelPicker')) return;
   window.EduviaLevelPicker.renderCompact('quizLevelPicker', {
@@ -1131,7 +1111,6 @@ async function startQuiz(){
   let wlasneInstr=document.getElementById('wlasneInstrukcje')?document.getElementById('wlasneInstrukcje').value.trim():'';
   if(photos.length>0){
     showPage('pageLoading');
-    setQuizLoadingSubtitle();
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
     var quizController1 = new AbortController();
     // ZWIEKSZONE PONOWNIE (29.08.2026): backendowy budzet dla "hard"
@@ -1195,7 +1174,6 @@ async function startQuiz(){
   window._lastLevel=VALS.level||'liceum_2';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
-  setQuizLoadingSubtitle();
   var quizController2 = new AbortController();
   // ZWIEKSZONE PONOWNIE (29.08.2026): identyczny powod co quizTimeoutId1
   // wyzej - backendowy budzet dla "hard" podniesiony 120s->180s.
