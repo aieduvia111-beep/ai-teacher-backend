@@ -687,6 +687,91 @@ def build_safe_trig_quadratic_equation(u0=None, u1: int = None, a_coeff: int = N
     }
 
 
+# SAFE PARAMETER GENERATION - TRYGONOMETRIA, DRUGI ARCHETYP (29.08.2026,
+# user: "rozwin" - rozszerzenie po pierwszym udanym real-tescie 15/15).
+# "Dla jakich wartosci parametru {litera} rownanie {sin/cos/tan}(x)={litera}
+# ma rozwiazanie?" - DRUGI, obok rownania kwadratowego wzgledem cos(x),
+# najczesciej wystepujacy w dzisiejszych real-logach wzorzec ("Dla
+# jakich wartosci parametru a rownanie sin(x)=a...", "...parametru b
+# rownanie tan(x)=b...") - i tez czesto psuty (AI mylilo dziedzine
+# tan(x) - ktora jest zbiorem WSZYSTKICH liczb rzeczywistych - z
+# dziedzina sin/cos, ktora jest ograniczona do [-1,1]).
+# Odpowiedz zalezy WYLACZNIE od wybranej funkcji (sin/cos -> [-1,1],
+# tan -> R) - zero obliczen, czysta tabela faktow, wiec zero ryzyka
+# bledu AI od samego poczatku (nawet bezpieczniejsze niz pierwszy
+# archetyp, ktory przynajmniej wymagal Viete'a).
+_TRIG_SOLVABILITY_FUNCS = ["sin", "cos", "tan"]
+_TRIG_SOLVABILITY_LETTERS = list("abcmk")
+_TRIG_SOLVABILITY_BOUNDED_CORRECT = r"${letter} \in [-1, 1]$"
+_TRIG_SOLVABILITY_BOUNDED_DISTRACTORS = [
+    r"${letter} \in (-1, 1)$",
+    r"${letter} \in [0, 1]$",
+    r"${letter} \in (-\infty, -1) \cup (1, \infty)$",
+    r"${letter} \in [-2, 2]$",
+    r"${letter} \in \mathbb{{R}}$",
+]
+_TRIG_SOLVABILITY_UNBOUNDED_CORRECT = r"${letter} \in \mathbb{{R}}$"
+_TRIG_SOLVABILITY_UNBOUNDED_DISTRACTORS = [
+    r"${letter} \in [-1, 1]$",
+    r"${letter} \in (-1, 1)$",
+    r"${letter} \in [0, \infty)$",
+    r"${letter} \in (-\infty, 0]$",
+    r"${letter} \in [-2, 2]$",
+]
+
+
+def build_safe_trig_solvability_range(func: str = None, letter: str = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania 'dla jakich wartosci
+    parametru {letter} rownanie {func}(x)={letter} ma rozwiazanie' - patrz
+    komentarz wyzej. Zero obliczen (czysta tabela faktow o dziedzinach
+    funkcji trygonometrycznych) - poprawnosc jest oczywista z definicji
+    funkcji, nie wymaga nawet niezaleznej weryfikacji sympy."""
+    if func is None:
+        func = random.choice(_TRIG_SOLVABILITY_FUNCS)
+    if letter is None:
+        letter = random.choice(_TRIG_SOLVABILITY_LETTERS)
+    if func in ("sin", "cos"):
+        correct_text = _TRIG_SOLVABILITY_BOUNDED_CORRECT.format(letter=letter)
+        distractor_pool = _TRIG_SOLVABILITY_BOUNDED_DISTRACTORS
+    else:
+        correct_text = _TRIG_SOLVABILITY_UNBOUNDED_CORRECT.format(letter=letter)
+        distractor_pool = _TRIG_SOLVABILITY_UNBOUNDED_DISTRACTORS
+    distractors = [d.format(letter=letter) for d in random.sample(distractor_pool, 3)]
+    question_text = (
+        f"Dla jakich wartości parametru {letter} równanie "
+        f"$\\{func}(x) = {letter}$ ma rozwiązanie?"
+    )
+    return {
+        "func": func, "letter": letter,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+def build_safe_trig_skeleton() -> dict:
+    """Losuje JEDEN z dwoch dostepnych, bezpiecznych archetypow trudnej
+    trygonometrii (build_safe_trig_quadratic_equation lub
+    build_safe_trig_solvability_range) i normalizuje wynik do WSPOLNEGO
+    ksztaltu ("correct_text", "distractors", "prompt_context",
+    "default_question") - zeby Quiz (openai_exam.py) i Sprawdzian
+    (exam_pdf_generator.py) mogly uzywac JEDNEJ, dzielonej petli
+    budowania promptu/parsowania odpowiedzi, niezaleznie od tego, ktory
+    archetyp wylosowano dla danej pozycji w partii (naturalne mieszanie
+    obu archetypow w JEDNEJ partii - lepsza roznorodnosc niz partia
+    zlozona z jednego typu, BEZ potrzeby Diversity Engine, bo oba
+    archetypy z definicji nie sa do siebie podobne)."""
+    if random.random() < 0.5:
+        sk = build_safe_trig_quadratic_equation()
+        sk["prompt_context"] = f"Rownanie: $${sk['equation_latex']}$$ dla $x \\in [0, 2\\pi)$."
+        sk["default_question"] = f"Rozwiąż równanie ${sk['equation_latex']}$ dla $x \\in [0, 2\\pi)$."
+    else:
+        sk = build_safe_trig_solvability_range()
+        sk["prompt_context"] = f"Pytanie o dziedzine funkcji: {sk['question_text']}"
+        sk["default_question"] = sk["question_text"]
+    return sk
+
+
 _TRIG_ANSWER_FRAC_RE = re.compile(r'\\frac\{(-?\d+)?\\pi\}\{(\d+)\}')
 _TRIG_ANSWER_BARE_PI_RE = re.compile(r'(?<!\{)(-?\d+)\\pi(?!\})')
 

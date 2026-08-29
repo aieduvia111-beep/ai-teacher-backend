@@ -15,7 +15,7 @@ from .math_verify import (
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, format_avoid_diversity_block,
-    build_safe_trig_quadratic_equation,
+    build_safe_trig_skeleton,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1374,24 +1374,26 @@ ZASADY:
 
 
 # SAFE PARAMETER GENERATION - TRYGONOMETRIA (29.08.2026, port na Quiz) -
-# patrz pelne uzasadnienie w math_verify.build_safe_trig_quadratic_equation.
-# W ODROZNIENIU od rownan kwadratowych wyzej: AI TU NIE dostaje nawet
-# zadania wymyslenia dystraktorow - "options" (4 gotowe, juz przetasowane
-# przez KOD teksty) i "correct" (indeks) sa ustawiane WPROST przez ten
-# kod, PRZED wywolaniem AI. AI dostaje juz kompletny, poprawny szkielet
-# i ma TYLKO napisac "question" (naturalna tresc po polsku) +
-# "explanation" + "diversity_tag" - user: "dystraktory tez mozna liczyc
-# kodem, nie wymyslac przez AI... to jest drugie miejsce, gdzie
-# wpuszczacie niepewnosc, obok samego rozwiazania". Rola AI jest wiec
-# TU jeszcze wezsza niz przy rownaniach kwadratowych.
+# patrz pelne uzasadnienie w math_verify.build_safe_trig_quadratic_equation
+# (pierwszy archetyp) i build_safe_trig_solvability_range (drugi archetyp,
+# dodany po "rozwin" - user chcial kontynuacje po udanym pierwszym
+# real-tescie). build_safe_trig_skeleton (math_verify.py) losuje jeden z
+# dwoch i normalizuje do wspolnego ksztaltu, wiec ta petla jest wspolna
+# dla obu archetypow. W ODROZNIENIU od rownan kwadratowych wyzej: AI TU
+# NIE dostaje nawet zadania wymyslenia dystraktorow - "options" (4
+# gotowe, juz przetasowane przez KOD teksty) i "correct" (indeks) sa
+# ustawiane WPROST przez ten kod, PRZED wywolaniem AI. AI dostaje juz
+# kompletny, poprawny szkielet i ma TYLKO napisac "question" (naturalna
+# tresc po polsku) + "explanation" + "diversity_tag" - user: "dystraktory
+# tez mozna liczyc kodem, nie wymyslac przez AI... to jest drugie
+# miejsce, gdzie wpuszczacie niepewnosc, obok samego rozwiazania".
 async def _raw_generate_safe_trig_quadratic_batch(n: int) -> Dict:
-    """Generuje `n` pytan dla podwzorca A*sin^2(x)+B*cos(x)+C=0 na
-    x w [0, 2pi) (rownanie sprowadzalne do kwadratowego wzgledem cos(x))
-    metoda 'safe parameter generation' - patrz komentarz wyzej. Jedno
-    wywolanie AI dla calej partii, analogicznie do
-    _raw_generate_safe_linear_param_quadratic_batch."""
+    """Generuje `n` pytan mieszajac DWA bezpieczne archetypy trudnej
+    trygonometrii (patrz build_safe_trig_skeleton w math_verify.py) -
+    patrz komentarz wyzej. Jedno wywolanie AI dla calej partii,
+    analogicznie do _raw_generate_safe_linear_param_quadratic_batch."""
     buffered_n = n + 3
-    skeletons = [build_safe_trig_quadratic_equation() for _ in range(buffered_n)]
+    skeletons = [build_safe_trig_skeleton() for _ in range(buffered_n)]
     letters = "abcd"
     items_desc = []
     for i, sk in enumerate(skeletons):
@@ -1402,22 +1404,20 @@ async def _raw_generate_safe_trig_quadratic_batch(n: int) -> Dict:
         sk["_correct_idx"] = correct_idx
         opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
         items_desc.append(
-            f"{i + 1}. Rownanie: $${sk['equation_latex']}$$ dla $x \\in [0, 2\\pi)$. "
+            f"{i + 1}. {sk['prompt_context']} "
             f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
             f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
         )
     items_text = "\n".join(items_desc)
-    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan trygonometrycznych,
-rownanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan z trygonometrii,
+zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
 OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
-1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie
-   (np. "Rozwiąż równanie ... dla $x \\in [0, 2\\pi)$.").
-2. Napisac krotkie wyjasnienie (1-2 zdania) - podstawienie
-   $\\sin^2(x)=1-\\cos^2(x)$, rozwiazanie rownania kwadratowego wzgledem
-   $\\cos(x)$, odrzucenie pierwiastka spoza $[-1,1]$.
+1. Sformulowac naturalne, poprawne pytanie po polsku (patrz opis zadania -
+   moze to byc rownanie do rozwiazania ALBO pytanie o dziedzine parametru).
+2. Napisac krotkie wyjasnienie (1-2 zdania) uzasadniajace poprawna opcje.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
 
-KRYTYCZNE: NIE ZMIENIAJ rownania ani opcji odpowiedzi w zadnym stopniu -
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
 nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
 system doda je automatycznie.
@@ -1441,7 +1441,7 @@ FORMAT (TYLKO JSON):
 }}
 
 ZASADY:
-- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
 - Po polsku
 - TYLKO JSON"""
 
@@ -1465,7 +1465,7 @@ ZASADY:
         ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
         questions.append({
             "id": i + 1,
-            "question": ai_q.get("question") or f"Rozwiąż równanie ${sk['equation_latex']}$ dla $x \\in [0, 2\\pi)$.",
+            "question": ai_q.get("question") or sk["default_question"],
             "options": sk["_options"],
             "correct": sk["_correct_idx"],
             "final_answer": sk["correct_text"],

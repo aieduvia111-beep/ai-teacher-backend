@@ -160,6 +160,49 @@ check("Zadanie _safe_generated z NIEROZPOZNAWALNYM rownaniem -> zaakceptowane (e
       len(kept_pytania) == 1, result2)
 
 print()
+print("=" * 70)
+print("DRUGI ARCHETYP (po 'rozwin'): build_safe_trig_solvability_range")
+print("=" * 70)
+from app.math_verify import build_safe_trig_solvability_range, build_safe_trig_skeleton
+
+r_sin = build_safe_trig_solvability_range(func="sin", letter="a")
+check("sin(x)=a -> poprawna odpowiedz to a w [-1,1]",
+      r_sin["correct_text"] == "$a \\in [-1, 1]$", r_sin)
+r_cos = build_safe_trig_solvability_range(func="cos", letter="b")
+check("cos(x)=b -> poprawna odpowiedz to b w [-1,1]",
+      r_cos["correct_text"] == "$b \\in [-1, 1]$", r_cos)
+r_tan = build_safe_trig_solvability_range(func="tan", letter="c")
+check("tan(x)=c -> poprawna odpowiedz to c w R (NIE ograniczona jak sin/cos)",
+      r_tan["correct_text"] == "$c \\in \\mathbb{R}$", r_tan)
+check("tan: dystraktory NIE zawieraja poprawnej odpowiedzi",
+      r_tan["correct_text"] not in r_tan["distractors"])
+
+collision2 = False
+for _ in range(50):
+    r = build_safe_trig_solvability_range()
+    if r["correct_text"] in r["distractors"] or len(set(r["distractors"])) != 3:
+        collision2 = True
+check("50 losowych prob (dowolna funkcja/litera) - zero kolizji, zawsze 3 rozne dystraktory",
+      not collision2)
+
+print()
+print("=" * 70)
+print("build_safe_trig_skeleton - miesza oba archetypy, wspolny ksztalt")
+print("=" * 70)
+kinds_seen = set()
+shape_ok = True
+for _ in range(60):
+    sk = build_safe_trig_skeleton()
+    for req_key in ("correct_text", "distractors", "prompt_context", "default_question"):
+        if req_key not in sk:
+            shape_ok = False
+    kinds_seen.add("equation_latex" in sk)
+check("Wspolny ksztalt (correct_text/distractors/prompt_context/default_question) obecny zawsze",
+      shape_ok)
+check("W 60 probach pojawily sie OBA archetypy (naturalne mieszanie)",
+      len(kinds_seen) == 2, kinds_seen)
+
+print()
 if FAILED:
     print(f"WYNIK: {len(FAILED)} test(y) NIE PRZESZLY:")
     for name, detail in FAILED:
