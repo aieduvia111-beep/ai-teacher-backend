@@ -3091,3 +3091,40 @@ def is_too_similar_diversity_tag(tag, seen_tag_tokens: list, threshold: float = 
             if my_numbers == prior_numbers:
                 return True, tokens
     return False, tokens
+
+
+def format_avoid_diversity_block(seen_diversity_tag_dicts: list) -> str:
+    """User (real-test Sprawdzianu z trygonometrii, 29.08.2026): kazda
+    runda dogenerowania ("brakuje N zadan... dogenerowuje") wolala AI
+    OD ZERA, z DOKLADNIE tym samym promptem co pierwsza partia - AI nie
+    mialo zadnej wiedzy, ktore schematy juz zostaly uzyte (i odrzucone
+    jako duplikat/zbyt podobne przez Diversity Engine), wiec dla waskich/
+    trudnych tematow (mala pula "oczywistych" pomyslow) w kolko trafialo
+    w te same schematy, ktore znowu byly odrzucane - marnujac cala
+    runde i budzet czasu (real-test: 11/16 odrzucen w jednej generacji
+    to duplicate+diversity_too_similar, nie blad matematyczny).
+
+    Zamiast waskiej poprawki DLA TRYGONOMETRII, ta funkcja jest OGOLNA:
+    zamienia liste JUZ ZAAKCEPTOWANYCH diversity_tag (surowe dict-y z
+    "skill"/"concept"/"task_type", jak podaje sama AI) na krotki blok
+    tekstu do wstrzykniecia w prompt KOLEJNEJ rundy - dziala dla
+    KAZDEGO tematu (Quiz i Sprawdzian, oba identycznie), bo diversity_tag
+    juz jest generowany uniwersalnie przez AI dla kazdego tematu."""
+    if not seen_diversity_tag_dicts:
+        return ""
+    lines = []
+    for tag in seen_diversity_tag_dicts:
+        if not isinstance(tag, dict):
+            continue
+        parts = [str(tag.get(k, "")).strip() for k in ("skill", "concept", "task_type") if tag.get(k)]
+        if parts:
+            lines.append("- " + " / ".join(parts))
+    if not lines:
+        return ""
+    return (
+        "\nJUZ UZYTE SCHEMATY W TYM SPRAWDZIANIE/QUIZIE (KRYTYCZNE - system "
+        "JUZ ODRZUCIL probe powtorzenia ktoregokolwiek z nich - NIE generuj "
+        "ponownie tych samych pomyslow pod innymi liczbami/literami/"
+        "sformulowaniami, wymysl NAPRAWDE INNE podtematy/typy zadan na ten "
+        "sam temat):\n" + "\n".join(lines) + "\n"
+    )

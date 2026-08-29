@@ -37,6 +37,7 @@ from .math_verify import (
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, check_sequence_formula_open_answer,
+    format_avoid_diversity_block,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -165,6 +166,7 @@ TRUDNOSC = {trudnosc} w ramach {klasa}:
 NAKAZ: KAZDE zadanie musi byc na poziomie {klasa} i trudnosci {trudnosc}
 ZAKAZ: dla liceum/matura/studia — prostego dodawania ulamkow liczbowych
 {difficulty_anchor_blok}
+{avoid_block}
 WERYFIKACJA OBLICZEN - KRYTYCZNE (bledny klucz odpowiedzi to powazny blad,
 tak samo powazny jak zbyt latwe zadanie):
 Dla KAZDEGO zadania z obliczeniami (rownania, nierownosci, delta/wyroznik,
@@ -1257,7 +1259,7 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
     return kept
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None) -> dict:
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -1488,6 +1490,8 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                     continue
                 if tokens:
                     seen_diversity_tags.append(tokens)
+                    if seen_diversity_tag_dicts is not None and isinstance(pyt.get("diversity_tag"), dict):
+                        seen_diversity_tag_dicts.append(pyt["diversity_tag"])
                 diverse.append(pyt)
             kept = diverse
 
@@ -1574,7 +1578,7 @@ class ExamGenerator:
         raw = ''.join(result)
         return sanitize_latex_json_backslashes(raw)
 
-    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
+    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None, avoid_block="") -> dict:
         """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) - wydzielone
         z _get_exam_data, zeby dogenerowywanie brakujacych zadan (patrz
         _fill_missing_exam_questions) moglo to wywolywac wielokrotnie bez
@@ -1661,7 +1665,8 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             temat=temat, klasa=klasa, poziom_opis=describe_level(klasa, subject=przedmiot),
             trudnosc=trudnosc, liczba_pytan=liczba_pytan,
             difficulty_anchor_blok=difficulty_anchor_blok,
-            wlasne_instrukcje_blok=blok
+            wlasne_instrukcje_blok=blok,
+            avoid_block=avoid_block,
         )
         last_error = None
         for attempt in range(2):
@@ -1715,7 +1720,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
         return {}
 
-    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None) -> dict:
+    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None, avoid_block="") -> dict:
         """Jak _get_exam_data_raw, ale dla wiekszych `total_n` dzieli
         zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (PORT z
         Quizu - _raw_generate_quiz_topic_batch w openai_exam.py, ta sama
@@ -1729,11 +1734,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         _get_exam_data_raw (jeden request, bez zadnej zmiany)."""
         sizes = _parallel_batch_sizes(total_n)
         if len(sizes) == 1:
-            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot)
+            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
         print(f"[MathVerify][Exam] rownolegle generowanie: {total_n} zadan podzielone na {len(sizes)} wywolan {sizes}")
         with _cf.ThreadPoolExecutor(max_workers=len(sizes)) as ex:
             futures = [
-                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot)
+                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot, avoid_block)
                 for size in sizes
             ]
             results = [f.result() for f in futures]
@@ -1905,6 +1910,14 @@ ZASADY:
         # mechanizm dla Quizu.
         seen_fingerprints = set()
         seen_diversity_tags = []
+        # NOWE (patrz format_avoid_diversity_block w math_verify.py): jak
+        # seen_diversity_tags, ale surowe diversity_tag (dict) zamiast
+        # tokenow - zeby kolejna runda dogenerowania mogla dostac w
+        # promptcie liste JUZ uzytych schematow i CELOWO ich unikac,
+        # zamiast pytac AI od zera (co dla waskich tematow regularnie
+        # trafialo w te same schematy, marnujac cala runde - patrz
+        # real-test Sprawdzianu z trygonometrii, 29.08.2026).
+        seen_diversity_tag_dicts = []
         # Zyje przez CALY dokument (patrz docstring _raw_generate_safe_linear_param_quadratic_batch)
         # - zapobiega powtorzeniu tej samej litery/stalej C miedzy roznymi
         # wywolaniami metody bezpiecznej generacji w OBREBIE tego samego
@@ -1912,11 +1925,11 @@ ZASADY:
         # stala C=25, roznymi tylko literami).
         used_safe_letters = set()
         used_safe_constants = set()
-        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client)
-        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants)
+        data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
+        data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
         return data
 
-    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None, used_safe_letters=None, used_safe_constants=None):
+    def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None, used_safe_letters=None, used_safe_constants=None, seen_diversity_tag_dicts=None):
         """STANDARD ARCHITEKTONICZNY (patrz komentarz nad SAFE PARAMETER
         GENERATION w math_verify.py): `current_total`/`missing` ponizej sa
         liczone WYLACZNIE przez len() na faktycznie zaakceptowanej liscie
@@ -1957,6 +1970,14 @@ ZASADY:
                 break
             print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
             metrics.retry_count += 1
+            # NOWE (patrz format_avoid_diversity_block w math_verify.py):
+            # kazda runda dostaje w promptcie liste JUZ zaakceptowanych
+            # schematow (skill/concept/task_type) i ma je CELOWO ominac,
+            # zamiast pytac AI od zera - realny test (Sprawdzian z
+            # trygonometrii, 29.08.2026) pokazal 11/16 odrzucen w jednej
+            # rundzie to duplicate/diversity_too_similar, bo AI w kolko
+            # trafialo w te same "oczywiste" schematy dla waskiego tematu.
+            avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
             try:
                 with _Timer(metrics, "generation_time"):
                     # PORT z Quizu: dla TEGO JEDNEGO, potwierdzonego trudnego
@@ -1967,7 +1988,7 @@ ZASADY:
                     if _is_medium_linear_param_quadratic_exam(temat, trudnosc):
                         extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
                     else:
-                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1
                 metrics.generated_count += sum(len(s.get('pytania', [])) for s in (extra or {}).get('sekcje', []))
             except Exception as e:
@@ -1977,7 +1998,17 @@ ZASADY:
             if not extra or not extra.get('sekcje'):
                 metrics.record_rejection("json_crash")
                 continue
-            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags)
+            # NAPRAWIONE (znalezione PRZY tej samej naprawie, 29.08.2026):
+            # brakowalo client=self.client tutaj - Warstwa 2.5 (slepa
+            # weryfikacja przez drugie AI, patrz blind_verify.py) byla
+            # WIEC po cichu POMIJANA dla KAZDEGO zadania dogenerowanego w
+            # rundach uzupelniajacych (dzialala tylko na pierwszej,
+            # glownej partii, patrz wywolanie w _get_exam_data). Real
+            # ryzyko: zadanie z bledna matematyka, ktorej sympy nie
+            # rozpoznaje ("unverifiable"), mogloby przejsc bez drugiej
+            # kontroli AI - dokladnie ten przypadek, dla ktorego Warstwa
+            # 2.5 w ogole powstala.
+            extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
             extra_closed = []
             for s in extra.get('sekcje', []):
                 if s.get('typ') == 'zamkniete':

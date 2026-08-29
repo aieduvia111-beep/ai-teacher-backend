@@ -81,7 +81,7 @@ print("=" * 70)
 async def run_fill_test():
     counter = {"n": 0}
 
-    async def mock_regenerate(n):
+    async def mock_regenerate(n, avoid_block=""):
         # Kazde wywolanie zwraca NOWY tekst Z GENUINE UNIKALNYM tagiem
         # (licznik wpisany w "concept") - symuluje AI, ktore faktycznie
         # roznicuje schematy miedzy rundami dogenerowania. Nieskonczona

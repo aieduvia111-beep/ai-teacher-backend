@@ -60,7 +60,7 @@ def _make_question(force_duplicate_of=None, force_bad=False):
     return q
 
 
-async def mock_regenerate(n):
+async def mock_regenerate(n, avoid_block=""):
     """Symuluje AI generujace `n` nowych pytan. Realistyczny rozklad:
     ~15% z bledna odpowiedzia (do odrzucenia przez Warstwe 2), reszta
     poprawna. Zero wywolan sieciowych/API - czysto lokalna funkcja."""

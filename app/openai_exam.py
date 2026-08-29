@@ -14,7 +14,7 @@ from .math_verify import (
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
-    pick_safe_param_values,
+    pick_safe_param_values, format_avoid_diversity_block,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -547,7 +547,7 @@ async def generate_quiz_from_image(
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
-            quiz_data, num_questions, lambda n: _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start, difficulty=difficulty
+            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start, difficulty=difficulty
         )
         return {"success": True, "quiz": quiz_data}
 
@@ -870,7 +870,8 @@ WAŻNE:
 
 async def _raw_generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
-    num_questions: int, difficulty: str, wlasne_instrukcje: str, diversity_hint: str = ""
+    num_questions: int, difficulty: str, wlasne_instrukcje: str, diversity_hint: str = "",
+    avoid_block: str = ""
 ) -> Dict:
     """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
     generate_quiz_from_topic - zbudowanie prompta, wywolanie modelu i
@@ -961,6 +962,7 @@ PARAMETRY:
 {difficulty_anchor_blok}
 {instrukcje_blok}
 {diversity_hint}
+{avoid_block}
 {temat_instrukcja}
 SPOJNOSC TRUDNOSCI: wszystkie pytania w quizie musza byc na TYM SAMYM poziomie
 trudnosci - NIE mieszaj jednego trudnego pytania z parametrem/dowodem z drugim
@@ -1199,7 +1201,7 @@ def _chunk_diversity_hint(chunk_index: int, n_chunks: int) -> str:
 
 async def _raw_generate_quiz_topic_batch(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
-    total_n: int, difficulty: str, wlasne_instrukcje: str
+    total_n: int, difficulty: str, wlasne_instrukcje: str, avoid_block: str = ""
 ) -> Dict:
     """Jak _raw_generate_quiz_topic_once, ale dla wiekszych `total_n`
     dzieli zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (patrz
@@ -1212,13 +1214,14 @@ async def _raw_generate_quiz_topic_batch(
     sizes = _parallel_batch_sizes(total_n)
     if len(sizes) == 1:
         return await _raw_generate_quiz_topic_once(
-            topic, effective_topic_is_forced, subject, level, sizes[0], difficulty, wlasne_instrukcje
+            topic, effective_topic_is_forced, subject, level, sizes[0], difficulty, wlasne_instrukcje,
+            avoid_block=avoid_block,
         )
     print(f"[MathVerify] rownolegle generowanie: {total_n} pytan podzielone na {len(sizes)} wywolan {sizes}")
     results = await asyncio.gather(*[
         _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, size, difficulty, wlasne_instrukcje,
-            diversity_hint=_chunk_diversity_hint(i, len(sizes)),
+            diversity_hint=_chunk_diversity_hint(i, len(sizes)), avoid_block=avoid_block,
         )
         for i, size in enumerate(sizes)
     ])
@@ -1440,10 +1443,11 @@ async def _generate_quiz_topic_once(
         # mechanizm w exam_pdf_generator.py.
         used_safe_letters = set()
         used_safe_constants = set()
-        regenerate = lambda n: _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
     else:
-        regenerate = lambda n: _raw_generate_quiz_topic_batch(
-            topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje
+        regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
+            topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
+            avoid_block=avoid_block,
         )
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions, regenerate,
@@ -1605,7 +1609,13 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         metrics = GenerationMetrics(requested_count=requested_count)
     seen_fingerprints = set()
     seen_diversity_tags = []
-    quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client)
+    # NOWE (patrz format_avoid_diversity_block w math_verify.py): oprocz
+    # tokenow do Jaccard (seen_diversity_tags), trzymamy TEZ surowe
+    # diversity_tag (dict skill/concept/task_type) kazdego zaakceptowanego
+    # pytania - zeby kolejna runda dogenerowania mogla powiedziec AI
+    # WPROST, jakich schematow juz nie powtarzac, zamiast pytac od zera.
+    seen_diversity_tag_dicts = []
+    quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
     max_rounds = 10
     max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
@@ -1621,16 +1631,17 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             break
         print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
         metrics.retry_count += 1
+        avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
         try:
             with _Timer(metrics, "generation_time"):
-                extra_data = await regenerate(missing)
+                extra_data = await regenerate(missing, avoid_block)
             metrics.api_request_count += extra_data.pop("_api_request_count", 1)
             metrics.generated_count += len(extra_data.get("questions", []))
         except Exception as e:
             print(f"[MathVerify] blad dogenerowania: {e}")
             metrics.record_rejection("json_crash")
             continue
-        extra_data = await _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client)
+        extra_data = await _verify_and_fix_quiz_math(extra_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
         quiz_data.setdefault("questions", []).extend(extra_data.get("questions", []))
 
     final_count = len(quiz_data.get("questions", []))
@@ -1738,7 +1749,7 @@ async def _blind_verify_batch_closed_quiz(candidates: list, client=None) -> list
     return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client) for q in candidates))
 
 
-async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None) -> dict:
+async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -1987,6 +1998,8 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
                 continue
             if tokens:
                 seen_diversity_tags.append(tokens)
+                if seen_diversity_tag_dicts is not None and isinstance(q.get("diversity_tag"), dict):
+                    seen_diversity_tag_dicts.append(q["diversity_tag"])
             diverse.append(q)
         kept = diverse
 

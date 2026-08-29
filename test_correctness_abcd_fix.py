@@ -221,7 +221,7 @@ print("14. Duplikat -> dogenerowanie (N==N mimo duplikatow)")
 print("=" * 70)
 
 
-async def _mock_regenerate_with_duplicate_first_round(n):
+async def _mock_regenerate_with_duplicate_first_round(n, avoid_block=""):
     """Za PIERWSZYM wywolaniem zwraca duplikat (ten sam tekst 2x) -
     dedup MUSI go odrzucic i wymusic runde dogenerowania."""
     if not hasattr(_mock_regenerate_with_duplicate_first_round, "_calls"):
