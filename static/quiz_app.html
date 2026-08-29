@@ -810,6 +810,14 @@ function getPlanBadgeHTML(plan) {
       <div class="spinner"></div>
       <h3>Przygotowuję quiz...</h3>
       <p>AI tworzy pytania dopasowane do Twojego poziomu</p>
+      <!-- NOWE (30.08.2026, user: "daj komunikat informujacy ze moze
+           czekac dluzej aby quiz byl lepszy") - CELOWO bez konkretnego
+           czasu (poprzedni komunikat z "do 3 minut" trzeba bylo usunac,
+           gdy Safe Parameter Generation przyspieszyl wiekszosc trudnych
+           tematow i liczba przestala byc prawdziwa) - ta wersja jest
+           ogolna i pozostanie prawdziwa niezaleznie od przyszlych zmian
+           czasu generowania. -->
+      <p style="color:var(--muted2);font-size:13px;margin-top:10px;line-height:1.5;">Dla trudniejszych tematów generowanie może potrwać dłużej — dbamy o to, żeby pytania były poprawne i dopasowane do poziomu.</p>
     </div>
   </div>
 
