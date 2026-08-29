@@ -817,7 +817,7 @@ function getPlanBadgeHTML(plan) {
            tematow i liczba przestala byc prawdziwa) - ta wersja jest
            ogolna i pozostanie prawdziwa niezaleznie od przyszlych zmian
            czasu generowania. -->
-      <p style="color:var(--muted2);font-size:13px;margin-top:10px;line-height:1.5;">Dla trudniejszych tematów generowanie może potrwać dłużej — dbamy o to, żeby pytania były poprawne i dopasowane do poziomu.</p>
+      <p id="hardDiffHint" style="display:none;color:var(--muted2);font-size:13px;margin-top:10px;line-height:1.5;">Dla trudniejszych tematów generowanie może potrwać dłużej — dbamy o to, żeby pytania były poprawne i dopasowane do poziomu.</p>
     </div>
   </div>
 
@@ -1093,6 +1093,14 @@ function showPage(id){
   // Hide/show topbar
   let tb=document.getElementById('mainTopbar');
   tb.style.display=(id==='pageQuiz')?'none':'flex';
+  // NOWE (30.08.2026, user: "dla trudnych zrob, bedzie bardziej profesjonalne") -
+  // podpowiedz o dluzszym czasie tylko dla poziomu "hard" (tam realnie
+  // moze byc dluzej), nie dla latwy/sredni (tam zwykle szybko, komunikat
+  // bylby niepotrzebny).
+  if(id==='pageLoading'){
+    let hint=document.getElementById('hardDiffHint');
+    if(hint) hint.style.display=(VALS.diff==='hard')?'block':'none';
+  }
 }
 function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function updateSlider(el){
