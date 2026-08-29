@@ -1660,6 +1660,8 @@ async def _generate_quiz_topic_once(
         metrics.record_rejection("json_crash")
         metrics.total_time = time.monotonic() - t_start
         metrics.log("[GenerationMetrics][Quiz]")
+        from .metrics import persist_generation_metrics
+        persist_generation_metrics(metrics, feature="quiz", temat=topic, trudnosc=difficulty, poziom=level)
         raise
     # SAFE PARAMETER GENERATION (patrz komentarz przy
     # _raw_generate_safe_linear_param_quadratic_batch): dla rund
@@ -1932,6 +1934,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     metrics.accepted_count = len(questions)
     metrics.total_time = time.monotonic() - t_start
     metrics.log("[GenerationMetrics][Quiz]")
+    from .metrics import persist_generation_metrics
+    persist_generation_metrics(metrics, feature="quiz", temat=topic, trudnosc=difficulty, poziom=level)
 
     return quiz_data
 

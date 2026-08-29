@@ -151,6 +151,36 @@ class Subscription(Base):
         return f"<Subscription {self.id}: User {self.user_id} - {self.status}>"
 
 
+class GenerationRequestLog(Base):
+    """Instrumentacja obserwacyjna (29.08.2026, user: "zrob to teraz,
+    zanim kolejne dni ruchu bezpowrotnie znikna" - dane o KAZDYM
+    wywolaniu generowania Quizu/Sprawdzianu leciaty dotad WYLACZNIE do
+    konsoli (print, patrz GenerationMetrics.log w metrics.py) - znikaly
+    przy kazdym restarcie serwera, wiec nie dalo sie retrospektywnie
+    ustalic, jakie tematy/trudnosci userzy FAKTYCZNIE zamawiaja
+    najczesciej. Jeden wiersz na kazde wywolanie - surowe dane do
+    PRZYSZLEJ analizy Pareto (za 1-2 tygodnie ruchu), zeby kolejne
+    archetypy Safe Parameter Generation (patrz math_verify.py) byly
+    wybierane na podstawie faktow, nie tylko programu nauczania jak
+    dzisiejsze (trygonometria/ciagi). CELOWO oddzielone od usage_stats
+    (ktora liczy TYLKO dzienne limity dla planu darmowego) - to jest
+    czysto obserwacyjne, nigdy nie uzywane do egzekwowania czegokolwiek."""
+    __tablename__ = "generation_request_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    feature = Column(String(20), nullable=False)  # "quiz" albo "exam"
+    temat = Column(String(300), nullable=True)
+    trudnosc = Column(String(30), nullable=True)
+    poziom = Column(String(30), nullable=True)
+    requested_count = Column(Integer, default=0)
+    accepted_count = Column(Integer, default=0)
+    rejected_count = Column(Integer, default=0)
+    retry_count = Column(Integer, default=0)
+    total_time = Column(Float, default=0.0)
+    rejection_reasons = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class UsageStats(Base):
     """Statystyki użycia (FREE limity)"""
     __tablename__ = "usage_stats"

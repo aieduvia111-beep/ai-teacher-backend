@@ -2224,6 +2224,8 @@ ZASADY:
             metrics.record_rejection("json_crash")
             metrics.total_time = time.monotonic() - t_start
             metrics.log("[GenerationMetrics][Exam]")
+            from .metrics import persist_generation_metrics
+            persist_generation_metrics(metrics, feature="exam", temat=temat, trudnosc=trudnosc, poziom=klasa)
             return data
         # ETAP 3: seen_fingerprints zyje przez CALY proces (ta partia +
         # wszystkie rundy dogenerowania) - patrz openai_exam.py rownowazny
@@ -2409,6 +2411,8 @@ ZASADY:
         metrics.accepted_count = final_total
         metrics.total_time = time.monotonic() - t_start
         metrics.log("[GenerationMetrics][Exam]")
+        from .metrics import persist_generation_metrics
+        persist_generation_metrics(metrics, feature="exam", temat=temat, trudnosc=trudnosc, poziom=klasa)
 
         return data
 

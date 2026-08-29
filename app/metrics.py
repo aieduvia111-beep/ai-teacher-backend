@@ -66,6 +66,38 @@ class GenerationMetrics:
         print(f"{prefix} {self.to_json_line()}")
 
 
+def persist_generation_metrics(metrics: "GenerationMetrics", feature: str, temat: str = None, trudnosc: str = None, poziom: str = None) -> None:
+    """Zapisuje jeden wiersz surowych danych generowania do bazy
+    (GenerationRequestLog w models.py) - patrz pelne uzasadnienie tam.
+    User (29.08.2026): "zrob to teraz, jest tanie... koszt odlozenia
+    tego rosnie z kazdym dniem". CELOWO odporne na KAZDY blad (brak
+    polaczenia z baza, brakujaca tabela przed pierwszym restartem po
+    migracji, itp.) - to jest CZYSTO obserwacyjna instrumentacja i
+    NIGDY nie moze przerwac faktycznego generowania dla usera (stad
+    zaimportowane wewnatrz funkcji, nie na gorze modulu - zero ryzyka
+    circular importu miedzy metrics.py a models.py/database.py, ktore
+    dzis nic z tego modulu nie importuja)."""
+    try:
+        from .database import SessionLocal
+        from .models import GenerationRequestLog
+        db = SessionLocal()
+        try:
+            db.add(GenerationRequestLog(
+                feature=feature, temat=temat, trudnosc=trudnosc, poziom=poziom,
+                requested_count=metrics.requested_count,
+                accepted_count=metrics.accepted_count,
+                rejected_count=metrics.rejected_count,
+                retry_count=metrics.retry_count,
+                total_time=round(metrics.total_time, 2),
+                rejection_reasons=metrics.rejection_reasons,
+            ))
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[GenerationMetrics] blad zapisu instrumentacji do bazy (nieblokujacy): {e}")
+
+
 class _Timer:
     """Context manager pomocniczy - dodaje uplyniety czas do wskazanego
     atrybutu GenerationMetrics. `with _Timer(metrics, 'generation_time'):`
