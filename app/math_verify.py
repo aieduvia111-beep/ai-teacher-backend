@@ -913,6 +913,77 @@ def verify_law_of_cosines_triangle(a: int, b: int, gamma_deg: int, ask: str, cla
     return abs(round(true_val, _LOC_ROUND_DIGITS) - claimed_val) <= 0.01
 
 
+# SAFE PARAMETER GENERATION - CIAGI GEOMETRYCZNE, TRUDNY (29.08.2026,
+# user: "robimy, bezpiecznie" - czwarte rozszerzenie tego samego dnia,
+# port wzorca z ciagow arytmetycznych - patrz
+# build_safe_sequence_two_terms wyzej po pelne uzasadnienie ogolnej
+# zasady i oficjalne kryterium poziomu 4-5).
+#
+# WAZNA ROZNICA wzgledem ciagow arytmetycznych (znaleziona PRZED
+# kodowaniem, nie po): a_m=a1+(m-1)r jest UKLADEM LINIOWYM - zawsze
+# dokladnie jedno rozwiazanie. a_m=a1*q^(m-1) jest NIELINIOWY -
+# q=(a_n/a_m)^(1/(n-m)); jesli q byloby UJEMNE, a (n-m) PARZYSTE, to
+# q^(n-m) jest DODATNIE - z SAMYCH a_m,a_n NIE DA SIE jednoznacznie
+# odzyskac znaku q (i q, i -q sa spojne z tymi samymi dwoma wyrazami) -
+# zadanie mialoby DWIE poprawne odpowiedzi, co jest bledem projektowym,
+# nie akceptowalnym uproszczeniem. Naprawiono NIE laataniem przypadku
+# brzegowego, tylko usunieciem go u zrodla: q jest TU ZAWSZE dodatnie
+# (pula {2,3}, tylko calkowite - bez uzasadnienia dla ulamkow na V1,
+# zeby a_m/a_n zawsze wyszly czystymi liczbami calkowitymi, bez
+# dodatkowej zlozonosci formatowania ulamkow) - wieloznacznosc znaku q
+# jest wiec strukturalnie niemozliwa, nie tylko rzadka.
+_GEO_A1_POOL = [v for v in range(-9, 10) if v != 0]
+_GEO_Q_POOL = [sp.Integer(2), sp.Integer(3)]
+_GEO_INDEX_POOL = list(range(2, 6))  # m,n >= 2 - GWARANTUJE a_m != a1 (jak w ciagach arytmetycznych)
+
+
+def build_safe_geometric_sequence_two_terms(a1: int = None, q=None, m: int = None, n: int = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania 'w ciagu geometrycznym
+    a_m=X, a_n=Y - wyznacz pierwszy wyraz i iloraz' (patrz komentarz
+    wyzej). a1/q wybrane PRZED policzeniem a_m/a_n - poprawnosc
+    gwarantowana przez konstrukcje, identyczny wzorzec co
+    build_safe_sequence_two_terms (ciagi arytmetyczne)."""
+    if a1 is None:
+        a1 = random.choice(_GEO_A1_POOL)
+    if q is None:
+        q = random.choice(_GEO_Q_POOL)
+        while a1 == q:  # unika kolizji z dystraktorem 1 (zamiana a1<->q) - TYLKO gdy q losowane, nie gdy jawnie podane (testy)
+            q = random.choice(_GEO_Q_POOL)
+    if m is None or n is None:
+        m, n = sorted(random.sample(_GEO_INDEX_POOL, 2))
+    a_m_val = int(a1 * q ** (m - 1))
+    a_n_val = int(a1 * q ** (n - 1))
+    correct_text = f"a_1 = {a1}, q = {q}"
+    # DYSTRAKTORY - typowe bledy uczniow (zero AI), analogicznie do
+    # ciagow arytmetycznych: (1) zamiana a1<->q, (2) zly znak ilorazu
+    # (student "zapomina", ze q w tym zadaniu jest zawsze dodatnie),
+    # (3) potraktowanie PIERWSZEGO podanego wyrazu jako a1 wprost.
+    distractors = [
+        f"a_1 = {q}, q = {a1}",
+        f"a_1 = {a1}, q = {-q}",
+        f"a_1 = {a_m_val}, q = {q}",
+    ]
+    question_text = (
+        f"W ciągu geometrycznym $a_{{{m}}} = {a_m_val}$, $a_{{{n}}} = {a_n_val}$. "
+        f"Wyznacz pierwszy wyraz i iloraz tego ciągu (przyjmij, że iloraz jest dodatni)."
+    )
+    return {
+        "a1": a1, "q": q, "m": m, "n": n, "a_m_val": a_m_val, "a_n_val": a_n_val,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+def verify_geometric_sequence_two_terms(a1: int, q, m: int, n: int, a_m_val: int, a_n_val: int) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka niz
+    build_safe_geometric_sequence_two_terms) - sprawdza wprost, czy
+    a1*q^(m-1)==a_m_val ORAZ a1*q^(n-1)==a_n_val (rownania, nie
+    "solve", bo geometryczny uklad ma wielowartosciowy odwrot dla
+    ogolnego q - dokladnie problem opisany w komentarzu wyzej)."""
+    return (a1 * q ** (m - 1) == a_m_val) and (a1 * q ** (n - 1) == a_n_val)
+
+
 def verify_sequence_two_terms(a1: int, r: int, m: int, n: int, a_m_val: int, a_n_val: int) -> bool:
     """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka obliczeniowa
     niz build_safe_sequence_two_terms - rozwiazuje uklad rownan PRZEZ

@@ -16,7 +16,7 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, format_avoid_diversity_block,
     build_safe_trig_skeleton, build_safe_sequence_two_terms,
-    build_safe_law_of_cosines_triangle,
+    build_safe_law_of_cosines_triangle, build_safe_geometric_sequence_two_terms,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1678,6 +1678,102 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - CIAGI GEOMETRYCZNE (29.08.2026, port na
+# Quiz) - patrz pelne uzasadnienie w
+# math_verify.build_safe_geometric_sequence_two_terms. Identyczny
+# mechanizm co poprzednie archetypy.
+async def _raw_generate_safe_geometric_sequence_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla archetypu 'w ciagu geometrycznym a_m=X,
+    a_n=Y - wyznacz a1 i q (dodatnie)' metoda 'safe parameter
+    generation' - patrz komentarz wyzej. Jedno wywolanie AI dla calej
+    partii, analogicznie do _raw_generate_safe_sequence_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_geometric_sequence_two_terms() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. Dane: {sk['question_text']} "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o ciagach geometrycznych,
+zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie (1-2 zdania) - ulozenie ukladu rownan z
+   wzoru $a_n = a_1 \\cdot q^{{n-1}}$ i rozwiazanie go (podzielenie
+   rownan stronami, zeby wyeliminowac $a_1$).
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Ciągi geometryczne - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "W ciągu geometrycznym $a_2 = 6$, $a_5 = 48$. Wyznacz pierwszy wyraz i iloraz tego ciągu (przyjmij, że iloraz jest dodatni).",
+            "explanation": "Dzieląc równania stronami: $\\frac{{a_5}}{{a_2}} = q^3 = \\frac{{48}}{{6}} = 8$, stąd $q=2$, a wtedy $a_1 = \\frac{{a_2}}{{q}} = 3$.",
+            "diversity_tag": {{
+                "skill": "wzor na n-ty wyraz ciagu geometrycznego", "concept": "uklad rownan z dwoch wyrazow",
+                "task_type": "wyznacz a1 i q", "reasoning": "podziel rownania stronami, wyznacz q, potem a1"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["question_text"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Ciągi geometryczne - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -1739,6 +1835,21 @@ def _is_hard_law_of_cosines(topic: str, difficulty: str) -> bool:
     is_loc = "cosinus" in t or "kosinus" in t
     diff_word = (difficulty or "").strip().lower()
     return is_loc and diff_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_hard_geometric_sequence(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla CIAGOW
+    GEOMETRYCZNYCH na poziomie trudny/hard (czwarte rozszerzenie tego
+    samego dnia, port z _is_hard_arithmetic_sequence - patrz tam
+    ogolne uzasadnienie wzorca). CELOWO wymaga "geometryczn" I BRAKU
+    "arytmetyczn" - lustrzane odbicie warunku dla ciagow
+    arytmetycznych, ten sam powod (is_sequence_topic dopasowuje OBA
+    rodzaje, archetyp jest matematycznie specyficzny dla wzoru
+    a1*q^(n-1))."""
+    t = (topic or "").lower()
+    is_geometric = ("ciąg" in t or "ciag" in t) and "geometryczn" in t and "arytmetyczn" not in t
+    diff_word = (difficulty or "").strip().lower()
+    return is_geometric and diff_word in _HARD_DIFFICULTY_WORDS
 
 
 async def _generate_quiz_topic_once(
@@ -1810,6 +1921,10 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na twierdzenie cosinusow - patrz
         # _is_hard_law_of_cosines i _raw_generate_safe_law_of_cosines_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_cosines_batch(max(n, _MIN_FILL_BATCH))
+    elif _is_hard_geometric_sequence(topic, difficulty):
+        # Port tego samego wzorca na ciagi geometryczne - patrz
+        # _is_hard_geometric_sequence i _raw_generate_safe_geometric_sequence_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_geometric_sequence_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
