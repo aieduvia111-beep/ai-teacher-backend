@@ -16,6 +16,7 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, format_avoid_diversity_block,
     build_safe_trig_skeleton, build_safe_sequence_two_terms,
+    build_safe_law_of_cosines_triangle,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1576,6 +1577,107 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - TWIERDZENIE COSINUSOW (29.08.2026, port na
+# Quiz) - patrz pelne uzasadnienie w
+# math_verify.build_safe_law_of_cosines_triangle. Identyczny mechanizm
+# co poprzednie dwa archetypy: AI dostaje gotowe opcje + poprawna
+# odpowiedz, pisze TYLKO tresc pytania po polsku + wyjasnienie krok po
+# kroku + diversity_tag.
+async def _raw_generate_safe_law_of_cosines_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla archetypu 'trojkat SAS - oblicz bok c ALBO
+    pole P' metoda 'safe parameter generation' - patrz komentarz wyzej.
+    Jedno wywolanie AI dla calej partii, analogicznie do
+    _raw_generate_safe_sequence_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_law_of_cosines_triangle() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        co_pyta = "trzeci bok $c$" if sk["ask"] == "c" else "pole trójkąta"
+        items_desc.append(
+            f"{i + 1}. Dane: {sk['question_text']} (pyta o {co_pyta}). "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o trojkatach (dwa boki + kat
+miedzy nimi - twierdzenie cosinusow), zadanie, WSZYSTKIE 4 opcje
+odpowiedzi ORAZ poprawna opcja zostaly JUZ OBLICZONE (przez niezalezny
+system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc
+   podanej tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie krok po kroku - dla boku c: wzor
+   $c^2=a^2+b^2-2ab\\cos(\\gamma)$ z podstawionymi liczbami; dla pola:
+   wzor $P=\\frac{{1}}{{2}}ab\\sin(\\gamma)$ z podstawionymi liczbami.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system (wyniki zaokraglone do 2
+miejsc po przecinku). Twoja rola to TYLKO jezyk, nie matematyka. NIE
+dolaczaj pol "options"/"correct"/"final_answer" - system doda je
+automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Twierdzenie cosinusów - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "W trójkącie boki mają długość $a = 7$, $b = 9$, kąt między nimi $\\gamma = 50°$. Oblicz długość trzeciego boku $c$ (z dokładnością do dwóch miejsc po przecinku).",
+            "explanation": "Z twierdzenia cosinusów: $c^2 = 7^2 + 9^2 - 2 \\cdot 7 \\cdot 9 \\cdot \\cos(50°) \\approx 49.00$, stąd $c \\approx 7.00$.",
+            "diversity_tag": {{
+                "skill": "twierdzenie cosinusow", "concept": "trojkat SAS (dwa boki i kat miedzy nimi)",
+                "task_type": "oblicz trzeci bok", "reasoning": "podstaw do wzoru c^2=a^2+b^2-2ab*cos(gamma), pierwiastkuj"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["question_text"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Twierdzenie cosinusów - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -1621,6 +1723,22 @@ def _is_hard_arithmetic_sequence(topic: str, difficulty: str) -> bool:
     is_arithmetic = ("ciąg" in t or "ciag" in t) and "arytmetyczn" in t and "geometryczn" not in t
     diff_word = (difficulty or "").strip().lower()
     return is_arithmetic and diff_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_hard_law_of_cosines(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla TWIERDZENIA
+    COSINUSOW na poziomie trudny/hard (trzecie rozszerzenie tego samego
+    dnia - user: "rozpiszmy to porzadnie... twierdzenie cosinusow").
+    CELOWO WASKI warunek (samo slowo "cosinus"/"kosinus" w temacie) -
+    nie "kazda geometria trojkata" (to obejmowaloby tez twierdzenie
+    sinusow, ktore ma INNY wzor i INNY archetyp, tu nieobslugiwany) ani
+    "kazda trygonometria" (juz zajete przez _is_hard_trig_quadratic).
+    Bezpieczny abstain dla wszystkiego innego - lepiej NIE zlapac tego
+    archetypu niz zlapac go dla niepasujacego tematu."""
+    t = (topic or "").lower()
+    is_loc = "cosinus" in t or "kosinus" in t
+    diff_word = (difficulty or "").strip().lower()
+    return is_loc and diff_word in _HARD_DIFFICULTY_WORDS
 
 
 async def _generate_quiz_topic_once(
@@ -1688,6 +1806,10 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na ciagi arytmetyczne - patrz
         # _is_hard_arithmetic_sequence i _raw_generate_safe_sequence_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_batch(max(n, _MIN_FILL_BATCH))
+    elif _is_hard_law_of_cosines(topic, difficulty):
+        # Port tego samego wzorca na twierdzenie cosinusow - patrz
+        # _is_hard_law_of_cosines i _raw_generate_safe_law_of_cosines_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_cosines_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,

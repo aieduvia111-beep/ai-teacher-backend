@@ -38,7 +38,7 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, check_sequence_formula_open_answer,
     format_avoid_diversity_block, build_safe_trig_skeleton,
-    build_safe_sequence_two_terms,
+    build_safe_sequence_two_terms, build_safe_law_of_cosines_triangle,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1138,6 +1138,17 @@ def _is_hard_arithmetic_sequence_exam(temat: str, trudnosc: str) -> bool:
     return is_arithmetic and trudnosc_word in _HARD_DIFFICULTY_WORDS
 
 
+def _is_hard_law_of_cosines_exam(temat: str, trudnosc: str) -> bool:
+    """PORT z Quizu (_is_hard_law_of_cosines w openai_exam.py) - patrz
+    tam pelne uzasadnienie (CELOWO waski warunek - samo slowo
+    "cosinus"/"kosinus", nie "kazda geometria trojkata"). Uzywana TYLKO
+    w rundach dogenerowania."""
+    t = (temat or "").lower()
+    is_loc = "cosinus" in t or "kosinus" in t
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_loc and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
@@ -2199,6 +2210,130 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - TWIERDZENIE COSINUSOW (29.08.2026,
+    # port na Sprawdzian) - patrz pelne uzasadnienie w
+    # math_verify.build_safe_law_of_cosines_triangle i
+    # openai_exam._raw_generate_safe_law_of_cosines_batch (Quiz, ten sam
+    # mechanizm).
+    def _raw_generate_safe_law_of_cosines_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla archetypu 'trojkat SAS -
+        oblicz bok c ALBO pole P' metoda 'safe parameter generation' -
+        zwraca dane w KSZTALCIE sprawdzianu, analogicznie do
+        _raw_generate_safe_sequence_batch."""
+        buffered_n = n + 3
+        skeletons = [build_safe_law_of_cosines_triangle() for _ in range(buffered_n)]
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            co_pyta = "trzeci bok $c$" if sk["ask"] == "c" else "pole trójkąta"
+            items_desc.append(
+                f"{i + 1}. Dane: {sk['question_text']} (pyta o {co_pyta}). "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o trojkatach (dwa boki + kat
+miedzy nimi - twierdzenie cosinusow), zadanie, WSZYSTKIE 4 opcje
+odpowiedzi ORAZ poprawna opcja zostaly JUZ OBLICZONE (przez niezalezny
+system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc
+   podanej tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie krok po kroku - dla boku c: wzor
+   $c^2=a^2+b^2-2ab\\cos(\\gamma)$ z podstawionymi liczbami; dla pola:
+   wzor $P=\\frac{{1}}{{2}}ab\\sin(\\gamma)$ z podstawionymi liczbami.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system (wyniki zaokraglone do 2
+miejsc po przecinku). Twoja rola to TYLKO jezyk, nie matematyka. NIE
+dolaczaj pol "opcje"/"odpowiedz"/"final_answer" - system doda je
+automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "W trójkącie boki mają długość $a = 7$, $b = 9$, kąt między nimi $\\gamma = 50°$. Oblicz długość trzeciego boku $c$ (z dokładnością do dwóch miejsc po przecinku).",
+                    "punkty": 1,
+                    "wyjasnienie": "Z twierdzenia cosinusów: $c^2 = 7^2 + 9^2 - 2 \\cdot 7 \\cdot 9 \\cdot \\cos(50°) \\approx 49.00$, stąd $c \\approx 7.00$.",
+                    "diversity_tag": {{
+                        "skill": "twierdzenie cosinusow", "concept": "trojkat SAS (dwa boki i kat miedzy nimi)",
+                        "task_type": "oblicz trzeci bok",
+                        "reasoning": "podstaw do wzoru c^2=a^2+b^2-2ab*cos(gamma), pierwiastkuj"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (cosinusow): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or sk["question_text"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -2319,6 +2454,11 @@ ZASADY:
                         # patrz _is_hard_arithmetic_sequence_exam i
                         # _raw_generate_safe_sequence_batch.
                         extra = self._raw_generate_safe_sequence_batch(max(missing, _MIN_FILL_BATCH_EXAM))
+                    elif _is_hard_law_of_cosines_exam(temat, trudnosc):
+                        # Port tego samego wzorca na twierdzenie
+                        # cosinusow - patrz _is_hard_law_of_cosines_exam i
+                        # _raw_generate_safe_law_of_cosines_batch.
+                        extra = self._raw_generate_safe_law_of_cosines_batch(max(missing, _MIN_FILL_BATCH_EXAM))
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1

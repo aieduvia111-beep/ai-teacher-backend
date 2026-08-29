@@ -811,6 +811,108 @@ def build_safe_sequence_two_terms(a1: int = None, r: int = None, m: int = None, 
     }
 
 
+# SAFE PARAMETER GENERATION - TWIERDZENIE COSINUSOW, TRUDNY (29.08.2026,
+# user: "rozpiszmy to porzadnie, krok po kroku" - trzecie rozszerzenie
+# tego samego dnia). Archetyp z OFICJALNEGO przykladu w level_config.py
+# (technikum_3/liceum_3, "PRZYKLADY TRUDNYCH ZADAN"): "W trojkacie boki
+# maja dlugosc a=7, b=9, kat miedzy nimi gamma=50°. Oblicz dlugosc
+# trzeciego boku oraz pole trojkata." - w ODROZNIENIU od trygonometrii
+# (rownania) i ciagow, kat gamma tu jest CELOWO "nieladny" (50°, nie
+# 30/45/60/90) - dokladnie jak w oficjalnym przykladzie, wiec wynik jest
+# NATURALNIE przyblizeniem dziesietnym (userzy uzywaja kalkulatora), nie
+# czysta liczba wymierna/pierwiastkiem - stad zaokraglanie do 2 miejsc +
+# tolerancja +-0.01 zamiast dokladnego dopasowania tekstu jak wczesniej.
+#
+# Decyzja architektoniczna (ustalona z userem PRZED kodowaniem, patrz
+# rozmowa): DWA OSOBNE mini-archetypy (bok c ALBO pole P), nie jedno
+# pytanie z para "c, P" - mniej ruchomych czesci, kazdy to prosty
+# "1 liczba + 3 dystraktory" wzorzec, ktory juz mamy sprawdzony.
+_LOC_SIDE_POOL = list(range(4, 16))  # a,b w [4,15]
+# Katy CELOWO "nieladne" (bez 30/45/60/90/120/135/150 i sasiadow) -
+# dokladnie taki ksztalt, jaki ma oficjalny przyklad programowy (gamma=50°).
+_LOC_ANGLE_POOL_DEG = [40, 50, 55, 65, 70, 75, 80, 100, 105, 110, 115, 125, 140, 145, 155]
+_LOC_ROUND_DIGITS = 2
+
+
+def build_safe_law_of_cosines_triangle(a: int = None, b: int = None, gamma_deg: int = None, ask: str = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania o trojkacie SAS (dwa
+    boki + kat miedzy nimi) - bok c z twierdzenia cosinusow, POLE
+    liczone NIEZALEZNIE ze wzoru $P=\\frac{{1}}{{2}}ab\\sin(\\gamma)$
+    (NIE z Herona na podstawie zaokraglonego c - unika propagacji bledu
+    zaokraglenia z jednej wartosci do drugiej, ustalone z userem PRZED
+    kodowaniem). `ask` ('c' albo 'P') wybiera, o KTORA z dwoch wartosci
+    pyta TO KONKRETNE pytanie - druga jest liczona i tak (potrzebna do
+    part-of-formula distraktorow), ale nie pojawia sie w tresci."""
+    if a is None:
+        a = random.choice(_LOC_SIDE_POOL)
+    if b is None:
+        b = random.choice(_LOC_SIDE_POOL)
+    if gamma_deg is None:
+        gamma_deg = random.choice(_LOC_ANGLE_POOL_DEG)
+    if ask is None:
+        ask = random.choice(["c", "P"])
+    gamma_rad = sp.rad(gamma_deg)
+    cos_g = sp.cos(gamma_rad)
+    sin_g = sp.sin(gamma_rad)
+    c_val = round(float(sp.sqrt(a ** 2 + b ** 2 - 2 * a * b * cos_g)), _LOC_ROUND_DIGITS)
+    area_val = round(float(sp.Rational(1, 2) * a * b * sin_g), _LOC_ROUND_DIGITS)
+    # DYSTRAKTORY - typowe, realne bledy uczniow (nie losowy tekst),
+    # osobna klasa dla c i dla P (ustalone z userem PRZED kodowaniem):
+    c_pyth = round(float(sp.sqrt(a ** 2 + b ** 2)), _LOC_ROUND_DIGITS)  # pomylony wzor z Pitagorasem (calkowicie pominiety kat)
+    c_sign = round(float(sp.sqrt(abs(a ** 2 + b ** 2 + 2 * a * b * cos_g))), _LOC_ROUND_DIGITS)  # zly znak przy cos(gamma)
+    c_rad_confuse = round(float(sp.sqrt(abs(a ** 2 + b ** 2 - 2 * a * b * sp.cos(gamma_deg)))), _LOC_ROUND_DIGITS)  # cos(gamma_deg) w RADIANACH zamiast stopni
+    # abs() - identyczny powod co przy area_rad_confuse ponizej: cos(gamma)
+    # jest UJEMNY dla katow rozwartych (>90°) - bez abs() ten dystraktor
+    # bylby oczywiscie bledny (pole nie moze byc ujemne), wiec przestalby
+    # byc realistyczna pulapka.
+    area_cos_confuse = round(abs(float(sp.Rational(1, 2) * a * b * cos_g)), _LOC_ROUND_DIGITS)  # cos zamiast sin (pomylony wzor z bokiem)
+    area_no_half = round(float(a * b * sin_g), _LOC_ROUND_DIGITS)  # brak dzielenia przez 2
+    # abs() - pole NIGDY nie moze wygladac na ujemne w opcji odpowiedzi
+    # (sin(gamma_deg potraktowany jako radiany) moze wypasc ujemny dla
+    # niektorych katow - user by od razu odrzucil oczywiscie bledna,
+    # ujemna opcje, co oslabia dystraktor jako "realistyczna pulapke").
+    area_rad_confuse = round(abs(float(sp.Rational(1, 2) * a * b * sp.sin(gamma_deg))), _LOC_ROUND_DIGITS)  # sin(gamma_deg) w radianach
+    if ask == "c":
+        correct_text = f"{c_val:.2f}"
+        distractors = [f"{c_pyth:.2f}", f"{c_sign:.2f}", f"{c_rad_confuse:.2f}"]
+        question_text = (
+            f"W trójkącie boki mają długość $a = {a}$, $b = {b}$, kąt między nimi "
+            f"$\\gamma = {gamma_deg}°$. Oblicz długość trzeciego boku $c$ (z dokładnością do dwóch miejsc po przecinku)."
+        )
+    else:
+        correct_text = f"{area_val:.2f}"
+        distractors = [f"{area_cos_confuse:.2f}", f"{area_no_half:.2f}", f"{area_rad_confuse:.2f}"]
+        question_text = (
+            f"W trójkącie boki mają długość $a = {a}$, $b = {b}$, kąt między nimi "
+            f"$\\gamma = {gamma_deg}°$. Oblicz pole tego trójkąta (z dokładnością do dwóch miejsc po przecinku)."
+        )
+    return {
+        "a": a, "b": b, "gamma_deg": gamma_deg, "ask": ask,
+        "c_val": c_val, "area_val": area_val,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+def verify_law_of_cosines_triangle(a: int, b: int, gamma_deg: int, ask: str, claimed_text: str) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka niz
+    build_safe_law_of_cosines_triangle - liczy PRAWDZIWA wartosc od
+    zera z surowych a/b/gamma_deg/ask i porownuje z tekstem odpowiedzi
+    z tolerancja +-0.01, zgodnie z ustalona z userem konwencja
+    zaokraglania)."""
+    gamma_rad = sp.rad(gamma_deg)
+    if ask == "c":
+        true_val = float(sp.sqrt(a ** 2 + b ** 2 - 2 * a * b * sp.cos(gamma_rad)))
+    else:
+        true_val = float(sp.Rational(1, 2) * a * b * sp.sin(gamma_rad))
+    try:
+        claimed_val = float(claimed_text)
+    except (TypeError, ValueError):
+        return False
+    return abs(round(true_val, _LOC_ROUND_DIGITS) - claimed_val) <= 0.01
+
+
 def verify_sequence_two_terms(a1: int, r: int, m: int, n: int, a_m_val: int, a_n_val: int) -> bool:
     """Niezalezna weryfikacja (dla testow/audytu, INNA sciezka obliczeniowa
     niz build_safe_sequence_two_terms - rozwiazuje uklad rownan PRZEZ
