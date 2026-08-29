@@ -2547,11 +2547,45 @@ ZASADY:
         max_seconds = _max_generation_seconds_exam(temat, trudnosc)
         if t_start is None:
             t_start = time.monotonic()
+        # NAPRAWIONE (user zglosil real przypadek: wygenerowany sprawdzian
+        # mial TYLKO Czesc A, zero zadan otwartych - "10 zadan ma byc...
+        # ileś procent zamknietych i ileś procent otwartych"): KAZDA runda
+        # dogenerowania (nizej, WSZYSTKIE galezie - safe-archetypy I
+        # fallback wolnej generacji) dodaje WYLACZNIE zadania ZAMKNIETE
+        # (patrz "extra_closed" nizej - sekcja "otwarte" z odpowiedzi AI
+        # jest odrzucana, nawet jesli AI ja wygenerowalo) - nie istnieje
+        # ODPOWIEDNIK dla zadan otwartych (patrz TODO.md - ten dokladny
+        # brak byl juz wczesniej znany i CELOWO odlozony jako "kosmetyczny",
+        # ale user wskazal ze przy duzym rejection rate dla otwartych
+        # + niezawodnym (dzieki dzisiejszym archetypom) dopelnianiu
+        # zamknietych, `missing` po prostu ZAWSZE bylo dopelniane
+        # zamknietymi az caly sprawdzian stawal sie 100% Czescia A).
+        # Fix: cel proporcji (60/40, patrz EXAM_PROMPT) jest liczony RAZ
+        # na poczatku - kazda runda smie dodac TYLKO tyle zamknietych,
+        # ile brakuje do TEGO celu, nie do calego `missing`. Gdy cel
+        # zamknietych jest juz osiagniety, ale `missing` > 0 (bo brakuje
+        # OTWARTYCH, ktorych ten mechanizm nie umie dogenerowac) - petla
+        # KONCZY SIE (zamiast marnowac rundy/czas na bezuzyteczne
+        # dopelnianie zamknietych) i user dostaje uczciwy, PROPORCJONALNY
+        # niedobor zamiast "pelnej liczby, ale 100% zamknietych".
+        target_closed = round(liczba_pytan * 0.6)
         for round_i in range(1, max_rounds + 1):
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
             missing = liczba_pytan - current_total
             if missing <= 0:
                 break
+            current_closed = sum(
+                len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'zamkniete'
+            )
+            closed_headroom = target_closed - current_closed
+            if closed_headroom <= 0:
+                print(
+                    f"[MathVerify][Exam] brakuje {missing} zadan, ale cel proporcji zamknietych "
+                    f"({target_closed}) juz osiagniety - brak mechanizmu dogenerowania OTWARTYCH, "
+                    f"przerywam dogenerowanie (uczciwy, proporcjonalny niedobor zamiast 100% zamknietych)"
+                )
+                break
+            missing = min(missing, closed_headroom)
             elapsed = time.monotonic() - t_start
             if elapsed >= max_seconds:
                 print(f"[MathVerify][Exam] przekroczono limit czasu ({elapsed:.1f}s >= {max_seconds}s) - przerywam dogenerowanie")
@@ -2623,6 +2657,15 @@ ZASADY:
                     extra_closed.extend(s.get('pytania', []))
             if not extra_closed:
                 continue
+            # NAPRAWIONE (patrz komentarz nad "target_closed" wyzej):
+            # `_MIN_FILL_BATCH_EXAM` (bufor min. wielkosci partii, zeby
+            # nie prosic o smiesznie male partie) moze zwrocic WIECEJ
+            # zadan niz `closed_headroom` pozwala - bez tego przyciecia
+            # WSZYSTKIE trafialyby do sekcji zamknietej, przekraczajac
+            # cel proporcji mimo capa na `missing` powyzej.
+            extra_closed = extra_closed[:closed_headroom]
+            if not extra_closed:
+                continue
             target = next((s for s in data['sekcje'] if s.get('typ') == 'zamkniete'), None)
             if target is None:
                 target = {
@@ -2635,10 +2678,20 @@ ZASADY:
 
         # Przytnij, jesli po dogenerowaniu wyszlo za duzo (rundy licza
         # brakujace zadania niezaleznie, wiec drobny nadmiar jest mozliwy).
+        # NAPRAWIONE (patrz komentarz nad "target_closed" wyzej): trymuj
+        # NAJPIERW zadania ZAMKNIETE (mozna je zawsze bezpiecznie
+        # dogenerowac wiecej, sa "tanie") - stara kolejnosc (reversed()
+        # po prostu ostatnia sekcja z lista) mogla przypadkiem przycinac
+        # OTWARTE, jesli to one byly ostatnia sekcja w dokumencie -
+        # dokladnie odwrotny priorytet niz chcemy (otwarte sa "drogie",
+        # nie da sie ich dogenerowac przy niedoborze).
         total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         overflow = total - liczba_pytan
         if overflow > 0:
-            for s in reversed(data.get('sekcje', [])):
+            sekcje_do_przyciecia = sorted(
+                data.get('sekcje', []), key=lambda s: 0 if s.get('typ') == 'zamkniete' else 1
+            )
+            for s in sekcje_do_przyciecia:
                 while overflow > 0 and s.get('pytania'):
                     s['pytania'].pop()
                     overflow -= 1
