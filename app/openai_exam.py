@@ -15,6 +15,7 @@ from .math_verify import (
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, format_avoid_diversity_block,
+    build_safe_trig_quadratic_equation,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1372,6 +1373,113 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - TRYGONOMETRIA (29.08.2026, port na Quiz) -
+# patrz pelne uzasadnienie w math_verify.build_safe_trig_quadratic_equation.
+# W ODROZNIENIU od rownan kwadratowych wyzej: AI TU NIE dostaje nawet
+# zadania wymyslenia dystraktorow - "options" (4 gotowe, juz przetasowane
+# przez KOD teksty) i "correct" (indeks) sa ustawiane WPROST przez ten
+# kod, PRZED wywolaniem AI. AI dostaje juz kompletny, poprawny szkielet
+# i ma TYLKO napisac "question" (naturalna tresc po polsku) +
+# "explanation" + "diversity_tag" - user: "dystraktory tez mozna liczyc
+# kodem, nie wymyslac przez AI... to jest drugie miejsce, gdzie
+# wpuszczacie niepewnosc, obok samego rozwiazania". Rola AI jest wiec
+# TU jeszcze wezsza niz przy rownaniach kwadratowych.
+async def _raw_generate_safe_trig_quadratic_batch(n: int) -> Dict:
+    """Generuje `n` pytan dla podwzorca A*sin^2(x)+B*cos(x)+C=0 na
+    x w [0, 2pi) (rownanie sprowadzalne do kwadratowego wzgledem cos(x))
+    metoda 'safe parameter generation' - patrz komentarz wyzej. Jedno
+    wywolanie AI dla calej partii, analogicznie do
+    _raw_generate_safe_linear_param_quadratic_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_trig_quadratic_equation() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. Rownanie: $${sk['equation_latex']}$$ dla $x \\in [0, 2\\pi)$. "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan trygonometrycznych,
+rownanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie
+   (np. "Rozwiąż równanie ... dla $x \\in [0, 2\\pi)$.").
+2. Napisac krotkie wyjasnienie (1-2 zdania) - podstawienie
+   $\\sin^2(x)=1-\\cos^2(x)$, rozwiazanie rownania kwadratowego wzgledem
+   $\\cos(x)$, odrzucenie pierwiastka spoza $[-1,1]$.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ rownania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "options"/"correct"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Trygonometria - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Rozwiąż równanie $2\\sin^2(x) - 3\\cos(x) = 0$ dla $x \\in [0, 2\\pi)$.",
+            "explanation": "Podstawiając $\\sin^2(x)=1-\\cos^2(x)$ otrzymujemy równanie kwadratowe względem $\\cos(x)$: $2\\cos^2(x)+3\\cos(x)-2=0$, skąd $\\cos(x)=\\frac{{1}}{{2}}$ (drugi pierwiastek $\\cos(x)=-2$ odrzucamy jako spoza $[-1,1]$).",
+            "diversity_tag": {{
+                "skill": "rownanie trygonometryczne kwadratowe", "concept": "podstawienie sin^2=1-cos^2",
+                "task_type": "rozwiaz rownanie na przedziale", "reasoning": "sprowadz do rownania kwadratowego wzgledem cos(x), odrzuc pierwiastek spoza [-1,1]"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    # Jesli AI zwrocilo mniej pozycji niz zamowiono (rzadkie, np. urwana
+    # odpowiedz) - przycinamy skeletons do dlugosci AI zamiast crashowac
+    # albo wstawiac puste pytania (bufor +3 i tak zapewnia margines).
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or f"Rozwiąż równanie ${sk['equation_latex']}$ dla $x \\in [0, 2\\pi)$.",
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Trygonometria - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - TYLKO rownania
     kwadratowe na poziomie medium (ten sam warunek co _buffered_count/
@@ -1387,6 +1495,20 @@ def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     return is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS
+
+
+def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla TRYGONOMETRII na
+    poziomie trudny/hard (port wzorca z _is_medium_linear_param_quadratic
+    wyzej - patrz tam pelne uzasadnienie ogolnej zasady). Real-test
+    (29.08.2026, trudna trygonometria) pokazal archetyp A*sin^2(x)+
+    B*cos(x)+C=0 jako najczesciej generowany I najczesciej psuty przez
+    AI - stad TEN warunek, nie ogolny "kazda trygonometria". Jak wyzej:
+    UZYWANE TYLKO w rundach dogenerowania, pierwsza partia zostaje wolna
+    generacja (naturalny mix podwzorcow, dobry dla roznorodnosci)."""
+    is_trig = topic is not None and is_trigonometry_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    return is_trig and diff_word in _HARD_DIFFICULTY_WORDS
 
 
 async def _generate_quiz_topic_once(
@@ -1444,6 +1566,10 @@ async def _generate_quiz_topic_once(
         used_safe_letters = set()
         used_safe_constants = set()
         regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
+    elif _is_hard_trig_quadratic(topic, difficulty):
+        # Port tego samego wzorca na trygonometrie - patrz
+        # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_trig_quadratic_batch(max(n, _MIN_FILL_BATCH))
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
@@ -1876,6 +2002,24 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
             print(f"[LatexValidate] USUNIETO pytanie ({latex_reason}): '{text[:60]}...'")
             if metrics:
                 metrics.record_rejection("latex_malformed")
+            continue
+
+        # WARSTWA 2/2.5 EXEMPTION dla bezpiecznie wygenerowanych pytan
+        # (patrz _raw_generate_safe_trig_quadratic_batch/
+        # _raw_generate_safe_linear_param_quadratic_batch): poprawnosc
+        # jest JUZ gwarantowana przez konstrukcje - kod, nie AI, policzyl
+        # "correct", "options" (w tym dystraktory) i "final_answer".
+        # Dodatkowe wywolanie AI-2 (Warstwa 2.5) byloby zbednym kosztem
+        # czasu bez zadnej dodatkowej pewnosci - to wlasnie ten koszt
+        # user chcial usunac ("dystraktory tez mozna liczyc kodem... to
+        # jest drugie miejsce, gdzie wpuszczacie niepewnosc"). Rownania
+        # kwadratowe z parametrem SA rozpoznawane przez sympy normalnie
+        # (Warstwa 2 i tak je tanio potwierdzi, bez AI) - to zwolnienie
+        # ma praktyczne znaczenie GLOWNIE dla wzorcow (jak trygonometria),
+        # ktorych sympy jeszcze nie rozpoznaje jako "unverifiable" i
+        # ktore bez tego zwolnienia trafialyby do Warstwy 2.5.
+        if q.get("_safe_generated"):
+            kept.append(q)
             continue
 
         # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec

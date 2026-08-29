@@ -37,7 +37,7 @@ from .math_verify import (
     log_no_option_matches_diagnostic, log_final_answer_mismatch_diagnostic,
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, check_sequence_formula_open_answer,
-    format_avoid_diversity_block,
+    format_avoid_diversity_block, build_safe_trig_quadratic_equation,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1118,6 +1118,14 @@ def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
     return is_quadratic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS
 
 
+def _is_hard_trig_quadratic_exam(temat: str, trudnosc: str) -> bool:
+    """PORT z Quizu (_is_hard_trig_quadratic w openai_exam.py) - patrz
+    tam pelne uzasadnienie. Uzywana TYLKO w rundach dogenerowania."""
+    is_trig = temat is not None and is_trigonometry_topic(temat)
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_trig and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
@@ -1408,6 +1416,15 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 print(f"[LatexValidate][Exam] USUNIETO zadanie ({latex_reason}): '{tresc[:60]}...'")
                 if metrics:
                     metrics.record_rejection("latex_malformed")
+                continue
+
+            # WARSTWA 2/2.5 EXEMPTION dla bezpiecznie wygenerowanych zadan
+            # (patrz identyczny mechanizm i uzasadnienie w
+            # openai_exam._verify_and_fix_quiz_math) - poprawnosc jest
+            # JUZ gwarantowana przez konstrukcje, dodatkowe wywolanie AI-2
+            # bylo by zbednym kosztem.
+            if pyt.get("_safe_generated"):
+                kept.append(pyt)
                 continue
 
             # WARSTWA 2: niezalezna weryfikacja sympy tam, gdzie rozpoznajemy wzorzec
@@ -1919,6 +1936,138 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - TRYGONOMETRIA (29.08.2026, port na
+    # Sprawdzian) - patrz pelne uzasadnienie w
+    # math_verify.build_safe_trig_quadratic_equation i
+    # openai_exam._raw_generate_safe_trig_quadratic_batch (Quiz, ten sam
+    # mechanizm). W ODROZNIENIU od rownan kwadratowych wyzej: AI TU NIE
+    # dostaje nawet zadania wymyslenia dystraktorow - "opcje" (4 gotowe,
+    # juz przetasowane przez KOD teksty, z prefiksem litery) i
+    # "odpowiedz" (litera) sa ustawiane WPROST przez ten kod, PRZED
+    # wywolaniem AI. AI dostaje juz kompletny, poprawny szkielet i ma
+    # TYLKO napisac "tresc" (naturalna tresc po polsku) + "wyjasnienie" +
+    # "diversity_tag" - user: "dystraktory tez mozna liczyc kodem, nie
+    # wymyslac przez AI... to jest drugie miejsce, gdzie wpuszczacie
+    # niepewnosc, obok samego rozwiazania".
+    def _raw_generate_safe_trig_quadratic_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla podwzorca A*sin^2(x)+
+        B*cos(x)+C=0 na x w [0, 2pi) metoda 'safe parameter generation' -
+        zwraca dane w KSZTALCIE sprawdzianu, analogicznie do
+        _raw_generate_safe_linear_param_quadratic_batch."""
+        buffered_n = n + 3
+        skeletons = [build_safe_trig_quadratic_equation() for _ in range(buffered_n)]
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            items_desc.append(
+                f"{i + 1}. Rownanie: $${sk['equation_latex']}$$ dla $x \\in [0, 2\\pi)$. "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan trygonometrycznych,
+rownanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie
+   (np. "Rozwiąż równanie ... dla $x \\in [0, 2\\pi)$.").
+2. Napisac krotkie wyjasnienie (1-2 zdania) - podstawienie
+   $\\sin^2(x)=1-\\cos^2(x)$, rozwiazanie rownania kwadratowego wzgledem
+   $\\cos(x)$, odrzucenie pierwiastka spoza $[-1,1]$.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ rownania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "Rozwiąż równanie $2\\sin^2(x) - 3\\cos(x) = 0$ dla $x \\in [0, 2\\pi)$.",
+                    "punkty": 1,
+                    "wyjasnienie": "Podstawiając $\\sin^2(x)=1-\\cos^2(x)$ otrzymujemy równanie kwadratowe względem $\\cos(x)$: $2\\cos^2(x)+3\\cos(x)-2=0$, skąd $\\cos(x)=\\frac{{1}}{{2}}$ (drugi pierwiastek $\\cos(x)=-2$ odrzucamy jako spoza $[-1,1]$).",
+                    "diversity_tag": {{
+                        "skill": "rownanie trygonometryczne kwadratowe", "concept": "podstawienie sin^2=1-cos^2",
+                        "task_type": "rozwiaz rownanie na przedziale",
+                        "reasoning": "sprowadz do rownania kwadratowego wzgledem cos(x), odrzuc pierwiastek spoza [-1,1]"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane rownanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (trygonometria): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        # Jesli AI zwrocilo mniej pozycji niz zamowiono - przycinamy
+        # skeletons do dlugosci AI zamiast crashowac (bufor +3 i tak
+        # zapewnia margines) - identyczny wzorzec co w Quizie.
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or f"Rozwiąż równanie ${sk['equation_latex']}$ dla $x \\in [0, 2\\pi)$.",
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     def _get_exam_data(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None) -> dict:
         # NAPRAWIONE: pierwsze wywolanie prosi o troche WIECEJ zadan niz
         # zamowiono (patrz _buffered_question_count) - empirycznie
@@ -2027,6 +2176,11 @@ ZASADY:
                     # tego przypadku (stad w ogole te rundy sa potrzebne).
                     if _is_medium_linear_param_quadratic_exam(temat, trudnosc):
                         extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
+                    elif _is_hard_trig_quadratic_exam(temat, trudnosc):
+                        # Port tego samego wzorca na trygonometrie - patrz
+                        # _is_hard_trig_quadratic_exam i
+                        # _raw_generate_safe_trig_quadratic_batch.
+                        extra = self._raw_generate_safe_trig_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM))
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1

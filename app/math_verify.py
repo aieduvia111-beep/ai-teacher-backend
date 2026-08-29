@@ -574,6 +574,151 @@ def build_safe_linear_param_quadratic(param_letter: str = None, c_value: int = N
     }
 
 
+# SAFE PARAMETER GENERATION - TRYGONOMETRIA (29.08.2026) - PORT tego
+# samego wzorca (patrz komentarz nad build_safe_linear_param_quadratic)
+# na DRUGI, potwierdzony realnymi testami najtrudniejszy podwzorzec:
+# rownanie A*sin^2(x) + B*cos(x) + C = 0 na x w [0, 2pi), sprowadzalne
+# do rownania kwadratowego wzgledem cos(x) (podstawienie sin^2=1-cos^2).
+#
+# User (real-test, trudna trygonometria, 29.08.2026): "bez jaj nie
+# mozemy tak zrobic ze czekac 5 minut na sprawdzian musimy miec inne
+# rozwiazanie" - podnoszenie budzetu czasowego bylo leczeniem objawu.
+# Logi tego samego dnia pokazaly PRAWDZIWA przyczyne: AI samo, WOLNO
+# generujac trudna trygonometrie, WIELOKROTNIE probowalo dokladnie TEGO
+# podwzorca (np. "2sin^2(x) - 3cos(x) = 0" pojawilo sie w TRZECH
+# oddzielnych rundach tego samego dnia, za kazdym razem w innym,
+# czesto blednym warioncie) - to jest wiec NIE hipotetyczny, tylko
+# NAJCZESCIEJ generowany i NAJCZESCIEJ psuty archetyp dla tego tematu.
+#
+# Jak przy rownaniach kwadratowych: zamiast prosic AI o wymyslenie
+# CALEGO zadania (rownanie + rozwiazanie) i sprawdzac POTEM czy policzylo
+# poprawnie, KOD wybiera "ladny" kat (cos ktorego jest liczba wymierna z
+# malej puli: 1/2 lub -1/2) jako JEDYNY poprawny pierwiastek u0, oraz
+# DRUGI pierwiastek u1 CELOWO POZA [-1,1] (wiec automatycznie odrzucany
+# jako niepoprawny dla cosinusa - dokladnie ten sam mechanizm, ktory
+# organicznie wystapil w prawdziwym przykladzie AI: cos(x)=-2 zostal
+# odrzucony, zostawiajac TYLKO cos(x)=1/2). Z Vieta: A*u^2 - B*u -
+# (A+C) = 0 ma pierwiastki u0,u1 <=> B = A*(u0+u1), C = -A*(u0*u1+1).
+# A jest ZAWSZE parzyste (pula {2,4,6,8}) - to GWARANTUJE, ze B i C
+# wyjda CALKOWITE (u0 ma mianownik 2), bez zadnego zaokraglania.
+_TRIG_QUADRATIC_NICE_COS = [sp.Rational(1, 2), sp.Rational(-1, 2)]
+# arccos(1/2) = pi/3, arccos(-1/2) = 2pi/3 - drugie rozwiazanie na
+# [0, 2pi) to zawsze 2*pi - arccos(u0) (symetria cosinusa).
+_TRIG_QUADRATIC_ANGLE_TEXT = {
+    sp.Rational(1, 2): (r"\frac{\pi}{3}", r"\frac{5\pi}{3}"),
+    sp.Rational(-1, 2): (r"\frac{2\pi}{3}", r"\frac{4\pi}{3}"),
+}
+_TRIG_QUADRATIC_A_POOL = [2, 4, 6, 8]
+_TRIG_QUADRATIC_EXTRANEOUS_POOL = [-3, -2, 2, 3]
+
+# DYSTRAKTORY LICZONE KODEM (nie przez AI) - user: "dystraktory (błędne
+# opcje) - to też można liczyć kodem, nie wymyślać przez AI... to jest
+# drugie miejsce, gdzie wpuszczacie niepewność, obok samego rozwiązania".
+# Pelna pula "ladnych" katow z ich symetrycznym drugim rozwiazaniem na
+# [0, 2pi) - dokladnie takiego ksztaltu bledne opcje AI generowalo
+# organicznie w real-logach tego samego dnia (np. "x = pi/4, 7pi/4"
+# jako bledna opcja dla poprawnego "x = pi/3, 5pi/3"). Dystraktory =
+# 3 INNE katy z tej puli (rozne od poprawnego) - deterministycznie
+# roznia sie od poprawnej odpowiedzi (inny kat), wiec NIE MOGA
+# przypadkiem kolidowac z poprawnym wynikiem (co bylo realnym ryzykiem
+# przy "AI, wymysl 3 blednych dystraktorow").
+_TRIG_QUADRATIC_ALL_ANGLES = {
+    sp.Rational(1, 6): (r"\frac{\pi}{6}", r"\frac{11\pi}{6}"),
+    sp.Rational(1, 4): (r"\frac{\pi}{4}", r"\frac{7\pi}{4}"),
+    sp.Rational(1, 3): (r"\frac{\pi}{3}", r"\frac{5\pi}{3}"),
+    sp.Rational(1, 2): (r"\frac{\pi}{2}", r"\frac{3\pi}{2}"),
+    sp.Rational(2, 3): (r"\frac{2\pi}{3}", r"\frac{4\pi}{3}"),
+    sp.Rational(3, 4): (r"\frac{3\pi}{4}", r"\frac{5\pi}{4}"),
+    sp.Rational(5, 6): (r"\frac{5\pi}{6}", r"\frac{7\pi}{6}"),
+}
+# u0 (poprawne cos(x)) mapuje sie na "ulamek kata" pi/3 dla u0=1/2 i
+# 2pi/3 dla u0=-1/2 - klucz do _TRIG_QUADRATIC_ALL_ANGLES.
+_TRIG_QUADRATIC_U0_TO_ANGLE_FRACTION = {
+    sp.Rational(1, 2): sp.Rational(1, 3),
+    sp.Rational(-1, 2): sp.Rational(2, 3),
+}
+
+
+def build_safe_trig_quadratic_distractors(u0) -> list:
+    """Zwraca 3 TEKSTOWO gotowe, bledne opcje (kazda w formacie
+    "x = A, x = B", identycznym jak correct_text) - kazda uzywa INNEGO
+    "ladnego" kata niz poprawna odpowiedz, wiec z definicji nie moze
+    byc matematycznie rowna poprawnemu wynikowi. Deterministyczne (poza
+    losowym WYBOREM ktorych 3 z 6 pozostalych katow uzyc) - zero AI."""
+    correct_fraction = _TRIG_QUADRATIC_U0_TO_ANGLE_FRACTION[u0]
+    other_fractions = [f for f in _TRIG_QUADRATIC_ALL_ANGLES if f != correct_fraction]
+    chosen = random.sample(other_fractions, 3)
+    return [f"x = {a}, x = {b}" for a, b in (_TRIG_QUADRATIC_ALL_ANGLES[f] for f in chosen)]
+
+
+def build_safe_trig_quadratic_equation(u0=None, u1: int = None, a_coeff: int = None) -> dict:
+    """Buduje JEDEN bezpieczny (gwarantowanie poprawny) szkielet zadania
+    dla A*sin^2(x) + B*cos(x) + C = 0 na x w [0, 2pi) - patrz komentarz
+    wyzej po pelne uzasadnienie. A/B/C sa WYLICZONE z wybranych
+    pierwiastkow u0 (poprawny, w [-1,1]) i u1 (odrzucany, poza [-1,1])
+    PRZEZ wzory Viete'a - poprawnosc jest gwarantowana przez konstrukcje,
+    nie przez AI ani przez ponowne rozwiazywanie rownania. Zwraca dict z
+    gotowym tekstem rownania (LaTeX) i poprawnym tekstem odpowiedzi."""
+    if u0 is None:
+        u0 = random.choice(_TRIG_QUADRATIC_NICE_COS)
+    if u1 is None:
+        pool = [v for v in _TRIG_QUADRATIC_EXTRANEOUS_POOL if v != u0]
+        u1 = random.choice(pool)
+    if a_coeff is None:
+        a_coeff = random.choice(_TRIG_QUADRATIC_A_POOL)
+    A = a_coeff
+    B = int(A * (u0 + u1))
+    C = int(-A * (u0 * u1 + 1))
+    b_sign = '+' if B >= 0 else '-'
+    equation_latex = f"{A}\\sin^2(x) {b_sign} {abs(B)}\\cos(x)"
+    if C > 0:
+        equation_latex += f" + {C}"
+    elif C < 0:
+        equation_latex += f" - {abs(C)}"
+    equation_latex += " = 0"
+    angle1, angle2 = _TRIG_QUADRATIC_ANGLE_TEXT[u0]
+    correct_text = f"x = {angle1}, x = {angle2}"
+    distractors = build_safe_trig_quadratic_distractors(u0)
+    return {
+        "A": A, "B": B, "C": C, "u0": u0, "u1": u1,
+        "equation_latex": equation_latex,
+        "correct_text": correct_text,
+        "distractors": distractors,
+    }
+
+
+_TRIG_ANSWER_FRAC_RE = re.compile(r'\\frac\{(-?\d+)?\\pi\}\{(\d+)\}')
+_TRIG_ANSWER_BARE_PI_RE = re.compile(r'(?<!\{)(-?\d+)\\pi(?!\})')
+
+
+def verify_trig_quadratic_equation(A: int, B: int, C: int, claimed_text: str) -> bool:
+    """Niezalezna weryfikacja (dla testow/audytu): rozwiazuje
+    A*sin^2(x) + B*cos(x) + C = 0 na [0, 2pi) PRZEZ sympy (nie przez
+    wzory uzyte w build_safe_trig_quadratic_equation - inna sciezka
+    obliczeniowa jako dodatkowe zabezpieczenie) i porownuje zbior
+    rozwiazan z tymi zawartymi w `claimed_text`. Rozpoznaje LaTeX w
+    formacie uzywanym przez ten modul i real dane z produkcji:
+    "\\frac{\\pi}{3}" (pi/3), "\\frac{5\\pi}{3}" (5*pi/3), "2\\pi" (bare,
+    NIE wewnatrz \\frac{..})."""
+    x = Symbol('x', real=True)
+    eq = Eq(A * sp.sin(x) ** 2 + B * sp.cos(x) + C, 0)
+    sols = sp.solveset(eq, x, domain=sp.Interval.Ropen(0, 2 * sp.pi))
+    true_vals = set(sp.simplify(s) for s in sols)
+    claimed_vals = set()
+    for num, den in _TRIG_ANSWER_FRAC_RE.findall(claimed_text):
+        coeff = sp.Integer(num) if num else sp.Integer(1)
+        claimed_vals.add(sp.simplify(coeff * sp.pi / int(den)))
+    frac_spans = {m.span() for m in _TRIG_ANSWER_FRAC_RE.finditer(claimed_text)}
+    for m in _TRIG_ANSWER_BARE_PI_RE.finditer(claimed_text):
+        if any(m.start() >= s and m.end() <= e for s, e in frac_spans):
+            continue
+        claimed_vals.add(sp.simplify(sp.Integer(m.group(1)) * sp.pi))
+    if not claimed_vals:
+        return False
+    return (len(claimed_vals) == len(true_vals) and
+            all(any(sp.simplify(cv - tv) == 0 for tv in true_vals) for cv in claimed_vals))
+
+
 def _sets_equal(a, b) -> bool:
     try:
         diff1 = a - b
