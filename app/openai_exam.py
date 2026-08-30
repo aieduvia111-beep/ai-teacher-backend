@@ -19,6 +19,7 @@ from .math_verify import (
     build_safe_law_of_cosines_triangle, build_safe_geometric_sequence_two_terms,
     build_safe_abs_value_equation, build_safe_law_of_sines_triangle,
     build_safe_quadratic_two_positive_roots,
+    verify_word_problem_validation_rule, extract_number_from_answer_text,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -2695,7 +2696,32 @@ _QUIZ_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
     """True = zaakceptuj (brak client -> pominiete; AI-2 sie zgadza; LUB
     wywolanie/parsowanie sie nie udalo - bezpieczny fallback, patrz
-    identyczny komentarz w exam_pdf_generator.py)."""
+    identyczny komentarz w exam_pdf_generator.py).
+
+    NOWE (30.08.2026, "validation_rule" - Warstwa 2 dla zadan tekstowych):
+    jesli kandydat ma dolaczony przez AI-1 `validation_rule` (opcjonalne
+    pole: zmienne + wzor + oczekiwany wynik, patrz app/math_verify.py), kod
+    probuje NIEZALEZNIE go rozstrzygnac (True/False/None - patrz docstring
+    verify_word_problem_validation_rule). True/False = wynik jest
+    deterministyczny (kod policzyl to sam) - PRZYJMIJ lub ODRZUC bez
+    wywolywania AI-2 (zero dodatkowego kosztu). None = pole nieobecne,
+    niepoprawnie zbudowane, lub nie da sie wyciagnac jednoznacznej liczby z
+    odpowiedzi (np. pytanie algebraiczne z odpowiedzia-warunkiem, nie
+    liczba) - zachowanie jest DOKLADNIE takie jak dotychczas (spadek do
+    istniejacego blind-verify AI-2 jako siatki bezpieczenstwa) - a wiec ta
+    zmiana jest czysto addytywna i nie moze pogorszyc istniejacej ochrony,
+    tylko obnizyc koszt dla kandydatow ktore ja wykorzystaja."""
+    validation_rule = q.get("validation_rule")
+    if isinstance(validation_rule, dict):
+        claimed = extract_number_from_answer_text(q.get("final_answer", ""))
+        if claimed is not None:
+            ok, reason = verify_word_problem_validation_rule(validation_rule, claimed)
+            if ok is True:
+                return True
+            if ok is False:
+                print(f"[ValidationRule] odrzucono bez AI-2 (validation_rule): {reason}")
+                return False
+            # ok is None -> strukturalnie nierozstrzygalne, spadamy do AI-2 ponizej
     if client is None:
         return True
     try:

@@ -41,6 +41,7 @@ from .math_verify import (
     build_safe_sequence_two_terms, build_safe_law_of_cosines_triangle,
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
     build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
+    verify_word_problem_validation_rule, extract_number_from_answer_text,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
@@ -1299,7 +1300,24 @@ _BLIND_VERIFY_MODEL = "gpt-4o-mini"
 def _blind_verify_one_closed(client, pyt) -> bool:
     """True = zaakceptuj (AI-2 sie zgadza LUB wywolanie/parsowanie sie nie
     udalo - bezpieczny fallback: NIE odrzucamy z powodu awarii sieci/AI-2,
-    tylko z powodu FAKTYCZNEJ, potwierdzonej niezgodnosci)."""
+    tylko z powodu FAKTYCZNEJ, potwierdzonej niezgodnosci).
+
+    NOWE (30.08.2026, "validation_rule" - PORT z openai_exam.py, patrz tam
+    pelne uzasadnienie): jesli AI-1 dolaczyla `validation_rule`, kod probuje
+    NIEZALEZNIE rozstrzygnac sprawe (True/False/None). True/False = pomijamy
+    AI-2 (deterministyczne, zero kosztu). None = spadamy do AI-2 jak
+    dotychczas - a wiec czysto addytywne, bez zmiany istniejacego zachowania
+    dla kandydatow bez validation_rule."""
+    validation_rule = pyt.get("validation_rule")
+    if isinstance(validation_rule, dict):
+        claimed = extract_number_from_answer_text(pyt.get("final_answer", ""))
+        if claimed is not None:
+            ok, reason = verify_word_problem_validation_rule(validation_rule, claimed)
+            if ok is True:
+                return True
+            if ok is False:
+                print(f"[ValidationRule][Exam] odrzucono bez AI-2: {reason}")
+                return False
     try:
         r = client.chat.completions.create(
             model=_BLIND_VERIFY_MODEL,

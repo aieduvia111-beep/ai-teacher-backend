@@ -3867,3 +3867,181 @@ def format_avoid_diversity_block(seen_diversity_tag_dicts: list) -> str:
         "sformulowaniami, wymysl NAPRAWDE INNE podtematy/typy zadan na ten "
         "sam temat):\n" + "\n".join(lines) + "\n"
     )
+
+
+# ---------------------------------------------------------------------------
+# Warstwa 2 dla zadan tekstowych (word problems) - "validation_rule"
+#
+# User (30.08.2026): dotychczasowe archetypy (safe parameter generation)
+# dzialaja tylko dla stalej listy 8 tematow rownan/nierownosci - nie skaluja
+# sie na "1000 tematow" (zadania tekstowe/z trescia, fizyka, chemia, itd.),
+# bo tam kod NIE konstruuje zadania od podstaw, tylko AI pisze tresc od zera.
+# Pomysl uzytkownika: zamiast probowac pokryc kazdy TEMAT recznie zbudowanym
+# archetypem, AI ma - obok naturalnej tresci pytania - wygenerowac TAKZE
+# malutki, w pelni maszynowo-sprawdzalny "validation_rule": zmienne + wzor
+# + oczekiwany wynik. Kod NIEZALEZNIE liczy wzor z podanymi zmiennymi (bez
+# zadnego wywolania AI - zero dodatkowego kosztu) i porownuje z tym, co AI
+# twierdzi ze jest poprawna odpowiedzia. To NIE jest gwarancja 100% (zle
+# PRZEPISANY wzor tez by sam siebie potwierdzil - kod nie rozumie tresci
+# zadania), ale eliminuje najczestszy realny blad: AI ma poprawny pomysl na
+# zadanie, ale myli sie w samej arytmetyce przy liczeniu wyniku.
+#
+# BEZPIECZENSTWO: `expression` pochodzi z odpowiedzi AI, wiec jest tratowane
+# jak NIEZAUFANY wejsciowy tekst - NIGDY `eval()`/`exec()`. Ponizszy parser
+# chodzi po drzewie AST z biala lista dozwolonych wezlow (tylko liczby,
+# nazwane zmienne z podanego slownika, +-*/**%, nawiasy) i odrzuca WSZYSTKO
+# inne (wywolania funkcji, atrybuty, importy, itp.) wyjatkiem.
+# ---------------------------------------------------------------------------
+
+import ast as _ast
+import operator as _operator
+
+_VALIDATION_RULE_BINOPS = {
+    _ast.Add: _operator.add,
+    _ast.Sub: _operator.sub,
+    _ast.Mult: _operator.mul,
+    _ast.Div: _operator.truediv,
+    _ast.Pow: _operator.pow,
+    _ast.Mod: _operator.mod,
+    _ast.FloorDiv: _operator.floordiv,
+}
+_VALIDATION_RULE_UNARYOPS = {
+    _ast.USub: _operator.neg,
+    _ast.UAdd: _operator.pos,
+}
+
+
+def safe_eval_validation_expression(expression: str, variables: dict) -> float:
+    """Bezpiecznie oblicza wartosc arytmetycznego wyrazenia wygenerowanego
+    przez AI, z podstawionymi nazwanymi zmiennymi. Dopuszcza WYLACZNIE:
+    liczby, zmienne obecne w `variables`, operatory + - * / ** % oraz
+    nawiasy/jednoargumentowy minus/plus. Rzuca ValueError na cokolwiek
+    innego (wywolanie funkcji, atrybut, indeksowanie, import, itp.) -
+    `expression` NIE jest zaufanym kodem, wiec liste dozwolonych elementow
+    trzymamy jako biala liste, nie czarna."""
+    if not isinstance(expression, str) or not expression.strip():
+        raise ValueError("Puste lub nietekstowe wyrazenie")
+    if len(expression) > 300:
+        raise ValueError("Wyrazenie zbyt dlugie")
+    try:
+        tree = _ast.parse(expression, mode="eval")
+    except SyntaxError as e:
+        raise ValueError(f"Nieprawidlowa skladnia wyrazenia: {e}")
+
+    def _eval(node):
+        if isinstance(node, _ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, _ast.Constant):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+                raise ValueError(f"Niedozwolona stala: {node.value!r}")
+            return float(node.value)
+        if isinstance(node, _ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in _VALIDATION_RULE_BINOPS:
+                raise ValueError(f"Niedozwolony operator: {op_type.__name__}")
+            return _VALIDATION_RULE_BINOPS[op_type](_eval(node.left), _eval(node.right))
+        if isinstance(node, _ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in _VALIDATION_RULE_UNARYOPS:
+                raise ValueError(f"Niedozwolony operator jednoargumentowy: {op_type.__name__}")
+            return _VALIDATION_RULE_UNARYOPS[op_type](_eval(node.operand))
+        if isinstance(node, _ast.Name):
+            if node.id not in variables:
+                raise ValueError(f"Nieznana zmienna w wyrazeniu: {node.id}")
+            val = variables[node.id]
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                raise ValueError(f"Zmienna {node.id} nie jest liczba: {val!r}")
+            return float(val)
+        raise ValueError(f"Niedozwolony element wyrazenia: {type(node).__name__}")
+
+    try:
+        result = _eval(tree)
+    except ZeroDivisionError:
+        raise ValueError("Dzielenie przez zero w wyrazeniu")
+    except OverflowError:
+        raise ValueError("Przepelnienie przy obliczaniu wyrazenia")
+    if not isinstance(result, (int, float)) or isinstance(result, bool):
+        raise ValueError("Wynik wyrazenia nie jest liczba")
+    return float(result)
+
+
+def extract_number_from_answer_text(text):
+    """Wyciaga pojedyncza liczbe z tekstu odpowiedzi typu "32 zl", "$32$",
+    "12,5 km" - uzywane do porownania z "expected" z validation_rule.
+    Wspoldzielona miedzy Quiz (openai_exam.py) i Sprawdzian
+    (exam_pdf_generator.py). Zwraca None, jesli tekst nie zawiera
+    dokladnie jednej jednoznacznej liczby (np. jest warunkiem symbolicznym
+    typu "m < -8 lub m > 8" - takie pytania NIE kwalifikuja sie do
+    sprawdzenia przez validation_rule)."""
+    if not isinstance(text, str):
+        return None
+    cleaned = text.replace("$", "").replace("\\", "")
+    numbers = re.findall(r"-?\d+(?:[.,]\d+)?", cleaned)
+    if len(numbers) != 1:
+        return None
+    try:
+        return float(numbers[0].replace(",", "."))
+    except ValueError:
+        return None
+
+
+def verify_word_problem_validation_rule(validation_rule: dict, claimed_answer, tolerance: float = 0.01):
+    """Sprawdza kandydata zadania tekstowego na podstawie `validation_rule`
+    dolaczonego przez AI do wygenerowanego pytania. Zwraca (ok, powod), gdzie
+    `ok` jest TROJSTANOWE:
+    - True  = validation_rule potwierdza odpowiedz (mozna przyjac bez AI-2)
+    - False = validation_rule POTWIERDZILA rozbieznosc (mozna odrzucic bez
+              AI-2 - to jest deterministyczny, obliczony wynik, nie zgadywanie)
+    - None  = validation_rule jest strukturalnie wadliwa/niekompletna/
+              nieparsowalna - NIC nie wiadomo o poprawnosci odpowiedzi,
+              wolajacy MUSI spasc do istniejacego blind-verify (Warstwa 2.5)
+
+    `validation_rule` oczekiwany ksztalt: {"variables": {"a": 50, "b": 18},
+    "expression": "a - b", "expected": 32}.
+
+    Sprawdzenie ma DWA niezalezne kroki:
+    1. kod liczy `expression` z `variables` (bez udzialu AI) i porownuje
+       z `expected` ktore podala AI - wykrywa bledy TRANSKRYPCJI wzoru
+       (np. AI napisalo "a - b" ale samo w glowie policzylo cos innego).
+    2. porownuje `expected` z faktyczna odpowiedzia zwrocona jako poprawna
+       w pytaniu (`claimed_answer`, np. wartosc liczbowa wybranej opcji) -
+       wykrywa niezgodnosc miedzy "co AI obliczylo jako wzor" a "co AI
+       faktycznie oznaczylo jako poprawna odpowiedz w tresci pytania".
+
+    Nie jest to dowod, ze samo ROZUMOWANIE/wzor jest poprawny wzgledem
+    tresci zadania (to zostaje ryzykiem akceptowanym swiadomie - patrz
+    komentarz nad ta sekcja) - to jest tania (zero kosztu API), deterministyczna
+    siatka wylapujaca bledy ARYTMETYCZNE, ktore w praktyce sa najczestszym
+    realnym bledem AI.
+
+    NIE rzuca wyjatku - kazdy blad strukturalny zwraca (None, powod), tak
+    by wolajacy mogl bezpiecznie spasc do istniejacego blind-verify
+    (Warstwa 2.5) jako siatki bezpieczenstwa zamiast wywalac cala generacje."""
+    if not isinstance(validation_rule, dict):
+        return None, "validation_rule nie jest obiektem"
+    variables = validation_rule.get("variables")
+    expression = validation_rule.get("expression")
+    expected = validation_rule.get("expected")
+    if not isinstance(variables, dict) or not variables:
+        return None, "validation_rule: brak/pusty 'variables'"
+    if not isinstance(expression, str) or not expression.strip():
+        return None, "validation_rule: brak/puste 'expression'"
+    if expected is None:
+        return None, "validation_rule: brak 'expected'"
+    try:
+        expected_f = float(expected)
+    except (TypeError, ValueError):
+        return None, f"'expected' nie jest liczba: {expected!r}"
+    try:
+        computed = safe_eval_validation_expression(expression, variables)
+    except ValueError as e:
+        return None, f"Blad obliczenia wyrazenia: {e}"
+    if abs(computed - expected_f) > tolerance:
+        return False, f"Niezgodnosc: expression daje {computed}, a expected={expected_f}"
+    try:
+        claimed_f = float(claimed_answer)
+    except (TypeError, ValueError):
+        return None, f"claimed_answer nie jest liczba: {claimed_answer!r}"
+    if abs(claimed_f - expected_f) > tolerance:
+        return False, f"Odpowiedz oznaczona jako poprawna ({claimed_f}) nie zgadza sie z validation_rule (expected={expected_f})"
+    return True, "OK: validation_rule potwierdza odpowiedz"
