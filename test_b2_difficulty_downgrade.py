@@ -215,8 +215,8 @@ print("SPRAWDZIAN - Scenariusz: B1 zostawil niedobor 2/15 (7 zamkniete,")
 print("6 otwarte = 13), target_closed=9 wiec headroom=2 - B2 probuje")
 print("'srednia' zamiast 'trudna' i W PELNI domyka luke")
 print("=" * 70)
-gen._get_exam_data_raw_parallel = lambda temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="": {
-    "sekcje": [{"typ": "zamkniete", "pytania": _make_closed(n, start_nr=900)}]
+gen._get_exam_data_raw_parallel = lambda temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False: {
+    "sekcje": [{"typ": "otwarte" if only_open else "zamkniete", "pytania": (_make_open(n, start_nr=900) if only_open else _make_closed(n, start_nr=900))}]
 }
 data = {"tytul": "Test", "sekcje": [
     {"typ": "zamkniete", "pytania": _make_closed(7)},
@@ -236,7 +236,7 @@ print("=" * 70)
 print("SPRAWDZIAN - Scenariusz: brak niedoboru (15/15) - B2 nie robi nic")
 print("=" * 70)
 call_count_e = {"n": 0}
-gen._get_exam_data_raw_parallel = lambda *a, **kw: (call_count_e.__setitem__("n", call_count_e["n"] + 1), {})[1]
+gen._get_exam_data_raw_parallel = lambda *a, **kw: (call_count_e.__setitem__("n", call_count_e["n"] + 1), {"sekcje": []})[1]
 data2 = {"tytul": "Test", "sekcje": [
     {"typ": "zamkniete", "pytania": _make_closed(9)},
     {"typ": "otwarte", "pytania": _make_open(6)},

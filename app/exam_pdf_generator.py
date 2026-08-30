@@ -1296,6 +1296,22 @@ def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> flo
         return _HARD_TIMEOUT_SECONDS_EXAM
     return _TIMEOUT_SECONDS_EXAM
 
+_ONLY_CLOSED_KEYWORDS = ['TYLKO', 'ZAMKNIETYCH', 'NIE DODAWAJ CZESCI B', 'SPRAWDZIAN MA MIEC']
+
+
+def _teacher_wants_only_closed(wlasne_instrukcje: str) -> bool:
+    """Wspoldzielona (30.08.2026, wydzielona przy okazji dogenerowania
+    OTWARTYCH - patrz only_open w _get_exam_data_raw) miedzy prompt-blokiem
+    w _get_exam_data_raw A _fill_missing_exam_questions - MUSI byc
+    dokladnie ta sama logika w obu miejscach, inaczej dogenerowanie
+    mogloby dopisac zadania otwarte do sprawdzianu, ktory nauczyciel
+    jawnie zazadal jako 'tylko zamkniete'."""
+    if not wlasne_instrukcje or not wlasne_instrukcje.strip():
+        return False
+    instr_upper = wlasne_instrukcje.strip().upper()
+    return any(x in instr_upper for x in _ONLY_CLOSED_KEYWORDS)
+
+
 _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
 
@@ -1820,11 +1836,24 @@ class ExamGenerator:
         raw = ''.join(result)
         return sanitize_latex_json_backslashes(raw)
 
-    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None, avoid_block="") -> dict:
+    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False) -> dict:
         """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) - wydzielone
         z _get_exam_data, zeby dogenerowywanie brakujacych zadan (patrz
         _fill_missing_exam_questions) moglo to wywolywac wielokrotnie bez
-        rekurencyjnego uruchamiania calego cyklu weryfikacja+uzupelnianie."""
+        rekurencyjnego uruchamiania calego cyklu weryfikacja+uzupelnianie.
+
+        `only_open=True` (NOWE, 30.08.2026 - domyka TODO.md "Dogenerowanie
+        zadan OTWARTYCH przy odrzuceniu", odlozone 28.08.2026 jako
+        "kosmetyczne"; user 30.08.2026: "ma zawsze dostawac tyle zamowien
+        ile zamawial, ma byc szybki i bez bledow" - juz NIE kosmetyczne):
+        wymusza strukture "TYLKO sekcja B (otwarte)", analogicznie do
+        istniejacego 'only_closed' wykrywanego z wlasne_instrukcje nauczyciela
+        nizej - ale jako JAWNY parametr (nie zgadywanie po slowach klucz.),
+        bo to wewnetrzne wywolanie z petli dogenerowania, nie od nauczyciela.
+        Uzywane WYLACZNIE przez _fill_missing_exam_questions, gdy brakuje
+        zadan, a cel proporcji zamknietych jest juz osiagniety - pozwala
+        dogenerowac DEDYKOWANA partie samych otwartych, zamiast marnowac
+        wywolanie AI na zamkniete, ktorych i tak nie da sie uzyc."""
         temat_low = temat.lower()
         przedmiot_low = (przedmiot or '').lower()
 
@@ -1860,9 +1889,14 @@ Czesc B powinna zawierac zadania OTWARTE OPISOWE:
 - pytania definicyjne i problemowe
 ZAKAZ: rownania matematyczne, obliczenia liczbowe, wzory fizyczne/chemiczne w Czesci B."""
 
-        if wlasne_instrukcje and wlasne_instrukcje.strip():
+        if only_open:
+            blok = f"""KRYTYCZNE NAKAZY — BEZWZGLEDNE:
+{typ_instrukcja}
+STRUKTURA: TYLKO sekcja B (otwarte). ZAKAZ sekcji A. ZAKAZ zadan zamknietych/wyboru.
+LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
+        elif wlasne_instrukcje and wlasne_instrukcje.strip():
             instr = wlasne_instrukcje.strip()
-            only_closed = any(x in instr.upper() for x in ['TYLKO', 'ZAMKNIETYCH', 'NIE DODAWAJ CZESCI B', 'SPRAWDZIAN MA MIEC'])
+            only_closed = _teacher_wants_only_closed(wlasne_instrukcje)
             if only_closed:
                 blok = f"""KRYTYCZNE NAKAZY — BEZWZGLEDNE:
 {instr}
@@ -1962,7 +1996,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
         return {}
 
-    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None, avoid_block="") -> dict:
+    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False) -> dict:
         """Jak _get_exam_data_raw, ale dla wiekszych `total_n` dzieli
         zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (PORT z
         Quizu - _raw_generate_quiz_topic_batch w openai_exam.py, ta sama
@@ -1973,14 +2007,17 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         inny mechanizm dopasowany do synchronicznej architektury tej
         klasy). Dla malych `total_n` (<= target_chunk) zachowanie jest
         DOKLADNIE identyczne jak bezposrednie wywolanie
-        _get_exam_data_raw (jeden request, bez zadnej zmiany)."""
+        _get_exam_data_raw (jeden request, bez zadnej zmiany).
+
+        `only_open` - patrz docstring _get_exam_data_raw, przekazywane
+        bez zmian do kazdego rownoleglego wywolania."""
         sizes = _parallel_batch_sizes(total_n)
         if len(sizes) == 1:
-            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
+            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot, avoid_block=avoid_block, only_open=only_open)
         print(f"[MathVerify][Exam] rownolegle generowanie: {total_n} zadan podzielone na {len(sizes)} wywolan {sizes}")
         with _cf.ThreadPoolExecutor(max_workers=len(sizes)) as ex:
             futures = [
-                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot, avoid_block)
+                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot, avoid_block, only_open)
                 for size in sizes
             ]
             results = [f.result() for f in futures]
@@ -3075,27 +3112,35 @@ ZASADY:
         # NAPRAWIONE (user zglosil real przypadek: wygenerowany sprawdzian
         # mial TYLKO Czesc A, zero zadan otwartych - "10 zadan ma byc...
         # ileś procent zamknietych i ileś procent otwartych"): KAZDA runda
-        # dogenerowania (nizej, WSZYSTKIE galezie - safe-archetypy I
-        # fallback wolnej generacji) dodaje WYLACZNIE zadania ZAMKNIETE
-        # (patrz "extra_closed" nizej - sekcja "otwarte" z odpowiedzi AI
-        # jest odrzucana, nawet jesli AI ja wygenerowalo) - nie istnieje
-        # ODPOWIEDNIK dla zadan otwartych (patrz TODO.md - ten dokladny
-        # brak byl juz wczesniej znany i CELOWO odlozony jako "kosmetyczny",
-        # ale user wskazal ze przy duzym rejection rate dla otwartych
-        # + niezawodnym (dzieki dzisiejszym archetypom) dopelnianiu
-        # zamknietych, `missing` po prostu ZAWSZE bylo dopelniane
-        # zamknietymi az caly sprawdzian stawal sie 100% Czescia A).
-        # Fix: cel proporcji (60/40, patrz EXAM_PROMPT) jest liczony RAZ
-        # na poczatku - kazda runda smie dodac TYLKO tyle zamknietych,
-        # ile brakuje do TEGO celu, nie do calego `missing`. Gdy cel
-        # zamknietych jest juz osiagniety, ale `missing` > 0 (bo brakuje
-        # OTWARTYCH, ktorych ten mechanizm nie umie dogenerowac) - petla
-        # KONCZY SIE (zamiast marnowac rundy/czas na bezuzyteczne
-        # dopelnianie zamknietych) i user dostaje uczciwy, PROPORCJONALNY
-        # niedobor zamiast "pelnej liczby, ale 100% zamknietych".
-        target_closed = round(liczba_pytan * 0.6)
+        # dogenerowania (nizej) dodaje TYLKO tyle jednego typu, ile brakuje
+        # do JEGO WLASNEGO celu proporcji (60/40, patrz EXAM_PROMPT) -
+        # zamiast wszystko wpychac w zamkniete.
+        #
+        # ZAMKNIETE TODO (30.08.2026, real-test n=13 rownania kwadratowe
+        # srednia: 12/13, komunikat myloco mowil "wyczerpano 10 prob" -
+        # patrz diagnoza w rozmowie z userem): gdy cel zamknietych byl juz
+        # osiagniety, ale brakowalo OTWARTYCH, petla KONCZYLA SIE od razu -
+        # "brak mechanizmu dogenerowania OTWARTYCH" byl znany, udokumentowany
+        # w TODO.md i CELOWO odlozony 28.08.2026 jako "kosmetyczny". User
+        # (30.08.2026, po tym real-tescie): "user ma zawsze dostawac tyle
+        # zamowien ile zamawial, ma byc szybki i bez bledow" - juz NIE
+        # kosmetyczne. Fix: gdy zamkniete osiagnely cel, ale otwarte NIE -
+        # dogeneruj DEDYKOWANA partie samych otwartych (only_open=True w
+        # _get_exam_data_raw_parallel, patrz tam) tym samym mechanizmem
+        # czasowym/rundowym (B1 grace, max_rounds, max_seconds) co zamkniete
+        # - wiec pozostaje tak samo "szybki" jak dla zamknietych.
+        _only_closed = _teacher_wants_only_closed(wlasne_instrukcje)
+        target_closed = liczba_pytan if _only_closed else round(liczba_pytan * 0.6)
+        target_open = 0 if _only_closed else (liczba_pytan - target_closed)
         round_i = 0
         grace_rounds_used = 0
+        # NOWE (30.08.2026, patrz diagnoza real-testu 12/13 - user chcial
+        # wiedziec DOKLADNIE dlaczego niedobor sie zdarzyl, nie tylko ZE):
+        # zamiast zgadywac przyczyne niedoboru PO fakcie (elapsed/round_i
+        # moga myllaco wygladac jak "wyczerpano rundy" nawet gdy realny
+        # powod byl inny), kazdy `break` ponizej JAWNIE zapisuje dlaczego -
+        # `_shortfall_warning` na koncu funkcji uzywa TEGO zamiast zgadywac.
+        stop_reason = None
         while True:
             round_i += 1
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
@@ -3105,15 +3150,29 @@ ZASADY:
             current_closed = sum(
                 len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'zamkniete'
             )
+            current_open = sum(
+                len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'otwarte'
+            )
             closed_headroom = target_closed - current_closed
-            if closed_headroom <= 0:
-                print(
-                    f"[MathVerify][Exam] brakuje {missing} zadan, ale cel proporcji zamknietych "
-                    f"({target_closed}) juz osiagniety - brak mechanizmu dogenerowania OTWARTYCH, "
-                    f"przerywam dogenerowanie (uczciwy, proporcjonalny niedobor zamiast 100% zamknietych)"
+            open_headroom = target_open - current_open
+            if closed_headroom > 0:
+                need_type = 'zamkniete'
+                headroom = closed_headroom
+            elif open_headroom > 0:
+                need_type = 'otwarte'
+                headroom = open_headroom
+            else:
+                # Oba cele juz osiagniete, a mimo to missing>0 - w praktyce
+                # nieosiagalne (target_closed+target_open==liczba_pytan
+                # zawsze), zostawione jako bezpiecznik zamiast petli bez
+                # konca.
+                stop_reason = (
+                    f"oba cele proporcji (zamkniete={target_closed}, otwarte={target_open}) "
+                    f"juz osiagniete, nietypowy przypadek zaokraglenia"
                 )
+                print(f"[MathVerify][Exam] brakuje {missing} zadan, ale {stop_reason} - przerywam dogenerowanie")
                 break
-            missing_capped = min(missing, closed_headroom)
+            missing_capped = min(missing, headroom)
             elapsed = time.monotonic() - t_start
             # "B1" grace extension (patrz komentarz nad _GRACE_MAX_SECONDS_EXAM):
             # w standardowym budzecie (round_i<=max_rounds ORAZ elapsed<max_seconds)
@@ -3129,18 +3188,21 @@ ZASADY:
             in_standard_budget = round_i <= max_rounds and elapsed < max_seconds
             if not in_standard_budget:
                 if missing > _GRACE_MAX_MISSING_EXAM:
+                    stop_reason = f"przekroczono standardowy budzet ({elapsed:.0f}s), niedobor typu '{need_type}' ({missing}) za duzy na rozszerzenie B1 (limit {_GRACE_MAX_MISSING_EXAM})"
                     print(f"[MathVerify][Exam] przekroczono standardowy budzet ({elapsed:.1f}s, runda {round_i}), brakuje {missing} (>{_GRACE_MAX_MISSING_EXAM}) - zbyt duzo na rozszerzenie, przerywam dogenerowanie")
                     break
                 if grace_rounds_used >= _GRACE_EXTRA_ROUNDS_EXAM:
+                    stop_reason = f"wyczerpano {_GRACE_EXTRA_ROUNDS_EXAM} dodatkowych prob rozszerzenia (B1) dla typu '{need_type}', zadania nadal nie przechodzily weryfikacji"
                     print(f"[MathVerify][Exam] wyczerpano {_GRACE_EXTRA_ROUNDS_EXAM} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
                     break
                 if elapsed >= _GRACE_MAX_SECONDS_EXAM:
+                    stop_reason = f"przekroczono sufit rozszerzenia czasowego ({elapsed:.0f}s >= {_GRACE_MAX_SECONDS_EXAM:.0f}s)"
                     print(f"[MathVerify][Exam] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {_GRACE_MAX_SECONDS_EXAM}s) - przerywam dogenerowanie")
                     break
                 grace_rounds_used += 1
                 print(f"[MathVerify][Exam] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS_EXAM}): standardowy budzet wyczerpany, ale brakuje tylko {missing} zadan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
             missing = missing_capped
-            print(f"[MathVerify][Exam] brakuje {missing} zadan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
+            print(f"[MathVerify][Exam] brakuje {missing} zadan typu '{need_type}' po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
             metrics.retry_count += 1
             # NOWE (patrz format_avoid_diversity_block w math_verify.py):
             # kazda runda dostaje w promptcie liste JUZ zaakceptowanych
@@ -3157,7 +3219,14 @@ ZASADY:
                     # gotowym, poprawnym wynikiem zamiast kolejnej proby
                     # wolnej generacji, ktora regularnie zawodzi wlasnie dla
                     # tego przypadku (stad w ogole te rundy sa potrzebne).
-                    if _is_medium_linear_param_quadratic_exam(temat, trudnosc):
+                    # WSZYSTKIE archetypy (safe-generation) nizej produkuja
+                    # WYLACZNIE zadania zamkniete - dla need_type=='otwarte'
+                    # zadna z nich nie ma zastosowania, wiec idziemy prosto
+                    # do dedykowanej partii only_open=True (patrz komentarz
+                    # nad target_open wyzej).
+                    if need_type == 'otwarte':
+                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block, only_open=True)
+                    elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
                         extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
                     elif _is_hard_trig_quadratic_exam(temat, trudnosc):
                         # Port tego samego wzorca na trygonometrie - patrz
@@ -3217,30 +3286,38 @@ ZASADY:
             # kontroli AI - dokladnie ten przypadek, dla ktorego Warstwa
             # 2.5 w ogole powstala.
             extra = _verify_and_fix_exam_math(extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
-            extra_closed = []
+            extra_matching = []
             for s in extra.get('sekcje', []):
-                if s.get('typ') == 'zamkniete':
-                    extra_closed.extend(s.get('pytania', []))
-            if not extra_closed:
+                if s.get('typ') == need_type:
+                    extra_matching.extend(s.get('pytania', []))
+            if not extra_matching:
                 continue
             # NAPRAWIONE (patrz komentarz nad "target_closed" wyzej):
             # `_MIN_FILL_BATCH_EXAM` (bufor min. wielkosci partii, zeby
             # nie prosic o smiesznie male partie) moze zwrocic WIECEJ
-            # zadan niz `closed_headroom` pozwala - bez tego przyciecia
-            # WSZYSTKIE trafialyby do sekcji zamknietej, przekraczajac
-            # cel proporcji mimo capa na `missing` powyzej.
-            extra_closed = extra_closed[:closed_headroom]
-            if not extra_closed:
+            # zadan niz `headroom` pozwala - bez tego przyciecia WSZYSTKIE
+            # trafialyby do sekcji, przekraczajac cel proporcji mimo capa
+            # na `missing` powyzej.
+            extra_matching = extra_matching[:headroom]
+            if not extra_matching:
                 continue
-            target = next((s for s in data['sekcje'] if s.get('typ') == 'zamkniete'), None)
+            target = next((s for s in data['sekcje'] if s.get('typ') == need_type), None)
             if target is None:
-                target = {
-                    "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
-                    "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
-                    "pytania": [],
-                }
-                data.setdefault('sekcje', []).insert(0, target)
-            target['pytania'].extend(extra_closed)
+                if need_type == 'zamkniete':
+                    target = {
+                        "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
+                        "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
+                        "pytania": [],
+                    }
+                    data.setdefault('sekcje', []).insert(0, target)
+                else:
+                    target = {
+                        "nazwa": "Czesc B — Zadania obliczeniowe", "typ": "otwarte",
+                        "instrukcja_sekcji": "Rozwiaz zadania pokazujac pelny sposob obliczen. Podaj jednostki.",
+                        "pytania": [],
+                    }
+                    data.setdefault('sekcje', []).append(target)
+            target['pytania'].extend(extra_matching)
 
         # Przytnij, jesli po dogenerowaniu wyszlo za duzo (rundy licza
         # brakujace zadania niezaleznie, wiec drobny nadmiar jest mozliwy).
@@ -3291,15 +3368,25 @@ ZASADY:
         final_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if final_total < liczba_pytan:
             total_elapsed = time.monotonic() - t_start
-            # NAPRAWIONE: tekst mial ZASZYTE NA STALE "(30s)", pozostale
-            # jeszcze sprzed przejscia na jednolity budzet 60s (patrz
-            # _TIMEOUT_SECONDS_EXAM) - user widzial mylacy komunikat
-            # "limit 30s", mimo ze realnie egzekwowany budzet to juz 60s.
-            reason = f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds else f"wyczerpano {max_rounds} prob dogenerowania"
+            # NAPRAWIONE (30.08.2026, patrz diagnoza real-testu 12/13):
+            # uzywaj JAWNIE zapisanego `stop_reason` (ustawianego przy
+            # KAZDYM break w petli wyzej), zamiast zgadywac przyczyne z
+            # samego elapsed/round_i PO fakcie - to zgadywanie regularnie
+            # myllo ("wyczerpano {max_rounds} prob dogenerowania" nawet
+            # gdy realnie wykonala sie 1 runda, bo prawdziwym powodem bylo
+            # cos innego). Fallback na stara heurystyke zostaje TYLKO na
+            # wypadek nieprzewidzianej sciezki bez ustawionego stop_reason.
+            reason = stop_reason or (
+                f"przekroczono limit czasu ({max_seconds:.0f}s)" if total_elapsed >= max_seconds
+                else f"wyczerpano {max_rounds} prob dogenerowania"
+            )
             # "B1": jesli probowano dodatkowych rund (grace_rounds_used>0) i
             # MIMO TEGO nadal jest niedobor, mowimy o tym userowi wprost -
             # nie chowamy faktu, ze system probowal dobic do pelnej liczby.
-            if grace_rounds_used > 0:
+            # Tylko gdy `stop_reason` NIE byl ustawiony (fallback) - jesli
+            # byl, juz opisuje probe rozszerzenia dokladnie, wiec dopisanie
+            # tutaj byloby zdublowane.
+            if stop_reason is None and grace_rounds_used > 0:
                 reason += f" (w tym {grace_rounds_used} dodatkowych prob rozszerzenia)"
             data["_shortfall_warning"] = (
                 f"Udalo sie wygenerowac i zweryfikowac {final_total} z {liczba_pytan} "
@@ -3323,13 +3410,14 @@ ZASADY:
         zrobione po cichu - jawnie ujawnione, to standardowa praktyka
         "graceful degradation"). AWARYJNE wyjscie - WYLACZNIE gdy B1
         (_fill_missing_exam_questions) rowniez nie dowiozl pelnej liczby.
-        Jeden krok w dol trudnosci, jedna proba, TYLKO zamkniete (jak B1 -
-        brak mechanizmu dogenerowania otwartych w ogole). UWAGA: wywolywana
-        PO tym, jak _fill_missing_exam_questions juz zalogowala metryki/
-        _shortfall_warning dla stanu SPRZED B2 - telemetria pokazuje wiec
-        stan "bez B2" (przydatne samo w sobie - widac jak czesto B2 w ogole
-        byl potrzebny), ale zwracane `data` (i finalny PDF) juz zawiera
-        efekt B2, jesli sie udal."""
+        Jeden krok w dol trudnosci, jedna proba.
+
+        NAPRAWIONE (30.08.2026, PORT tej samej naprawy co B1 wyzej -
+        patrz komentarz nad target_open w _fill_missing_exam_questions):
+        wczesniej TYLKO zamkniete (identyczna luka jak B1 mial przed
+        naprawa) - teraz rozpoznaje, ktorego typu NAPRAWDE brakuje wzgledem
+        WLASNEGO celu proporcji i dogeneruje ten typ (only_open=True dla
+        otwartych, jak w B1)."""
         current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         missing = liczba_pytan - current_total
         if missing <= 0:
@@ -3337,36 +3425,54 @@ ZASADY:
         easier = _step_down_difficulty_exam(trudnosc)
         if not easier:
             return data
-        target_closed = round(liczba_pytan * 0.6)
+        only_closed = _teacher_wants_only_closed(wlasne_instrukcje)
+        target_closed = liczba_pytan if only_closed else round(liczba_pytan * 0.6)
+        target_open = 0 if only_closed else (liczba_pytan - target_closed)
         current_closed = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'zamkniete')
+        current_open = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == 'otwarte')
         closed_headroom = target_closed - current_closed
-        if closed_headroom <= 0:
+        open_headroom = target_open - current_open
+        if closed_headroom > 0:
+            need_type = 'zamkniete'
+            headroom = closed_headroom
+        elif open_headroom > 0:
+            need_type = 'otwarte'
+            headroom = open_headroom
+        else:
             return data
-        missing_capped = min(missing, closed_headroom)
-        print(f"[MathVerify][Exam] B2: po B1 nadal brakuje {missing} zadan - probuje poziom '{easier}' zamiast '{trudnosc}'")
+        missing_capped = min(missing, headroom)
+        print(f"[MathVerify][Exam] B2: po B1 nadal brakuje {missing} zadan typu '{need_type}' - probuje poziom '{easier}' zamiast '{trudnosc}'")
         try:
-            extra = self._get_exam_data_raw_parallel(temat, klasa, easier, max(missing_capped, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot)
+            extra = self._get_exam_data_raw_parallel(temat, klasa, easier, max(missing_capped, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, only_open=(need_type == 'otwarte'))
             extra = _verify_and_fix_exam_math(extra, trudnosc=easier, metrics=metrics, level=klasa, client=self.client)
         except Exception as e:
             print(f"[MathVerify][Exam] B2: blad wywolania - {e}")
             return data
-        extra_closed = []
+        extra_matching = []
         for s in extra.get('sekcje', []):
-            if s.get('typ') == 'zamkniete':
-                extra_closed.extend(s.get('pytania', []))
-        extra_closed = extra_closed[:missing_capped]
-        if not extra_closed:
+            if s.get('typ') == need_type:
+                extra_matching.extend(s.get('pytania', []))
+        extra_matching = extra_matching[:missing_capped]
+        if not extra_matching:
             return data
-        target = next((s for s in data['sekcje'] if s.get('typ') == 'zamkniete'), None)
+        target = next((s for s in data['sekcje'] if s.get('typ') == need_type), None)
         if target is None:
-            target = {
-                "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
-                "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
-                "pytania": [],
-            }
-            data.setdefault('sekcje', []).insert(0, target)
-        target['pytania'].extend(extra_closed)
-        added_count = len(extra_closed)
+            if need_type == 'zamkniete':
+                target = {
+                    "nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete",
+                    "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.",
+                    "pytania": [],
+                }
+                data.setdefault('sekcje', []).insert(0, target)
+            else:
+                target = {
+                    "nazwa": "Czesc B — Zadania obliczeniowe", "typ": "otwarte",
+                    "instrukcja_sekcji": "Rozwiaz zadania pokazujac pelny sposob obliczen. Podaj jednostki.",
+                    "pytania": [],
+                }
+                data.setdefault('sekcje', []).append(target)
+        target['pytania'].extend(extra_matching)
+        added_count = len(extra_matching)
         data["_difficulty_downgrade_notice"] = (
             f"{added_count} z {liczba_pytan} zadan jest na poziomie '{easier}' zamiast '{trudnosc}' - "
             f"nie udalo sie wygenerowac ich na zamowionym poziomie mimo dodatkowych prob. "
