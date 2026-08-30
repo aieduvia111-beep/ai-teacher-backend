@@ -22,7 +22,8 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
 )
 from .blind_verify import (
-    BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
+    BLIND_VERIFY_SYSTEM_PROMPT, BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL,
+    build_blind_verify_prompt_closed,
     parse_blind_verify_letter, safe_json_loads,
 )
 from .difficulty import DifficultyAnalyzer
@@ -2803,12 +2804,13 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None, topic: str = None)
             # ok is None -> strukturalnie nierozstrzygalne, spadamy do AI-2 ponizej
     if client is None:
         return True
+    q_class = q.get("problem_class")
     try:
         r = await client.chat.completions.create(
             model=_select_blind_verify_model(topic),
             messages=[
-                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
-                {"role": "user", "content": build_blind_verify_prompt_closed(q.get("question", ""), q.get("options", []))},
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL if q_class == "factual" else BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_closed(q.get("question", ""), q.get("options", []), problem_class=q_class)},
             ],
             response_format={"type": "json_object"},
             temperature=0,

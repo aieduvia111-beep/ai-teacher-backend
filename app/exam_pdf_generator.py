@@ -44,7 +44,8 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
 )
 from .blind_verify import (
-    BLIND_VERIFY_SYSTEM_PROMPT, build_blind_verify_prompt_closed,
+    BLIND_VERIFY_SYSTEM_PROMPT, BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL,
+    build_blind_verify_prompt_closed,
     build_blind_verify_prompt_open, parse_blind_verify_letter,
     parse_blind_verify_final_answer, safe_json_loads, values_match,
     _extract_single_value,
@@ -1411,12 +1412,13 @@ def _blind_verify_one_closed(client, pyt, topic: str = None) -> bool:
             if ok is False:
                 print(f"[ValidationRule][Exam] odrzucono bez AI-2: {reason}")
                 return False
+    pyt_class = pyt.get("problem_class")
     try:
         r = client.chat.completions.create(
             model=_select_blind_verify_model(topic),
             messages=[
-                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
-                {"role": "user", "content": build_blind_verify_prompt_closed(pyt.get("tresc", ""), pyt.get("opcje", []))},
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL if pyt_class == "factual" else BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_closed(pyt.get("tresc", ""), pyt.get("opcje", []), problem_class=pyt_class)},
             ],
             response_format={"type": "json_object"},
             temperature=0,
@@ -1456,18 +1458,30 @@ def _blind_verify_one_open(client, pyt, topic: str = None) -> bool:
     generujacego) albo, transitional fallback, "odpowiedz_modelowa"
     (stary format, pelna proza) przez values_match (patrz blind_verify.py)."""
     claimed = pyt.get("final_answer") or pyt.get("odpowiedz_modelowa", "")
+    pyt_class = pyt.get("problem_class")
     # Nieparsowalna odpowiedz modelowa (typowo brak pola final_answer u
     # starszych/nieaktualizowanych generacji) - nie da sie bezpiecznie
     # porownac, wiec NIE odrzucaj z tego powodu (identyczny standard co
     # reszta modulu: brak danych = abstain, nie falszywe odrzucenie).
-    if not claimed or _extract_single_value(str(claimed).split(',')[0]) is None:
+    # NAPRAWIONE (30.08.2026, "problem_class" - Faktografia): ten guard
+    # uzywal _extract_single_value (sympy) jako testu "czy da sie
+    # bezpiecznie porownac" - dobre dla matematyki, ale BLEDNIE odrzucalo
+    # KAZDA tekstowa odpowiedz faktograficzna (np. "Adam Mickiewicz" nie
+    # parsuje sie jako wyrazenie sympy) - czyli otwarte pytania
+    # faktograficzne NIGDY nie dostawaly blind-verify (zawsze cichy
+    # abstain). values_match() sam juz umie porownywac zwykly tekst
+    # (patrz komentarz tam - naprawione wczesniej dla "Mitochondrium"),
+    # wiec dla "factual" wystarczy sprawdzic, ze `claimed` NIE jest puste.
+    if not claimed:
+        return True
+    if pyt_class != "factual" and _extract_single_value(str(claimed).split(',')[0]) is None:
         return True
     try:
         r = client.chat.completions.create(
             model=_select_blind_verify_model(topic),
             messages=[
-                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
-                {"role": "user", "content": build_blind_verify_prompt_open(pyt.get("tresc", ""))},
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL if pyt_class == "factual" else BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_open(pyt.get("tresc", ""), problem_class=pyt_class)},
             ],
             response_format={"type": "json_object"},
             temperature=0,

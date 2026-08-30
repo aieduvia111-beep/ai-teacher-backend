@@ -41,12 +41,39 @@ BLIND_VERIFY_SYSTEM_PROMPT = (
     "odpowiesz. Odpowiadasz WYLACZNIE czystym JSON, bez markdown/backtickow."
 )
 
+# NOWE (30.08.2026, "problem_class" - Faktografia): powyzszy prompt zaklada
+# ZADANIE DO ROZWIAZANIA ("rozwiaz krok po kroku", persona "nauczyciel
+# matematyki") - dobrze dopasowane do obliczen, ale semantycznie dziwne
+# dla pytania FAKTOGRAFICZNEGO ("Kto napisal Pana Tadeusza?" - nie ma
+# czego "rozwiazywac", jest tylko fakt do przypomnienia). WASKI wariant
+# TYLKO dla problem_class=="factual" (wszystko inne, w tym brak pola -
+# domyslny prompt wyzej, bez zmiany zachowania).
+BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL = (
+    "Jestes doswiadczonym, rzetelnym nauczycielem. Podane pytanie dotyczy "
+    "FAKTU/WIEDZY (nie obliczen) - odpowiadasz na podstawie swojej wiedzy, "
+    "SAMODZIELNIE i OD ZERA - nie znasz zadnej sugerowanej odpowiedzi, nie "
+    "masz do niej dostepu. Jesli nie jestes pewien faktu, wskaz opcje, "
+    "ktora wydaje sie najbardziej prawdopodobna, ale NIE zgaduj wbrew "
+    "wiedzy. Odpowiadasz WYLACZNIE czystym JSON, bez markdown/backtickow."
+)
 
-def build_blind_verify_prompt_closed(tresc: str, opcje: list) -> str:
+
+def build_blind_verify_prompt_closed(tresc: str, opcje: list, problem_class: str = None) -> str:
     letters = "abcdefghij"
     opcje_txt = "\n".join(
         f"{letters[i]}) {_option_text(o)}" for i, o in enumerate(opcje or [])
     )
+    if problem_class == "factual":
+        return (
+            f"Ponizsze pytanie dotyczy faktu/wiedzy (NIE obliczen) - "
+            f"odpowiedz na podstawie swojej wiedzy, calkowicie niezaleznie. "
+            f"Wskaz, KTORA z podanych opcji jest poprawna.\n\n"
+            f"Pytanie: {tresc}\n\nOpcje:\n{opcje_txt}\n\n"
+            f'Odpowiedz WYLACZNIE w formacie JSON: '
+            f'{{"uzasadnienie": "krotkie uzasadnienie", '
+            f'"odpowiedz": "a"}} (pole "odpowiedz" = DOKLADNIE jedna litera '
+            f'spomiedzy podanych opcji, ta ktora jest poprawna).'
+        )
     return (
         f"Rozwiaz ponizsze zadanie krok po kroku, calkowicie niezaleznie. "
         f"Na koniec wskaz, KTORA z podanych opcji jest matematycznie "
@@ -58,7 +85,17 @@ def build_blind_verify_prompt_closed(tresc: str, opcje: list) -> str:
     )
 
 
-def build_blind_verify_prompt_open(tresc: str) -> str:
+def build_blind_verify_prompt_open(tresc: str, problem_class: str = None) -> str:
+    if problem_class == "factual":
+        return (
+            f"Ponizsze pytanie dotyczy faktu/wiedzy (NIE obliczen) - "
+            f"odpowiedz na podstawie swojej wiedzy, calkowicie niezaleznie.\n\n"
+            f"Pytanie: {tresc}\n\n"
+            f'Odpowiedz WYLACZNIE w formacie JSON: '
+            f'{{"uzasadnienie": "krotkie uzasadnienie", '
+            f'"final_answer": "..."}} (pole "final_answer" = SAMA '
+            f'poprawna odpowiedz, bez opisu, np. "Adam Mickiewicz" albo "1795").'
+        )
     return (
         f"Rozwiaz ponizsze zadanie krok po kroku, calkowicie niezaleznie.\n\n"
         f"Zadanie: {tresc}\n\n"
