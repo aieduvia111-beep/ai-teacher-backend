@@ -34,6 +34,20 @@ import re as _re_sanitize
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
+# NAPRAWIONE (30.08.2026, user: alarm kosztowy w OpenAI - "1000 uzytkownikow
+# tej aplikacji"): Warstwa 2.5 (Blind-check, AI-2) to OSOBNE wywolanie AI dla
+# KAZDEGO wygenerowanego kandydata (nie tylko finalnych) - najwiekszy,
+# powtarzalny koszt w calym systemie. To zadanie jest MECHANICZNE ("czy ta
+# opcja sie zgadza"), nie generuje tresci - user poprosil o porownawczy
+# real-test PRZED zmiana (nie zgadywanie, "1000 uzytkownikow"): 10 realnych
+# pytan, oba modele NIEZALEZNIE, 3 rozbieznosci recznie zweryfikowane przez
+# obliczenie wyroznika - we WSZYSTKICH 3 przypadkach AI-1 mialo bledna
+# matematyke, a gpt-4o-mini ja ZLAPAL (odrzucil), podczas gdy gpt-4o ja
+# PRZEPUSCIL (zaakceptowal) - mini nie tylko nie byl gorszy, w tej probce byl
+# skuteczniejszy. ~10-16x tanszy. Generacja tresci (AI-1) NIETKNIETA - dalej
+# gpt-4o wszedzie indziej.
+_BLIND_VERIFY_MODEL = "gpt-4o-mini"
+
 # ETAP 2 Universal Difficulty Engine: podlaczony TYLKO jako zamiennik
 # bezposredniego wywolania validate_quadratic_difficulty w Warstwie 3
 # (patrz _verify_and_fix_quiz_math nizej) - domain modifier
@@ -2686,7 +2700,7 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
         return True
     try:
         r = await client.chat.completions.create(
-            model="gpt-4o",
+            model=_BLIND_VERIFY_MODEL,
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_closed(q.get("question", ""), q.get("options", []))},

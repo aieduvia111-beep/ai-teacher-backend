@@ -1286,13 +1286,23 @@ def _question_fingerprint(text: str):
 # (Warstwa 2) nie ma zdania ("unverifiable") - jesli sympy juz
 # potwierdzilo/poprawilo odpowiedz z pelna pewnoscia, blind-check
 # jest pomijany (zbedny koszt na cos juz wiadomo poprawnego).
+#
+# NAPRAWIONE (30.08.2026, PORT z openai_exam.py - patrz tam pelne
+# uzasadnienie porownawczego real-testu, "1000 uzytkownikow" alarm
+# kosztowy): mechaniczne zadanie ("czy ta opcja sie zgadza"), nie
+# generuje tresci - porownawczy real-test (10 pytan, oba modele) nie
+# pokazal degradacji jakosci (wrecz przeciwnie, mini zlapal 3 realne
+# bledy matematyczne AI-1, ktorych gpt-4o nie zlapal). ~10-16x tanszy.
+_BLIND_VERIFY_MODEL = "gpt-4o-mini"
+
+
 def _blind_verify_one_closed(client, pyt) -> bool:
     """True = zaakceptuj (AI-2 sie zgadza LUB wywolanie/parsowanie sie nie
     udalo - bezpieczny fallback: NIE odrzucamy z powodu awarii sieci/AI-2,
     tylko z powodu FAKTYCZNEJ, potwierdzonej niezgodnosci)."""
     try:
         r = client.chat.completions.create(
-            model="gpt-4o",
+            model=_BLIND_VERIFY_MODEL,
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_closed(pyt.get("tresc", ""), pyt.get("opcje", []))},
@@ -1342,7 +1352,7 @@ def _blind_verify_one_open(client, pyt) -> bool:
         return True
     try:
         r = client.chat.completions.create(
-            model="gpt-4o",
+            model=_BLIND_VERIFY_MODEL,
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_open(pyt.get("tresc", ""))},
