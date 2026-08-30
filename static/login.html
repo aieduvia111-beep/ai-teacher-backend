@@ -471,7 +471,7 @@ window.doLogin=async function(){
   const pass=document.getElementById('lP').value;
   if(!email||!pass){err('Wpisz email i hasło.');return;}
   load(true,'Logowanie...');hide();
-  try{const r=await signInWithEmailAndPassword(auth,email,pass);await saveUser(r.user);await redirectAfterAuth(r.user);}
+  try{const r=await signInWithEmailAndPassword(auth,email,pass);await saveUser(r.user);}
   catch(e){load(false);err(eTxt(e.code));}
 };
 
@@ -482,7 +482,7 @@ window.doReg=async function(){
   if(!email||!pass){err('Wpisz email i hasło.');return;}
   if(pass.length<6){err('Hasło musi mieć min. 6 znaków.');return;}
   load(true,'Tworzenie konta...');hide();
-  try{const r=await createUserWithEmailAndPassword(auth,email,pass);if(name)await updateProfile(r.user,{displayName:name});await saveUser(r.user,name);await redirectAfterAuth(r.user);}
+  try{const r=await createUserWithEmailAndPassword(auth,email,pass);if(name)await updateProfile(r.user,{displayName:name});await saveUser(r.user,name);}
   catch(e){load(false);err(eTxt(e.code));}
 };
 
@@ -505,7 +505,6 @@ window.onNativeGoogleSignIn=async function(idToken){
     const credential=GoogleAuthProvider.credential(idToken);
     const r=await signInWithCredential(auth,credential);
     await saveUser(r.user,r.user.displayName);
-    await redirectAfterAuth(r.user);
   }catch(e){
     load(false);
     err(eTxt(e.code));
@@ -527,7 +526,6 @@ window.doGoogle=async function(){
     const provider=new GoogleAuthProvider();
     const r=await signInWithPopup(auth,provider);
     await saveUser(r.user,r.user.displayName);
-    await redirectAfterAuth(r.user);
   }catch(e){
     load(false);
     if(e.code!=='auth/popup-closed-by-user')err(eTxt(e.code));
@@ -540,7 +538,6 @@ window.onNativeAppleSignIn=async function(idToken,fullName){
     const credential=provider.credential({idToken:idToken});
     const r=await signInWithCredential(auth,credential);
     await saveUser(r.user,fullName||r.user.displayName);
-    await redirectAfterAuth(r.user);
   }catch(e){
     load(false);
     err(eTxt(e.code));
@@ -564,7 +561,6 @@ window.doApple=async function(){
     provider.addScope('name');
     const r=await signInWithPopup(auth,provider);
     await saveUser(r.user,r.user.displayName);
-    await redirectAfterAuth(r.user);
   }catch(e){
     load(false);
     if(e.code!=='auth/popup-closed-by-user')err(eTxt(e.code));
