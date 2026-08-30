@@ -211,6 +211,26 @@ poprawna odpowiedzia. NIE parafrazuj, NIE skracaj. System automatycznie
 sprawdza to pole i ODRZUCA zadanie, jesli "final_answer" nie jest
 identyczny z zadna opcja - wiec musi dokladnie pasowac.
 
+POLE "validation_rule" (Czesc A) - OPCJONALNE (dolacz TYLKO gdy pasuje,
+patrz warunek nizej): jesli to zadanie jest ZADANIEM TEKSTOWYM/
+OBLICZENIOWYM, ktorego poprawna odpowiedz jest POJEDYNCZA LICZBA (np.
+cena, dlugosc, predkosc, procent, wynik dzialania - NIE zbior/przedzial/
+nierownosc/warunek na parametr), dodaj DODATKOWO pole "validation_rule" z
+TRZEMA czesciami:
+  "variables" - obiekt z liczbami wystepujacymi w zadaniu, np. {{"cena": 50, "rabat": 18}}
+  "expression" - PROSTY wzor arytmetyczny UZYWAJACY TYLKO tych zmiennych i
+    operatorow + - * / ** % oraz nawiasow (NIC wiecej - zadnych funkcji,
+    zadnych sqrt/sin/log), np. "cena - rabat"
+  "expected" - liczba, ktora wychodzi z tego wzoru I ktora jest Twoja
+    poprawna odpowiedzia (musi zgadzac sie z "final_answer")
+System NIEZALEZNIE przeliczy ten wzor kodem i porowna z Twoja odpowiedzia -
+to dodatkowa, darmowa siatka bezpieczenstwa wylapujaca bledy arytmetyczne,
+WIEC WZOR MUSI BYC NAPRAWDE POPRAWNY (dokladnie taki, z jakiego wyliczyles
+"expected"), inaczej zadanie zostanie ODRZUCONE mimo ze tresc jest dobra.
+Jesli zadanie NIE ma jednoznacznej liczbowej odpowiedzi (np. odpowiedz to
+"$m < -8$ lub $m > 8$", dowod, opis slowny) - PO PROSTU POMIN cale pole
+"validation_rule" (nie zgaduj, nie wymyslaj sztucznego wzoru na sile).
+
 POLE "diversity_tag" (Czesc A) - NOWE, OBOWIAZKOWE (pomaga systemowi
 pilnowac roznorodnosci w sprawdzianie): dla KAZDEGO zadania zamknietego
 podaj obiekt z 4 KROTKIMI (kilka slow, NIE zdaniami) polami opisujacymi
