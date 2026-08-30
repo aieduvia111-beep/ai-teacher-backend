@@ -1040,15 +1040,20 @@ podaj DOKLADNIE JEDNA z tych wartosci:
   "algebra_symbolic" - odpowiedz to zbior/przedzial/nierownosc/warunek na
     parametr (NIE pojedyncza liczba) - np. rownania/nierownosci z parametrem
   "physics_chemistry" - zadanie z fizyki/chemii z jednostkami (predkosc,
-    stezenie, energia) - NAWET jesli liczbowe, na razie NIE ma
-    dedykowanej weryfikacji kodem (patrz "validation_rule" nizej)
+    stezenie, energia, sila, cieplo) - PATRZ NIZEJ, validation_rule
+    CZESTO da sie dodac (wiele podstawowych wzorow to czysta arytmetyka)
   "factual" - pytanie o fakt/definicje/date/postac (bez obliczen)
   "open_ended" - dowod, esej, analiza, pytanie bez jednej "poprawnej" liczby/faktu
 
 POLE "validation_rule" - OBOWIAZKOWE gdy "problem_class" to
-"arithmetic_word_problem" LUB "geometry" (dla pozostalych klas: PO PROSTU
-POMIN cale pole - nie zgaduj, nie wymyslaj sztucznego wzoru na sile). Ma
-TRZY czesci:
+"arithmetic_word_problem" LUB "geometry". Dla "physics_chemistry" -
+DOLACZ, GDY wzor daje sie zapisac WYLACZNIE dozwolonymi operatorami
+nizej (np. $v = s/t$, $F = m \cdot a$, $P = U \cdot I$, $Q = m c \Delta T$,
+$E_k = 0.5 m v^2$ - to WSZYSTKO czysta arytmetyka, mozliwe) - jesli wzor
+NAPRAWDE wymaga funkcji spoza dozwolonych (sin/cos/log/pierwiastkowanie
+zlozone, rozpad promieniotworczy itp.) - PO PROSTU POMIN, nie zgaduj.
+Dla "algebra_symbolic"/"factual"/"open_ended": ZAWSZE POMIN cale pole (nie
+zgaduj, nie wymyslaj sztucznego wzoru na sile). Ma TRZY czesci:
   "variables" - obiekt z liczbami wystepujacymi w zadaniu, np. {{"cena": 50, "rabat": 18}}
   "expression" - PROSTY wzor UZYWAJACY TYLKO tych zmiennych, operatorow
     + - * / ** % i nawiasow, ORAZ (TYLKO dla geometrii z okregiem/kolem
