@@ -2,10 +2,18 @@
 """User (29.08.2026, po alarmie kosztowym - "0.20 USD w OpenAI"): "B1" -
 gdy standardowy budzet czasu/rund sie wyczerpie, ale brakuje NAPRAWDE
 niewiele (<=2 zadania z zamowionych), daj do 3 dodatkowych rund zamiast
-od razu poddawac sie z niedoborem - ale TWARDO ograniczone (sufit 220s
+od razu poddawac sie z niedoborem - ale TWARDO ograniczone (sufit
 CALKOWITEGO czasu, max 3 rundy, i NIE probuj wcale jesli brakuje >2 -
 "jesli 10 rund nie wystarczylo na cos wiecej niz 2 zadania, temat ma
 fundamentalny problem, dalsze czekanie nie pomoze").
+
+ZAKTUALIZOWANE (30.08.2026, "max 1 minuta a nie 4 minuty" - patrz
+komentarz nad _HARD_TIMEOUT_SECONDS/_GRACE_MAX_SECONDS w
+openai_exam.py/exam_pdf_generator.py): standardowy budzet dla topicow
+spoza listy archetypow na poziomie trudny/hard OBNIZONY 180s->45s, sufit
+grace OBNIZONY 220s->60s. Wartosci t_start w testach ponizej PRZELICZONE
+na nowe okno (elapsed miedzy 45s a 60s = "budzet wyczerpany, grace jeszcze
+moze probowac"; elapsed >=60s = "sufit grace juz przekroczony").
 
 WASKI, WARUNKOWY wyjatek - NIE ogolne podniesienie limitu dla kazdego
 requestu (to user JUZ ODRZUCIL na starcie tej sesji jako nieskuteczne).
@@ -70,8 +78,8 @@ def _make_open(n, start_nr=100):
 
 
 print("=" * 70)
-print("SPRAWDZIAN - Scenariusz: brakuje 2/15 gdy standardowy budzet (180s)")
-print("juz wyczerpany (elapsed=200s) - grace POWINIEN zadzialac i dobic")
+print("SPRAWDZIAN - Scenariusz: brakuje 2/15 gdy standardowy budzet (45s)")
+print("juz wyczerpany (elapsed=46s) - grace POWINIEN zadzialac i dobic")
 print("=" * 70)
 clock = FakeClock(start=0.0)
 epg.time.monotonic = clock.monotonic
@@ -89,11 +97,11 @@ data = {"tytul": "Test", "sekcje": [
     {"typ": "zamkniete", "pytania": _make_closed(7)},
     {"typ": "otwarte", "pytania": _make_open(6)},
 ]}
-# t_start w PRZESZLOSCI wzgledem zegara -> elapsed = 0 - (-200) = 200s (juz > 180s standardowego budzetu, < 220s sufitu grace)
+# t_start w PRZESZLOSCI wzgledem zegara -> elapsed = 0 - (-46) = 46s (juz > 45s standardowego budzetu, < 60s sufitu grace)
 result = gen._fill_missing_exam_questions(
     data, temat="Matematyka: temat spoza listy archetypow", klasa="liceum_2",
     trudnosc="trudna", liczba_pytan=15, wlasne_instrukcje=None, przedmiot="Matematyka",
-    max_rounds=10, t_start=-200.0,
+    max_rounds=10, t_start=-46.0,
 )
 final_total = sum(len(s["pytania"]) for s in result["sekcje"])
 check("Grace zadzialal - finalnie PELNE 15/15 (mimo ze standardowy budzet byl juz wyczerpany na starcie)",
@@ -126,7 +134,7 @@ data2 = {"tytul": "Test", "sekcje": [
 result2 = gen._fill_missing_exam_questions(
     data2, temat="Matematyka: temat spoza listy archetypow", klasa="liceum_2",
     trudnosc="trudna", liczba_pytan=15, wlasne_instrukcje=None, przedmiot="Matematyka",
-    max_rounds=10, t_start=-200.0,
+    max_rounds=10, t_start=-46.0,
 )
 final_total2 = sum(len(s["pytania"]) for s in result2["sekcje"])
 check("Grace NIE probowal (missing=7>2) - mock NIGDY nie wywolany",
@@ -139,8 +147,8 @@ check("_shortfall_warning obecne, BEZ wzmianki o dodatkowych probach rozszerzeni
 
 print()
 print("=" * 70)
-print("SPRAWDZIAN - Scenariusz: brakuje 2/15, ale sufit 220s JUZ przekroczony")
-print("(elapsed=225s) - grace NIE POWINIEN probowac (poza absolutnym sufitem)")
+print("SPRAWDZIAN - Scenariusz: brakuje 2/15, ale sufit 60s JUZ przekroczony")
+print("(elapsed=65s) - grace NIE POWINIEN probowac (poza absolutnym sufitem)")
 print("=" * 70)
 clock3 = FakeClock(start=0.0)
 epg.time.monotonic = clock3.monotonic
@@ -153,9 +161,9 @@ data3 = {"tytul": "Test", "sekcje": [
 result3 = gen._fill_missing_exam_questions(
     data3, temat="Matematyka: temat spoza listy archetypow", klasa="liceum_2",
     trudnosc="trudna", liczba_pytan=15, wlasne_instrukcje=None, przedmiot="Matematyka",
-    max_rounds=10, t_start=-225.0,
+    max_rounds=10, t_start=-65.0,
 )
-check("Sufit 220s juz przekroczony na starcie -> mock NIGDY nie wywolany",
+check("Sufit 60s juz przekroczony na starcie -> mock NIGDY nie wywolany",
       call_count3["n"] == 0, call_count3["n"])
 
 print()
@@ -183,7 +191,7 @@ data4 = {"tytul": "Test", "sekcje": [
 result4 = gen._fill_missing_exam_questions(
     data4, temat="Matematyka: temat spoza listy archetypow", klasa="liceum_2",
     trudnosc="trudna", liczba_pytan=15, wlasne_instrukcje=None, przedmiot="Matematyka",
-    max_rounds=10, t_start=-200.0,
+    max_rounds=10, t_start=-46.0,
 )
 check("Zatrzymalo sie po DOKLADNIE 3 probach grace (nie w nieskonczonosc)",
       call_count4["n"] == 3, call_count4["n"])
@@ -277,8 +285,8 @@ oai.client = _MockOpenAIClient()
 
 print()
 print("=" * 70)
-print("QUIZ - Scenariusz: brakuje 2/15 gdy standardowy budzet (180s) juz")
-print("wyczerpany (elapsed=200s) - grace POWINIEN zadzialac i dobic")
+print("QUIZ - Scenariusz: brakuje 2/15 gdy standardowy budzet (45s) juz")
+print("wyczerpany (elapsed=46s) - grace POWINIEN zadzialac i dobic")
 print("=" * 70)
 qclock = FakeClock(start=0.0)
 oai.time.monotonic = qclock.monotonic
@@ -298,7 +306,7 @@ async def _run_quiz_grace_succeeds():
     quiz_data = {"title": "Test", "questions": _make_quiz_questions(13)}
     return await oai._verify_and_fill_quiz_math(
         quiz_data, requested_count=15, regenerate=_mock_regen_succeeds,
-        t_start=-200.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
+        t_start=-46.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
     )
 
 
@@ -329,7 +337,7 @@ async def _run_quiz_grace_too_much_missing():
     quiz_data = {"title": "Test", "questions": _make_quiz_questions(9)}
     return await oai._verify_and_fill_quiz_math(
         quiz_data, requested_count=15, regenerate=_mock_regen_should_not_be_called,
-        t_start=-200.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
+        t_start=-46.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
     )
 
 
@@ -362,7 +370,7 @@ async def _run_quiz_grace_exhausted():
     quiz_data = {"title": "Test", "questions": _make_quiz_questions(13)}
     return await oai._verify_and_fill_quiz_math(
         quiz_data, requested_count=15, regenerate=_mock_regen_always_empty,
-        t_start=-200.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
+        t_start=-46.0, difficulty="trudny", level="liceum_2", topic="Matematyka: temat spoza listy archetypow",
     )
 
 

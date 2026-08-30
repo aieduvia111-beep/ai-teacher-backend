@@ -1006,16 +1006,13 @@ async function fetchWariant(temat,numQ,wariant){
   const finalInstr=auto+(wlasneInstr||'');
   const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
   const examController = new AbortController();
-  // ZWIEKSZONE PONOWNIE (29.08.2026, "B1" grace extension - patrz
-  // _GRACE_MAX_SECONDS_EXAM w exam_pdf_generator.py): dla tematow spoza
-  // listy bezpiecznych archetypow, gdy standardowy budzet 180s sie
-  // wyczerpie ale brakuje juz tylko <=2 zadan, backend probuje jeszcze
-  // do 3 dodatkowych rund, ograniczonych sufitem 220s CALKOWITEGO czasu
-  // (nie 180+220s). Timeout frontendu musi zostac PONAD tym nowym
-  // sufitem (identyczna zasada jak przy KAZDEJ poprzedniej zmianie tego
-  // budzetu w tej sesji - stary byl DOKLADNIE na granicy, zero
-  // marginesu) - 260s daje margines na budowe PDF + siec.
-  const examTimeoutId = setTimeout(()=>examController.abort(), 260000);
+  // ZMNIEJSZONE (30.08.2026, user: "max 1 minuta na czekanie, a nie 4
+  // minuty - to jest wogole nieprofesjonalne" - odwraca dzisiejsza
+  // wczesniejsza eskalacje 60->120->180s): standardowy budzet "trudny"
+  // obnizony do 45s, sufit grace (_GRACE_MAX_SECONDS_EXAM w
+  // exam_pdf_generator.py) do 60s CALKOWITEGO czasu. Timeout frontendu w
+  // parze, z marginesem na budowe PDF + siec (nie 260s).
+  const examTimeoutId = setTimeout(()=>examController.abort(), 100000);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
   const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':location.origin;
   const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});

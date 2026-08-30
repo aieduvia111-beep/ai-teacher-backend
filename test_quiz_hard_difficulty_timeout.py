@@ -43,7 +43,7 @@ from app.openai_exam import _max_generation_seconds, _buffered_count, _HARD_TIME
 
 # Dokladny zgloszony przypadek: ciagi geometryczne (NIE kwadratowe), trudny
 r = _max_generation_seconds(topic="Matematyka: ciągi geometryczne", difficulty="trudny")
-check("ciagi geometryczne + trudny -> 180s (ZWIEKSZONE PONOWNIE 29.08.2026)", r == 180.0, r)
+check("ciagi geometryczne + trudny -> 45s (OBNIZONE 30.08.2026, 'max 1 minuta')", r == 45.0, r)
 
 r2 = _buffered_count(6, topic="Matematyka: ciągi geometryczne", difficulty="trudny")
 check("bufor dla ciagi+trudny: +40% (6 -> 9, nie 6->8 jak wczesniej)", r2 == 9, r2)
@@ -61,13 +61,13 @@ check("Regresja: bufor dla latwy/domyslny -> nadal +30% (10 -> 13)", r5 == 13, r
 
 # NOWE: dowolny inny temat + trudny -> tez 60s (generalizacja, nie tylko ciagi)
 r6 = _max_generation_seconds(topic="Matematyka: trygonometria", difficulty="trudny")
-check("NOWE: dowolny inny temat + trudny -> tez 180s (generalizacja, ZWIEKSZONE PONOWNIE)", r6 == 180.0, r6)
+check("NOWE: dowolny inny temat + trudny -> tez 45s (generalizacja, OBNIZONE 30.08.2026)", r6 == 45.0, r6)
 
 # Boczny efekt (POPRAWA, nie regresja): rownania kwadratowe + hard - wczesniej
 # 30s (luka, nigdy nie mialo wlasnego wyjatku w _max_generation_seconds,
 # mimo najwiekszego bufora +60% w _buffered_count) - teraz tez 180s.
 r7 = _max_generation_seconds(topic="Matematyka: równania kwadratowe z parametrem", difficulty="trudny")
-check("Efekt uboczny (poprawa): rownania kwadratowe+hard teraz tez 180s (wczesniej luka: 30s)", r7 == 180.0, r7)
+check("Efekt uboczny (poprawa): rownania kwadratowe+hard teraz tez 45s (wczesniej luka: 30s)", r7 == 45.0, r7)
 
 print()
 print("=" * 70)

@@ -1168,7 +1168,16 @@ _TIMEOUT_SECONDS_EXAM = 60.0
 # 150-180s" bylby faktycznie ZEREM rozszerzenia przy prawdziwej,
 # aktualnej wartosci 180s. Lekcja: PRZY KAZDEJ zmianie tej stalej,
 # zaktualizuj TEZ docstring _max_generation_seconds_exam - nie tylko kod.
-_HARD_TIMEOUT_SECONDS_EXAM = 180.0
+### NAPRAWIONE PONOWNIE (30.08.2026, user: "max 1 minuta na czekanie, a
+### nie 4 minuty - to jest wogole nieprofesjonalne", NARAZIE tylko na
+### staging): odwraca eskalacje 60->120->180s z 29.08.2026 - ten dzien
+### byl PRZED archetypami Safe Parameter Generation. Real-testy tego
+### samego dnia (29.08.2026, PO zbudowaniu archetypow) pokazaly, ze
+### tematy z listy koncza sie w 40-70s bez potrzeby dlugiego budzetu -
+### dlugi budzet byl w praktyce potrzebny GLOWNIE dla rzadkich tematow
+### spoza listy, dla ktorych user teraz woli SZYBKI, uczciwy niedobor
+### (albo B2 - latwiejszy poziom) niz czekanie do 3 minut. 180s->45s.
+_HARD_TIMEOUT_SECONDS_EXAM = 45.0
 
 # "B1" - GRACE EXTENSION (29.08.2026, user: "15 z 15, nie 13 z 15" -
 # najtwardsze wymaganie z poczatku dzisiejszej sesji, teraz rozszerzone
@@ -1184,13 +1193,13 @@ _HARD_TIMEOUT_SECONDS_EXAM = 180.0
 # oddajemy uczciwy komunikat.
 _GRACE_MAX_MISSING_EXAM = 2  # rozszerzenie TYLKO gdy brakuje <=2 zadan
 _GRACE_EXTRA_ROUNDS_EXAM = 3  # ile dodatkowych rund ponad max_rounds
-# Sufit 220s to CALKOWITY czas requestu od t_start (NIE 180+220=400s) -
-# daje +40s ponad istniejacy budzet "trudny" (180s). Frontend
-# (exam_generator.html examTimeoutId) musi zostac PODNIESIONY W PARZE
-# do >=260s (margines na budowe PDF + siec) - identyczna zasada jak przy
-# KAZDEJ poprzedniej zmianie budzetu w tej sesji (frontend zawsze
-# WYRAZNIE ponad backendowym sufitem, nigdy rowno).
-_GRACE_MAX_SECONDS_EXAM = 220.0
+# ZMNIEJSZONE (30.08.2026, "max 1 minuta" - ta sama zmiana co
+# _HARD_TIMEOUT_SECONDS_EXAM wyzej): 220s->60s - to jest teraz TWARDY,
+# BEZWZGLEDNY sufit calego procesu od t_start (standardowy budzet 45s +
+# do 15s na grace), nie tylko sufit "dodatkowego" rozszerzenia. Frontend
+# (exam_generator.html examTimeoutId) obnizony w parze do 100s (margines
+# na budowe PDF + siec, nie 260s).
+_GRACE_MAX_SECONDS_EXAM = 60.0
 
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
@@ -1274,12 +1283,14 @@ def _is_hard_quadratic_two_positive_roots_exam(temat: str, trudnosc: str) -> boo
 def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
-    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 180s dla tematow na
+    PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 45s dla tematow na
     poziomie "trudny"/"trudna" (patrz _HARD_TIMEOUT_SECONDS_EXAM - wartosc
-    PODNIESIONA 29.08.2026 ze 120s, ten docstring byl przez jakis czas
-    NIEAKTUALNY po tamtej zmianie - user to zlapal przy projektowaniu B1,
-    patrz _GRACE_MAX_SECONDS_EXAM), 60s dla wszystkiego innego (pierwotna,
-    jednolita decyzja usera - nadal w mocy dla latwy/sredni)."""
+    OBNIZONA 30.08.2026 z 180s, "max 1 minuta" - patrz komentarz tam), 60s
+    dla wszystkiego innego. UWAGA: "trudny" jest teraz NUMERYCZNIE ponizej
+    domyslnego 60s - to swiadome, nie blad: dla latwy/sredni 60s nigdy nie
+    bylo problemem (user nigdy sie na to nie skarzyl), wiec zostaje bez
+    zmian - obnizka dotyczy WYLACZNIE zgloszonego przypadku (trudne tematy
+    spoza archetypow, do 4 minut oczekiwania)."""
     diff_word = (trudnosc or "").strip().lower()
     if diff_word in _HARD_DIFFICULTY_WORDS:
         return _HARD_TIMEOUT_SECONDS_EXAM

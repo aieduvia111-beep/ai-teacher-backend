@@ -2517,30 +2517,42 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 # zmiana w _HARD_TIMEOUT_SECONDS_EXAM (exam_pdf_generator.py) i we
 # frontendowych timeoutach (exam_generator.html, quiz_app.html), zeby
 # nie powtorzyc buga z kolizja timeoutow z poprzedniej rundy naprawy.
-_HARD_TIMEOUT_SECONDS = 180.0
+### NAPRAWIONE PONOWNIE (30.08.2026, user: "max 1 minuta na czekanie, a
+### nie 4 minuty - to jest wogole nieprofesjonalne", NARAZIE tylko na
+### staging): odwraca eskalacje 60->120->180s z 29.08.2026. Ten dzien byl
+### PRZED archetypami Safe Parameter Generation - real-testy DZISIAJ
+### pokazaly, ze archetypy konczy sie w 40-70s bez potrzeby dlugiego
+### budzetu, a dlugi budzet (180s) byl w praktyce potrzebny GLOWNIE dla
+### rzadkich, nietypowych tematow spoza listy - dla tych user teraz
+### woli SZYBKI, uczciwy niedobor (albo B2 - latwiejszy poziom) niz
+### czekanie do 3 minut. 180s->45s (ten sam rzad wielkosci co juz
+### istniejacy wyjatek _EXTENDED_TIMEOUT_SECONDS dla kwadratowych+medium).
+_HARD_TIMEOUT_SECONDS = 45.0
 
 # "B1" - GRACE EXTENSION (29.08.2026, port z exam_pdf_generator.py - patrz
 # tam pelne uzasadnienie nad _GRACE_MAX_SECONDS_EXAM). WASKI, WARUNKOWY
 # wyjatek (NIE ogolne podniesienie limitu dla kazdego requestu): gdy po
 # standardowym budzecie brakuje <=2 pytania, daje do 3 dodatkowych rund,
-# ograniczonych twardym sufitem 220s (CALKOWITY czas requestu, nie
-# dodatkowe 220s ponad 180s). Frontend (quiz_app.html) musi byc PODNIESIONY
-# W PARZE do >=250s.
+# ograniczonych twardym sufitem (CALKOWITY czas requestu, nie dodatkowe
+# sekundy PONAD standardowy budzet).
+# ZMNIEJSZONE (30.08.2026, ta sama zmiana co _HARD_TIMEOUT_SECONDS wyzej -
+# "max 1 minuta"): 220s->60s - to jest teraz TWARDY, BEZWZGLEDNY sufit
+# calego procesu (standardowy budzet 45s + do 15s na grace), nie tylko
+# sufit "dodatkowego" rozszerzenia. Frontend (quiz_app.html) obnizony w
+# parze do 90s (margines na siec, nie 250s).
 _GRACE_MAX_MISSING = 2
 _GRACE_EXTRA_ROUNDS = 3
-_GRACE_MAX_SECONDS = 220.0
+_GRACE_MAX_SECONDS = 60.0
 
 
 def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
     generowania+weryfikacji+dogenerowania. 45s dla rownan kwadratowych
     z parametrem na poziomie medium (waski, historyczny wyjatek - patrz
-    komentarz wyzej); 180s dla KAZDEGO tematu na poziomie "trudny"/"hard"
-    (patrz _HARD_TIMEOUT_SECONDS - wartosc PODNIESIONA 29.08.2026 z 60s,
-    ten docstring byl przez jakis czas NIEAKTUALNY po tamtej zmianie -
-    identyczny blad zlapany rownolegle w exam_pdf_generator.py przy
-    projektowaniu B1, patrz _GRACE_MAX_SECONDS); 30s dla wszystkiego
-    innego."""
+    komentarz wyzej) ORAZ (od 30.08.2026, "max 1 minuta") dla KAZDEGO
+    tematu na poziomie "trudny"/"hard" (patrz _HARD_TIMEOUT_SECONDS -
+    obnizone z 180s po archetypach Safe Parameter Generation); 30s dla
+    wszystkiego innego."""
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     if is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
