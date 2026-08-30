@@ -786,14 +786,6 @@ function getPlanBadgeHTML(plan) {
         <div class="spinner-ring"></div>
         <h3>Generuję sprawdzian...</h3>
         <p>AI tworzy pytania i buduje PDF</p>
-        <!-- NOWE (30.08.2026, user: "daj komunikat informujacy ze moze
-             czekac dluzej aby sprawdzian byl lepszy") - CELOWO bez
-             konkretnego czasu (poprzedni komunikat z "do 3 minut" trzeba
-             bylo usunac, gdy Safe Parameter Generation przyspieszyl
-             wiekszosc trudnych tematow i liczba przestala byc prawdziwa) -
-             ta wersja jest ogolna i pozostanie prawdziwa niezaleznie od
-             przyszlych zmian czasu generowania. -->
-        <p id="hardDiffHint" style="display:none;color:var(--muted2);font-size:13px;margin-top:2px;line-height:1.5;">Dla trudniejszych tematów generowanie może potrwać dłużej — dbamy o to, żeby zadania były poprawne i dopasowane do poziomu.</p>
         <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
         <ul class="steps-list">
           <li class="step-item current" id="st0"><div class="step-dot"></div>Analizuję temat</li>
@@ -1075,11 +1067,6 @@ async function generate(){
   const wariant=vals.wariant||'A';
   document.getElementById('formView').style.display='none';
   document.getElementById('loadingView').style.display='block';
-  // NOWE (30.08.2026, user: "dla trudnych zrob, bedzie bardziej profesjonalne") -
-  // podpowiedz o dluzszym czasie tylko dla poziomu "trudna" (tam realnie
-  // moze byc dluzej), nie dla latwa/srednia.
-  const hardHint=document.getElementById('hardDiffHint');
-  if(hardHint) hardHint.style.display=(vals.trudnosc==='trudna')?'block':'none';
   document.getElementById('genBtn').disabled=true;
   startProgress();
   try{

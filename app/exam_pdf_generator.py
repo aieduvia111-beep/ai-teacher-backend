@@ -2970,13 +2970,38 @@ ZASADY:
     # pelne uzasadnienie w math_verify.build_safe_quadratic_two_positive_roots
     # i openai_exam._raw_generate_safe_quadratic_two_positive_roots_batch
     # (Quiz, ten sam mechanizm).
-    def _raw_generate_safe_quadratic_two_positive_roots_batch(self, n: int) -> dict:
+    def _raw_generate_safe_quadratic_two_positive_roots_batch(self, n: int, used_letters: set = None, used_constants: set = None) -> dict:
         """Generuje `n` zadan zamknietych dla archetypu 'rownanie
         x^2-(p+K)x+Kp=0 -> dla jakich p dwa rozne pierwiastki dodatnie'
         metoda 'safe parameter generation' - zwraca dane w KSZTALCIE
-        sprawdzianu, analogicznie do _raw_generate_safe_law_of_sines_batch."""
+        sprawdzianu, analogicznie do _raw_generate_safe_law_of_sines_batch.
+
+        NAPRAWIONE (30.08.2026, user zauwazyl real przypadek w PDF: Zadanie
+        1 i Zadanie 6 IDENTYCZNE - oba $x^2-(param+10)x+10\\cdot param=0$,
+        rozna TYLKO litera parametru "b" vs "c") - DOKLADNIE ten sam bug,
+        ktory byl juz raz znaleziony i naprawiony dla
+        _raw_generate_safe_linear_param_quadratic_batch (patrz tam pelny
+        opis + pick_safe_param_values w math_verify.py), ale NIGDY nie
+        dostal tej samej poprawki tutaj - ta funkcja losowala k_value/
+        param_letter CALKOWICIE NIEZALEZNIE (random.choice bez zadnego
+        sledzenia), wiec kolizja byla mozliwa nawet W OBREBIE JEDNEJ
+        partii, nie tylko miedzy partia poczatkowa a rundami dogenerowania.
+        `used_letters`/`used_constants` (opcjonalne, jesli podane - zyja
+        przez CALY dokument, identycznie jak w linear_param_quadratic)."""
         buffered_n = n + 3
-        skeletons = [build_safe_quadratic_two_positive_roots() for _ in range(buffered_n)]
+        letters_pool = list("mnpqrstkbc")
+        k_pool = list(range(1, 11))
+        if used_letters is not None and used_constants is not None:
+            letters = pick_safe_param_values(letters_pool, used_letters, buffered_n)
+            k_values = pick_safe_param_values(k_pool, used_constants, buffered_n)
+        else:
+            random.shuffle(letters_pool)
+            letters = [letters_pool[i % len(letters_pool)] for i in range(buffered_n)]
+            k_values = [random.choice(k_pool) for _ in range(buffered_n)]
+        skeletons = [
+            build_safe_quadratic_two_positive_roots(param_letter=letters[i], k_value=k_values[i])
+            for i in range(buffered_n)
+        ]
         letters = "abcd"
         items_desc = []
         for i, sk in enumerate(skeletons):
@@ -3325,7 +3350,9 @@ ZASADY:
                         # kwadratowe z parametrem - patrz
                         # _is_hard_quadratic_two_positive_roots_exam i
                         # _raw_generate_safe_quadratic_two_positive_roots_batch.
-                        extra = self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing, _MIN_FILL_BATCH_EXAM))
+                        # used_letters/used_constants: patrz naprawa 30.08.2026
+                        # w docstringu tej funkcji.
+                        extra = self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing, _MIN_FILL_BATCH_EXAM), used_letters=used_safe_letters, used_constants=used_safe_constants)
                     else:
                         extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
                 metrics.api_request_count += 1

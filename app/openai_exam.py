@@ -2050,14 +2050,35 @@ ZASADY:
     return quiz_data
 
 
-async def _raw_generate_safe_quadratic_two_positive_roots_batch(n: int) -> Dict:
+async def _raw_generate_safe_quadratic_two_positive_roots_batch(n: int, used_letters: set = None, used_constants: set = None) -> Dict:
     """Generuje `n` pytan dla archetypu 'rownanie kwadratowe z parametrem
     x^2-(p+K)x+Kp=0 -> dla jakich p dwa rozne pierwiastki dodatnie' metoda
     'safe parameter generation' - patrz komentarz w math_verify.py.
     Jedno wywolanie AI dla calej partii, analogicznie do
-    _raw_generate_safe_law_of_sines_batch."""
+    _raw_generate_safe_law_of_sines_batch.
+
+    NAPRAWIONE (30.08.2026, PORT tej samej naprawy co
+    _raw_generate_safe_linear_param_quadratic_batch, patrz tam pelny opis -
+    user zauwazyl real przypadek w PDF Sprawdzianu: Zadanie 1 i 6
+    identyczne, rozna TYLKO litera): wczesniej `build_safe_quadratic_two_
+    positive_roots()` byla wolana bez argumentow (pelny random.choice bez
+    sledzenia), wiec kolizja k_value/param_letter byla mozliwa nawet W
+    OBREBIE JEDNEJ partii. `used_letters`/`used_constants` (opcjonalne) -
+    jesli podane, zyja przez CALY quiz (patrz pick_safe_param_values)."""
     buffered_n = n + 3
-    skeletons = [build_safe_quadratic_two_positive_roots() for _ in range(buffered_n)]
+    letters_pool = list("mnpqrstkbc")
+    k_pool = list(range(1, 11))
+    if used_letters is not None and used_constants is not None:
+        letters = pick_safe_param_values(letters_pool, used_letters, buffered_n)
+        k_values = pick_safe_param_values(k_pool, used_constants, buffered_n)
+    else:
+        random.shuffle(letters_pool)
+        letters = [letters_pool[i % len(letters_pool)] for i in range(buffered_n)]
+        k_values = [random.choice(k_pool) for _ in range(buffered_n)]
+    skeletons = [
+        build_safe_quadratic_two_positive_roots(param_letter=letters[i], k_value=k_values[i])
+        for i in range(buffered_n)
+    ]
     letters = "abcd"
     items_desc = []
     for i, sk in enumerate(skeletons):
@@ -2351,7 +2372,8 @@ async def _generate_quiz_topic_once(
         # Port tego samego wzorca na trudne rownania kwadratowe z
         # parametrem - patrz _is_hard_quadratic_two_positive_roots i
         # _raw_generate_safe_quadratic_two_positive_roots_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(max(n, _MIN_FILL_BATCH))
+        # used_letters/used_constants: patrz naprawa 30.08.2026 w docstringu.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(max(n, _MIN_FILL_BATCH), used_letters=used_safe_letters, used_constants=used_safe_constants)
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
