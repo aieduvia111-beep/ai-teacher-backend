@@ -183,3 +183,14 @@ QUADRATIC_FUNCTION_BASELINE_LEVEL = "liceum_1"
 QUADRATIC_FUNCTION_MAX_SHIFT = 4
 EXPONENTIAL_FUNCTION_BASELINE_LEVEL = "liceum_3"
 EXPONENTIAL_FUNCTION_MAX_SHIFT = 4
+
+
+# ---------------------------------------------------------------
+# CALKI NIEOZNACZONE (30.08.2026) - temat WYLACZNIE studiow (patrz
+# SUBJECT_SCOPE w level_config.py, "[studia]: calki wymierne") - w
+# odroznieniu od pozostalych domen (rozlozone na kilka lat liceum),
+# nie ma tu ZADNEGO innego poziomu do przesuwania wzgledem, wiec
+# MAX_SHIFT=0 (level_adjusted_shift zawsze zwroci 0 - LevelAwareTierModifier
+# zawsze idzie prosto do validate_integral_difficulty, bez przesuniecia).
+INTEGRAL_BASELINE_LEVEL = "studia"
+INTEGRAL_MAX_SHIFT = 0

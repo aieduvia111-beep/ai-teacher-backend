@@ -3239,6 +3239,157 @@ def validate_exponential_function_difficulty(question_text: str, requested_diffi
 
 
 # ---------------------------------------------------------------
+# CALKI NIEOZNACZONE (30.08.2026, user: "co z poziomem, jest odpowiedni,
+# sprawdz dobrze" po live-tescie "studia + trudna" - Czesc A zamkniete
+# byla w calosci PODSTAWOWYMI wzorami calkowania (∫e^2x dx, ∫1/x dx),
+# nie "trudnym" poziomem dla studiow). PRZYCZYNA: Universal Difficulty
+# Engine mial dotychczas domain modifiery TYLKO dla rownan/funkcji/
+# ciagow/trygonometrii - calki nie mialy ZADNEJ programowej weryfikacji
+# trudnosci, poziom zalezal WYLACZNIE od tego, jak AI zinterpretuje
+# slowo "trudny" w promptcie.
+#
+# W ODROZNIENIU od pozostalych modifierow (ktore klasyfikuja przez
+# tekstowe markery - "rownanie"/"nierownosc"/"podstawiajac" - bo ich
+# domeny sa zadaniami tekstowymi z prozy), calka to CZYSTO STRUKTURALNA
+# wlasciwosc samego wzoru $...$ - wiec ten modifier PARSUJE integrand
+# przez sympy (_parse_expr, ten sam parser co reszta modulu) i klasyfikuje
+# na podstawie KSZTALTU wyrazenia, nie tekstowych sygnalow. Celowo
+# BINARNA skala (nie 5-stopniowa jak inne domeny) - mniej ryzyka
+# falszywej klasyfikacji niz probowanie precyzyjnie odroznic "substytucja"
+# od "przez czesci" od "ulamki proste" (wszystkie genuinely wymagaja
+# techniki wiec wszystkie licza sie jako "zaawansowane" - jedyne pytanie,
+# ktore MUSI byc rozstrzygniete poprawnie, to "czy to zwykle
+# wyszukanie w tablicy wzorow, czy nie").
+# ---------------------------------------------------------------
+_INTEGRAL_RE = re.compile(r'\\int\s*(.+?)\s*\\?,?\s*d\s*([a-z])\b', re.IGNORECASE)
+_LATEX_FUNC_BACKSLASH_RE = re.compile(r'\\(sin|cos|tan|tg|ln|log|exp)\b')
+
+
+def _extract_integral_integrand(question_text: str):
+    """Wyciaga (integrand_str, zmienna) z pierwszego "\\int ... d<var>"
+    w tekscie. (None, None) jesli nie znaleziono."""
+    if not question_text or '\\int' not in question_text:
+        return None, None
+    m = _INTEGRAL_RE.search(question_text)
+    if not m:
+        return None, None
+    return m.group(1).strip(), m.group(2).lower()
+
+
+_FUNC_POWER_RE = re.compile(r'\b(sin|cos|tan|tg|log)\^(\d+)\(([^()]*)\)')
+_BARE_E_RE = re.compile(r'(?<![a-zA-Z_])e(?![a-zA-Z_])')
+
+
+def _prep_integral_latex(s: str) -> str:
+    """Lokalny preprocessing PRZED _parse_expr - _clean_latex (wspoldzielony
+    z reszta modulu) nie usuwa "\\sin"/"\\cos"/"\\tan"/"\\ln"/"\\log"
+    (backslash+nazwa funkcji psuje parsowanie sympy calkowicie), bo zaden
+    inny caller tego modulu tego dotychczas nie potrzebowal - lokalne,
+    zeby nie ryzykowac zmiany zachowania gdzie indziej. Dwie DODATKOWE
+    naprawy specyficzne dla calek:
+    - "cos^2(x)" (powszechny LaTeX skrot dla (cos(x))^2) -> "(cos(x))^2",
+      inaczej sympy parsuje "cos**2(x)" jako bezsensowna skladnie
+      (funkcja^2 wywolana jak funkcja) i rzuca wyjatek.
+    - samotne "e" (stala Eulera) -> "E" (sympy rozpoznaje "e" jako zwykly
+      SYMBOL, nie sp.E, wiec "e^(2x)" bez tego parsuje sie jako Pow zwyklego
+      symbolu, nie exp() - myllaco klasyfikowane jako "zlozone"."""
+    s = _LATEX_FUNC_BACKSLASH_RE.sub(lambda m: {'tg': 'tan', 'ln': 'log'}.get(m.group(1), m.group(1)), s)
+    s = _FUNC_POWER_RE.sub(lambda m: f'({m.group(1)}({m.group(3)}))^{m.group(2)}', s)
+    s = _BARE_E_RE.sub('E', s)
+    return s
+
+
+def _is_linear_in(expr, x) -> bool:
+    try:
+        return expr.is_polynomial(x) and sp.degree(sp.Poly(expr, x)) == 1
+    except Exception:
+        return False
+
+
+def _is_basic_power_term(term, x) -> bool:
+    """c*x^n dla DOWOLNEGO calkowitego n (dodatniego lub ujemnego) -
+    pojedynczy wpis w tablicy wzorow (potega -> potega+1/(n+1)), zero
+    techniki poza wzorem podstawowym. Pokrywa zarowno zwykle wielomiany
+    (n>=0) jak i "2/x - 3/x^2" (n<0, po sp.expand rozbija sie na takie
+    wlasnie skladniki)."""
+    if not term.has(x):
+        return True  # stala
+    coeff, rest = term.as_coeff_Mul()
+    if rest == x:
+        return True
+    if isinstance(rest, sp.Pow) and rest.base == x and rest.exp.is_Integer:
+        return True
+    return False
+
+
+def classify_integral_difficulty(question_text: str):
+    """Szacuje pasmo trudnosci calki nieoznaczonej: '1' (podstawowe
+    wyszukanie w tablicy wzorow) albo '3' (wymaga techniki - substytucja,
+    przez czesci, ulamki proste, tozsamosc trygonometryczna). None jesli
+    tekst nie zawiera rozpoznawalnej calki ALBO integrand sie nie
+    sparsowal (bezpieczny abstain - NIE blokujemy nierozpoznanego
+    ksztaltu)."""
+    integrand_str, var = _extract_integral_integrand(question_text or "")
+    if integrand_str is None:
+        return None
+    try:
+        x = sp.Symbol(var)
+        expr = sp.sympify(_parse_expr(_prep_integral_latex(integrand_str)))
+    except Exception:
+        return None
+    if not expr.free_symbols:
+        return None  # stala/zdegenerowane - nie ma zastosowania
+    try:
+        if expr.is_polynomial(x):
+            return "1"
+        terms = sp.Add.make_args(sp.expand(expr))
+        if len(terms) > 1 and all(_is_basic_power_term(t, x) for t in terms):
+            return "1"
+        coeff, rest = expr.as_coeff_Mul()
+        # UWAGA: "log" CELOWO wykluczony z tej galezi, mimo ze na pierwszy
+        # rzut oka wyglada analogicznie do sin/cos/exp. Znaleziono live-
+        # testem: ∫ln(x) dx (argument LINIOWY - sam x) BEZWZGLEDNIE wymaga
+        # calkowania przez czesci (x*ln(x)-x+C) - w przeciwienstwie do
+        # sin/cos/exp, ktorych antypochodna zostaje W TEJ SAMEJ rodzinie
+        # funkcji (korekta lancuchowa o stala), antypochodna ln(x) jest
+        # ILOCZYNEM, nie prostym przeskalowaniem - genuinie wymaga
+        # techniki, NIEZALEZNIE od tego czy argument jest liniowy.
+        if isinstance(rest, (sp.sin, sp.cos, sp.exp)) and len(rest.args) == 1:
+            if _is_linear_in(rest.args[0], x):
+                return "1"
+            return "3"  # nieliniowy argument - substytucja
+        if isinstance(rest, sp.log) and len(rest.args) == 1:
+            return "3"  # ln(cokolwiek) - zawsze wymaga calkowania przez czesci
+        if isinstance(rest, sp.Pow) and rest.exp.is_number and _is_linear_in(rest.base, x):
+            return "1"  # (liniowe)^n - korekta lancuchowa o stala, nadal wzor podstawowy
+        if rest.has(sp.tan) or rest.has(sp.sin) and rest.has(sp.cos):
+            return "3"
+        return "3"
+    except Exception:
+        return None
+
+
+_INTEGRAL_ACCEPTABLE_TIERS = {
+    "easy": {"1"}, "latwy": {"1"}, "łatwy": {"1"}, "latwa": {"1"}, "łatwa": {"1"},
+    "medium": {"1", "3"}, "sredni": {"1", "3"}, "średni": {"1", "3"}, "srednia": {"1", "3"}, "średnia": {"1", "3"},
+    "hard": {"3"}, "trudny": {"3"}, "trudna": {"3"},
+}
+_INTEGRAL_TIER_ORDER = ["1", "3"]
+
+
+def validate_integral_difficulty(question_text: str, requested_difficulty_word: str):
+    """Sprawdza, czy wygenerowana calka nieoznaczona odpowiada ZADANEJ
+    trudnosci - identyczny kontrakt do validate_exponential_function_difficulty."""
+    acceptable = _INTEGRAL_ACCEPTABLE_TIERS.get((requested_difficulty_word or "").strip().lower())
+    detected_tier = classify_integral_difficulty(question_text)
+    return _generic_validate_difficulty(
+        detected_tier, acceptable, _INTEGRAL_TIER_ORDER, "not_integral",
+        "za latwe - podstawowe wyszukanie w tablicy wzorow, brak techniki oczekiwanej na tym poziomie (wykryto {detected_tier}, oczekiwano {requested_label})",
+        "za trudne jak na ta trudnosc (wykryto {detected_tier}, oczekiwano {requested_label})",
+    )
+
+
+# ---------------------------------------------------------------
 # WYMUSZANIE "correct" Z "final_answer" (dowolny przedmiot, nie tylko
 # matematyka) - architektura zaproponowana przez usera (konsultacja z
 # ChatGPT): zamiast ufac, ze AI samo poprawnie wskaze "correct" (co

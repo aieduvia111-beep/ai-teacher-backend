@@ -1315,6 +1315,58 @@ def is_exponential_function_topic(topic: str) -> bool:
     return "wykładnicz" in t or "wykladnicz" in t
 
 
+# CALKI NIEOZNACZONE (30.08.2026, user: "co z poziomem, jest odpowiedni,
+# sprawdz dobrze" po live-tescie ktory pokazal "trudna"+studia = w
+# calosci PODSTAWOWE wzory calkowania) - patrz classify_integral_difficulty
+# w math_verify.py po pelne uzasadnienie BINARNEJ (nie 5-stopniowej) skali.
+INTEGRAL_DIFFICULTY_TIERS = {
+    "1": {
+        "kryterium": (
+            "Calka to BEZPOSREDNIE wyszukanie w tablicy wzorow: wielomian, "
+            "ALBO POJEDYNCZA funkcja elementarna (e^x, sin, cos, 1/x) argumentu "
+            "LINIOWEGO (np. e^(2x), sin(3x), 1/(x+1)^2) - zero techniki poza "
+            "wzorem podstawowym i korekta o stala z reguly lancuchowej."
+        ),
+        "przyklad": "Oblicz całkę nieoznaczoną ∫e^(2x) dx.",
+    },
+    "3": {
+        "kryterium": (
+            "Calka WYMAGA techniki: podstawienia (licznik jest pochodna "
+            "mianownika/wewnetrznej funkcji), calkowania przez czesci "
+            "(iloczyn wielomianu i funkcji elementarnej), rozkladu na ulamki "
+            "proste (mianownik stopnia >=2, rozny od x^n), ALBO tozsamosci "
+            "trygonometrycznej (sin^2, cos^2, tan)."
+        ),
+        "przyklad": "Oblicz całkę nieoznaczoną ∫x·e^(x²) dx (podstawienie u=x²).",
+    },
+}
+_INTEGRAL_DIFFICULTY_WORD_TO_TIER = {
+    "easy": "1", "latwy": "1", "łatwy": "1", "latwa": "1", "łatwa": "1",
+    "medium": "1", "sredni": "1", "średni": "1", "srednia": "1", "średnia": "1",
+    "hard": "3", "trudny": "3", "trudna": "3",
+}
+
+
+def get_integral_difficulty_anchor(difficulty_word: str):
+    """Zwraca tekst kryterium+przykladu dla calek nieoznaczonych,
+    analogicznie do get_exponential_function_difficulty_anchor."""
+    tier = _INTEGRAL_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
+    if not tier:
+        return None
+    data = INTEGRAL_DIFFICULTY_TIERS[tier]
+    return (
+        f"POZIOM TRUDNOSCI (skala dla calek nieoznaczonych): {data['kryterium']} "
+        f"Przyklad zadania na tym poziomie: '{data['przyklad']}'. "
+        f"Wygeneruj zadanie o TAKIM WLASNIE poziomie trudnosci - nie latwiejsze, nie trudniejsze."
+    )
+
+
+def is_integral_topic(topic: str) -> bool:
+    """Proste wykrycie, czy temat dotyczy calek (nieoznaczonych/oznaczonych)."""
+    t = (topic or "").lower()
+    return "całk" in t or "calk" in t
+
+
 def is_known_level(level: str) -> bool:
     """Czy `level` (lub jego alias) ma opis w LEVEL_DESC."""
     return level in LEVEL_DESC or level in ALIASES

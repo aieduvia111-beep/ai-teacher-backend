@@ -30,6 +30,7 @@ from .level_config import (
     get_linear_function_difficulty_anchor, is_linear_function_topic,
     get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
     get_exponential_function_difficulty_anchor, is_exponential_function_topic,
+    get_integral_difficulty_anchor, is_integral_topic,
 )
 from .math_verify import (
     verify_and_fix_math_question, match_final_answer_index,
@@ -1349,16 +1350,40 @@ _LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 _IDX_TO_LETTER = {v: k for k, v in _LETTER_TO_IDX.items()}
 
 
+_DOLLAR_MATH_RE = re.compile(r'\$([^$]+)\$')
+
+
 def _question_fingerprint(text: str):
     """ETAP 3: identyczny mechanizm co openai_exam.py _question_fingerprint
-    (patrz tam pelne uzasadnienie) - prosty fingerprint do wykrywania
-    duplikatow/bardzo podobnych zadan w obrebie jednego requestu."""
+    (patrz tam pelne uzasadnienie) - fingerprint do wykrywania duplikatow/
+    bardzo podobnych zadan w obrebie jednego requestu.
+
+    Zwraca KROTKE KLUCZY (1 lub 2), nie pojedynczy fingerprint - caller
+    ma sprawdzic, czy KTORYKOLWIEK z nich juz wystapil.
+
+    NAPRAWIONE (30.08.2026, live-test ujawnil real duplikat: Zadanie 2 i
+    13 to ta sama calka $\\int e^{{2x}}\\,dx$, raz w Czesci A "Oblicz
+    calke...", raz w Czesci B "Znajdz calke..." - sam szkielet slowny
+    (ponizej) tego NIE lapie, bo "oblicz" != "znajdz" daje INNY szkielet,
+    mimo ze pytaja o dokladnie ta sama matematyke): DRUGI klucz to
+    znormalizowana tresc NAJDLUZSZEGO segmentu $...$ w pytaniu (sam wzor,
+    bez otaczajacej prozy) - jesli jest wystarczajaco dlugi (>=5 znakow
+    po normalizacji, zeby pojedyncza zmienna typu "$x$" nie generowala
+    falszywych trafien), dwa pytania z TYM SAMYM wzorem sa duplikatem
+    NIEZALEZNIE od czasownika/formy prozy dookola."""
     t = (text or "").lower()
     numbers = tuple(re.findall(r'-?\d+(?:[.,]\d+)?', t))
     skeleton = re.sub(r'-?\d+(?:[.,]\d+)?', '#', t)
     skeleton = re.sub(r'[^a-ząćęłńóśźż#]+', ' ', skeleton)
     skeleton = ' '.join(skeleton.split())
-    return (skeleton, numbers)
+    keys = [("skel", skeleton, numbers)]
+    math_spans = _DOLLAR_MATH_RE.findall(text or "")
+    if math_spans:
+        longest = max(math_spans, key=len)
+        normalized_math = re.sub(r'\s+', '', longest)
+        if len(normalized_math) >= 5:
+            keys.append(("math", normalized_math))
+    return tuple(keys)
 
 
 # WARSTWA 2.5 (patrz app/blind_verify.py po pelne uzasadnienie
@@ -1513,16 +1538,32 @@ def _blind_verify_batch_open(client, candidates: list, topic: str = None) -> dic
     return results
 
 
-def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = "") -> list:
+def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = "", seen_fingerprints: set = None) -> list:
     """NAPRAWIONE (user: "wszedzie bledy w quizie i sprawdzinie" - real-test
     PDF pokazal 4 z 7 zadan otwartych z BLEDNA odpowiedzia koncowa, ZERO
     niezaleznej weryfikacji): dla kazdego zadania otwartego, najpierw proba
     sympy (check_sequence_formula_open_answer - jedyny dzis rozpoznawany
     wzorzec dla zadan otwartych), potem blind-check AI-2 (batch, rownolegle)
-    dla wszystkiego, czego sympy nie rozpoznaje."""
+    dla wszystkiego, czego sympy nie rozpoznaje.
+
+    NAPRAWIONE (30.08.2026, live-test ujawnil real duplikat: Zadanie 2 i
+    13 to ta sama calka, raz w Czesci A raz w Czesci B - deduplikacja
+    dzialala dotychczas WYLACZNIE na Czesci A, otwarte nie mialy zadnej):
+    `seen_fingerprints` (opcjonalny, WSPOLDZIELONY z Czescia A - patrz
+    call site w _verify_and_fix_exam_math) - jesli podany, odrzuca
+    zadania, ktorych fingerprint (patrz _question_fingerprint) JUZ
+    wystapil GDZIEKOLWIEK w dokumencie, nie tylko w obrebie Czesci B."""
     kept = []
     needs_blind_check = []
     for pyt in pytania:
+        if seen_fingerprints is not None:
+            fp_keys = _question_fingerprint(pyt.get("tresc", ""))
+            if any(k in seen_fingerprints for k in fp_keys):
+                print(f"[MathVerify][Exam][Otwarte][Dedup] USUNIETO duplikat: '{pyt.get('tresc', '')[:60]}...'")
+                if metrics:
+                    metrics.record_rejection("duplicate")
+                continue
+            seen_fingerprints.update(fp_keys)
         tresc = pyt.get("tresc", "")
         # WARSTWA 1.5 (identyczny mechanizm co dla zamknietych - patrz
         # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
@@ -1624,8 +1665,12 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
 
     DEDUPLIKACJA (ETAP 3, opcjonalna - tylko gdy `seen_fingerprints`
     podane): identyczny mechanizm co w Quizie - patrz
-    openai_exam._verify_and_fix_quiz_math. Dziala TYLKO na sekcjach
-    zamknietych (ta sama, wspomniana wyzej luka co Warstwa 1/2/3).
+    openai_exam._verify_and_fix_quiz_math. NAPRAWIONE (30.08.2026, live-
+    test ujawnil real duplikat miedzy sekcjami): dziala teraz TAKZE na
+    sekcji "otwarte" (patrz _verify_open_section), WSPOLDZIELAC ten sam
+    `seen_fingerprints` z sekcja "zamkniete" - wczesniej dzialalo
+    WYLACZNIE na zamknietych, wiec ten sam wzor/tresc mogla sie powtorzyc
+    miedzy Czescia A i Czescia B bez wykrycia.
 
     METRYKI (ETAP 4, opcjonalne - tylko gdy `metrics` podane): identyczny
     mechanizm co w Quizie - patrz openai_exam._verify_and_fix_quiz_math.
@@ -1641,7 +1686,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
         _validation_timer.__enter__()
     for sekcja in data.get("sekcje", []):
         if sekcja.get("typ") == "otwarte":
-            sekcja["pytania"] = _verify_open_section(sekcja.get("pytania", []), metrics=metrics, client=client, tytul=data.get("tytul", ""))
+            sekcja["pytania"] = _verify_open_section(sekcja.get("pytania", []), metrics=metrics, client=client, tytul=data.get("tytul", ""), seen_fingerprints=seen_fingerprints)
             continue
         if sekcja.get("typ") != "zamkniete":
             continue
@@ -1775,13 +1820,13 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
         if seen_fingerprints is not None:
             deduped = []
             for pyt in kept:
-                fp = _question_fingerprint(pyt.get("tresc", ""))
-                if fp in seen_fingerprints:
+                fp_keys = _question_fingerprint(pyt.get("tresc", ""))
+                if any(k in seen_fingerprints for k in fp_keys):
                     print(f"[MathVerify][Exam][Dedup] USUNIETO duplikat: '{pyt.get('tresc', '')[:60]}...'")
                     if metrics:
                         metrics.record_rejection("duplicate")
                     continue
-                seen_fingerprints.add(fp)
+                seen_fingerprints.update(fp_keys)
                 deduped.append(pyt)
             kept = deduped
 
@@ -1996,6 +2041,10 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_exponential_function_topic(temat):
             anchor_text = get_exponential_function_difficulty_anchor(trudnosc)
+            if anchor_text:
+                difficulty_anchor_blok = f"\n{anchor_text}\n"
+        elif is_integral_topic(temat):
+            anchor_text = get_integral_difficulty_anchor(trudnosc)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
 

@@ -121,8 +121,10 @@ from .math_sequences import SequenceModifier
 from .math_trigonometry import TrigonometryModifier
 from .math_functions_poly import LinearFunctionModifier, QuadraticFunctionModifier
 from .math_functions_exponential import ExponentialFunctionModifier
+from .math_integral import IntegralModifier
 
 DEFAULT_MODIFIERS = [
     QuadraticEquationModifier(), SequenceModifier(), TrigonometryModifier(),
     LinearFunctionModifier(), QuadraticFunctionModifier(), ExponentialFunctionModifier(),
+    IntegralModifier(),
 ]

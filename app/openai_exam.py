@@ -8,6 +8,7 @@ from .level_config import (
     get_linear_function_difficulty_anchor, is_linear_function_topic,
     get_quadratic_function_difficulty_anchor, is_quadratic_function_topic,
     get_exponential_function_difficulty_anchor, is_exponential_function_topic,
+    get_integral_difficulty_anchor, is_integral_topic,
 )
 from .math_verify import (
     verify_and_fix_math_question, force_correct_from_final_answer,
@@ -947,6 +948,10 @@ async def _raw_generate_quiz_topic_once(
             difficulty_anchor_blok = f"\n{anchor_text}\n"
     elif is_exponential_function_topic(topic):
         anchor_text = get_exponential_function_difficulty_anchor(difficulty)
+        if anchor_text:
+            difficulty_anchor_blok = f"\n{anchor_text}\n"
+    elif is_integral_topic(topic):
+        anchor_text = get_integral_difficulty_anchor(difficulty)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 
@@ -2751,6 +2756,9 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     return quiz_data
 
 
+_DOLLAR_MATH_RE = re_module.compile(r'\$([^$]+)\$')
+
+
 def _question_fingerprint(text: str):
     """ETAP 3: prosty fingerprint do wykrywania duplikatow/bardzo
     podobnych pytan w obrebie jednego requestu (patrz uzycie w
@@ -2760,13 +2768,31 @@ def _question_fingerprint(text: str):
     gdy maja IDENTYCZNY szkielet slowny ORAZ IDENTYCZNE liczby (typowy
     przypadek: AI zwrocilo w jednej partii dwa niemal identyczne
     pytania). Te same slowa z INNYMI liczbami/parametrem to legalna,
-    rozna wersja tego samego typu zadania - NIE duplikat."""
+    rozna wersja tego samego typu zadania - NIE duplikat.
+
+    Zwraca KROTKE KLUCZY (1 lub 2), nie pojedynczy fingerprint - caller
+    ma sprawdzic, czy KTORYKOLWIEK z nich juz wystapil. NAPRAWIONE
+    (30.08.2026, PORT tej samej naprawy co exam_pdf_generator.py - live-
+    test Sprawdzianu ujawnil real duplikat, ktorego szkielet slowny NIE
+    zlapal, bo dwa pytania uzywaly innego czasownika "Oblicz"/"Znajdz"
+    mimo identycznego wzoru): DRUGI klucz to znormalizowana tresc
+    NAJDLUZSZEGO segmentu $...$ w pytaniu - jesli wystarczajaco dlugi
+    (>=5 znakow, zeby pojedyncza zmienna "$x$" nie dawala falszywych
+    trafien), dwa pytania z TYM SAMYM wzorem sa duplikatem NIEZALEZNIE
+    od otaczajacej prozy."""
     t = (text or "").lower()
     numbers = tuple(re_module.findall(r'-?\d+(?:[.,]\d+)?', t))
     skeleton = re_module.sub(r'-?\d+(?:[.,]\d+)?', '#', t)
     skeleton = re_module.sub(r'[^a-ząćęłńóśźż#]+', ' ', skeleton)
     skeleton = ' '.join(skeleton.split())
-    return (skeleton, numbers)
+    keys = [("skel", skeleton, numbers)]
+    math_spans = _DOLLAR_MATH_RE.findall(text or "")
+    if math_spans:
+        longest = max(math_spans, key=len)
+        normalized_math = re_module.sub(r'\s+', '', longest)
+        if len(normalized_math) >= 5:
+            keys.append(("math", normalized_math))
+    return tuple(keys)
 
 
 _QUIZ_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
@@ -3079,13 +3105,13 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
     if seen_fingerprints is not None:
         deduped = []
         for q in kept:
-            fp = _question_fingerprint(q.get("question", ""))
-            if fp in seen_fingerprints:
+            fp_keys = _question_fingerprint(q.get("question", ""))
+            if any(k in seen_fingerprints for k in fp_keys):
                 print(f"[MathVerify][Dedup] USUNIETO duplikat: '{q.get('question', '')[:60]}...'")
                 if metrics:
                     metrics.record_rejection("duplicate")
                 continue
-            seen_fingerprints.add(fp)
+            seen_fingerprints.update(fp_keys)
             deduped.append(q)
         kept = deduped
 
