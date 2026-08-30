@@ -139,6 +139,10 @@ check("Zadanie 12 z POPRAWNA odpowiedzia (m=1) -> AI-2 sie zgadza (True)",
 # (potwierdzone: 2/3 powtorzen poprawnie odrzuca, 1/3 przypadkowo "zgadza
 # sie" z rownie bledna odpowiedzia AI-1) - to nieunikniona granica metody,
 # nie blad kodu. Logujemy wynik informacyjnie, bez liczenia do FAILED.
+q13_wrong = {
+    "tresc": "Dla jakich wartości parametrów b, c ciąg $g_n = 4n^2 + bn + c$ jest arytmetyczny?",
+    "final_answer": "b = 2, c = 4",
+}
 r13 = _blind_verify_one_open(client, q13_wrong)
 print(f"  INFO Zadanie 13 (premisa niemozliwa, WYNIK PROBABILISTYCZNY - patrz docstring): AI-2 zgadza sie={r13}")
 

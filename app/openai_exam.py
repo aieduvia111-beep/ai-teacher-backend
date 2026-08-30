@@ -2710,6 +2710,21 @@ def _question_fingerprint(text: str):
 _QUIZ_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 
 
+def _select_blind_verify_model(topic: str = None) -> str:
+    """Domyslnie _BLIND_VERIFY_MODEL (gpt-4o-mini, tansze - patrz komentarz
+    tam). WASKI, warunkowy wyjatek (30.08.2026, ten sam wzorzec co Safe
+    Parameter Generation): porownawczy real-test na CIAGACH (11 znanych
+    przypadkow z real PDF, patrz test_blind_verify_real_known_bugs.py)
+    pokazal gpt-4o-mini WYRAZNIE gorszy (7/11 poprawnych) niz gpt-4o
+    (9/11) - w PRZECIWIENSTWIE do rownan kwadratowych z parametrem
+    (wczesniejszy real-test), gdzie mini byl rowny lub lepszy. Skutek
+    zmiany kosztowej okazal sie zalezny od tematu, nie uniwersalny - wiec
+    TYLKO ciagi wracaja do gpt-4o, reszta zostaje na tanszym mini."""
+    if topic and is_sequence_topic(topic):
+        return "gpt-4o"
+    return _BLIND_VERIFY_MODEL
+
+
 # WARSTWA 2.5 (patrz app/blind_verify.py po pelne uzasadnienie architektury,
 # identyczny mechanizm co exam_pdf_generator._blind_verify_one_closed -
 # user: "QUIZ MUSI miec TEN SAM mechanizm co Sprawdzian"). Wersja ASYNC,
@@ -2724,7 +2739,7 @@ _QUIZ_LETTER_TO_IDX = {"a": 0, "b": 1, "c": 2, "d": 3}
 # escape-hatcha KAZDY taki test zaczalby cicho robic PRAWDZIWE, PLATNE
 # wywolania API. Prawdziwa generacja (2 miejsca w
 # _verify_and_fill_quiz_math nizej) jawnie przekazuje modulowy `client`.
-async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
+async def _blind_verify_one_closed_quiz(q: dict, client=None, topic: str = None) -> bool:
     """True = zaakceptuj (brak client -> pominiete; AI-2 sie zgadza; LUB
     wywolanie/parsowanie sie nie udalo - bezpieczny fallback, patrz
     identyczny komentarz w exam_pdf_generator.py).
@@ -2757,7 +2772,7 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
         return True
     try:
         r = await client.chat.completions.create(
-            model=_BLIND_VERIFY_MODEL,
+            model=_select_blind_verify_model(topic),
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_closed(q.get("question", ""), q.get("options", []))},
@@ -2779,13 +2794,13 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None) -> bool:
     return ai2_idx == q.get("correct")
 
 
-async def _blind_verify_batch_closed_quiz(candidates: list, client=None) -> list:
+async def _blind_verify_batch_closed_quiz(candidates: list, client=None, topic: str = None) -> list:
     """Rownolegle (asyncio.gather), zeby dodatkowe wywolania NIE wydluzaly
     liniowo czasu generacji. Zwraca liste bool w TEJ SAMEJ kolejnosci co
-    `candidates`."""
+    `candidates`. `topic` - patrz _select_blind_verify_model."""
     if not candidates:
         return []
-    return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client) for q in candidates))
+    return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client, topic=topic) for q in candidates))
 
 
 async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None) -> dict:
@@ -2948,7 +2963,7 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
     # WARSTWA 2.5 (patrz app/blind_verify.py): blind-check AI-2, TYLKO dla
     # pytan, gdzie sympy nie mial zdania - batch, rownolegle (asyncio.gather).
     if needs_blind_check:
-        agree_list = await _blind_verify_batch_closed_quiz(needs_blind_check, client=client)
+        agree_list = await _blind_verify_batch_closed_quiz(needs_blind_check, client=client, topic=quiz_data.get("title", ""))
         for q, agree in zip(needs_blind_check, agree_list):
             if agree:
                 kept.append(q)

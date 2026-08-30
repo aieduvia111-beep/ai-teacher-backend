@@ -1344,7 +1344,21 @@ def _question_fingerprint(text: str):
 _BLIND_VERIFY_MODEL = "gpt-4o-mini"
 
 
-def _blind_verify_one_closed(client, pyt) -> bool:
+def _select_blind_verify_model(topic: str = None) -> str:
+    """PORT z openai_exam.py - patrz tam pelne uzasadnienie. Domyslnie
+    _BLIND_VERIFY_MODEL (gpt-4o-mini). WASKI, warunkowy wyjatek
+    (30.08.2026): porownawczy real-test na CIAGACH (11 znanych
+    przypadkow z real PDF, patrz test_blind_verify_real_known_bugs.py)
+    pokazal gpt-4o-mini WYRAZNIE gorszy (7/11) niz gpt-4o (9/11) - w
+    PRZECIWIENSTWIE do rownan kwadratowych z parametrem (wczesniejszy
+    real-test), gdzie mini byl rowny lub lepszy. TYLKO ciagi wracaja do
+    gpt-4o, reszta zostaje na tanszym mini."""
+    if topic and is_sequence_topic(topic):
+        return "gpt-4o"
+    return _BLIND_VERIFY_MODEL
+
+
+def _blind_verify_one_closed(client, pyt, topic: str = None) -> bool:
     """True = zaakceptuj (AI-2 sie zgadza LUB wywolanie/parsowanie sie nie
     udalo - bezpieczny fallback: NIE odrzucamy z powodu awarii sieci/AI-2,
     tylko z powodu FAKTYCZNEJ, potwierdzonej niezgodnosci).
@@ -1367,7 +1381,7 @@ def _blind_verify_one_closed(client, pyt) -> bool:
                 return False
     try:
         r = client.chat.completions.create(
-            model=_BLIND_VERIFY_MODEL,
+            model=_select_blind_verify_model(topic),
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_closed(pyt.get("tresc", ""), pyt.get("opcje", []))},
@@ -1386,14 +1400,15 @@ def _blind_verify_one_closed(client, pyt) -> bool:
     return letter == str(pyt.get("odpowiedz", "")).strip().lower()
 
 
-def _blind_verify_batch_closed(client, candidates: list) -> dict:
+def _blind_verify_batch_closed(client, candidates: list, topic: str = None) -> dict:
     """Rownolegle (ThreadPoolExecutor - sync klient OpenAI), zeby dodatkowe
-    wywolania NIE wydluzaly liniowo czasu generacji. Zwraca {id(pyt): bool}."""
+    wywolania NIE wydluzaly liniowo czasu generacji. Zwraca {id(pyt): bool}.
+    `topic` - patrz _select_blind_verify_model."""
     if not candidates:
         return {}
     results = {}
     with _cf.ThreadPoolExecutor(max_workers=min(8, len(candidates))) as ex:
-        futures = {ex.submit(_blind_verify_one_closed, client, pyt): pyt for pyt in candidates}
+        futures = {ex.submit(_blind_verify_one_closed, client, pyt, topic): pyt for pyt in candidates}
         for fut in _cf.as_completed(futures):
             pyt = futures[fut]
             try:
@@ -1403,7 +1418,7 @@ def _blind_verify_batch_closed(client, candidates: list) -> dict:
     return results
 
 
-def _blind_verify_one_open(client, pyt) -> bool:
+def _blind_verify_one_open(client, pyt, topic: str = None) -> bool:
     """Jak _blind_verify_one_closed, ale dla zadan OTWARTYCH (Czesc B) -
     porownuje "final_answer" (nowe, wymagane pole - patrz zmiana promptu
     generujacego) albo, transitional fallback, "odpowiedz_modelowa"
@@ -1417,7 +1432,7 @@ def _blind_verify_one_open(client, pyt) -> bool:
         return True
     try:
         r = client.chat.completions.create(
-            model=_BLIND_VERIFY_MODEL,
+            model=_select_blind_verify_model(topic),
             messages=[
                 {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT},
                 {"role": "user", "content": build_blind_verify_prompt_open(pyt.get("tresc", ""))},
@@ -1436,12 +1451,13 @@ def _blind_verify_one_open(client, pyt) -> bool:
     return values_match(str(claimed), ai2_answer)
 
 
-def _blind_verify_batch_open(client, candidates: list) -> dict:
+def _blind_verify_batch_open(client, candidates: list, topic: str = None) -> dict:
+    """`topic` - patrz _select_blind_verify_model."""
     if not candidates:
         return {}
     results = {}
     with _cf.ThreadPoolExecutor(max_workers=min(8, len(candidates))) as ex:
-        futures = {ex.submit(_blind_verify_one_open, client, pyt): pyt for pyt in candidates}
+        futures = {ex.submit(_blind_verify_one_open, client, pyt, topic): pyt for pyt in candidates}
         for fut in _cf.as_completed(futures):
             pyt = futures[fut]
             try:
@@ -1495,7 +1511,7 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
             needs_blind_check.append(pyt)
 
     if needs_blind_check and client is not None:
-        agree = _blind_verify_batch_open(client, needs_blind_check)
+        agree = _blind_verify_batch_open(client, needs_blind_check, topic=tytul)
         for pyt in needs_blind_check:
             if agree.get(id(pyt), True):
                 kept.append(pyt)
@@ -1663,7 +1679,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
         # dla zadan, gdzie sympy nie mial zdania - batch, rownolegle
         # (ThreadPoolExecutor), zeby nie wydluzac liniowo czasu generacji.
         if needs_blind_check and client is not None:
-            agree = _blind_verify_batch_closed(client, needs_blind_check)
+            agree = _blind_verify_batch_closed(client, needs_blind_check, topic=data.get("tytul", ""))
             for pyt in needs_blind_check:
                 if agree.get(id(pyt), True):
                     kept.append(pyt)
