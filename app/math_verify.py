@@ -3252,15 +3252,31 @@ _WS_RE = re.compile(r'\s+')
 _LEADING_LETTER_RE = re.compile(r'^[a-dA-D][\)\.]\s*')
 
 
+_LATEX_TEXT_WRAP_RE = re.compile(r'\\(?:text|mathrm|textrm|operatorname)\{([^{}]*)\}')
+
+
 def _canonical_answer(text: str) -> str:
     """Normalizuje tekst opcji/final_answer do porownania: usuwa prefiks
     'a) '/'b) ', $, biale znaki, wielkosc liter - zeby drobne roznice
     formatowania (spacje, $ wokol wzoru) nie psuly dopasowania miedzy
-    final_answer a tekstem opcji, ktore powinny znaczyc to samo."""
+    final_answer a tekstem opcji, ktore powinny znaczyc to samo.
+
+    NAPRAWIONE (30.08.2026, live-test Quizu ujawnil realna porazke B2:
+    0/13 dostarczone): AI napisalo final_answer jako "$m < -4 \\text{ lub }
+    m > 4$", podczas gdy CODE-owe options mialy "$m < -4$ lub $m > 4$" -
+    ten sam tekst semantycznie, ale \\text{lub} nie jest identyczne
+    znakowo z lub, wiec ZERO z 8 kandydatow w tej rundzie przeszlo
+    weryfikacje Warstwy 1 mimo poprawnej matematyki. \\text{}/\\mathrm{}/
+    \\textrm{}/\\operatorname{} to LEGALNY, powszechny sposob pisania
+    zwyklego tekstu wewnatrz trybu matematycznego LaTeX - model czasem go
+    uzywa mimo instrukcji "kopiuj doslownie", bo to POPRAWNA praktyka
+    LaTeX, nie blad. Rozpakuj taki wrapper do samej zawartosci PRZED
+    reszta normalizacji, zamiast traktowac to jako niezgodnosc."""
     if text is None:
         return ""
     t = str(text).strip()
     t = _LEADING_LETTER_RE.sub('', t)
+    t = _LATEX_TEXT_WRAP_RE.sub(r'\1', t)
     t = t.replace('$', '')
     t = _WS_RE.sub('', t)
     return t.lower()

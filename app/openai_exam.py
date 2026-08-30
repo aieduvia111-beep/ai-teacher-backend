@@ -2336,13 +2336,19 @@ async def _generate_quiz_topic_once(
     # potrzebne). Pierwsza partia (wyzej) zostaje WOLNA generacja -
     # naturalny mix podwzorcow, dobry dla roznorodnosci; TYLKO
     # uzupelnianie brakujacych przelacza sie na bezpieczna metode.
+    # NAPRAWIONE (30.08.2026, live-test ujawnil "cannot access free
+    # variable 'used_safe_letters'"): te dwa sety MUSZA byc zdefiniowane
+    # PRZED calym if/elif lancuchem, nie wewnatrz jednej z gałęzi - byly
+    # tworzone TYLKO w gałęzi _is_medium_linear_param_quadratic, wiec gdy
+    # PORT tej samej ochrony przed duplikatami zostal dodany do gałęzi
+    # _is_hard_quadratic_two_positive_roots (siostrzana, wzajemnie
+    # wykluczajaca sie gałąź elif) - zmienne nigdy tam nie istnialy.
+    # Zyja przez CALY quiz (closure nad `regenerate`, wywolywanym raz per
+    # runda dogenerowania) - dokladnie jak w exam_pdf_generator.py, gdzie
+    # sa tworzone RAZ w _get_exam_data, przed dispatchem do archetypow.
+    used_safe_letters = set()
+    used_safe_constants = set()
     if _is_medium_linear_param_quadratic(topic, difficulty):
-        # Zyje przez CALY quiz (closure nad `regenerate`, wywolywanym raz
-        # per runda dogenerowania) - patrz docstring
-        # _raw_generate_safe_linear_param_quadratic_batch i identyczny
-        # mechanizm w exam_pdf_generator.py.
-        used_safe_letters = set()
-        used_safe_constants = set()
         regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
     elif _is_hard_trig_quadratic(topic, difficulty):
         # Port tego samego wzorca na trygonometrie - patrz
