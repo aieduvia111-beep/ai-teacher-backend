@@ -935,7 +935,7 @@ async function scanImage(){
   const mode=document.getElementById('mode').value;
   try{
     const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/vision/solve',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    const res=await fetch(`${location.origin}/api/v1/vision/solve`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
     if(!res.ok){
       // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
       // fix w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy

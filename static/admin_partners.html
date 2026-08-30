@@ -92,7 +92,7 @@
 </div>
 
 <script>
-const API_URL = "https://eduvia-backend-2.onrender.com/api/v1/affiliates/generate";
+const API_URL = `${location.origin}/api/v1/affiliates/generate`;
 let adminKey = "";
 
 function unlock(){
@@ -167,7 +167,7 @@ async function checkEarnings(){
   }
 
   try{
-    const res = await fetch("https://eduvia-backend-2.onrender.com/api/v1/affiliates/stats/" + code);
+    const res = await fetch(`${location.origin}/api/v1/affiliates/stats/` + code);
     const data = await res.json();
 
     if(data.success){

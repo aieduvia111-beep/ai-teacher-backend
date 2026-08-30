@@ -449,7 +449,7 @@ async function saveUser(u,name){
 // FAKTYCZNIE zostala zaladowana (dziala tak samo dla localhost, 127.0.0.1 i
 // adresu w sieci lokalnej), bez zgadywania.
 const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
-const AUTH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
+const AUTH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:location.origin;
 
 async function redirectAfterAuth(user){
   try{

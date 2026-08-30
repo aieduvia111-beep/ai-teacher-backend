@@ -1017,7 +1017,7 @@ async function fetchWariant(temat,numQ,wariant){
   // marginesu) - 260s daje margines na budowe PDF + siec.
   const examTimeoutId = setTimeout(()=>examController.abort(), 260000);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-  const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':'https://eduvia-backend-2.onrender.com';
+  const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':location.origin;
   const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
   clearTimeout(examTimeoutId);
   if(!res.ok){

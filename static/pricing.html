@@ -337,7 +337,7 @@ async function startCheckout() {
   const affCode = document.getElementById('affCode') ? document.getElementById('affCode').value.trim().toUpperCase() : '';
   if(affCode){
     try{
-      const res = await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/check', {
+      const res = await fetch(`${location.origin}/api/v1/affiliates/check`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({code: affCode})
       });
@@ -360,7 +360,7 @@ async function startCheckout() {
 
   try {
     const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
-    const checkoutRes = await fetch('https://eduvia-backend-2.onrender.com/api/v1/payments/create-checkout', {
+    const checkoutRes = await fetch(`${location.origin}/api/v1/payments/create-checkout`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken},
       body: JSON.stringify({

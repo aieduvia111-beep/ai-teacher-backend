@@ -481,7 +481,7 @@ async function loadPartnerStatus(){
   if(!uid)return;
   document.getElementById('partnerLoading').style.display='none';
   try{
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/by-user/'+uid);
+    const res=await fetch(`${location.origin}/api/v1/affiliates/by-user/`+uid);
     const d=await res.json();
     if(d.success&&d.code){
       // document.getElementById('partnerCard').style.display='block'; // sekcja calkowicie wylaczona
@@ -497,7 +497,7 @@ async function generatePartnerCode(){
   const email=localStorage.getItem('eduvia_email')||'';
   if(!uid)return;
   try{
-    const res=await fetch('https://eduvia-backend-2.onrender.com/api/v1/affiliates/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,name:name,email:email})});
+    const res=await fetch(`${location.origin}/api/v1/affiliates/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,name:name,email:email})});
     const d=await res.json();
     if(d.success){
       document.getElementById('partnerBtn').style.display='none';
@@ -585,7 +585,7 @@ let _previewAudio = null;
 function previewVoice(id, name){
   const _p=document.getElementById('previewPlayer'); if(_p){_p.pause();_p.src='';}
   const text = `Cześć, jestem ${name} — Twój nauczyciel AI. Razem osiągniemy świetne wyniki!`;
-  fetch('https://eduvia-backend-2.onrender.com/api/v1/voice/preview', {
+  fetch(`${location.origin}/api/v1/voice/preview`, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({text, voice_id: id})
