@@ -40,9 +40,6 @@ check("unary minus", safe_eval_validation_expression("-a + b", {"a": 3, "b": 10}
 check("stale liczbowe bez zmiennych", safe_eval_validation_expression("100 - 37", {}) == 63)
 check("modulo", safe_eval_validation_expression("a % b", {"a": 10, "b": 3}) == 1)
 
-print("=== safe_eval_validation_expression: proby wstrzykniecia / atak ===")
-
-
 def rejects(expr, variables=None):
     try:
         safe_eval_validation_expression(expr, variables or {})
@@ -50,6 +47,24 @@ def rejects(expr, variables=None):
     except ValueError:
         return True
 
+
+print("=== safe_eval_validation_expression: geometria (sqrt, pi) ===")
+check("pole kola (pi * r**2)", abs(safe_eval_validation_expression("pi * r**2", {"r": 3}) - 28.274333882308138) < 1e-9)
+check("obwod kola (2*pi*r)", abs(safe_eval_validation_expression("2*pi*r", {"r": 5}) - 31.41592653589793) < 1e-9)
+check("tw. Pitagorasa (przeciwprostokatna)", safe_eval_validation_expression("sqrt(a**2 + b**2)", {"a": 3, "b": 4}) == 5.0)
+check("sqrt z wyrazenia zlozonego", abs(safe_eval_validation_expression("sqrt(pole / pi)", {"pole": 78.53981633974483}) - 5.0) < 1e-6)
+
+print("=== safe_eval_validation_expression: proby obejscia bialej listy funkcji ===")
+check("inna funkcja (abs) nadal odrzucona", rejects("abs(-5)"))
+check("inna funkcja (sin) nadal odrzucona", rejects("sin(0)"))
+check("sqrt z 2 argumentami odrzucony", rejects("sqrt(4, 9)"))
+check("sqrt z keyword argumentem odrzucony", rejects("sqrt(x=4)", {"x": 4}))
+check("sqrt zagniezdzony w innej niedozwolonej funkcji", rejects("eval(sqrt(4))"))
+check("sqrt z liczby ujemnej odrzucony (poza dziedzina)", rejects("sqrt(-1)"))
+check("pi jako nazwa zmiennej NADPISUJE stala (variables ma pierwszenstwo)",
+      safe_eval_validation_expression("pi", {"pi": 3}) == 3.0)
+
+print("=== safe_eval_validation_expression: proby wstrzykniecia / atak ===")
 
 check("wywolanie funkcji __import__", rejects("__import__('os').system('dir')"))
 check("wywolanie open()", rejects("open('c:/windows/win.ini').read()"))

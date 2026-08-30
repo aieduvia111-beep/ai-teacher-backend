@@ -3895,6 +3895,18 @@ def format_avoid_diversity_block(seen_diversity_tag_dicts: list) -> str:
 
 import ast as _ast
 import operator as _operator
+import math as _math
+
+# NOWE (30.08.2026, rozszerzenie validation_rule na Geometrie - user:
+# "po kolei zrob kolejne klasy zadan"): geometria czesto potrzebuje pi
+# (pole/obwod kola) i pierwiastka (tw. Pitagorasa, przekatne) - bez tego
+# validation_rule bylo ograniczone do czystej arytmetyki (+-*/**%), co
+# wykluczalo cala te klase. WASKA, JAWNA biala lista - TYLKO ta jedna
+# stala i TA JEDNA funkcja, zaden inny import/wywolanie nie jest mozliwe
+# (patrz _eval nizej: ast.Call jest odrzucany dla WSZYSTKIEGO innego niz
+# dokladnie "sqrt" z jednym argumentem pozycyjnym, bez keywords/*args).
+_VALIDATION_RULE_CONSTANTS = {"pi": _math.pi}
+_VALIDATION_RULE_FUNCTIONS = {"sqrt": _math.sqrt}
 
 _VALIDATION_RULE_BINOPS = {
     _ast.Add: _operator.add,
@@ -3914,11 +3926,14 @@ _VALIDATION_RULE_UNARYOPS = {
 def safe_eval_validation_expression(expression: str, variables: dict) -> float:
     """Bezpiecznie oblicza wartosc arytmetycznego wyrazenia wygenerowanego
     przez AI, z podstawionymi nazwanymi zmiennymi. Dopuszcza WYLACZNIE:
-    liczby, zmienne obecne w `variables`, operatory + - * / ** % oraz
-    nawiasy/jednoargumentowy minus/plus. Rzuca ValueError na cokolwiek
-    innego (wywolanie funkcji, atrybut, indeksowanie, import, itp.) -
-    `expression` NIE jest zaufanym kodem, wiec liste dozwolonych elementow
-    trzymamy jako biala liste, nie czarna."""
+    liczby, zmienne obecne w `variables`, stala `pi`, funkcje `sqrt(x)`
+    (JEDYNA dozwolona funkcja, patrz _VALIDATION_RULE_FUNCTIONS - dla
+    geometrii: tw. Pitagorasa, przekatne, pole/obwod kola), operatory
+    + - * / ** % oraz nawiasy/jednoargumentowy minus/plus. Rzuca
+    ValueError na cokolwiek innego (dowolne INNE wywolanie funkcji,
+    atrybut, indeksowanie, import, itp.) - `expression` NIE jest zaufanym
+    kodem, wiec liste dozwolonych elementow trzymamy jako biala liste,
+    nie czarna."""
     if not isinstance(expression, str) or not expression.strip():
         raise ValueError("Puste lub nietekstowe wyrazenie")
     if len(expression) > 300:
@@ -3946,12 +3961,28 @@ def safe_eval_validation_expression(expression: str, variables: dict) -> float:
                 raise ValueError(f"Niedozwolony operator jednoargumentowy: {op_type.__name__}")
             return _VALIDATION_RULE_UNARYOPS[op_type](_eval(node.operand))
         if isinstance(node, _ast.Name):
-            if node.id not in variables:
-                raise ValueError(f"Nieznana zmienna w wyrazeniu: {node.id}")
-            val = variables[node.id]
-            if isinstance(val, bool) or not isinstance(val, (int, float)):
-                raise ValueError(f"Zmienna {node.id} nie jest liczba: {val!r}")
-            return float(val)
+            if node.id in variables:
+                val = variables[node.id]
+                if isinstance(val, bool) or not isinstance(val, (int, float)):
+                    raise ValueError(f"Zmienna {node.id} nie jest liczba: {val!r}")
+                return float(val)
+            if node.id in _VALIDATION_RULE_CONSTANTS:
+                return _VALIDATION_RULE_CONSTANTS[node.id]
+            raise ValueError(f"Nieznana zmienna w wyrazeniu: {node.id}")
+        if isinstance(node, _ast.Call):
+            if (
+                not isinstance(node.func, _ast.Name)
+                or node.func.id not in _VALIDATION_RULE_FUNCTIONS
+                or len(node.args) != 1
+                or node.keywords
+            ):
+                fname = node.func.id if isinstance(node.func, _ast.Name) else "?"
+                raise ValueError(f"Niedozwolone wywolanie funkcji: {fname}(...)")
+            arg = _eval(node.args[0])
+            try:
+                return _VALIDATION_RULE_FUNCTIONS[node.func.id](arg)
+            except ValueError:
+                raise ValueError(f"{node.func.id}({arg}) poza dziedzina (np. pierwiastek z liczby ujemnej)")
         raise ValueError(f"Niedozwolony element wyrazenia: {type(node).__name__}")
 
     try:

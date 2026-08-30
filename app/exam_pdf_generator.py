@@ -211,25 +211,35 @@ poprawna odpowiedzia. NIE parafrazuj, NIE skracaj. System automatycznie
 sprawdza to pole i ODRZUCA zadanie, jesli "final_answer" nie jest
 identyczny z zadna opcja - wiec musi dokladnie pasowac.
 
-POLE "validation_rule" (Czesc A) - OPCJONALNE (dolacz TYLKO gdy pasuje,
-patrz warunek nizej): jesli to zadanie jest ZADANIEM TEKSTOWYM/
-OBLICZENIOWYM, ktorego poprawna odpowiedz jest POJEDYNCZA LICZBA (np.
-cena, dlugosc, predkosc, procent, wynik dzialania - NIE zbior/przedzial/
-nierownosc/warunek na parametr), dodaj DODATKOWO pole "validation_rule" z
-TRZEMA czesciami:
+POLE "problem_class" (Czesc A) - NOWE, OBOWIAZKOWE (dla KAZDEGO zadania -
+jawna klasyfikacja typu zadania, decyduje o tym, jak system je weryfikuje):
+podaj DOKLADNIE JEDNA z tych wartosci:
+  "arithmetic_word_problem" - zadanie tekstowe z jedna liczbowa odpowiedzia
+  "geometry" - zadanie geometryczne z jedna liczbowa odpowiedzia (pole,
+    obwod, przekatna, objetosc)
+  "algebra_symbolic" - odpowiedz to zbior/przedzial/nierownosc/warunek na
+    parametr (NIE pojedyncza liczba)
+  "physics_chemistry" - zadanie z fizyki/chemii z jednostkami - NAWET
+    jesli liczbowe, na razie BEZ dedykowanej weryfikacji kodem
+  "factual" - pytanie o fakt/definicje/date/postac (bez obliczen)
+  "open_ended" - dowod, esej, analiza, pytanie bez jednej "poprawnej" liczby/faktu
+
+POLE "validation_rule" (Czesc A) - OBOWIAZKOWE gdy "problem_class" to
+"arithmetic_word_problem" LUB "geometry" (dla pozostalych klas: PO PROSTU
+POMIN cale pole - nie zgaduj, nie wymyslaj sztucznego wzoru na sile). Ma
+TRZY czesci:
   "variables" - obiekt z liczbami wystepujacymi w zadaniu, np. {{"cena": 50, "rabat": 18}}
-  "expression" - PROSTY wzor arytmetyczny UZYWAJACY TYLKO tych zmiennych i
-    operatorow + - * / ** % oraz nawiasow (NIC wiecej - zadnych funkcji,
-    zadnych sqrt/sin/log), np. "cena - rabat"
+  "expression" - PROSTY wzor UZYWAJACY TYLKO tych zmiennych, operatorow
+    + - * / ** % i nawiasow, ORAZ (TYLKO dla geometrii z okregiem/kolem
+    lub twierdzeniem Pitagorasa) stalej "pi" i funkcji "sqrt(...)" -
+    NIC WIECEJ (zadnych innych funkcji: sin/cos/log/abs itp.), np.
+    "cena - rabat" albo "pi * r ** 2" albo "sqrt(a**2 + b**2)"
   "expected" - liczba, ktora wychodzi z tego wzoru I ktora jest Twoja
     poprawna odpowiedzia (musi zgadzac sie z "final_answer")
 System NIEZALEZNIE przeliczy ten wzor kodem i porowna z Twoja odpowiedzia -
 to dodatkowa, darmowa siatka bezpieczenstwa wylapujaca bledy arytmetyczne,
 WIEC WZOR MUSI BYC NAPRAWDE POPRAWNY (dokladnie taki, z jakiego wyliczyles
 "expected"), inaczej zadanie zostanie ODRZUCONE mimo ze tresc jest dobra.
-Jesli zadanie NIE ma jednoznacznej liczbowej odpowiedzi (np. odpowiedz to
-"$m < -8$ lub $m > 8$", dowod, opis slowny) - PO PROSTU POMIN cale pole
-"validation_rule" (nie zgaduj, nie wymyslaj sztucznego wzoru na sile).
 
 POLE "diversity_tag" (Czesc A) - NOWE, OBOWIAZKOWE (pomaga systemowi
 pilnowac roznorodnosci w sprawdzianie): dla KAZDEGO zadania zamknietego
@@ -304,10 +314,26 @@ ZASADY:
           "final_answer": "...(doslowna kopia tresci opcji b, BEZ prefiksu 'b) ')",
           "punkty": 1,
           "wyjasnienie": "Krotkie wyjasnienie dlaczego b jest poprawne.",
+          "problem_class": "algebra_symbolic",
           "diversity_tag": {{
             "skill": "wzor na delte", "concept": "parametr jako wyraz wolny",
             "task_type": "wyznacz parametr z warunku na delte",
             "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+          }}
+        }},
+        {{
+          "nr": 2,
+          "tresc": "Promien kola wynosi 3 cm. Jakie jest jego pole (z $\\pi$)?",
+          "opcje": ["a) $6\\pi$ cm²", "b) $9\\pi$ cm²", "c) $3\\pi$ cm²", "d) $12\\pi$ cm²"],
+          "odpowiedz": "b",
+          "final_answer": "$9\\pi$ cm²",
+          "punkty": 1,
+          "wyjasnienie": "Pole kola: $P = \\pi r^2 = \\pi \\cdot 3^2 = 9\\pi$.",
+          "problem_class": "geometry",
+          "validation_rule": {{"variables": {{"r": 3}}, "expression": "pi * r ** 2", "expected": 28.274333882308138}},
+          "diversity_tag": {{
+            "skill": "pole kola", "concept": "wzor P=pi*r^2",
+            "task_type": "oblicz pole", "reasoning": "podstaw promien do wzoru"
           }}
         }}
       ]
