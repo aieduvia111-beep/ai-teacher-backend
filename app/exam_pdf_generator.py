@@ -24,7 +24,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 from pypdf import PdfWriter, PdfReader
 from .level_config import (
-    describe_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
+    describe_level, label_for_level, get_quadratic_difficulty_anchor, is_quadratic_equation_topic,
     get_sequence_difficulty_anchor, is_sequence_topic,
     get_trig_difficulty_anchor, is_trigonometry_topic,
     get_linear_function_difficulty_anchor, is_linear_function_topic,
@@ -61,8 +61,26 @@ _difficulty_analyzer = DifficultyAnalyzer()
 # ============================================================
 # CZCIONKI
 # ============================================================
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _register_fonts():
+    # NAPRAWIONE (31.08.2026, user zglosil realny bug: "■" zamiast polskich
+    # znakow w PDF): sciezka systemowa Linuxa nizej ('/usr/share/fonts/...')
+    # zakladala ze pakiet fontow DejaVu jest zainstalowany w kontenerze
+    # Render - jesli go tam NIE MA, kod cicho spadal do bazowego
+    # 'Helvetica' (font standardowy PDF, WinAnsiEncoding, BEZ polskich
+    # znakow - brakujace glify renderuja sie jako puste kwadraty "■").
+    # DejaVuSans(.ttf)/DejaVuSans-Bold.ttf sa juz w repo (root, sledzone w
+    # gicie - deployuja sie z kodem), wiec ta sciezka jest gwarantowana
+    # niezaleznie od tego co ma zainstalowany system operacyjny/kontener -
+    # sprawdzamy ja PIERWSZA, przed jakimikolwiek sciezkami systemowymi.
     FONT_PATHS = [
+        {  # Fonty dolaczone do repo (gwarantowane, niezalezne od OS)
+            'n': os.path.join(_REPO_ROOT, 'DejaVuSans.ttf'),
+            'b': os.path.join(_REPO_ROOT, 'DejaVuSans-Bold.ttf'),
+            'i': os.path.join(_REPO_ROOT, 'DejaVuSans.ttf'),  # brak osobnego Oblique w repo - regularny jako bezpieczny fallback (nadal ma polskie znaki)
+        },
         {  # Linux
             'n': '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
             'b': '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
@@ -313,7 +331,7 @@ ZASADY:
   "klasa": "{klasa}",
   "czas": 45,
   "punkty_lacznie": 30,
-  "instrukcja": "Przeczytaj kazde zadanie uwaznie. Odpowiedzi pisz czytelnie. Przy zadaniach obliczeniowych pokazuj sposob rozwiazania.",
+  "instrukcja": "Przeczytaj każde zadanie uważnie. Odpowiedzi pisz czytelnie. Przy zadaniach obliczeniowych pokazuj sposób rozwiązania.",
 
   "sekcje": [
     {{
@@ -817,8 +835,14 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
         y_after = h - 180
 
     # Przedmiot / klasa
+    # NAPRAWIONE (31.08.2026, user zglosil realny bug): tu byl wpisywany
+    # SUROWY wewnetrzny klucz poziomu (np. "liceum_3"), nie czytelna
+    # etykieta - okladka pokazywala "Matematyka | liceum_3" zamiast
+    # "Matematyka | Klasa 3 liceum". label_for_level() to ta sama
+    # funkcja co uzywa profil/Dashboard, wiec etykieta jest spojna z
+    # reszta aplikacji.
     info = f"{data.get('przedmiot','')}"
-    if data.get('klasa'): info += f"  |  {data.get('klasa','')}"
+    if data.get('klasa'): info += f"  |  {label_for_level(data.get('klasa','')) or data.get('klasa','')}"
     _canvas_pl(c, info, w/2, y_after, w - 80, fontsize=11, color='#6B7280', align='center')
 
     # Linia
