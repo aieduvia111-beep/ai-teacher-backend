@@ -345,20 +345,29 @@
       panel.style.width = panelW + 'px';
       var panelH = panel.offsetHeight;
 
-      // NAPRAWIONE (31.08.2026, user zglosil realny bug: "belka fruwa" -
-      // panel na exam_generator.html otwieral sie raz pod przyciskiem, raz
-      // nad nim, w zaleznosci od tego czy nad przyciskiem bylo wiecej
-      // tresci - np. dodanie zdjec przesuwalo przycisk nizej na stronie,
-      // zmieniajac spaceBelow/spaceAbove i przelaczajac kierunek. Byl to
-      // swiadomy wybor - zapobiegal calkowicie niewidocznemu panelowi -
-      // ale w praktyce byl niepokojaco nieprzewidywalny dla usera. Zabez-
-      // pieczenie przed calkowitym wyjsciem poza ekran (klamra ponizej,
-      // linia "top = Math.max(...)") dziala NIEZALEZNIE od kierunku, wiec
-      // kierunek moze byc teraz ZAWSZE staly (w dol) bez przywracania tego
-      // pierwotnego bledu - w skrajnym przypadku (bardzo malo miejsca) panel
-      // zostanie przypiety do dolnej krawedzi ekranu zamiast przelaczyc sie
-      // w gore, co jest akceptowalnym kompromisem za przewidywalnosc.
-      var top = r.bottom + 8;
+      // NAPRAWIONE x2 (31.08.2026). Pierwsza proba: user zglosil "belka
+      // fruwa" (raz pod przyciskiem, raz nad, zalezne od tresci nad
+      // przyciskiem) - usunalem wtedy przelaczanie gora/dol na rzecz
+      // ZAWSZE w dol. To okazalo sie GORSZE: gdy user przewinie strone tak,
+      // ze przycisk jest blisko dolu widocznego ekranu (typowe po
+      // przewinieciu formularza na telefonie), panel (zwlaszcza po wybraniu
+      // etapu, wiec z dorenderowana siatka klas - patrz fix przy
+      // renderPanel() w chip.addEventListener) nie miescil sie ponizej, a
+      // klamra bezpieczenstwa ponizej przypinala go do SAMEJ GORY CALEGO
+      // EKRANU - daleko od przycisku, wygladalo jeszcze gorzej niz
+      // pierwotny "fruwajacy" bug. Poprawne rozwiazanie: panel MA
+      // przelaczac sie gora/dol (zeby zawsze zostac BLISKO/"przyklejony"
+      // do przycisku, nie skakac na drugi koniec ekranu) - pierwotny bug
+      // NIE byl w samym przelaczaniu, byl w tym ze pozycja nie byla
+      // przeliczana ponownie po zmianie wysokosci tresci (osobny fix
+      // wyzej). Z tamtym fixem juz na miejscu, przywrocenie przelaczania
+      // jest bezpieczne i daje faktycznie stabilne, przewidywalne
+      // zachowanie (zawsze blisko przycisku, nigdy nie "leci" przez cala
+      // strone).
+      var spaceBelow = vh - r.bottom - VIEWPORT_MARGIN;
+      var spaceAbove = r.top - VIEWPORT_MARGIN;
+      var openUp = panelH > spaceBelow && spaceAbove > spaceBelow;
+      var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
       // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
       // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
       // viewportu zamiast wyjechac poza ekran w druga strone.
@@ -369,6 +378,7 @@
 
       panel.style.top = top + 'px';
       panel.style.left = left + 'px';
+      panel.classList.toggle('lvl-compact-panel-up', openUp);
     }
 
     function onDocClick(e) {
