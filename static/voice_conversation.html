@@ -1899,6 +1899,7 @@ function initLevelPicker(){
   if(!window.EduviaLevelPicker || !document.getElementById('voiceLevelPicker')) return;
   window.EduviaLevelPicker.renderCompact('voiceLevelPicker', {
     value: selLevel,
+    openDirection: 'up',
     onChange: function(value){ selLevel = value; }
   });
 }

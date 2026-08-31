@@ -345,28 +345,21 @@
       panel.style.width = panelW + 'px';
       var panelH = panel.offsetHeight;
 
-      // NAPRAWIONE x2 (31.08.2026). Pierwsza proba: user zglosil "belka
-      // fruwa" (raz pod przyciskiem, raz nad, zalezne od tresci nad
-      // przyciskiem) - usunalem wtedy przelaczanie gora/dol na rzecz
-      // ZAWSZE w dol. To okazalo sie GORSZE: gdy user przewinie strone tak,
-      // ze przycisk jest blisko dolu widocznego ekranu (typowe po
-      // przewinieciu formularza na telefonie), panel (zwlaszcza po wybraniu
-      // etapu, wiec z dorenderowana siatka klas - patrz fix przy
-      // renderPanel() w chip.addEventListener) nie miescil sie ponizej, a
-      // klamra bezpieczenstwa ponizej przypinala go do SAMEJ GORY CALEGO
-      // EKRANU - daleko od przycisku, wygladalo jeszcze gorzej niz
-      // pierwotny "fruwajacy" bug. Poprawne rozwiazanie: panel MA
-      // przelaczac sie gora/dol (zeby zawsze zostac BLISKO/"przyklejony"
-      // do przycisku, nie skakac na drugi koniec ekranu) - pierwotny bug
-      // NIE byl w samym przelaczaniu, byl w tym ze pozycja nie byla
-      // przeliczana ponownie po zmianie wysokosci tresci (osobny fix
-      // wyzej). Z tamtym fixem juz na miejscu, przywrocenie przelaczania
-      // jest bezpieczne i daje faktycznie stabilne, przewidywalne
-      // zachowanie (zawsze blisko przycisku, nigdy nie "leci" przez cala
-      // strone).
-      var spaceBelow = vh - r.bottom - VIEWPORT_MARGIN;
-      var spaceAbove = r.top - VIEWPORT_MARGIN;
-      var openUp = panelH > spaceBelow && spaceAbove > spaceBelow;
+      // NAPRAWIONE x3 (31.08.2026). Proba 1: dynamiczne przelaczanie gora/
+      // dol na podstawie wolnego miejsca - user zglosil "belka fruwa"
+      // (nieprzewidywalne). Proba 2: ZAWSZE w dol - okazalo sie gorsze,
+      // klamra bezpieczenstwa przy braku miejsca przypinala panel do samej
+      // gory EKRANU (daleko od przycisku). User byl jasny: ma to byc
+      // JEDNA, STALA pozycja, bez zadnego dynamicznego wyliczania -
+      // kierunek jest wiec teraz jawnie skonfigurowany przez wywolujaca
+      // strone (opts.openDirection: 'up'/'down', domyslnie 'down'), NIE
+      // liczony z dostepnego miejsca. Np. Voice AI ma przycisk blisko dolu
+      // ekranu (sterowanie rozmowy), wiec ta strona jawnie przekazuje
+      // 'up' - patrz wywolanie renderCompact w voice_conversation.html.
+      // Klamra ponizej (Math.max/min) zostaje jako OSTATNIA linia obrony
+      // przed calkowitym ucieciem na bardzo malych ekranach, ale nie
+      // decyduje juz o kierunku.
+      var openUp = opts.openDirection === 'up';
       var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
       // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
       // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
