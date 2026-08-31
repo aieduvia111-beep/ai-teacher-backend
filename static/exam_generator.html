@@ -1004,7 +1004,16 @@ async function fetchWariant(temat,numQ,wariant){
   // obnizony do 45s, sufit grace (_GRACE_MAX_SECONDS_EXAM w
   // exam_pdf_generator.py) do 60s CALKOWITEGO czasu. Timeout frontendu w
   // parze, z marginesem na budowe PDF + siec (nie 260s).
-  const examTimeoutId = setTimeout(()=>examController.abort(), 100000);
+  // NAPRAWIONE (31.08.2026, user: "ze zdjecia nie dziala... przekroczono
+  // czas oczekiwania"): przy zdjeciu backend robi DODATKOWE wywolanie AI
+  // (_extract_topic_from_images w exam_api.py - rozpoznanie tematu ze
+  // zdjecia) ZANIM w ogole zacznie sie generowanie objete budzetem 60s -
+  // ten krok nie byl wliczony do 100s timeoutu frontendu, wiec tryb "ze
+  // zdjeciem" regularnie go przekraczal. Dajemy dodatkowy zapas TYLKO gdy
+  // faktycznie wysylamy zdjecia - zwykly tryb z samym tematem zostaje
+  // szybki (100s), zgodnie z wczesniejszym "ma byc szybko".
+  const examTimeoutMs = photos.length>0 ? 130000 : 100000;
+  const examTimeoutId = setTimeout(()=>examController.abort(), examTimeoutMs);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
   const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
   const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
