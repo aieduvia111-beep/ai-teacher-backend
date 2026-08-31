@@ -96,6 +96,7 @@
 .lvl-compact-panel{
   box-sizing:border-box;
   z-index:9999;
+  overflow-y:auto; /* fallback gdy tresc nie miesci sie w max-height (JS, uwzglednia .m-hdr/.m-nav na mobile) */
   background:var(--s2);border:1.5px solid var(--border-hi);border-radius:16px;
   padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.45);
 }

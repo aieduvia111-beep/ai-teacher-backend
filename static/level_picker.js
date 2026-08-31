@@ -335,6 +335,28 @@
     // sama, bez wyjatkow i bez klamr. Kierunek (gora/dol) to jedyna
     // zmienna, i ta jest teraz na sztywno ustawiona przez strone
     // wywolujaca (opts.openDirection), nie liczona z niczego.
+    // NAPRAWIONE (31.08.2026, po rebuildzie wyzej): user zglosil ze
+    // przebudowana wersja dalej nie dziala NA TELEFONIE (dziala na
+    // komputerze - potwierdza ze to specyficznie mobile, nie ogolny bug).
+    // Usuwajac CALA matematyke wyzej, usunalem tez uwzglednienie
+    // .m-hdr/.m-nav (stale paski nawigacji na mobile, 56px/60px - patrz
+    // wczesniejszy real problem z tym), co bylo realnie potrzebne - panel
+    // (zwlaszcza po urosnieciu, wybor klasy) mogl fizycznie wejsc pod
+    // dolny pasek nawigacji na malym ekranie. Rozwiazanie tym razem NIE
+    // przesuwa CALEGO panelu (to bylo zrodlem "latania" we wczesniejszych
+    // probach) - zamiast tego ogranicza mu max-height (z overflow-y:auto
+    // jako fallback), zeby fizycznie nie mogl wejsc pod .m-hdr/.m-nav.
+    // Punkt zaczepienia (top/bottom wzgledem przycisku) zostaje IDENTYCZNY
+    // i staly jak wyzej - jedyna zmiana to "ile miejsca ma panel", nie
+    // "gdzie panel jest".
+    function _reservedEdgeHeight(selector) {
+      var e = document.querySelector(selector);
+      if (!e) return 0;
+      var cs = getComputedStyle(e);
+      if (cs.display === 'none' || cs.position !== 'fixed') return 0;
+      return e.getBoundingClientRect().height;
+    }
+
     function positionPanel() {
       var r = btn.getBoundingClientRect();
       var openUp = opts.openDirection === 'up';
@@ -342,6 +364,10 @@
       panel.style.left = r.left + 'px';
       panel.style.top = openUp ? '' : (r.bottom + 8) + 'px';
       panel.style.bottom = openUp ? (window.innerHeight - r.top + 8) + 'px' : '';
+      var maxH = openUp
+        ? (r.top - _reservedEdgeHeight('.m-hdr') - 16)
+        : (window.innerHeight - r.bottom - _reservedEdgeHeight('.m-nav') - 16);
+      panel.style.maxHeight = Math.max(120, maxH) + 'px';
       panel.classList.toggle('lvl-compact-panel-up', openUp);
     }
 
