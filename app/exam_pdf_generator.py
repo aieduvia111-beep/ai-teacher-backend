@@ -216,11 +216,18 @@ identyczny z zadna opcja - wiec musi dokladnie pasowac.
 POLE "problem_class" (Czesc A) - NOWE, OBOWIAZKOWE (dla KAZDEGO zadania -
 jawna klasyfikacja typu zadania, decyduje o tym, jak system je weryfikuje):
 podaj DOKLADNIE JEDNA z tych wartosci:
-  "arithmetic_word_problem" - zadanie tekstowe z jedna liczbowa odpowiedzia
+  "arithmetic_word_problem" - KAZDE zadanie (tekstowe OSADZONE w sytuacji
+    - cena, dlugosc, predkosc, procent - LUB czysto abstrakcyjne
+    obliczenie algebraiczne bez fabuly - np. "oblicz sume pierwszych n
+    wyrazow ciagu", "oblicz wartosc wyrazenia dla x=...", "znajdz iloraz
+    ciagu geometrycznego") Z JEDNA LICZBOWA ODPOWIEDZIA. Decyduje TYLKO
+    to, czy odpowiedz to POJEDYNCZA LICZBA - nie to, czy jest "fabula".
   "geometry" - zadanie geometryczne z jedna liczbowa odpowiedzia (pole,
     obwod, przekatna, objetosc)
   "algebra_symbolic" - odpowiedz to zbior/przedzial/nierownosc/warunek na
-    parametr (NIE pojedyncza liczba)
+    parametr (NIE pojedyncza liczba). JESLI odpowiedz jest POJEDYNCZA
+    LICZBA (nawet z ciagow/wielomianow/algebry) - to NIE jest ta klasa,
+    to "arithmetic_word_problem" powyzej.
   "physics_chemistry" - zadanie z fizyki/chemii z jednostkami (predkosc,
     stezenie, energia, sila, cieplo) - PATRZ NIZEJ, validation_rule
     CZESTO da sie dodac (wiele podstawowych wzorow to czysta arytmetyka)
@@ -343,6 +350,21 @@ ZASADY:
             "skill": "pole kola", "concept": "wzor P=pi*r^2",
             "task_type": "oblicz pole", "reasoning": "podstaw promien do wzoru"
           }}
+        }},
+        {{
+          "nr": 3,
+          "tresc": "Jaka jest suma pierwszych sześciu wyrazów ciągu geometrycznego, jeśli $b_1 = 2$ i $q = 2$?",
+          "opcje": ["a) $128$", "b) $126$", "c) $62$", "d) $64$"],
+          "odpowiedz": "b",
+          "final_answer": "$126$",
+          "punkty": 1,
+          "wyjasnienie": "Suma: $S_6 = b_1 \\cdot \\frac{{q^6 - 1}}{{q - 1}} = 2 \\cdot \\frac{{2^6 - 1}}{{2 - 1}} = 2 \\cdot 63 = 126$.",
+          "problem_class": "arithmetic_word_problem",
+          "validation_rule": {{"variables": {{"b1": 2, "q": 2}}, "expression": "b1 * (q ** 6 - 1) / (q - 1)", "expected": 126}},
+          "diversity_tag": {{
+            "skill": "suma n wyrazow ciagu geometrycznego", "concept": "wzor na sume S_n",
+            "task_type": "oblicz sume", "reasoning": "podstaw b1 i q do wzoru na sume"
+          }}
         }}
       ]
     }},
@@ -369,6 +391,14 @@ ZASADY:
     }}
   ]
 }}
+
+Zadanie nr 3 w przykladzie powyzej pokazuje WAZNA rzecz: to jest CZYSTA
+algebra (zaden "temat" tekstowy, zadna fabula), a MIMO TO problem_class
+to "arithmetic_word_problem" (bo odpowiedz to jedna liczba) - NIE
+"algebra_symbolic". To dokladnie ten typ zadania, ktory NAJCZESCIEJ byl
+bledny w przeszlosci (AI mylilo sie w wyliczeniu, np. napisalo "=128"
+zamiast "=126" mimo poprawnego wzoru) - validation_rule jest tu
+SZCZEGOLNIE wazne.
 
 === WYMAGANIA ILOSCI ===
 - DOKLADNIE {liczba_pytan} pytan lacznie (NIE wiecej, NIE mniej)
