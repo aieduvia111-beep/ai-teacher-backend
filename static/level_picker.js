@@ -335,14 +335,20 @@
       panel.style.width = panelW + 'px';
       var panelH = panel.offsetHeight;
 
-      var spaceBelow = vh - r.bottom - VIEWPORT_MARGIN;
-      var spaceAbove = r.top - VIEWPORT_MARGIN;
-      // Otworz w gore TYLKO jesli na dole faktycznie brakuje miejsca NA
-      // CALY panel, a w gorze jest go wiecej - w przeciwnym razie
-      // domyslny kierunek (w dol) zostaje bez zmian.
-      var openUp = panelH > spaceBelow && spaceAbove > spaceBelow;
-
-      var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
+      // NAPRAWIONE (31.08.2026, user zglosil realny bug: "belka fruwa" -
+      // panel na exam_generator.html otwieral sie raz pod przyciskiem, raz
+      // nad nim, w zaleznosci od tego czy nad przyciskiem bylo wiecej
+      // tresci - np. dodanie zdjec przesuwalo przycisk nizej na stronie,
+      // zmieniajac spaceBelow/spaceAbove i przelaczajac kierunek. Byl to
+      // swiadomy wybor - zapobiegal calkowicie niewidocznemu panelowi -
+      // ale w praktyce byl niepokojaco nieprzewidywalny dla usera. Zabez-
+      // pieczenie przed calkowitym wyjsciem poza ekran (klamra ponizej,
+      // linia "top = Math.max(...)") dziala NIEZALEZNIE od kierunku, wiec
+      // kierunek moze byc teraz ZAWSZE staly (w dol) bez przywracania tego
+      // pierwotnego bledu - w skrajnym przypadku (bardzo malo miejsca) panel
+      // zostanie przypiety do dolnej krawedzi ekranu zamiast przelaczyc sie
+      // w gore, co jest akceptowalnym kompromisem za przewidywalnosc.
+      var top = r.bottom + 8;
       // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
       // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
       // viewportu zamiast wyjechac poza ekran w druga strone.
@@ -353,7 +359,6 @@
 
       panel.style.top = top + 'px';
       panel.style.left = left + 'px';
-      panel.classList.toggle('lvl-compact-panel-up', openUp);
     }
 
     function onDocClick(e) {
