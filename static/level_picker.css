@@ -138,44 +138,49 @@
   overflow-y:auto;
   background:var(--s2);border:1px solid var(--border-hi);border-bottom:none;
   border-radius:20px 20px 0 0;
-  padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  padding:8px 14px calc(12px + env(safe-area-inset-bottom,0px));
   box-shadow:0 -20px 50px rgba(0,0,0,.5);
   transform:translateY(100%);
   transition:transform .3s cubic-bezier(.32,.72,0,1);
 }
 .lvl-sheet-backdrop.open .lvl-sheet{transform:translateY(0);}
 
+/* SKOMPRESOWANE (user: "nie chce dwoch krokow, ma sie miescic bez
+   scrolla") - mniejsze odstepy/czcionki/padding na kazdym elemencie
+   ponizej, zeby caly zestaw (rzad etapow + siatka klas) zawsze miescil
+   sie w jednym ekranie bez potrzeby scrollowania, nawet dla Podstawowki
+   z 8 klasami. */
 .lvl-sheet-class-label{
-  font-family:var(--h);font-size:.62em;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);margin:12px 0 8px;
+  font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin:8px 0 6px;
 }
 
 .lvl-sheet-handle{
-  width:36px;height:4px;border-radius:2px;background:var(--border-hi);
-  margin:6px auto 14px;
+  width:32px;height:3px;border-radius:2px;background:var(--border-hi);
+  margin:2px auto 8px;
 }
 
 .lvl-sheet-title{
-  font-family:var(--h);font-size:1.05em;font-weight:700;color:var(--text);
-  margin-bottom:14px;text-align:center;
+  font-family:var(--h);font-size:.95em;font-weight:700;color:var(--text);
+  margin-bottom:8px;text-align:center;
 }
 
-.lvl-stage-row{display:flex;gap:6px;margin-bottom:8px;}
+.lvl-stage-row{display:flex;gap:5px;margin-bottom:6px;}
 .lvl-stage-chip{
-  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:8px 2px;border-radius:10px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 2px;border-radius:9px;background:var(--s1,var(--bg));border:1px solid var(--border);
   cursor:pointer;color:var(--muted2);transition:all .15s;font-family:var(--h);
 }
-.lvl-stage-chip svg{width:15px;height:15px;stroke:currentColor;flex-shrink:0;}
-.lvl-stage-chip span{font-size:.6em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lvl-stage-chip svg{width:13px;height:13px;stroke:currentColor;flex-shrink:0;}
+.lvl-stage-chip span{font-size:.56em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .lvl-stage-chip:hover{border-color:var(--border-hi);color:var(--text);}
 .lvl-stage-chip.active{background:rgba(124,106,255,.12);border-color:var(--accent);color:var(--accent2);}
 
-.lvl-class-row-compact{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.lvl-class-row-compact{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
 .lvl-class-chip-compact{
-  min-width:0;padding:9px 2px;border-radius:9px;background:var(--s1,var(--bg));border:1px solid var(--border);
-  color:var(--muted2);font-family:var(--h);font-size:.76em;font-weight:700;text-align:center;
-  cursor:pointer;transition:all .15s;white-space:normal;overflow-wrap:break-word;line-height:1.2;
+  min-width:0;padding:7px 2px;border-radius:8px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  color:var(--muted2);font-family:var(--h);font-size:.72em;font-weight:700;text-align:center;
+  cursor:pointer;transition:all .15s;white-space:normal;overflow-wrap:break-word;line-height:1.15;
 }
 .lvl-class-chip-compact:hover{border-color:var(--accent);color:var(--text);}
 .lvl-class-chip-compact.active{background:var(--accent);border-color:var(--accent);color:#fff;}
