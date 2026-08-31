@@ -1078,7 +1078,7 @@ const IS_MOB = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth <=
 const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
 const BACKEND_URL = (location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:') ? 'http://localhost:8000'
   : _isPrivateLAN ? location.origin
-  : location.origin;
+  : 'https://eduvia-backend-2.onrender.com';
 const WS_URL = BACKEND_URL.replace('https://','wss://').replace('http://','ws://') + '/api/v1/realtime/ws';
 
 let selLevel = 'liceum_2', selSubject = 'Dowolny', selLang = 'polski';

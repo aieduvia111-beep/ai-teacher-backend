@@ -437,7 +437,7 @@
   var PROFILE_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? 'http://localhost:8000'
     : _isPrivateLAN ? location.origin
-    : location.origin;
+    : 'https://eduvia-backend-2.onrender.com';
 
   // Pobiera zapisany w ankiecie onboardingowej poziom ucznia i - jesli
   // istnieje - stosuje go (przez callback onLevel). Uzywane na kazdej

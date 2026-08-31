@@ -529,7 +529,7 @@ var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(locatio
 var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
   : _isPrivateLAN ? location.origin
-  : location.origin;
+  : 'https://eduvia-backend-2.onrender.com';
 
 // Identyczny mechanizm co confetti() w quiz_app.html - tak samo kolory, tak samo timing.
 function confetti(){
