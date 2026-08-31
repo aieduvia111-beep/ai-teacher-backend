@@ -244,14 +244,13 @@
     // voice/tablica/onboarding) - blad nie byl specyficzny dla Voice AI,
     // dotyczyl KAZDEJ strony, gdzie przycisk wypada blisko dolu ekranu.
     //
-    // Naprawa: panel jest teraz "portalowany" do document.body z
+    // Naprawa: panel jest "portalowany" do document.body z
     // position:fixed - wspolrzedne liczone w JS wzgledem VIEWPORTU
     // (getBoundingClientRect przycisku), wiec ZADEN przodek (overflow,
-    // position, wysokosc) nie moze go juz przycinac ani ograniczac. Przed
-    // kazdym otwarciem liczymy dostepne miejsce nad/pod przyciskiem i
-    // otwieramy w GORE, jesli na dole nie ma miejsca (dokladnie zadanie
-    // usera) - user NIGDY nie musi juz reczne przewijac, zeby zobaczyc
-    // liste.
+    // position, wysokosc) nie moze go juz przycinac ani ograniczac.
+    // (Kierunek gora/dol - patrz positionPanel() nizej - jest teraz na
+    // sztywno ustawiany przez strone wywolujaca, nie liczony z dostepnego
+    // miejsca; patrz komentarz tam po co ta zmiana.)
     var panel = document.createElement('div');
     panel.style.display = 'none';
     panel.style.position = 'fixed';
@@ -323,81 +322,26 @@
       }
     }
 
-    var VIEWPORT_MARGIN = 10; // odstep od krawedzi ekranu, zeby panel nigdy nie dotykal brzegu
-
-    // NAPRAWIONE (31.08.2026, po wielu nieudanych probach - user zglaszal
-    // "wyskakuje na sama gore/zle miejsce", zaden fix samej logiki gora/dol
-    // nie pomagal): na mobile (@media max-width:768px, wspoldzielone przez
-    // 13 stron w tym WSZYSTKIE uzywajace tego komponentu) strona ma STALY
-    // dolny pasek nawigacji (.m-nav, 60px) i gorny naglowek (.m-hdr, 56px),
-    // OBA position:fixed. document.documentElement.clientHeight (vh) liczy
-    // PELNA wysokosc viewportu, nie odejmujac tego co te paski realnie
-    // zajmuja na ekranie - klamra bezpieczenstwa/wybor kierunku mysial
-    // wiec ze jest wiecej wolnego miejsca nizej/wyzej niz naprawde bylo,
-    // co przy realnym telefonie (moje wczesniejsze testy byly przez usterke
-    // narzedzia NIEUMYSLNIE zawsze na viewport desktopowym, nigdy realnie
-    // mobilnym - stad zaden z poprzednich fixow tego nie zlapal) mogло
-    // wypychac panel pod/za te paski. Mierzymy realna, WIDOCZNA wysokosc
-    // tych paskow (jesli w ogole sa na stronie i wyswietlone) i wliczamy
-    // jako dodatkowy margines od gory/dolu.
-    function _reservedEdgeHeight(selector) {
-      var el = document.querySelector(selector);
-      if (!el) return 0;
-      var cs = getComputedStyle(el);
-      if (cs.display === 'none' || cs.position !== 'fixed') return 0;
-      return el.getBoundingClientRect().height;
-    }
-
+    // PRZEBUDOWANE (31.08.2026). Po serii coraz bardziej zlozonych prob
+    // (dynamiczny wybor gora/dol na podstawie miejsca, potem klamry
+    // uwzgledniajace .m-hdr/.m-nav) user byl jasny: "rob od nowa, ma byc
+    // w 1 miejscu". position:absolute wzgledem wrap (prostsza alternatywa)
+    // NIE nadaje sie - voice_conversation.html ma .form-panel zdefiniowany
+    // dwa razy w CSS, drugi raz z overflow:hidden ktore by przycinalo
+    // panel (patrz komentarz w level_picker.css). Panel zostaje wiec
+    // position:fixed + portal do document.body (escape z overflow:hidden
+    // KAZDEGO przodka), ale teraz BEZ ZADNEJ matematyki "ile jest miejsca" -
+    // TYLKO stala, przewidywalna odleglosc od przycisku (8px), zawsze ta
+    // sama, bez wyjatkow i bez klamr. Kierunek (gora/dol) to jedyna
+    // zmienna, i ta jest teraz na sztywno ustawiona przez strone
+    // wywolujaca (opts.openDirection), nie liczona z niczego.
     function positionPanel() {
       var r = btn.getBoundingClientRect();
-      var vw = document.documentElement.clientWidth;
-      var vh = document.documentElement.clientHeight;
-      var topReserved = VIEWPORT_MARGIN + _reservedEdgeHeight('.m-hdr');
-      var bottomReserved = VIEWPORT_MARGIN + _reservedEdgeHeight('.m-nav');
-      // NAPRAWIONE (znalezione realnym testem na viewport 375px): szerokosc
-      // MUSI byc ustawiona PRZED zmierzeniem offsetHeight/uzyciem do
-      // pozycjonowania - bez width, panel (position:fixed, bez ograniczen)
-      // mierzy sie na podstawie WLASNEJ, niczym nieograniczonej szerokosci
-      // tresci (5 kafelkow etapu z white-space:nowrap na etykietach daje
-      // ~457px), co na telefonie WYCHODZI POZA EKRAN w bok - dokladnie
-      // ten sam rodzaj bledu co ten zglaszany przez usera, tylko w poziomie
-      // zamiast w pionie. Panel MA byc szerokosci przycisku (tak jak w
-      // oryginalnym CSS left:0;right:0 wzgledem .lvl-compact-wrap o
-      // szerokosci 100% - to odtwarza dokladnie ten sam efekt), a wewnetrzne
-      // flex/grid (majace juz min-width:0 i text-overflow:ellipsis) same
-      // zawijaja/skracaja tresc do tej szerokosci.
-      var panelW = Math.min(r.width, vw - 2 * VIEWPORT_MARGIN);
-      panel.style.width = panelW + 'px';
-      var panelH = panel.offsetHeight;
-
-      // NAPRAWIONE x3 (31.08.2026). Proba 1: dynamiczne przelaczanie gora/
-      // dol na podstawie wolnego miejsca - user zglosil "belka fruwa"
-      // (nieprzewidywalne). Proba 2: ZAWSZE w dol - okazalo sie gorsze,
-      // klamra bezpieczenstwa przy braku miejsca przypinala panel do samej
-      // gory EKRANU (daleko od przycisku). User byl jasny: ma to byc
-      // JEDNA, STALA pozycja, bez zadnego dynamicznego wyliczania -
-      // kierunek jest wiec teraz jawnie skonfigurowany przez wywolujaca
-      // strone (opts.openDirection: 'up'/'down', domyslnie 'down'), NIE
-      // liczony z dostepnego miejsca. Np. Voice AI ma przycisk blisko dolu
-      // ekranu (sterowanie rozmowy), wiec ta strona jawnie przekazuje
-      // 'up' - patrz wywolanie renderCompact w voice_conversation.html.
-      // Klamra ponizej (Math.max/min) zostaje jako OSTATNIA linia obrony
-      // przed calkowitym ucieciem na bardzo malych ekranach, ale nie
-      // decyduje juz o kierunku.
       var openUp = opts.openDirection === 'up';
-      var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
-      // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
-      // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
-      // widocznego obszaru (topReserved/bottomReserved - patrz wyzej,
-      // uwzglednia .m-hdr/.m-nav) zamiast wyjechac poza ekran/pod stale
-      // paski nawigacji w druga strone.
-      top = Math.max(topReserved, Math.min(top, vh - panelH - bottomReserved));
-
-      var left = r.left;
-      left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - panelW - VIEWPORT_MARGIN));
-
-      panel.style.top = top + 'px';
-      panel.style.left = left + 'px';
+      panel.style.width = r.width + 'px';
+      panel.style.left = r.left + 'px';
+      panel.style.top = openUp ? '' : (r.bottom + 8) + 'px';
+      panel.style.bottom = openUp ? (window.innerHeight - r.top + 8) + 'px' : '';
       panel.classList.toggle('lvl-compact-panel-up', openUp);
     }
 
@@ -407,39 +351,27 @@
     function onKeyDown(e) {
       if (e.key === 'Escape') closePanel();
     }
-    function onReposition() {
-      if (panel.style.display !== 'none') positionPanel();
-    }
     function openPanel() {
       // Defensywnie: jesli przycisk jest czesciowo poza widocznym
       // obszarem (np. na dole dlugiego formularza na telefonie),
-      // doscrolluj do niego NAJPIERW - per prosba usera ("auto-scroll do
-      // niej") - potem i tak liczymy dokladna pozycje ponizej.
-      // UWAGA: celowo 'instant', NIE 'smooth' - ponizej dopiero co
-      // otwarty panel zamyka sie na KAZDY scroll (patrz 'scroll' listener
-      // nizej, potrzebny zeby panel nie zostawal "przyklejony" w starym
-      // miejscu przy przewijaniu strony) - 'smooth' generowaloby wlasne
-      // zdarzenia scroll W TRAKCIE animacji, ktore ten sam listener
-      // wylapalby jako "user przewinal" i natychmiast zamykal dopiero co
-      // otwarty panel (znaleziono i naprawiono realnym testem w
-      // przegladarce - 'smooth' na stronach z html{scroll-behavior:smooth}
-      // powodowalo, ze panel migal i znikal ulamek sekundy po otwarciu).
-      // 'instant' konczy sie synchronicznie PRZED podpieciem listenera,
-      // wiec ten wyscig jest niemozliwy.
+      // doscrolluj do niego NAJPIERW - 'instant' (nie 'smooth'), zeby
+      // zdazyl sie skonczyc PRZED podpieciem listenera 'scroll' ponizej
+      // (inaczej wlasny scroll animacji zamykalby dopiero co otwarty
+      // panel - znaleziono i naprawiono realnym testem wczesniej).
       btn.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       renderPanel();
-      panel.style.visibility = 'hidden';
       panel.style.display = '';
       if (panel.parentNode !== document.body) document.body.appendChild(panel);
       positionPanel();
-      panel.style.visibility = '';
       btn.classList.add('open');
       document.addEventListener('mousedown', onDocClick, true);
       document.addEventListener('keydown', onKeyDown, true);
-      window.addEventListener('resize', onReposition);
-      // 'scroll' nie bąbelkuje, ale w fazie capture jest widoczny dla
-      // kazdego przewijanego przodka (np. .main{overflow-y:auto}) - stad
-      // capture:true zamiast (nieskutecznego tu) listenera na window.
+      // Panel jest position:fixed wzgledem VIEWPORTU, nie przycisku -
+      // przy przewijaniu strony NIE przesuwa sie razem z przyciskiem
+      // (bo nie jest w normalnym flow), wiec zamykamy go na kazdy scroll
+      // zamiast zostawiac "przyklejonym" w starym miejscu. 'scroll' nie
+      // bąbelkuje, ale w fazie capture jest widoczny dla kazdego
+      // przewijanego przodka - stad capture:true.
       document.addEventListener('scroll', closePanel, true);
     }
     function closePanel() {
@@ -447,7 +379,6 @@
       btn.classList.remove('open');
       document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('resize', onReposition);
       document.removeEventListener('scroll', closePanel, true);
     }
     el._lvlCompactCleanup = function () {

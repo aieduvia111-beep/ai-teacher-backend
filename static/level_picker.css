@@ -84,16 +84,17 @@
 .lvl-compact-chev{color:var(--muted2);transition:transform .2s;flex-shrink:0;}
 .lvl-compact-btn.open .lvl-compact-chev{transform:rotate(180deg);}
 
-/* NAPRAWIONE (audyt Voice AI, sierpien 2026): pozycja (position:fixed +
-   top/left/width) jest teraz liczona i ustawiana W JS (positionPanel()
-   w level_picker.js), wzgledem viewportu, nie najblizszego przodka -
-   dzieki temu ZADEN kontener z overflow:hidden/position/ograniczona
-   wysokoscia (na KTOREJKOLWIEK z 7 stron uzywajacych tego komponentu)
-   nie moze juz przycinac ani ukrywac rozwinietej listy, a panel moze
-   sam zdecydowac, czy otworzyc sie w dol czy w gore (gdy brak miejsca
-   na dole). CSS ponizej celowo NIE ustawia juz position/top/left/right -
-   patrz level_picker.js.*/
+/* PROBOWANE 31.08.2026: position:absolute wzgledem .lvl-compact-wrap
+   (jak dropdown "Przedmiot"). COFNIETE - voice_conversation.html ma
+   .form-panel zdefiniowany DWA RAZY (raz z overflow-y:auto, pozniej w
+   pliku RAZ JESZCZE z overflow:hidden, ktore wygrywa w kaskadzie) -
+   position:absolute bylby znowu przycinany na Voice AI, dokladnie ten
+   sam pierwotny bug, ktory wymusil position:fixed. Panel zostaje wiec
+   position:fixed + portalowany do document.body w JS (patrz
+   level_picker.js) - ale BEZ zadnej matematyki dostepnego miejsca,
+   tylko stala odleglosc od przycisku (patrz komentarz w JS).*/
 .lvl-compact-panel{
+  box-sizing:border-box;
   z-index:9999;
   background:var(--s2);border:1.5px solid var(--border-hi);border-radius:16px;
   padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.45);
