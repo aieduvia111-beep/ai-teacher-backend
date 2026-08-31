@@ -373,9 +373,33 @@ async def startup():
         _insp = _sa_inspect(engine)
         if "users" in _insp.get_table_names():
             _existing_cols = {c["name"] for c in _insp.get_columns("users")}
+            # NAPRAWIONE (31.08.2026): przed pierwszym prawdziwym deployem tych
+            # kolumn na produkcje odkrylismy ze origin/main byl 125 commitow
+            # w tyle - realna tabela users na Supabase moze nie miec ZADNEJ
+            # z kolumn dodanych do modelu User od dawna (nie tylko dwoch
+            # ponizej). Lista rozszerzona o WSZYSTKIE nullable/opcjonalne
+            # kolumny z models.py, zeby migracja byla kompletna niezaleznie
+            # od tego ktora dokladnie brakuje - bez tego apka wywalalaby sie
+            # na pierwszym zapytaniu dotykajacym brakujacej kolumny.
             _new_cols = {
+                "username": "VARCHAR(100)",
+                "hashed_password": "VARCHAR(255)",
+                "firebase_uid": "VARCHAR(255)",
+                "stripe_customer_id": "VARCHAR(255)",
+                "is_premium": "BOOLEAN",
+                "daily_usage": "TEXT",
+                "voice_seconds_today": "INTEGER",
+                "voice_usage_date": "VARCHAR(10)",
+                "premium_until": "TIMESTAMP",
+                "fcm_token": "VARCHAR(255)",
+                "last_notification_sent": "TIMESTAMP",
+                "education_level": "VARCHAR(30)",
+                "favorite_subject": "VARCHAR(50)",
+                "exam_date": "TIMESTAMP",
+                "onboarding_completed": "BOOLEAN",
                 "suggested_topic": "VARCHAR(255)",
                 "suggested_topic_date": "VARCHAR(10)",
+                "last_login": "TIMESTAMP",
             }
             with engine.connect() as _conn:
                 for _col, _sqltype in _new_cols.items():
