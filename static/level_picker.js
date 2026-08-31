@@ -204,6 +204,13 @@
   // i user tylko sporadycznie chce go zmienic.
   var PLACEHOLDER_ICON = '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 3 2 6 2s6-1 6-2v-5"/>';
 
+  // "Podstawówka" nie miesci sie w jednej linii w waskim kafelku (5 rownych
+  // kafelkow w rzedzie) - user zglosil ze wyglada to nieprofesjonalnie po
+  // zawinieciu na sile (dzielenie "Podstawówk" / "a"). Skrot TYLKO na
+  // potrzeby tego waskiego widoku - pelny .lvl-picker (onboarding.html) ma
+  // wiecej miejsca i dalej pokazuje pelne "Podstawówka" bez zmian.
+  var COMPACT_STAGE_LABEL = { podstawowka: 'Podstaw.' };
+
   function renderCompact(container, opts) {
     opts = opts || {};
     var el = typeof container === 'string' ? document.getElementById(container) : container;
@@ -275,7 +282,7 @@
         chip.type = 'button';
         chip.className = 'lvl-stage-chip';
         if (current.stageKey === st.key) chip.classList.add('active');
-        chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + st.icon + '</svg><span>' + st.label + '</span>';
+        chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + st.icon + '</svg><span>' + (COMPACT_STAGE_LABEL[st.key] || st.label) + '</span>';
         chip.addEventListener('click', function () {
           if (current.stageKey !== st.key) current.classKey = null;
           current.stageKey = st.key;

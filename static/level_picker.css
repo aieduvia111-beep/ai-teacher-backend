@@ -118,7 +118,7 @@
   cursor:pointer;color:var(--muted2);transition:all .15s;font-family:var(--h);
 }
 .lvl-stage-chip svg{width:15px;height:15px;stroke:currentColor;flex-shrink:0;}
-.lvl-stage-chip span{font-size:.6em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lvl-stage-chip span{font-size:.6em;font-weight:700;white-space:normal;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto;text-align:center;line-height:1.15;max-width:100%;}
 .lvl-stage-chip:hover{border-color:var(--border-hi);color:var(--text);}
 .lvl-stage-chip.active{background:rgba(124,106,255,.12);border-color:var(--accent);color:var(--accent2);}
 
