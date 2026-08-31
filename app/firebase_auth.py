@@ -21,16 +21,17 @@ def _ensure_firebase_app():
         return
     sa_b64 = os.environ.get("FIREBASE_KEY_B64")
     sa_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+    sa_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH")
     if sa_b64:
         cred = credentials.Certificate(json.loads(base64.b64decode(sa_b64).decode("utf-8")))
     elif sa_json:
         cred = credentials.Certificate(json.loads(sa_json))
+    elif sa_path:
+        cred = credentials.Certificate(sa_path)
     else:
-        cred = credentials.Certificate(
-            os.environ.get(
-                "FIREBASE_SERVICE_ACCOUNT_PATH",
-                "app/eduvia-c69bc-firebase-adminsdk-fbsvc-be39724e72.json",
-            )
+        raise RuntimeError(
+            "Brak danych logowania Firebase Admin - ustaw FIREBASE_KEY_B64 "
+            "(zalecane) lub FIREBASE_SERVICE_ACCOUNT_JSON/FIREBASE_SERVICE_ACCOUNT_PATH."
         )
     firebase_admin.initialize_app(cred)
 

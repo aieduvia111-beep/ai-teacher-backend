@@ -7,8 +7,19 @@ def log_error(service: str, error: str, details: str = ""):
         import firebase_admin
         from firebase_admin import firestore
         if not firebase_admin._apps:
+            import json, base64
             from firebase_admin import credentials
-            cred = credentials.Certificate(os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH', 'app/eduvia-c69bc-firebase-adminsdk-fbsvc-be39724e72.json'))
+            sa_b64 = os.environ.get('FIREBASE_KEY_B64')
+            sa_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+            sa_path = os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH')
+            if sa_b64:
+                cred = credentials.Certificate(json.loads(base64.b64decode(sa_b64).decode('utf-8')))
+            elif sa_json:
+                cred = credentials.Certificate(json.loads(sa_json))
+            elif sa_path:
+                cred = credentials.Certificate(sa_path)
+            else:
+                return
             firebase_admin.initialize_app(cred)
         db = firestore.client()
         db.collection('errors').add({
