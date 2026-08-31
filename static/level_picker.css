@@ -99,11 +99,18 @@
    czego zgubic przy scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. */
 .lvl-sheet-backdrop{
   display:none;position:fixed;inset:0;z-index:9999;
-  background:rgba(0,0,0,0);
+  background:rgba(3,3,8,0);backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
   align-items:flex-end;justify-content:center;
-  transition:background .25s ease;
+  transition:background .25s ease,backdrop-filter .25s ease,-webkit-backdrop-filter .25s ease;
+  /* Wymusza wlasna warstwe kompozytowa od razu, zeby Safari/iOS
+     nie "gubilo" pierwszego malowania swiezo wstawionego elementu
+     position:fixed (patrz komentarz w level_picker.js przy
+     document.body.appendChild(panel)). */
+  transform:translateZ(0);-webkit-transform:translateZ(0);
 }
-.lvl-sheet-backdrop.open{background:rgba(0,0,0,.55);}
+.lvl-sheet-backdrop.open{
+  background:rgba(3,3,8,.82);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+}
 
 .lvl-sheet{
   box-sizing:border-box;width:100%;max-width:560px;

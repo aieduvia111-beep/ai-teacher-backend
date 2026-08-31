@@ -250,6 +250,16 @@
     var sheet = document.createElement('div');
     sheet.className = 'lvl-sheet';
     panel.appendChild(sheet);
+    // NAPRAWIONE (bug zgloszony na telefonie): panel byl dodawany do
+    // document.body DOPIERO w openPanel(), przy pierwszym kliknieciu -
+    // znany bug Safari/iOS, gdzie swiezo wstawiony element
+    // position:fixed czasem w ogole sie nie maluje, dopoki przegladarka
+    // nie zrobi repaintu z innego powodu (np. scroll) - stad user widzial
+    // "nic sie nie pokazuje po kliknieciu, ale pojawia sie po cofnieciu/
+    // scrollu". Naprawa: portalujemy panel do body OD RAZU przy tworzeniu
+    // komponentu (wciaz ukryty przez display:none), zeby istnial w
+    // drzewie renderowania na dlugo przed pierwszym otwarciem.
+    document.body.appendChild(panel);
 
     function updateBtn() {
       var st = findStage(current.stageKey);
@@ -338,11 +348,18 @@
       panel.classList.add('open');
       btn.classList.add('open');
       document.addEventListener('keydown', onKeyDown, true);
+      // Blokada scrolla strony pod spodem, dopoki sheet jest otwarty - tak
+      // samo jak istniejacy mobilny drawer (patrz mOpen/mClose w
+      // dashboard_FINAL.html) - bez tego widac bylo tresc formularza
+      // przewijajaca sie/widoczna normalnie pod ledwo przyciemnionym tlem,
+      // przez co cala nakladka wygladala jak wizualny blad, nie jak modal.
+      document.body.style.overflow = 'hidden';
     }
     function closePanel() {
       panel.classList.remove('open');
       btn.classList.remove('open');
       document.removeEventListener('keydown', onKeyDown, true);
+      document.body.style.overflow = '';
       setTimeout(function () {
         if (!panel.classList.contains('open')) panel.style.display = 'none';
       }, 300);
