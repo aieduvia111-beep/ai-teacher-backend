@@ -821,6 +821,8 @@ function getPlanBadgeHTML(plan) {
 </div>
 
 <script>
+const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 let imgBase64=null,opts={steps:true,similar:true,explain:true},history=[],cameraStream=null,facingMode='environment',stepTimer=null;
 try{history=JSON.parse(localStorage.getItem('vision_history')||'[]');}catch(e){}
 const SL={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Jezyk polski',geografia:'Geografia',informatyka:'Informatyka',angielski:'Angielski',inne:'Inne'};
@@ -935,7 +937,7 @@ async function scanImage(){
   const mode=document.getElementById('mode').value;
   try{
     const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-    const res=await fetch(`${location.origin}/api/v1/vision/solve`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
+    const res=await fetch(`${API_BASE}/api/v1/vision/solve`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify({image:b64,subject,mode,show_steps:opts.steps,generate_similar:opts.similar,show_explanation:opts.explain})});
     if(!res.ok){
       // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
       // fix w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy

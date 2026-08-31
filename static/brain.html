@@ -703,7 +703,7 @@ function examHole(subject, topic, btn) {
   }
   wlasneInstrukcje += 'SPRAWDZIAN MA MIEC DOKLADNIE ' + liczba + ' PYTAN ZAMKNIETYCH A-D. NIE dodawaj czesci B, zadań otwartych ani obliczeniowych. TYLKO ' + liczba + ' pytan zamknietych, nic wiecej.';
 
-  fetch(`${location.origin}/api/v1/exam/generate`, {
+  fetch(`${BACKEND}/api/v1/exam/generate`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({

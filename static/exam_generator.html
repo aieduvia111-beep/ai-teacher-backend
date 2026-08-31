@@ -1006,7 +1006,8 @@ async function fetchWariant(temat,numQ,wariant){
   // parze, z marginesem na budowe PDF + siec (nie 260s).
   const examTimeoutId = setTimeout(()=>examController.abort(), 100000);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
-  const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':location.origin;
+  const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+  const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
   const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
   clearTimeout(examTimeoutId);
   if(!res.ok){

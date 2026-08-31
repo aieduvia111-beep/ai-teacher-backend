@@ -1101,7 +1101,8 @@ function confetti(){
 }
 
 
-const BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':location.origin;
+const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 
 async function startQuiz(){
   const _lim=await checkLimit('quiz');if(!_lim.allowed)return;

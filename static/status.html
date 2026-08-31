@@ -50,7 +50,8 @@ body{background:#07070d;color:#eeeef5;font-family:'Syne',sans-serif;min-height:1
 
 <script>
 var PIN = '2223';
-var BASE = location.origin;
+var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+var BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 var SVCS = [
   {n:'Voice AI', d:'Korepetytor głosowy', u:'/health/voice'},
   {n:'Chat AI', d:'Czat z AI', u:'/health/chat'},

@@ -710,7 +710,7 @@ onAuthStateChanged(auth,async(user)=>{
       try {
         const sessionId = urlParams.get('session_id');
         if(sessionId){
-          const vres = await fetch(`${location.origin}/api/v1/payments/verify-session`,{
+          const vres = await fetch(`${DASH_BASE}/api/v1/payments/verify-session`,{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({session_id:sessionId})
           });
@@ -745,6 +745,7 @@ onAuthStateChanged(auth,async(user)=>{
 // wypelnionej ankiety.
 const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
 const DASH_BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
+window.DASH_BASE = DASH_BASE; // dostepne tez w pozniejszych zwyklych <script> (poza tym modulem)
 const DASH_SUBJECT_LABELS={matematyka:'Matematyka',fizyka:'Fizyka',chemia:'Chemia',biologia:'Biologia',historia:'Historia',polski:'Język polski',geografia:'Geografia',informatyka:'Informatyka',angielski:'Angielski',inne:'Inne'};
 
 function daysUntil(isoDateStr){
@@ -1664,7 +1665,7 @@ window.animateCounter = animateCounter;
 
 <script>
 // Ping co 50s aby serwer nie zasypial
-const PING_URL = `${location.origin}/api/v1/voice/health`;
+const PING_URL = `${window.DASH_BASE || location.origin}/api/v1/voice/health`;
 setInterval(()=>fetch(PING_URL).catch(()=>{}), 50000);
 </script>
 
@@ -1723,7 +1724,7 @@ async function registerPushToken(){
     const uid = await getUid();
     if(!uid) return false;
 
-    await fetch(`${location.origin}/api/v1/notifications/save-token`, {
+    await fetch(`${window.DASH_BASE || location.origin}/api/v1/notifications/save-token`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({uid: uid, fcm_token: token})

@@ -327,6 +327,8 @@ window._currentUser=()=>currentUser;
 <script>
 // ═══ STRIPE PAYMENT LINK ═══
 const PAYMENT_LINK = 'https://buy.stripe.com/dRm5kCbHobRp46D3xncV200';
+const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 
 async function startCheckout() {
   const btn = document.getElementById('proBuyBtn');
@@ -337,7 +339,7 @@ async function startCheckout() {
   const affCode = document.getElementById('affCode') ? document.getElementById('affCode').value.trim().toUpperCase() : '';
   if(affCode){
     try{
-      const res = await fetch(`${location.origin}/api/v1/affiliates/check`, {
+      const res = await fetch(`${API_BASE}/api/v1/affiliates/check`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({code: affCode})
       });
@@ -360,7 +362,7 @@ async function startCheckout() {
 
   try {
     const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
-    const checkoutRes = await fetch(`${location.origin}/api/v1/payments/create-checkout`, {
+    const checkoutRes = await fetch(`${API_BASE}/api/v1/payments/create-checkout`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken},
       body: JSON.stringify({
