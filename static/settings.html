@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="level_picker.css?v=20260831m">
+<script src="level_picker.js?v=20260831m"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -235,6 +237,14 @@ button:active{transform:scale(.95)!important;}
     </div>
 
     <div class="sec">
+      <div class="sec-lbl">Poziom edukacji</div>
+      <div class="sec-body" style="padding:10px;">
+        <div id="levelPickerContainer"></div>
+        <div id="levelSaveMsg" style="display:none;font-size:.72em;color:var(--green);padding:8px 4px 0;text-align:center;font-family:var(--h);font-weight:700;"></div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-lbl">Konto</div>
       <div class="sec-body">
         <div class="item" onclick="resetPass()">
@@ -414,6 +424,34 @@ function updateXPBar(xp,data){
   if(xp>=4000)document.getElementById('ach8').classList.add('unlocked');
 }
 
+async function saveLevelChange(value,label){
+  const msgEl=document.getElementById('levelSaveMsg');
+  try{
+    const u=auth.currentUser;
+    if(!u)throw new Error('Nie jestes zalogowany.');
+    const token=await u.getIdToken();
+    const prof=window._settingsProfile||{};
+    const body={education_level:value};
+    if(prof.favorite_subject)body.favorite_subject=prof.favorite_subject;
+    if(prof.exam_date)body.exam_date=prof.exam_date;
+    const res=await fetch(window.API_BASE+'/users/onboarding',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(body)
+    });
+    const data=await res.json();
+    if(!data.success)throw new Error(data.error||'Nie udalo sie zapisac poziomu.');
+    window._settingsProfile=data.profile;
+    if(msgEl){
+      msgEl.textContent='✓ Zapisano — '+label;
+      msgEl.style.display='block';
+      setTimeout(()=>{msgEl.style.display='none';},2500);
+    }
+  }catch(e){
+    window.showError(e.message||'Nie udalo sie zapisac poziomu.');
+  }
+}
+
 onAuthStateChanged(auth,async u=>{
   if(!u){window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';return;}
   const name=u.displayName||u.email?.split('@')[0]||'Użytkownik';
@@ -431,6 +469,26 @@ onAuthStateChanged(auth,async u=>{
       document.getElementById('hDays').textContent=days+'d';
       if(d.plan==='pro'){const b=document.getElementById('hBadge');b.textContent='Pro';b.className='badge pro';}
       updateXPBar(d.xp||0,d);
+    }
+  }catch(e){}
+  // Poziom edukacji - GET /users/me (nie pobierany dotad nigdzie na tej
+  // stronie) zeby wypelnic picker aktualna wartoscia, zapis idzie przez
+  // ten sam POST /users/onboarding co reszta apki uzywa do zmiany
+  // pojedynczych pol profilu (patrz dashboard_FINAL.html/saveNewExamDate) -
+  // stad wysylamy tez favorite_subject/exam_date niezmienione, zeby ich
+  // przypadkiem nie wyzerowac (endpoint wymaga education_level, ale
+  // pozostale pola nadpisuje tylko jesli sa podane).
+  try{
+    const token=await u.getIdToken();
+    const res=await fetch(window.API_BASE+'/users/me',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(data.success){
+      window._settingsProfile=data.profile;
+      window.EduviaLevelPicker.renderCompact('levelPickerContainer',{
+        value:data.profile.education_level||'',
+        placeholder:'Wybierz poziom',
+        onChange:saveLevelChange
+      });
     }
   }catch(e){}
 });
