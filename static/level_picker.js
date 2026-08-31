@@ -274,8 +274,11 @@
         '<svg class="lvl-compact-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
     }
 
+    var classRowEl = null;
+
     function renderPanel() {
       sheet.innerHTML = '';
+      classRowEl = null;
 
       var handle = document.createElement('div');
       handle.className = 'lvl-sheet-handle';
@@ -298,6 +301,7 @@
           if (current.stageKey !== st.key) current.classKey = null;
           current.stageKey = st.key;
           renderPanel();
+          revealClassRow();
         });
         stageRow.appendChild(chip);
       });
@@ -305,6 +309,10 @@
 
       if (current.stageKey) {
         var st2 = findStage(current.stageKey);
+        var classLabel = document.createElement('div');
+        classLabel.className = 'lvl-sheet-class-label';
+        classLabel.textContent = 'Wybierz klase';
+        sheet.appendChild(classLabel);
         var classRow = document.createElement('div');
         classRow.className = 'lvl-class-row-compact';
         st2.classes.forEach(function (cls) {
@@ -323,7 +331,31 @@
           classRow.appendChild(c);
         });
         sheet.appendChild(classRow);
+        classRowEl = classLabel;
       }
+    }
+
+    // NAPRAWIONE (user zglosil: pierwszy raz w apce nie wiedzial, ze po
+    // wybraniu etapu trzeba przewinac karte w dol, zeby zobaczyc liste
+    // klas - siatka klas nie byla nigdy automatycznie pokazywana, wiec
+    // przy niskim realnym viewport na telefonie (pasek adresu przegladarki
+    // itp.) mogla wyladowac ponizej widocznego fragmentu karty). Zamiast
+    // liczyc na to, ze user sam odkryje ze trzeba scrollowac, dowozimy
+    // siatke klas do widoku automatycznie za kazdym razem gdy sie pojawia.
+    function revealClassRow() {
+      if (!classRowEl) return;
+      // scrollIntoView({block:'nearest'}) na samej etykiecie potrafilo
+      // uznac ja za "juz widoczna" i nic nie zrobic, mimo ze siatka klas
+      // POD nia dalej wystawala poza dol ekranu (etykieta i siatka to
+      // dwa osobne elementy - "nearest" patrzy tylko na cel wywolania).
+      // Siatka klas jest zawsze OSTATNIM elementem karty, wiec zamiast
+      // liczyc rect-y, po prostu przewijamy cala karte do jej wlasnego
+      // dolu - to gwarantuje ze siatka jest w calosci widoczna. Bez
+      // behavior:'smooth' celowo - przewijana wartosc jest zwykle mala
+      // (kilkanascie/kilkadziesiat px), a karta i tak juz wjezdza z
+      // animacja przy otwarciu, wiec druga, nakladajaca sie animacja
+      // scrolla w srodku tylko by przeszkadzala.
+      sheet.scrollTop = sheet.scrollHeight;
     }
 
     // Bottom sheet: tlo (panel) jest zawsze position:fixed na caly ekran,
@@ -347,6 +379,7 @@
       void panel.offsetHeight;
       panel.classList.add('open');
       btn.classList.add('open');
+      revealClassRow();
       document.addEventListener('keydown', onKeyDown, true);
       // Blokada scrolla strony pod spodem, dopoki sheet jest otwarty - tak
       // samo jak istniejacy mobilny drawer (patrz mOpen/mClose w

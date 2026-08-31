@@ -114,7 +114,9 @@
 
 .lvl-sheet{
   box-sizing:border-box;width:100%;max-width:560px;
-  max-height:min(80vh,560px);overflow-y:auto;
+  max-height:min(80vh,560px);
+  max-height:min(80dvh,560px);
+  overflow-y:auto;
   background:var(--s2);border:1px solid var(--border-hi);border-bottom:none;
   border-radius:20px 20px 0 0;
   padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));
@@ -123,6 +125,11 @@
   transition:transform .3s cubic-bezier(.32,.72,0,1);
 }
 .lvl-sheet-backdrop.open .lvl-sheet{transform:translateY(0);}
+
+.lvl-sheet-class-label{
+  font-family:var(--h);font-size:.62em;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin:12px 0 8px;
+}
 
 .lvl-sheet-handle{
   width:36px;height:4px;border-radius:2px;background:var(--border-hi);
