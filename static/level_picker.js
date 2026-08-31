@@ -246,7 +246,6 @@
     // uzgodnione z userem po pokazaniu makiety.
     var panel = document.createElement('div');
     panel.className = 'lvl-sheet-backdrop';
-    panel.style.display = 'none';
     var sheet = document.createElement('div');
     sheet.className = 'lvl-sheet';
     panel.appendChild(sheet);
@@ -371,12 +370,10 @@
     }
     function openPanel() {
       renderPanel();
-      panel.style.display = 'flex';
       if (panel.parentNode !== document.body) document.body.appendChild(panel);
-      // Wymuszenie reflow przed dodaniem klasy .open - inaczej przejscie
-      // slide-up nie zagra przy zmianie z display:none (przegladarka
-      // "zjada" pierwszy krok animacji bez tego).
-      void panel.offsetHeight;
+      // Panel jest zawsze w layoutcie (patrz CSS: visibility zamiast
+      // display), wiec sama zmiana klasy .open wystarczy - nie trzeba
+      // wymuszac reflow przed animacja, jak przy dawnym display:none.
       panel.classList.add('open');
       btn.classList.add('open');
       revealClassRow();
@@ -393,9 +390,6 @@
       btn.classList.remove('open');
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = '';
-      setTimeout(function () {
-        if (!panel.classList.contains('open')) panel.style.display = 'none';
-      }, 300);
     }
     panel.addEventListener('click', onBackdropClick);
     el._lvlCompactCleanup = function () {

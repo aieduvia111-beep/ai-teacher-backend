@@ -98,19 +98,38 @@
    Nie ma zadnej pozycji "wzgledem przycisku" do policzenia, wiec nie ma
    czego zgubic przy scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. */
 .lvl-sheet-backdrop{
-  display:none;position:fixed;inset:0;z-index:9999;
-  background:rgba(3,3,8,0);backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
+  display:flex;position:fixed;inset:0;z-index:9999;
+  background:rgba(3,3,8,0);
   align-items:flex-end;justify-content:center;
-  transition:background .25s ease,backdrop-filter .25s ease,-webkit-backdrop-filter .25s ease;
-  /* Wymusza wlasna warstwe kompozytowa od razu, zeby Safari/iOS
-     nie "gubilo" pierwszego malowania swiezo wstawionego elementu
-     position:fixed (patrz komentarz w level_picker.js przy
-     document.body.appendChild(panel)). */
+  /* visibility zamiast display:none/flex - z display, przegladarka
+     (zwlaszcza Android WebView/Chrome) czasem nie odswieza warstwy
+     kompozytora, gdy element jest jednoczesnie wstawiany do drzewa
+     layoutu I animowany w tym samym kroku, co user zgłosił jako
+     "caly ekran ciemnieje ale karta sie nie pojawia, dopoki nie
+     przewinie strony". visibility+transition-delay to standardowy,
+     dobrze wspierany sposob na animowane pokazywanie/ukrywanie bez
+     tego ryzyka - element jest zawsze w layoutcie (position:fixed,
+     wiec i tak nie zajmuje miejsca w normalnym flow), tylko niewidzialny
+     i nieklikalny gdy zamkniety. */
+  visibility:hidden;pointer-events:none;
+  transition:background .25s ease,visibility 0s linear .25s;
   transform:translateZ(0);-webkit-transform:translateZ(0);
 }
 .lvl-sheet-backdrop.open{
-  background:rgba(3,3,8,.82);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  background:rgba(3,3,8,.88);
+  visibility:visible;pointer-events:auto;
+  transition:background .25s ease;
 }
+/* USUNIETE (user zglosil na realnym telefonie Android: caly ekran
+   robil sie ciemny, ale sama karta w ogole sie nie pojawiala, dopoki
+   nie przewinelo sie strony pod spodem) - backdrop-filter:blur w
+   polaczeniu z position:fixed + transform na dziecku (.lvl-sheet)
+   to znany, niestabilny kombo w Chrome/WebView na Androidzie
+   (kompozytor czasem nie odswieza warstwy przy zmianie klasy, dopoki
+   nie wymusi tego inny event jak scroll). Zamiast szukac kolejnego
+   obejscia dla blura, po prostu go nie uzywamy - samo ciemniejsze
+   tlo (bez rozmycia) daje ten sam efekt oddzielenia karty od strony
+   i nie ma tego ryzyka. */
 
 .lvl-sheet{
   box-sizing:border-box;width:100%;max-width:560px;
