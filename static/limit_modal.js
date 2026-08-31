@@ -16,7 +16,7 @@
   'use strict';
 
   var NAMES = {
-    chat: 'Chatu AI', quiz: 'Quizu AI', vision: 'Vision AI',
+    chat: 'Chatu AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
     lessonDay: 'odznaczania dni planu', flashcards: 'Fiszek AI'
   };
@@ -89,7 +89,7 @@
       '<div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>' +
       '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
-      'Nieograniczony Chat, Vision, Quiz' +
+      'Nieograniczony Chat, Fiszki, Quiz' +
       '</div>' +
       '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
