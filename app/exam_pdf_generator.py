@@ -231,8 +231,13 @@ poprawna odpowiedzia. NIE parafrazuj, NIE skracaj. System automatycznie
 sprawdza to pole i ODRZUCA zadanie, jesli "final_answer" nie jest
 identyczny z zadna opcja - wiec musi dokladnie pasowac.
 
-POLE "problem_class" (Czesc A) - NOWE, OBOWIAZKOWE (dla KAZDEGO zadania -
-jawna klasyfikacja typu zadania, decyduje o tym, jak system je weryfikuje):
+POLE "problem_class" (Czesc A I Czesc B - KAZDE zadanie w CALYM
+sprawdzianie, nie tylko zamkniete) - NOWE, OBOWIAZKOWE (dla KAZDEGO
+zadania - jawna klasyfikacja typu zadania, decyduje o tym, jak system
+je weryfikuje - dla zadan OTWARTYCH decyduje m.in. czy uzyc
+dedykowanego, faktograficznego trybu weryfikacji zamiast domyslnego
+matematycznego, wiec pominiecie tego pola dla Czesci B jest realnym
+bledem, nie kosmetyka):
 podaj DOKLADNIE JEDNA z tych wartosci:
   "arithmetic_word_problem" - KAZDE zadanie (tekstowe OSADZONE w sytuacji
     - cena, dlugosc, predkosc, procent - LUB czysto abstrakcyjne
@@ -403,7 +408,8 @@ ZASADY:
             "1 pkt — skrocenie wyniku do postaci nieskracalnej"
           ],
           "odpowiedz_modelowa": "Pelne rozwiazanie krok po kroku z wynikiem.",
-          "final_answer": "SAMA koncowa wartosc/wyrazenie z 'odpowiedz_modelowa', BEZ opisu i BEZ jednostek - np. '175' albo '5/7' albo 'm = -3'. Jesli zadanie ma dwie szukane wartosci, podaj obie oddzielone przecinkiem, np. 'b = 2, c = 4'. To pole MUSI byc SPOJNE z wynikiem w 'odpowiedz_modelowa' - to samo obliczenie, dwa razy zapisane."
+          "final_answer": "SAMA koncowa wartosc/wyrazenie z 'odpowiedz_modelowa', BEZ opisu i BEZ jednostek - np. '175' albo '5/7' albo 'm = -3'. Jesli zadanie ma dwie szukane wartosci, podaj obie oddzielone przecinkiem, np. 'b = 2, c = 4'. To pole MUSI byc SPOJNE z wynikiem w 'odpowiedz_modelowa' - to samo obliczenie, dwa razy zapisane.",
+          "problem_class": "arithmetic_word_problem"
         }}
       ]
     }}
