@@ -16,9 +16,9 @@
   'use strict';
 
   var NAMES = {
-    chat: 'Chatu AI', quiz: 'Quizu AI',
+    chat: 'Chatu AI', quiz: 'Quizu AI', vision: 'Vision AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
-    lessonDay: 'odznaczania dni planu', flashcards: 'Fiszek'
+    lessonDay: 'odznaczania dni planu', flashcards: 'Fiszek AI'
   };
 
   // Poprawna polska odmiana liczebnika przy "darmowych uzyc" - user zglosil
