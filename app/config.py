@@ -19,7 +19,14 @@ class Settings:
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     
     # Database
-    DATABASE_URL: str = os.getenv("SUPABASE_URL", os.getenv("DATABASE_URL", "postgresql://postgres:Eduvia2026!@db.rhbstanhiyicrjtrerld.supabase.co:5432/postgres"))
+    # NAPRAWIONE (31.08.2026): fallback byl WCZESNIEJ prawdziwym connection
+    # stringiem do produkcyjnej/stagingowej bazy Supabase Z HASLEM WPROST W
+    # KODZIE - i to repo jest PUBLICZNE na GitHubie, wiec haslo bylo jawnie
+    # widoczne w historii commitow. Fallback teraz wskazuje na nieszkodliwy
+    # lokalny sqlite - jesli SUPABASE_URL/DATABASE_URL nie sa ustawione (np.
+    # brak .env), apka po prostu uzyje lokalnej bazy zamiast po cichu proowac
+    # laczyc sie z prawdziwa baza produkcyjna zaszytym w kodzie haslem.
+    DATABASE_URL: str = os.getenv("SUPABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./ai_teacher.db"))
     
     # App
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://eduvia-backend-2.onrender.com/static")
