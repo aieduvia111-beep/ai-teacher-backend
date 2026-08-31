@@ -325,10 +325,35 @@
 
     var VIEWPORT_MARGIN = 10; // odstep od krawedzi ekranu, zeby panel nigdy nie dotykal brzegu
 
+    // NAPRAWIONE (31.08.2026, po wielu nieudanych probach - user zglaszal
+    // "wyskakuje na sama gore/zle miejsce", zaden fix samej logiki gora/dol
+    // nie pomagal): na mobile (@media max-width:768px, wspoldzielone przez
+    // 13 stron w tym WSZYSTKIE uzywajace tego komponentu) strona ma STALY
+    // dolny pasek nawigacji (.m-nav, 60px) i gorny naglowek (.m-hdr, 56px),
+    // OBA position:fixed. document.documentElement.clientHeight (vh) liczy
+    // PELNA wysokosc viewportu, nie odejmujac tego co te paski realnie
+    // zajmuja na ekranie - klamra bezpieczenstwa/wybor kierunku mysial
+    // wiec ze jest wiecej wolnego miejsca nizej/wyzej niz naprawde bylo,
+    // co przy realnym telefonie (moje wczesniejsze testy byly przez usterke
+    // narzedzia NIEUMYSLNIE zawsze na viewport desktopowym, nigdy realnie
+    // mobilnym - stad zaden z poprzednich fixow tego nie zlapal) mogло
+    // wypychac panel pod/za te paski. Mierzymy realna, WIDOCZNA wysokosc
+    // tych paskow (jesli w ogole sa na stronie i wyswietlone) i wliczamy
+    // jako dodatkowy margines od gory/dolu.
+    function _reservedEdgeHeight(selector) {
+      var el = document.querySelector(selector);
+      if (!el) return 0;
+      var cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.position !== 'fixed') return 0;
+      return el.getBoundingClientRect().height;
+    }
+
     function positionPanel() {
       var r = btn.getBoundingClientRect();
       var vw = document.documentElement.clientWidth;
       var vh = document.documentElement.clientHeight;
+      var topReserved = VIEWPORT_MARGIN + _reservedEdgeHeight('.m-hdr');
+      var bottomReserved = VIEWPORT_MARGIN + _reservedEdgeHeight('.m-nav');
       // NAPRAWIONE (znalezione realnym testem na viewport 375px): szerokosc
       // MUSI byc ustawiona PRZED zmierzeniem offsetHeight/uzyciem do
       // pozycjonowania - bez width, panel (position:fixed, bez ograniczen)
@@ -363,8 +388,10 @@
       var top = openUp ? (r.top - panelH - 8) : (r.bottom + 8);
       // Zabezpieczenie na bardzo niskich ekranach (panel wiekszy niz cala
       // dostepna przestrzen w OBU kierunkach) - przypnij do krawedzi
-      // viewportu zamiast wyjechac poza ekran w druga strone.
-      top = Math.max(VIEWPORT_MARGIN, Math.min(top, vh - panelH - VIEWPORT_MARGIN));
+      // widocznego obszaru (topReserved/bottomReserved - patrz wyzej,
+      // uwzglednia .m-hdr/.m-nav) zamiast wyjechac poza ekran/pod stale
+      // paski nawigacji w druga strone.
+      top = Math.max(topReserved, Math.min(top, vh - panelH - bottomReserved));
 
       var left = r.left;
       left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - panelW - VIEWPORT_MARGIN));
