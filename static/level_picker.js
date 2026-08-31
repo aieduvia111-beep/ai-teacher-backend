@@ -229,31 +229,27 @@
     btn.type = 'button';
     btn.className = 'lvl-compact-btn';
 
-    // NAPRAWIONE (audyt Voice AI, sierpien 2026 - user zglosil: rozwijana
-    // lista poziomu pojawia sie na dole ekranu, niemozliwa do przewiniecia/
-    // klikniecia): panel byl `position:absolute` WEWNATRZ `wrap`, wiec byl
-    // przycinany przez overflow:hidden KTOREGOKOLWIEK przodka (np.
-    // .form-panel w voice_conversation.html mial DWIE konfliktujace
-    // definicje - jedna z overflow-y:auto, druga, pozniejsza, z
-    // overflow:hidden, ktora wygrywala w kaskadzie) - a nawet bez
-    // overflow:hidden, panel (position:absolute) nie powieksza wysokosci
-    // rodzica (jest wyjety z flow), wiec przy przycisku blisko dolu
-    // widocznego obszaru panel renderowal sie POZA widoczna/przewijalna
-    // czescia strony. Ten sam komponent (renderCompact) jest uzywany
-    // IDENTYCZNIE na 7 stronach (quiz/sprawdziany/notatki/plan nauki/
-    // voice/tablica/onboarding) - blad nie byl specyficzny dla Voice AI,
-    // dotyczyl KAZDEJ strony, gdzie przycisk wypada blisko dolu ekranu.
-    //
-    // Naprawa: panel jest "portalowany" do document.body z
-    // position:fixed - wspolrzedne liczone w JS wzgledem VIEWPORTU
-    // (getBoundingClientRect przycisku), wiec ZADEN przodek (overflow,
-    // position, wysokosc) nie moze go juz przycinac ani ograniczac.
-    // (Kierunek gora/dol - patrz positionPanel() nizej - jest teraz na
-    // sztywno ustawiany przez strone wywolujaca, nie liczony z dostepnego
-    // miejsca; patrz komentarz tam po co ta zmiana.)
+    // PRZEBUDOWANE CALKOWICIE (31.08.2026). Historia: position:absolute
+    // wzgledem wrap -> przycinane przez overflow:hidden przodkow (audyt
+    // Voice AI) -> position:fixed+portal z coraz bardziej zlozona
+    // matematyka pozycji wzgledem przycisku (dynamiczne gora/dol, potem
+    // stale, potem klamry .m-hdr/.m-nav) -> user zglaszal "lata"/"wyskakuje
+    // w zle miejsce" po KAZDEJ z tych prob, na realnym telefonie, mimo ze
+    // kazda wersja byla zmierzona i potwierdzona lokalnie. Zamiast dalejszej
+    // naprawy pozycjonowania WZGLEDEM PRZYCISKU, usuwamy ten pomysl
+    // calkowicie: to teraz "bottom sheet" (wzorzec z Google Maps/Spotify/
+    // Uber) - pelnoekranowe, przyciemnione tlo + karta wysuwana z dolu
+    // EKRANU (nie z dolu przycisku). Nie ma zadnego "gdzie wzgledem
+    // przycisku" do policzenia - karta zawsze jest w tym samym miejscu
+    // (dol ekranu), niezaleznie od tego gdzie jest przycisk, czy strona
+    // jest przewinieta, czy to telefon czy komputer. To bylo swiadomie
+    // uzgodnione z userem po pokazaniu makiety.
     var panel = document.createElement('div');
+    panel.className = 'lvl-sheet-backdrop';
     panel.style.display = 'none';
-    panel.style.position = 'fixed';
+    var sheet = document.createElement('div');
+    sheet.className = 'lvl-sheet';
+    panel.appendChild(sheet);
 
     function updateBtn() {
       var st = findStage(current.stageKey);
@@ -269,8 +265,16 @@
     }
 
     function renderPanel() {
-      panel.className = 'lvl-compact-panel';
-      panel.innerHTML = '';
+      sheet.innerHTML = '';
+
+      var handle = document.createElement('div');
+      handle.className = 'lvl-sheet-handle';
+      sheet.appendChild(handle);
+
+      var title = document.createElement('div');
+      title.className = 'lvl-sheet-title';
+      title.textContent = 'Wybierz poziom';
+      sheet.appendChild(title);
 
       var stageRow = document.createElement('div');
       stageRow.className = 'lvl-stage-row';
@@ -284,20 +288,10 @@
           if (current.stageKey !== st.key) current.classKey = null;
           current.stageKey = st.key;
           renderPanel();
-          // NAPRAWIONE (31.08.2026, user zglosil realny bug: panel "wskakuje
-          // na sama gore ekranu" po wybraniu etapu): renderPanel() dorenderowuje
-          // siatke klas i panel realnie rosnie w wysokosc, ale pozycja (top)
-          // byla policzona TYLKO RAZ przy otwarciu (gdy panel byl jeszcze
-          // krotki - sam rzad etapow, bez klas) i nigdy nie byla przeliczana
-          // ponownie po zmianie wysokosci tresci - na malych ekranach telefonu
-          // (gdzie miejsca ponizej przycisku i tak jest malo) to bez korekty
-          // pozycji moglo wypychac panel poza widoczny obszar/wymuszac dziwne
-          // zachowanie przegladarki probujacej "doscrollowac" do niego.
-          positionPanel();
         });
         stageRow.appendChild(chip);
       });
-      panel.appendChild(stageRow);
+      sheet.appendChild(stageRow);
 
       if (current.stageKey) {
         var st2 = findStage(current.stageKey);
@@ -318,102 +312,50 @@
           });
           classRow.appendChild(c);
         });
-        panel.appendChild(classRow);
+        sheet.appendChild(classRow);
       }
     }
 
-    // PRZEBUDOWANE (31.08.2026). Po serii coraz bardziej zlozonych prob
-    // (dynamiczny wybor gora/dol na podstawie miejsca, potem klamry
-    // uwzgledniajace .m-hdr/.m-nav) user byl jasny: "rob od nowa, ma byc
-    // w 1 miejscu". position:absolute wzgledem wrap (prostsza alternatywa)
-    // NIE nadaje sie - voice_conversation.html ma .form-panel zdefiniowany
-    // dwa razy w CSS, drugi raz z overflow:hidden ktore by przycinalo
-    // panel (patrz komentarz w level_picker.css). Panel zostaje wiec
-    // position:fixed + portal do document.body (escape z overflow:hidden
-    // KAZDEGO przodka), ale teraz BEZ ZADNEJ matematyki "ile jest miejsca" -
-    // TYLKO stala, przewidywalna odleglosc od przycisku (8px), zawsze ta
-    // sama, bez wyjatkow i bez klamr. Kierunek (gora/dol) to jedyna
-    // zmienna, i ta jest teraz na sztywno ustawiona przez strone
-    // wywolujaca (opts.openDirection), nie liczona z niczego.
-    // NAPRAWIONE (31.08.2026, po rebuildzie wyzej): user zglosil ze
-    // przebudowana wersja dalej nie dziala NA TELEFONIE (dziala na
-    // komputerze - potwierdza ze to specyficznie mobile, nie ogolny bug).
-    // Usuwajac CALA matematyke wyzej, usunalem tez uwzglednienie
-    // .m-hdr/.m-nav (stale paski nawigacji na mobile, 56px/60px - patrz
-    // wczesniejszy real problem z tym), co bylo realnie potrzebne - panel
-    // (zwlaszcza po urosnieciu, wybor klasy) mogl fizycznie wejsc pod
-    // dolny pasek nawigacji na malym ekranie. Rozwiazanie tym razem NIE
-    // przesuwa CALEGO panelu (to bylo zrodlem "latania" we wczesniejszych
-    // probach) - zamiast tego ogranicza mu max-height (z overflow-y:auto
-    // jako fallback), zeby fizycznie nie mogl wejsc pod .m-hdr/.m-nav.
-    // Punkt zaczepienia (top/bottom wzgledem przycisku) zostaje IDENTYCZNY
-    // i staly jak wyzej - jedyna zmiana to "ile miejsca ma panel", nie
-    // "gdzie panel jest".
-    function _reservedEdgeHeight(selector) {
-      var e = document.querySelector(selector);
-      if (!e) return 0;
-      var cs = getComputedStyle(e);
-      if (cs.display === 'none' || cs.position !== 'fixed') return 0;
-      return e.getBoundingClientRect().height;
-    }
-
-    function positionPanel() {
-      var r = btn.getBoundingClientRect();
-      var openUp = opts.openDirection === 'up';
-      panel.style.width = r.width + 'px';
-      panel.style.left = r.left + 'px';
-      panel.style.top = openUp ? '' : (r.bottom + 8) + 'px';
-      panel.style.bottom = openUp ? (window.innerHeight - r.top + 8) + 'px' : '';
-      var maxH = openUp
-        ? (r.top - _reservedEdgeHeight('.m-hdr') - 16)
-        : (window.innerHeight - r.bottom - _reservedEdgeHeight('.m-nav') - 16);
-      panel.style.maxHeight = Math.max(120, maxH) + 'px';
-      panel.classList.toggle('lvl-compact-panel-up', openUp);
-    }
-
-    function onDocClick(e) {
-      if (!wrap.contains(e.target) && !panel.contains(e.target)) closePanel();
+    // Bottom sheet: tlo (panel) jest zawsze position:fixed na caly ekran,
+    // karta (sheet) zawsze wjezdza z dolu EKRANU - nie ma zadnej pozycji
+    // do policzenia wzgledem przycisku, wiec nie ma czego "zgubic" przy
+    // scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. Klik na przyciemnione
+    // tlo (poza karta) zamyka panel, klik w sama karte nie.
+    function onBackdropClick(e) {
+      if (e.target === panel) closePanel();
     }
     function onKeyDown(e) {
       if (e.key === 'Escape') closePanel();
     }
     function openPanel() {
-      // Defensywnie: jesli przycisk jest czesciowo poza widocznym
-      // obszarem (np. na dole dlugiego formularza na telefonie),
-      // doscrolluj do niego NAJPIERW - 'instant' (nie 'smooth'), zeby
-      // zdazyl sie skonczyc PRZED podpieciem listenera 'scroll' ponizej
-      // (inaczej wlasny scroll animacji zamykalby dopiero co otwarty
-      // panel - znaleziono i naprawiono realnym testem wczesniej).
-      btn.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       renderPanel();
-      panel.style.display = '';
+      panel.style.display = 'flex';
       if (panel.parentNode !== document.body) document.body.appendChild(panel);
-      positionPanel();
+      // Wymuszenie reflow przed dodaniem klasy .open - inaczej przejscie
+      // slide-up nie zagra przy zmianie z display:none (przegladarka
+      // "zjada" pierwszy krok animacji bez tego).
+      void panel.offsetHeight;
+      panel.classList.add('open');
       btn.classList.add('open');
-      document.addEventListener('mousedown', onDocClick, true);
       document.addEventListener('keydown', onKeyDown, true);
-      // Panel jest position:fixed wzgledem VIEWPORTU, nie przycisku -
-      // przy przewijaniu strony NIE przesuwa sie razem z przyciskiem
-      // (bo nie jest w normalnym flow), wiec zamykamy go na kazdy scroll
-      // zamiast zostawiac "przyklejonym" w starym miejscu. 'scroll' nie
-      // bąbelkuje, ale w fazie capture jest widoczny dla kazdego
-      // przewijanego przodka - stad capture:true.
-      document.addEventListener('scroll', closePanel, true);
     }
     function closePanel() {
-      panel.style.display = 'none';
+      panel.classList.remove('open');
       btn.classList.remove('open');
-      document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
-      document.removeEventListener('scroll', closePanel, true);
+      setTimeout(function () {
+        if (!panel.classList.contains('open')) panel.style.display = 'none';
+      }, 300);
     }
+    panel.addEventListener('click', onBackdropClick);
     el._lvlCompactCleanup = function () {
       closePanel();
+      panel.removeEventListener('click', onBackdropClick);
       if (panel.parentNode) panel.parentNode.removeChild(panel);
     };
 
     btn.addEventListener('click', function () {
-      if (panel.style.display === 'none') openPanel(); else closePanel();
+      if (!panel.classList.contains('open')) openPanel(); else closePanel();
     });
 
     updateBtn();
@@ -426,7 +368,7 @@
     el._lvlCompactSetValue = function (value) {
       current = decodeKey(value);
       updateBtn();
-      if (panel.style.display !== 'none') renderPanel();
+      if (panel.classList.contains('open')) renderPanel();
     };
   }
 

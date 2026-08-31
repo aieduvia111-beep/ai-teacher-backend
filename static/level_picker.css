@@ -84,23 +84,48 @@
 .lvl-compact-chev{color:var(--muted2);transition:transform .2s;flex-shrink:0;}
 .lvl-compact-btn.open .lvl-compact-chev{transform:rotate(180deg);}
 
-/* PROBOWANE 31.08.2026: position:absolute wzgledem .lvl-compact-wrap
-   (jak dropdown "Przedmiot"). COFNIETE - voice_conversation.html ma
-   .form-panel zdefiniowany DWA RAZY (raz z overflow-y:auto, pozniej w
-   pliku RAZ JESZCZE z overflow:hidden, ktore wygrywa w kaskadzie) -
-   position:absolute bylby znowu przycinany na Voice AI, dokladnie ten
-   sam pierwotny bug, ktory wymusil position:fixed. Panel zostaje wiec
-   position:fixed + portalowany do document.body w JS (patrz
-   level_picker.js) - ale BEZ zadnej matematyki dostepnego miejsca,
-   tylko stala odleglosc od przycisku (patrz komentarz w JS).*/
-.lvl-compact-panel{
-  box-sizing:border-box;
-  z-index:9999;
-  overflow-y:auto; /* fallback gdy tresc nie miesci sie w max-height (JS, uwzglednia .m-hdr/.m-nav na mobile) */
-  background:var(--s2);border:1.5px solid var(--border-hi);border-radius:16px;
-  padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.45);
+/* PRZEBUDOWANE NA BOTTOM SHEET (31.08.2026, uzgodnione z userem po
+   pokazaniu makiety). Historia problemu: position:absolute wzgledem
+   .lvl-compact-wrap przycinane przez overflow:hidden przodkow (audyt
+   Voice AI - .form-panel zdefiniowany tam DWA RAZY w CSS, drugi raz z
+   overflow:hidden ktore wygrywa w kaskadzie) -> position:fixed+portal z
+   coraz bardziej zlozona matematyka pozycji wzgledem przycisku -> user
+   zglaszal "lata"/"wyskakuje w zle miejsce" po KAZDEJ probie, na realnym
+   telefonie, mimo ze kazda wersja byla zmierzona i potwierdzona lokalnie.
+   Zamiast dalszej naprawy pozycjonowania WZGLEDEM PRZYCISKU: pelnoekranowe
+   przyciemnione tlo (.lvl-sheet-backdrop) + karta wysuwana z dolu EKRANU
+   (.lvl-sheet, nie z dolu przycisku) - wzorzec z Google Maps/Spotify/Uber.
+   Nie ma zadnej pozycji "wzgledem przycisku" do policzenia, wiec nie ma
+   czego zgubic przy scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. */
+.lvl-sheet-backdrop{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0);
+  align-items:flex-end;justify-content:center;
+  transition:background .25s ease;
 }
-.lvl-compact-panel-up{box-shadow:0 -20px 40px rgba(0,0,0,.45);}
+.lvl-sheet-backdrop.open{background:rgba(0,0,0,.55);}
+
+.lvl-sheet{
+  box-sizing:border-box;width:100%;max-width:560px;
+  max-height:min(80vh,560px);overflow-y:auto;
+  background:var(--s2);border:1px solid var(--border-hi);border-bottom:none;
+  border-radius:20px 20px 0 0;
+  padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -20px 50px rgba(0,0,0,.5);
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);
+}
+.lvl-sheet-backdrop.open .lvl-sheet{transform:translateY(0);}
+
+.lvl-sheet-handle{
+  width:36px;height:4px;border-radius:2px;background:var(--border-hi);
+  margin:6px auto 14px;
+}
+
+.lvl-sheet-title{
+  font-family:var(--h);font-size:1.05em;font-weight:700;color:var(--text);
+  margin-bottom:14px;text-align:center;
+}
 
 .lvl-stage-row{display:flex;gap:6px;margin-bottom:8px;}
 .lvl-stage-chip{
