@@ -99,6 +99,11 @@ def _clean_latex(s: str) -> str:
     # powyzej). Nieskonczonosc (unicode) -> "oo", ktore sympy rozpoznaje
     # natywnie w parse_expr.
     s = s.translate(_UNICODE_OPERATOR_MAP)
+    # NAPRAWIONE (31.08.2026, weryfikacja nierownosci - odpowiedzi w
+    # notacji przedzialowej): LaTeX "\infty" (backslash + slowo, NIE to
+    # samo co unicode "∞" juz obslugiwane wyzej przez _UNICODE_OPERATOR_MAP)
+    # nigdzie nie bylo normalizowane - sympy rozpoznaje bare "oo" natywnie.
+    s = s.replace('\\infty', 'oo')
     s = s.replace('{', '(').replace('}', ')')
     return s.strip()
 
@@ -1401,6 +1406,143 @@ def verify_param_quadratic_question(question_text: str, options: list):
         return {"status": "match_index", "true_index": matches[0], "true_set": true_set}
     if len(matches) > 1:
         # opcje sie pokrywaja (nietypowe/zle sformulowane opcje) - abstain
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches", "true_set": true_set}
+
+
+# ---------------------------------------------------------------
+# Nierownosci (wymierne/wielomianowe) z JEDNA niewiadoma, odpowiedz to
+# zbior/przedzial (31.08.2026, user zglosil realne bledy live-testem:
+# "(2x-3)/(x+1)>1" mial klucz "x<-1 lub x>2" zamiast poprawnego
+# "x<-1 lub x>4" - to klasa "algebra_symbolic", ktora byla JEDYNA bez
+# ZADNEJ automatycznej weryfikacji w calym systemie: validation_rule
+# (Warstwa 2 dla zadan tekstowych) porownuje TYLKO pojedyncza liczbe,
+# a ta klasa z definicji ma odpowiedz-zbior. Rozwiazanie ponizej NIE
+# zgaduje punktami probnymi (co bylo pierwotnym pomyslem) - uzywa
+# prawdziwego sympy solve_univariate_inequality (dokladne rozwiazanie
+# symboliczne, respektuje wylaczenia dziedziny z mianownika
+# automatycznie) i porownuje z opcjami sparsowanymi jako sympy Set -
+# dokladnie ten sam mechanizm (parse_option_as_param_set, _sets_equal)
+# co juz istniejacy i dzialajacy verify_param_quadratic_question powyzej,
+# tylko ze odpowiedz jest w notacji przedzialowej "(-oo,-2)U(3,oo)",
+# nie w notacji nierownosciowej "m<-4 lub m>4" - stad osobny parser
+# opcji (_parse_interval_notation) zamiast ponownego uzycia
+# parse_option_as_param_set na samych opcjach.
+# ---------------------------------------------------------------
+
+_INEQ_OP_IN_TEXT_RE = re.compile(r'<=|>=|<|>')
+
+
+def _split_top_level_comma(s: str):
+    """Dzieli 'a,b' po PIERWSZYM przecinku na glebokosci zagniezdzenia 0
+    (ignoruje przecinki wewnatrz nawiasow). Potrzebne bo _clean_latex
+    zamienia \\frac{3}{2} na ((3)/(2)) - proste dzielenie regexem po
+    przecinku bez nawiasow w granicy przedzialu psulo sie na ulamkach."""
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in '([':
+            depth += 1
+        elif ch in ')]':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            return s[:i], s[i + 1:]
+    return None
+
+
+def _find_inequality_in_text(text: str):
+    """Pierwszy fragment $...$ zawierajacy 'x' i operator nierownosci
+    (NIE rownania - to obsluguje juz _find_equation_in_text) - kandydat
+    na nierownosc do rozwiazania. Zwraca surowy string chunk (do
+    sparsowania przez _parse_relational_list) albo None."""
+    if not text:
+        return None
+    for m in _EQ_IN_DOLLARS.finditer(text):
+        chunk = m.group(1)
+        if 'x' not in chunk:
+            continue
+        if not _INEQ_OP_IN_TEXT_RE.search(_clean_latex(chunk)):
+            continue
+        return chunk
+    return None
+
+
+def _parse_interval_notation(option_text: str):
+    """'(-\\infty,-2)\\cup(3,\\infty)' / '[-3/2, 1)' -> sympy Set. Obsluguje
+    sume kilku przedzialow (\\cup / unicode ∪). None jesli nie da sie
+    sparsowac (abstain dla tej opcji, nie blokuje calej weryfikacji -
+    identyczny wzorzec co parse_option_as_param_set)."""
+    text = _option_text(option_text)
+    text = text.replace('\\cup', '∪').replace('∪', '|SUM|')
+    pieces = [p for p in text.split('|SUM|') if p.strip()]
+    if not pieces:
+        return None
+    sets = []
+    for piece in pieces:
+        cleaned = _clean_latex(piece).strip()
+        if len(cleaned) < 3 or cleaned[0] not in '([' or cleaned[-1] not in ')]':
+            return None
+        left_br, right_br = cleaned[0], cleaned[-1]
+        split = _split_top_level_comma(cleaned[1:-1])
+        if split is None:
+            return None
+        low_s, high_s = split
+        try:
+            low = _parse_expr(low_s)
+            high = _parse_expr(high_s)
+        except Exception:
+            return None
+        left_open = (left_br == '(')
+        right_open = (right_br == ')')
+        try:
+            sets.append(sp.Interval(low, high, left_open, right_open))
+        except Exception:
+            return None
+    result = sets[0]
+    for s2 in sets[1:]:
+        result = result.union(s2)
+    return result
+
+
+def verify_inequality_question(question_text: str, options: list):
+    """Pelna weryfikacja jednego pytania typu 'rozwiaz nierownosc (wymierna
+    lub wielomianowa) z jedna niewiadoma' - odpowiedz to zbior/przedzial.
+    Zwraca dict w DOKLADNIE tym samym formacie co
+    verify_param_quadratic_question (patrz docstring tam) - "unverifiable"
+    / "match_index" / "no_option_matches". Nie modyfikuje niczego."""
+    chunk = _find_inequality_in_text(question_text)
+    if chunk is None:
+        return {"status": "unverifiable"}
+    rels = _parse_relational_list(chunk)
+    if not rels:
+        return {"status": "unverifiable"}
+    free_syms = set()
+    for rel in rels:
+        free_syms |= rel.free_symbols
+    if len(free_syms) != 1:
+        return {"status": "unverifiable"}
+    var = free_syms.pop()
+    try:
+        sets = [sp.solve_univariate_inequality(rel, var, relational=False, domain=S.Reals) for rel in rels]
+        true_set = sets[0]
+        for s2 in sets[1:]:
+            true_set = true_set.intersect(s2)
+    except Exception:
+        return {"status": "unverifiable"}
+
+    matches = []
+    any_option_parsed = False
+    for idx, opt in enumerate(options or []):
+        opt_set = _parse_interval_notation(opt)
+        if opt_set is None:
+            continue
+        any_option_parsed = True
+        if _sets_equal(opt_set, true_set):
+            matches.append(idx)
+    if not any_option_parsed:
+        return {"status": "no_option_matches", "true_set": true_set}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0], "true_set": true_set}
+    if len(matches) > 1:
         return {"status": "unverifiable"}
     return {"status": "no_option_matches", "true_set": true_set}
 
@@ -3796,6 +3938,10 @@ def verify_and_fix_math_question(question_text: str, options: list):
         return {"status": "match_index", "true_index": result2["true_index"], "explanation": None}
     if result2["status"] == "no_option_matches":
         return {"status": "no_option_matches", "explanation": None}
+
+    result2b = verify_inequality_question(question_text, options)
+    if result2b["status"] in ("match_index", "no_option_matches"):
+        return {**result2b, "explanation": None}
 
     result3 = verify_sequence_question(question_text, options)
     if result3["status"] in ("match_index", "no_option_matches"):
