@@ -1548,6 +1548,105 @@ def verify_inequality_question(question_text: str, options: list):
 
 
 # ---------------------------------------------------------------
+# Nierownosc kwadratowa z JEDNYM parametrem + warunek "spelniona dla
+# wszystkich x" (31.08.2026, znaleziona real-testem: temat "nierownosci
+# z parametrem" generuje TEN wzorzec, nie prosta "rozwiaz nierownosc
+# wzgledem x" - verify_inequality_question powyzej celowo abstainuje
+# (dwie zmienne: x ORAZ parametr), bo to inny archetyp matematyczny.
+# Wzorowane 1:1 na verify_param_quadratic_question (rownania+delta) -
+# tu tez o delte chodzi, tylko warunek "zawsze prawdziwa" zamiast
+# "liczba pierwiastkow rownania". SWIADOMIE waskie: tylko SCISLA
+# nierownosc (> / <), tylko gdy wspolczynnik wiodacy A jest CONKRETNA
+# LICZBA (nie zawiera parametru - zbyt zlozone, abstain). Szersze
+# przypadki (nierownosc niescisla >=/<=, "nie ma rozwiazan", A z
+# parametrem) swiadomie POMINIETE - abstain, nie zgadujemy.
+# ---------------------------------------------------------------
+
+_INEQ_ALWAYS_RE = re.compile(r'dla wszystkich\s*\$?\s*x|dla ka[zż]dego\s*\$?\s*x|dla dowolnego\s*\$?\s*x', re.I)
+
+
+def detect_inequality_always_condition(question_text: str):
+    """Zwraca 'always' gdy tekst pyta o warunek "nierownosc spelniona dla
+    wszystkich x", None jesli nie rozpoznano (abstain). Celowo NIE
+    obsluguje "nigdy nie jest spelniona" - to inny, bardziej
+    dwuznaczny wzorzec (patrz komentarz w sekcji wyzej)."""
+    if _INEQ_ALWAYS_RE.search(question_text or ""):
+        return 'always'
+    return None
+
+
+def verify_param_quadratic_always_inequality_question(question_text: str, options: list):
+    """Pelna weryfikacja pytania typu 'dla jakich m nierownosc Ax^2+Bx+C>0
+    (lub <0) jest spelniona dla WSZYSTKICH x' - odpowiedz to zbior/przedzial
+    parametru. Zwraca dict w DOKLADNIE tym samym formacie co
+    verify_param_quadratic_question."""
+    chunk = _find_inequality_in_text(question_text)
+    if chunk is None:
+        return {"status": "unverifiable"}
+    rel = _parse_relational(chunk)
+    if rel is None or not isinstance(rel, sp.core.relational.Relational):
+        return {"status": "unverifiable"}
+    if detect_inequality_always_condition(question_text) is None:
+        return {"status": "unverifiable"}
+    try:
+        expr = sp.expand(rel.lhs - rel.rhs)
+    except Exception:
+        return {"status": "unverifiable"}
+    free = expr.free_symbols
+    x_syms = [s for s in free if str(s) == 'x']
+    if not x_syms:
+        return {"status": "unverifiable"}
+    x = x_syms[0]
+    others = [s for s in free if s != x]
+    if len(others) > 1:
+        return {"status": "unverifiable"}
+    param = others[0] if others else None
+    try:
+        poly = Poly(expr, x)
+    except Exception:
+        return {"status": "unverifiable"}
+    if poly.degree() != 2:
+        return {"status": "unverifiable"}
+    A, B, C = poly.all_coeffs()
+    if A.free_symbols:
+        return {"status": "unverifiable"}  # wspolczynnik wiodacy zawiera parametr - zbyt zlozone
+    try:
+        a_val = float(A)
+    except Exception:
+        return {"status": "unverifiable"}
+    op = type(rel)
+    if a_val > 0 and op is sp.Gt:
+        kind = 'neg'
+    elif a_val < 0 and op is sp.Lt:
+        kind = 'neg'
+    else:
+        # np. A>0 z "<" ("< 0 dla wszystkich x") jest matematycznie
+        # niemozliwe dla paraboli w gore - zdegenerowany/nietypowy
+        # przypadek, abstain zamiast zgadywac
+        return {"status": "unverifiable"}
+    true_set = solve_discriminant_condition(A, B, C, param, kind)
+    if true_set is None:
+        return {"status": "unverifiable"}
+
+    matches = []
+    any_option_parsed = False
+    for idx, opt in enumerate(options or []):
+        opt_set = parse_option_as_param_set(opt, param)
+        if opt_set is None:
+            continue
+        any_option_parsed = True
+        if _sets_equal(opt_set, true_set):
+            matches.append(idx)
+    if not any_option_parsed:
+        return {"status": "no_option_matches", "true_set": true_set}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0], "true_set": true_set}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches", "true_set": true_set}
+
+
+# ---------------------------------------------------------------
 # Rownania kwadratowe BEZ parametru (czysto liczbowe) - rozwiaz i
 # porownaj z opcjami postaci "x = 2 i x = 3" / "x = \pm 2" / "x = 2".
 # ---------------------------------------------------------------
@@ -3942,6 +4041,10 @@ def verify_and_fix_math_question(question_text: str, options: list):
     result2b = verify_inequality_question(question_text, options)
     if result2b["status"] in ("match_index", "no_option_matches"):
         return {**result2b, "explanation": None}
+
+    result2c = verify_param_quadratic_always_inequality_question(question_text, options)
+    if result2c["status"] in ("match_index", "no_option_matches"):
+        return {**result2c, "explanation": None}
 
     result3 = verify_sequence_question(question_text, options)
     if result3["status"] in ("match_index", "no_option_matches"):
