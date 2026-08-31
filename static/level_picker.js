@@ -285,6 +285,16 @@
           if (current.stageKey !== st.key) current.classKey = null;
           current.stageKey = st.key;
           renderPanel();
+          // NAPRAWIONE (31.08.2026, user zglosil realny bug: panel "wskakuje
+          // na sama gore ekranu" po wybraniu etapu): renderPanel() dorenderowuje
+          // siatke klas i panel realnie rosnie w wysokosc, ale pozycja (top)
+          // byla policzona TYLKO RAZ przy otwarciu (gdy panel byl jeszcze
+          // krotki - sam rzad etapow, bez klas) i nigdy nie byla przeliczana
+          // ponownie po zmianie wysokosci tresci - na malych ekranach telefonu
+          // (gdzie miejsca ponizej przycisku i tak jest malo) to bez korekty
+          // pozycji moglo wypychac panel poza widoczny obszar/wymuszac dziwne
+          // zachowanie przegladarki probujacej "doscrollowac" do niego.
+          positionPanel();
         });
         stageRow.appendChild(chip);
       });
