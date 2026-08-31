@@ -209,13 +209,13 @@
     var el = typeof container === 'string' ? document.getElementById(container) : container;
     if (!el) return;
 
-    // Niektore strony (np. voice_conversation.html: applyAutoLevel wywoluje
-    // ponownie initLevelPicker() po doczytaniu profilu ucznia) wolaja
-    // renderCompact DWA RAZY na tym samym kontenerze. Poniewaz panel jest
-    // teraz portalowany do document.body (patrz nizej), sam el.innerHTML=''
-    // juz go NIE usunie - trzeba jawnie posprzatac poprzednia instancje
-    // (usunac stary panel z body + zdjac jego globalne listenery), zeby
-    // nie zostawic osieroconego wezla i wyciekajacych listenerow.
+    // Niektore strony (np. voice_conversation.html) woleaja renderCompact
+    // DWA RAZY na tym samym kontenerze. Panel jest teraz normalnym dzieckiem
+    // el (nie portalowany do body), wiec el.innerHTML='' ponizej sam go
+    // usunie - ALE jesli poprzednia instancja byla akurat otwarta w
+    // momencie ponownego wywolania, jej globalne listenery na document
+    // (mousedown/keydown z openPanel) zostalyby osierocone. Zamykamy wiec
+    // poprzednia instancje jawnie przed przebudowa.
     if (el._lvlCompactCleanup) el._lvlCompactCleanup();
 
     var current = decodeKey(opts.value);
@@ -229,36 +229,25 @@
     btn.type = 'button';
     btn.className = 'lvl-compact-btn';
 
-    // PRZEBUDOWANE CALKOWICIE (31.08.2026). Historia: position:absolute
-    // wzgledem wrap -> przycinane przez overflow:hidden przodkow (audyt
-    // Voice AI) -> position:fixed+portal z coraz bardziej zlozona
-    // matematyka pozycji wzgledem przycisku (dynamiczne gora/dol, potem
-    // stale, potem klamry .m-hdr/.m-nav) -> user zglaszal "lata"/"wyskakuje
-    // w zle miejsce" po KAZDEJ z tych prob, na realnym telefonie, mimo ze
-    // kazda wersja byla zmierzona i potwierdzona lokalnie. Zamiast dalejszej
-    // naprawy pozycjonowania WZGLEDEM PRZYCISKU, usuwamy ten pomysl
-    // calkowicie: to teraz "bottom sheet" (wzorzec z Google Maps/Spotify/
-    // Uber) - pelnoekranowe, przyciemnione tlo + karta wysuwana z dolu
-    // EKRANU (nie z dolu przycisku). Nie ma zadnego "gdzie wzgledem
-    // przycisku" do policzenia - karta zawsze jest w tym samym miejscu
-    // (dol ekranu), niezaleznie od tego gdzie jest przycisk, czy strona
-    // jest przewinieta, czy to telefon czy komputer. To bylo swiadomie
-    // uzgodnione z userem po pokazaniu makiety.
+    // PRZEBUDOWANE PONOWNIE (31.08.2026). Historia: position:absolute wzgledem
+    // wrap -> position:fixed+portal do body z rozna matematyka pozycji ->
+    // "bottom sheet" (pelnoekranowe tlo + karta z dolu ekranu) - kazda z tych
+    // wersji byla zmierzona i dziala poprawnie w testach, ale user po
+    // przetestowaniu bottom sheeta na telefonie zdecydowal, ze woli inny
+    // kierunek: "nie chce z dolu, tylko normalnie" - bez modala/przyciemnionego
+    // tla w ogole. Panel rozwija sie wiec teraz W MIEJSCU, w normalnym ukladzie
+    // strony (jak <details> albo istniejacy .lvl-class-wrap w pelnym
+        // .lvl-picker), popychajac tresc pod spodem w dol - bez position:fixed,
+    // bez portalu do document.body, bez z-index, bez liczenia wysokosci
+    // viewportu i pasków .m-hdr/.m-nav. To eliminuje CALA kategorie bledow
+    // pozycjonowania, z ktora zmagalismy sie przez caly dzien - nie dlatego,
+    // ze zostala w koncu "naprawiona", ale dlatego, ze przy tym podejsciu
+    // nie ma juz nic do pozycjonowania.
+    var panelWrap = document.createElement('div');
+    panelWrap.className = 'lvl-compact-inline-wrap';
     var panel = document.createElement('div');
-    panel.className = 'lvl-sheet-backdrop';
-    var sheet = document.createElement('div');
-    sheet.className = 'lvl-sheet';
-    panel.appendChild(sheet);
-    // NAPRAWIONE (bug zgloszony na telefonie): panel byl dodawany do
-    // document.body DOPIERO w openPanel(), przy pierwszym kliknieciu -
-    // znany bug Safari/iOS, gdzie swiezo wstawiony element
-    // position:fixed czasem w ogole sie nie maluje, dopoki przegladarka
-    // nie zrobi repaintu z innego powodu (np. scroll) - stad user widzial
-    // "nic sie nie pokazuje po kliknieciu, ale pojawia sie po cofnieciu/
-    // scrollu". Naprawa: portalujemy panel do body OD RAZU przy tworzeniu
-    // komponentu (wciaz ukryty przez display:none), zeby istnial w
-    // drzewie renderowania na dlugo przed pierwszym otwarciem.
-    document.body.appendChild(panel);
+    panel.className = 'lvl-compact-inline';
+    panelWrap.appendChild(panel);
 
     function updateBtn() {
       var st = findStage(current.stageKey);
@@ -276,17 +265,8 @@
     var classRowEl = null;
 
     function renderPanel() {
-      sheet.innerHTML = '';
+      panel.innerHTML = '';
       classRowEl = null;
-
-      var handle = document.createElement('div');
-      handle.className = 'lvl-sheet-handle';
-      sheet.appendChild(handle);
-
-      var title = document.createElement('div');
-      title.className = 'lvl-sheet-title';
-      title.textContent = 'Wybierz poziom';
-      sheet.appendChild(title);
 
       var stageRow = document.createElement('div');
       stageRow.className = 'lvl-stage-row';
@@ -304,14 +284,14 @@
         });
         stageRow.appendChild(chip);
       });
-      sheet.appendChild(stageRow);
+      panel.appendChild(stageRow);
 
       if (current.stageKey) {
         var st2 = findStage(current.stageKey);
         var classLabel = document.createElement('div');
         classLabel.className = 'lvl-sheet-class-label';
         classLabel.textContent = 'Wybierz klase';
-        sheet.appendChild(classLabel);
+        panel.appendChild(classLabel);
         var classRow = document.createElement('div');
         classRow.className = 'lvl-class-row-compact';
         st2.classes.forEach(function (cls) {
@@ -329,81 +309,49 @@
           });
           classRow.appendChild(c);
         });
-        sheet.appendChild(classRow);
+        panel.appendChild(classRow);
         classRowEl = classLabel;
       }
     }
 
-    // NAPRAWIONE (user zglosil: pierwszy raz w apce nie wiedzial, ze po
-    // wybraniu etapu trzeba przewinac karte w dol, zeby zobaczyc liste
-    // klas - siatka klas nie byla nigdy automatycznie pokazywana, wiec
-    // przy niskim realnym viewport na telefonie (pasek adresu przegladarki
-    // itp.) mogla wyladowac ponizej widocznego fragmentu karty). Zamiast
-    // liczyc na to, ze user sam odkryje ze trzeba scrollowac, dowozimy
-    // siatke klas do widoku automatycznie za kazdym razem gdy sie pojawia.
+    // Panel jest teraz normalnym elementem w ukladzie strony (nie
+    // wewnetrznie przewijanym kontenerem jak dawny sheet), wiec do
+    // pokazania nowo dodanej siatki klas wystarczy zwykly scrollIntoView
+    // strony - przegladarka sama znajdzie wlasciwy przewijany rodzic
+    // (glowny dokument), bez zadnej dodatkowej matematyki.
     function revealClassRow() {
       if (!classRowEl) return;
-      // scrollIntoView({block:'nearest'}) na samej etykiecie potrafilo
-      // uznac ja za "juz widoczna" i nic nie zrobic, mimo ze siatka klas
-      // POD nia dalej wystawala poza dol ekranu (etykieta i siatka to
-      // dwa osobne elementy - "nearest" patrzy tylko na cel wywolania).
-      // Siatka klas jest zawsze OSTATNIM elementem karty, wiec zamiast
-      // liczyc rect-y, po prostu przewijamy cala karte do jej wlasnego
-      // dolu - to gwarantuje ze siatka jest w calosci widoczna. Bez
-      // behavior:'smooth' celowo - przewijana wartosc jest zwykle mala
-      // (kilkanascie/kilkadziesiat px), a karta i tak juz wjezdza z
-      // animacja przy otwarciu, wiec druga, nakladajaca sie animacja
-      // scrolla w srodku tylko by przeszkadzala.
-      sheet.scrollTop = sheet.scrollHeight;
+      classRowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
-    // Bottom sheet: tlo (panel) jest zawsze position:fixed na caly ekran,
-    // karta (sheet) zawsze wjezdza z dolu EKRANU - nie ma zadnej pozycji
-    // do policzenia wzgledem przycisku, wiec nie ma czego "zgubic" przy
-    // scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. Klik na przyciemnione
-    // tlo (poza karta) zamyka panel, klik w sama karte nie.
-    function onBackdropClick(e) {
-      if (e.target === panel) closePanel();
+    function onDocClick(e) {
+      if (!wrap.contains(e.target)) closePanel();
     }
     function onKeyDown(e) {
       if (e.key === 'Escape') closePanel();
     }
     function openPanel() {
       renderPanel();
-      if (panel.parentNode !== document.body) document.body.appendChild(panel);
-      // Panel jest zawsze w layoutcie (patrz CSS: visibility zamiast
-      // display), wiec sama zmiana klasy .open wystarczy - nie trzeba
-      // wymuszac reflow przed animacja, jak przy dawnym display:none.
-      panel.classList.add('open');
+      panelWrap.classList.add('open');
       btn.classList.add('open');
-      revealClassRow();
+      document.addEventListener('mousedown', onDocClick, true);
       document.addEventListener('keydown', onKeyDown, true);
-      // Blokada scrolla strony pod spodem, dopoki sheet jest otwarty - tak
-      // samo jak istniejacy mobilny drawer (patrz mOpen/mClose w
-      // dashboard_FINAL.html) - bez tego widac bylo tresc formularza
-      // przewijajaca sie/widoczna normalnie pod ledwo przyciemnionym tlem,
-      // przez co cala nakladka wygladala jak wizualny blad, nie jak modal.
-      document.body.style.overflow = 'hidden';
     }
     function closePanel() {
-      panel.classList.remove('open');
+      panelWrap.classList.remove('open');
       btn.classList.remove('open');
+      document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKeyDown, true);
-      document.body.style.overflow = '';
     }
-    panel.addEventListener('click', onBackdropClick);
-    el._lvlCompactCleanup = function () {
-      closePanel();
-      panel.removeEventListener('click', onBackdropClick);
-      if (panel.parentNode) panel.parentNode.removeChild(panel);
-    };
 
     btn.addEventListener('click', function () {
-      if (!panel.classList.contains('open')) openPanel(); else closePanel();
+      if (!panelWrap.classList.contains('open')) openPanel(); else closePanel();
     });
+    el._lvlCompactCleanup = closePanel;
 
     updateBtn();
     wrap.appendChild(btn);
+    wrap.appendChild(panelWrap);
     el.appendChild(wrap);
 
     // Pozwala odswiezyc etykiete przycisku po auto-wypelnieniu z ankiety
@@ -412,7 +360,7 @@
     el._lvlCompactSetValue = function (value) {
       current = decodeKey(value);
       updateBtn();
-      if (panel.classList.contains('open')) renderPanel();
+      if (panelWrap.classList.contains('open')) renderPanel();
     };
   }
 

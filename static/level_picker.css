@@ -84,103 +84,49 @@
 .lvl-compact-chev{color:var(--muted2);transition:transform .2s;flex-shrink:0;}
 .lvl-compact-btn.open .lvl-compact-chev{transform:rotate(180deg);}
 
-/* PRZEBUDOWANE NA BOTTOM SHEET (31.08.2026, uzgodnione z userem po
-   pokazaniu makiety). Historia problemu: position:absolute wzgledem
-   .lvl-compact-wrap przycinane przez overflow:hidden przodkow (audyt
-   Voice AI - .form-panel zdefiniowany tam DWA RAZY w CSS, drugi raz z
-   overflow:hidden ktore wygrywa w kaskadzie) -> position:fixed+portal z
-   coraz bardziej zlozona matematyka pozycji wzgledem przycisku -> user
-   zglaszal "lata"/"wyskakuje w zle miejsce" po KAZDEJ probie, na realnym
-   telefonie, mimo ze kazda wersja byla zmierzona i potwierdzona lokalnie.
-   Zamiast dalszej naprawy pozycjonowania WZGLEDEM PRZYCISKU: pelnoekranowe
-   przyciemnione tlo (.lvl-sheet-backdrop) + karta wysuwana z dolu EKRANU
-   (.lvl-sheet, nie z dolu przycisku) - wzorzec z Google Maps/Spotify/Uber.
-   Nie ma zadnej pozycji "wzgledem przycisku" do policzenia, wiec nie ma
-   czego zgubic przy scrollu/zmianie wysokosci tresci/.m-hdr/.m-nav. */
-.lvl-sheet-backdrop{
-  display:flex;position:fixed;inset:0;z-index:9999;
-  background:rgba(3,3,8,0);
-  align-items:flex-end;justify-content:center;
-  /* visibility zamiast display:none/flex - z display, przegladarka
-     (zwlaszcza Android WebView/Chrome) czasem nie odswieza warstwy
-     kompozytora, gdy element jest jednoczesnie wstawiany do drzewa
-     layoutu I animowany w tym samym kroku, co user zgłosił jako
-     "caly ekran ciemnieje ale karta sie nie pojawia, dopoki nie
-     przewinie strony". visibility+transition-delay to standardowy,
-     dobrze wspierany sposob na animowane pokazywanie/ukrywanie bez
-     tego ryzyka - element jest zawsze w layoutcie (position:fixed,
-     wiec i tak nie zajmuje miejsca w normalnym flow), tylko niewidzialny
-     i nieklikalny gdy zamkniety. */
-  visibility:hidden;pointer-events:none;
-  transition:background .25s ease,visibility 0s linear .25s;
-  transform:translateZ(0);-webkit-transform:translateZ(0);
+/* PRZEBUDOWANE PONOWNIE (31.08.2026). Historia: position:absolute wzgledem
+   .lvl-compact-wrap -> position:fixed+portal do body -> "bottom sheet"
+   (pelnoekranowe przyciemnione tlo + karta z dolu ekranu, wzorzec z Google
+   Maps/Spotify/Uber). Bottom sheet dzialal poprawnie (zmierzony i
+   potwierdzony), ale user po przetestowaniu na telefonie zdecydowal, ze
+   woli inny kierunek: bez modala/przyciemnionego tla w ogole - panel
+   rozwija sie W MIEJSCU, w normalnym ukladzie strony (jak <details> albo
+   .lvl-class-wrap w pelnym .lvl-picker wyzej), popychajac tresc pod spodem
+   w dol. Bez position:fixed, bez portalu do document.body, bez z-index,
+   bez liczenia wysokosci viewportu i pasków .m-hdr/.m-nav - caly zestaw
+   problemow z pozycjonowaniem z tego dnia po prostu nie ma tu zastosowania. */
+.lvl-compact-inline-wrap{
+  max-height:0;opacity:0;overflow:hidden;
+  transition:max-height .32s ease,opacity .25s ease,margin-top .32s ease;
 }
-.lvl-sheet-backdrop.open{
-  background:rgba(3,3,8,.88);
-  visibility:visible;pointer-events:auto;
-  transition:background .25s ease;
-}
-/* USUNIETE (user zglosil na realnym telefonie Android: caly ekran
-   robil sie ciemny, ale sama karta w ogole sie nie pojawiala, dopoki
-   nie przewinelo sie strony pod spodem) - backdrop-filter:blur w
-   polaczeniu z position:fixed + transform na dziecku (.lvl-sheet)
-   to znany, niestabilny kombo w Chrome/WebView na Androidzie
-   (kompozytor czasem nie odswieza warstwy przy zmianie klasy, dopoki
-   nie wymusi tego inny event jak scroll). Zamiast szukac kolejnego
-   obejscia dla blura, po prostu go nie uzywamy - samo ciemniejsze
-   tlo (bez rozmycia) daje ten sam efekt oddzielenia karty od strony
-   i nie ma tego ryzyka. */
+.lvl-compact-inline-wrap.open{max-height:420px;opacity:1;margin-top:8px;}
 
-.lvl-sheet{
-  box-sizing:border-box;width:100%;max-width:560px;
-  max-height:min(80vh,560px);
-  max-height:min(80dvh,560px);
-  overflow-y:auto;
-  background:var(--s2);border:1px solid var(--border-hi);border-bottom:none;
-  border-radius:20px 20px 0 0;
-  padding:8px 14px calc(12px + env(safe-area-inset-bottom,0px));
-  box-shadow:0 -20px 50px rgba(0,0,0,.5);
-  transform:translateY(100%);
-  transition:transform .3s cubic-bezier(.32,.72,0,1);
+.lvl-compact-inline{
+  background:var(--s2);border:1px solid var(--border-hi);border-radius:14px;
+  padding:10px;
 }
-.lvl-sheet-backdrop.open .lvl-sheet{transform:translateY(0);}
 
-/* SKOMPRESOWANE (user: "nie chce dwoch krokow, ma sie miescic bez
-   scrolla") - mniejsze odstepy/czcionki/padding na kazdym elemencie
-   ponizej, zeby caly zestaw (rzad etapow + siatka klas) zawsze miescil
-   sie w jednym ekranie bez potrzeby scrollowania, nawet dla Podstawowki
-   z 8 klasami. */
 .lvl-sheet-class-label{
-  font-family:var(--h);font-size:.58em;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);margin:8px 0 6px;
+  font-family:var(--h);font-size:.6em;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin:10px 0 8px;
 }
 
-.lvl-sheet-handle{
-  width:32px;height:3px;border-radius:2px;background:var(--border-hi);
-  margin:2px auto 8px;
-}
-
-.lvl-sheet-title{
-  font-family:var(--h);font-size:.95em;font-weight:700;color:var(--text);
-  margin-bottom:8px;text-align:center;
-}
-
-.lvl-stage-row{display:flex;gap:5px;margin-bottom:6px;}
+.lvl-stage-row{display:flex;gap:5px;}
 .lvl-stage-chip{
-  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:6px 2px;border-radius:9px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 2px;border-radius:10px;background:var(--s1,var(--bg));border:1px solid var(--border);
   cursor:pointer;color:var(--muted2);transition:all .15s;font-family:var(--h);
 }
-.lvl-stage-chip svg{width:13px;height:13px;stroke:currentColor;flex-shrink:0;}
-.lvl-stage-chip span{font-size:.56em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lvl-stage-chip svg{width:15px;height:15px;stroke:currentColor;flex-shrink:0;}
+.lvl-stage-chip span{font-size:.6em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .lvl-stage-chip:hover{border-color:var(--border-hi);color:var(--text);}
 .lvl-stage-chip.active{background:rgba(124,106,255,.12);border-color:var(--accent);color:var(--accent2);}
 
-.lvl-class-row-compact{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.lvl-class-row-compact{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .lvl-class-chip-compact{
-  min-width:0;padding:7px 2px;border-radius:8px;background:var(--s1,var(--bg));border:1px solid var(--border);
-  color:var(--muted2);font-family:var(--h);font-size:.72em;font-weight:700;text-align:center;
-  cursor:pointer;transition:all .15s;white-space:normal;overflow-wrap:break-word;line-height:1.15;
+  min-width:0;padding:9px 2px;border-radius:9px;background:var(--s1,var(--bg));border:1px solid var(--border);
+  color:var(--muted2);font-family:var(--h);font-size:.75em;font-weight:700;text-align:center;
+  cursor:pointer;transition:all .15s;white-space:normal;overflow-wrap:break-word;line-height:1.2;
 }
 .lvl-class-chip-compact:hover{border-color:var(--accent);color:var(--text);}
 .lvl-class-chip-compact.active{background:var(--accent);border-color:var(--accent);color:#fff;}
