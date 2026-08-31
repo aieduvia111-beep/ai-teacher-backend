@@ -489,8 +489,21 @@ onAuthStateChanged(auth,async u=>{
         placeholder:'Wybierz poziom',
         onChange:saveLevelChange
       });
+    } else {
+      // NAPRAWIONE: sekcja po prostu zostawala pusta bez zadnego sladu
+      // dlaczego (blad byl polykany w catch nizej i nigdzie nie widoczny) -
+      // user zglosil "poziom edukacji zniknal", a przyczyna byla niemozliwa
+      // do zdiagnozowania bez otwierania devtools. Teraz widac wprost na
+      // stronie co poszlo nie tak (kod HTTP + komunikat backendu).
+      const c=document.getElementById('levelPickerContainer');
+      if(c) c.innerHTML='<div style="color:#f87171;font-size:.78em;padding:8px 4px;">Blad ladowania (HTTP '+res.status+'): '+(data.error||'brak szczegolow')+'</div>';
+      console.error('[Ustawienia] GET /users/me nie powiodlo sie:', res.status, data);
     }
-  }catch(e){}
+  }catch(e){
+    const c=document.getElementById('levelPickerContainer');
+    if(c) c.innerHTML='<div style="color:#f87171;font-size:.78em;padding:8px 4px;">Blad polaczenia: '+(e.message||e)+'</div>';
+    console.error('[Ustawienia] GET /users/me - wyjatek:', e);
+  }
 });
 
 window.doLogout=async function(){await signOut(auth);window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';};
