@@ -186,6 +186,11 @@ try:
     app.include_router(health_router)
 except Exception as e:
     print(f"health router error: {e}")
+try:
+    from .api.admin import router as admin_router
+    app.include_router(admin_router)
+except Exception as e:
+    print(f"admin router error: {e}")
 
 @app.get("/health")
 async def health():
