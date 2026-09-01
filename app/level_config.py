@@ -895,8 +895,22 @@ QUADRATIC_DIFFICULTY_TIERS = {
     },
     "3-4": {
         "kryterium": (
-            "Standardowy wzor na delte, wieksze lub niecalkowite "
-            "wspolczynniki, brak latwego rozkladu na czynniki."
+            "Standardowy wzor na delte, WIEKSZE LUB NIECALKOWITE "
+            "wspolczynniki (co najmniej jeden wspolczynnik >5 lub "
+            "wynikowy pierwiastek niecalkowity), BEZ latwego rozkladu "
+            "na czynniki - pierwiastki NIE moga byc widoczne 'na oko' "
+            "jako male liczby calkowite. NAPRAWIONE (real-test 01.09.2026: "
+            "AI mimo tej instrukcji regularnie generowalo tier 1-2 zamiast "
+            "3-4): ZAKAZANE na tym poziomie: (1) rownania typu "
+            "'x^2-5x+6=0', 'x^2+4x+4=0', 'x^2-9x+20=0' - male calkowite "
+            "wspolczynniki z oczywistym rozkladem na czynniki, to jest "
+            "tier 1-2, NIE 3-4; (2) JAKIKOLWIEK parametr (litera zamiast "
+            "liczby we wspolczynniku, np. 'm', 'k') - kazdy parametr to "
+            "tier 5-6 lub wyzej, NIE 3-4. Rownanie MUSI miec WYLACZNIE "
+            "liczbowe (nie literowe) wspolczynniki, z ktorych PRZYNAJMNIEJ "
+            "JEDEN jest wiekszy niz 5 (np. wspolczynnik przy x^2 rowny 2 "
+            "lub 3, albo wyraz wolny > 10) - to wymusza realne liczenie "
+            "delty zamiast zgadywania pierwiastkow z rozkladu."
         ),
         "przyklad": "2x² - 7x + 3 = 0",
     },
