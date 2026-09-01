@@ -357,6 +357,7 @@ async def generate_exam_from_image(
         result = sanitize_latex_json_backslashes(response.choices[0].message.content)
         exam_data = json.loads(result)
         
+        exam_data = _require_exact_exam_question_count(exam_data, num_questions)
         print(f"âœ… Sprawdzian wygenerowany: {exam_data.get('title', 'Bez tytuÅ‚u')}")
         
         return {
@@ -575,8 +576,9 @@ async def generate_quiz_from_image(
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
-            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(max(n, _MIN_FILL_BATCH)), t_start=t_start, difficulty=difficulty
+            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(_adaptive_fill_batch(n)), t_start=t_start, difficulty=difficulty
         )
+        quiz_data = _require_exact_question_count(quiz_data, num_questions, "Quiz z obrazka")
         return {"success": True, "quiz": quiz_data}
 
     except Exception as e:
@@ -2380,50 +2382,53 @@ async def _generate_quiz_topic_once(
     used_safe_letters = set()
     used_safe_constants = set()
     if _is_medium_linear_param_quadratic(topic, difficulty):
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(max(n, _MIN_FILL_BATCH), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(_adaptive_fill_batch(n), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
     elif _is_hard_trig_quadratic(topic, difficulty):
         # Port tego samego wzorca na trygonometrie - patrz
         # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_trig_quadratic_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_trig_quadratic_batch(_adaptive_fill_batch(n))
     elif _is_hard_arithmetic_sequence(topic, difficulty):
         # Port tego samego wzorca na ciagi arytmetyczne - patrz
         # _is_hard_arithmetic_sequence i _raw_generate_safe_sequence_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_batch(_adaptive_fill_batch(n))
     elif _is_hard_law_of_cosines(topic, difficulty):
         # Port tego samego wzorca na twierdzenie cosinusow - patrz
         # _is_hard_law_of_cosines i _raw_generate_safe_law_of_cosines_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_cosines_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_cosines_batch(_adaptive_fill_batch(n))
     elif _is_hard_geometric_sequence(topic, difficulty):
         # Port tego samego wzorca na ciagi geometryczne - patrz
         # _is_hard_geometric_sequence i _raw_generate_safe_geometric_sequence_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_geometric_sequence_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_geometric_sequence_batch(_adaptive_fill_batch(n))
     elif _is_hard_abs_value(topic, difficulty):
         # Port tego samego wzorca na wartosc bezwzgledna - patrz
         # _is_hard_abs_value i _raw_generate_safe_abs_value_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_abs_value_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_abs_value_batch(_adaptive_fill_batch(n))
     elif _is_hard_law_of_sines(topic, difficulty):
         # Port tego samego wzorca na twierdzenie sinusow - patrz
         # _is_hard_law_of_sines i _raw_generate_safe_law_of_sines_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_sines_batch(max(n, _MIN_FILL_BATCH))
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_sines_batch(_adaptive_fill_batch(n))
     elif _is_hard_quadratic_two_positive_roots(topic, difficulty):
         # Port tego samego wzorca na trudne rownania kwadratowe z
         # parametrem - patrz _is_hard_quadratic_two_positive_roots i
         # _raw_generate_safe_quadratic_two_positive_roots_batch.
         # used_letters/used_constants: patrz naprawa 30.08.2026 w docstringu.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(max(n, _MIN_FILL_BATCH), used_letters=used_safe_letters, used_constants=used_safe_constants)
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(_adaptive_fill_batch(n), used_letters=used_safe_letters, used_constants=used_safe_constants)
     else:
         regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
-            topic, effective_topic_is_forced, subject, level, max(n, _MIN_FILL_BATCH), difficulty, wlasne_instrukcje,
+            topic, effective_topic_is_forced, subject, level, _adaptive_fill_batch(n), difficulty, wlasne_instrukcje,
             avoid_block=avoid_block,
         )
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions, regenerate,
         t_start=t_start, difficulty=difficulty, metrics=metrics, level=level, topic=topic,
     )
-    quiz_data = await _apply_b2_difficulty_downgrade(
-        quiz_data, num_questions, topic, effective_topic_is_forced, subject, level, difficulty,
-        wlasne_instrukcje, metrics=metrics,
-    )
+    # BRAK CICHEGO DOWNGRADE: jesli zamowiono np. hard, wszystkie pytania
+    # musza byc hard. Nie uzupelniamy brakow pytaniami medium/easy.
+    # Jesli B1 nie dowiozl pelnej liczby, ponizszy kontrakt rzuci kontrolowany
+    # blad zamiast oddac niepelny lub latwiejszy quiz.
+    # Ostateczny kontrakt przed oddaniem wyniku do API/frontendu.
+    # Dokladnie N albo kontrolowany blad - nigdy ciche N-k.
+    quiz_data = _require_exact_question_count(quiz_data, num_questions, "Quiz")
     return quiz_data
 
 
@@ -2554,6 +2559,18 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
 # requested_count na koncu.
 _MIN_FILL_BATCH = 4
 
+# Dla wiekszych quizow nie robimy pojedynczych retry. Jedna mala partia
+# jest znacznie drozsza czasowo niz jeden sensowny batch, bo kazda runda
+# ma koszt requestu + walidacji. Nadal przycinamy wynik do requested_count.
+def _adaptive_fill_batch(missing: int) -> int:
+    try:
+        missing = max(1, int(missing))
+    except (TypeError, ValueError):
+        missing = 1
+    if missing <= 4:
+        return 4
+    return min(10, max(5, int(missing * 1.25 + 0.999)))
+
 
 # NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - swiadoma,
 # udokumentowana decyzja usera PO pelnej analizie, NIE ciche/globalne
@@ -2620,7 +2637,7 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 ### woli SZYBKI, uczciwy niedobor (albo B2 - latwiejszy poziom) niz
 ### czekanie do 3 minut. 180s->45s (ten sam rzad wielkosci co juz
 ### istniejacy wyjatek _EXTENDED_TIMEOUT_SECONDS dla kwadratowych+medium).
-_HARD_TIMEOUT_SECONDS = 45.0
+_HARD_TIMEOUT_SECONDS = 60.0
 
 # "B1" - GRACE EXTENSION (29.08.2026, port z exam_pdf_generator.py - patrz
 # tam pelne uzasadnienie nad _GRACE_MAX_SECONDS_EXAM). WASKI, WARUNKOWY
@@ -2634,7 +2651,7 @@ _HARD_TIMEOUT_SECONDS = 45.0
 # sufit "dodatkowego" rozszerzenia. Frontend (quiz_app.html) obnizony w
 # parze do 90s (margines na siec, nie 250s).
 _GRACE_MAX_MISSING = 2
-_GRACE_EXTRA_ROUNDS = 3
+_GRACE_EXTRA_ROUNDS = 1
 _GRACE_MAX_SECONDS = 60.0
 
 
@@ -2653,6 +2670,64 @@ def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
     if diff_word in _HARD_DIFFICULTY_WORDS:
         return _HARD_TIMEOUT_SECONDS
     return _DEFAULT_TIMEOUT_SECONDS
+
+
+def _require_exact_exam_question_count(exam_data: dict, requested_count: int) -> dict:
+    """Fail-closed contract for exam payloads: exactly N questions total.
+
+    Supports the current sectioned exam format (multiple_choice/open_ended).
+    Counts every question in every section and blocks any short/oversized exam
+    before it reaches the frontend.
+    """
+    try:
+        requested_count = int(requested_count)
+    except (TypeError, ValueError):
+        raise ValueError("Sprawdzian: nieprawidlowa liczba zamowionych pytan")
+    if not isinstance(exam_data, dict):
+        raise ValueError("Sprawdzian: generator nie zwrocil obiektu egzaminu")
+    sections = exam_data.get("sections")
+    if not isinstance(sections, list):
+        raise RuntimeError("Sprawdzian: brak poprawnej listy sections")
+    total = 0
+    for section in sections:
+        if not isinstance(section, dict):
+            raise RuntimeError("Sprawdzian: nieprawidlowa sekcja")
+        questions = section.get("questions", [])
+        if not isinstance(questions, list):
+            raise RuntimeError("Sprawdzian: sekcja ma nieprawidlowa liste pytan")
+        total += len(questions)
+    if total != requested_count:
+        raise RuntimeError(
+            f"Sprawdzian: NIEPELNY/NADMIAROWY WYNIK ZABLOKOWANY ({total}/{requested_count}). "
+            "Nie wysylam nieprawidlowej liczby pytan do uzytkownika."
+        )
+    return exam_data
+
+
+def _require_exact_question_count(quiz_data: dict, requested_count: int, feature: str = "Quiz") -> dict:
+    """Produkcyjny kontrakt: sukces tylko przy DOKLADNIE zadanej liczbie pytan.
+
+    Nigdy nie zwracamy cichego shortfallu (np. 17/20) jako sukcesu. To jest
+    ostatni bezpiecznik przed wyslaniem wyniku do frontendu/PDF.
+    """
+    try:
+        requested_count = int(requested_count)
+    except (TypeError, ValueError):
+        raise ValueError(f"{feature}: nieprawidlowa liczba zamowionych pytan")
+    questions = quiz_data.get("questions") if isinstance(quiz_data, dict) else None
+    if not isinstance(questions, list):
+        raise ValueError(f"{feature}: generator nie zwrocil listy pytan")
+    actual = len(questions)
+    if actual != requested_count:
+        raise RuntimeError(
+            f"{feature}: NIEPELNY WYNIK ZABLOKOWANY ({actual}/{requested_count}). "
+            "Nie wysylam niepelnego zestawu do uzytkownika."
+        )
+    for i, q in enumerate(questions, start=1):
+        if not isinstance(q, dict):
+            raise RuntimeError(f"{feature}: pytanie {i} ma nieprawidlowy format")
+        q["id"] = i
+    return quiz_data
 
 
 async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None, topic: str = None) -> dict:
@@ -2701,7 +2776,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     # WPROST, jakich schematow juz nie powtarzac, zamiast pytac od zera.
     seen_diversity_tag_dicts = []
     quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
-    max_rounds = 10
+    max_rounds = 6
     max_seconds = _max_generation_seconds(topic, difficulty)
     if t_start is None:
         t_start = time.monotonic()
@@ -2883,7 +2958,9 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None, topic: str = None)
                 return False
             # ok is None -> strukturalnie nierozstrzygalne, spadamy do AI-2 ponizej
     if client is None:
-        return True
+        # Fail-closed: brak niezaleznego weryfikatora nie moze byc
+        # traktowany jako potwierdzenie poprawnosci w produkcji.
+        return False
     q_class = q.get("problem_class")
     try:
         r = await client.chat.completions.create(
@@ -2899,13 +2976,17 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None, topic: str = None)
         parsed = safe_json_loads(r.choices[0].message.content)
     except Exception as e:
         print(f"[BlindVerify] blad wywolania AI-2: {e}")
-        return True
+        # Fail-closed: nie przepuszczamy pytania, którego nie udało się
+        # niezaleznie zweryfikować. Trafi ono do regeneracji.
+        return False
     letter = parse_blind_verify_letter(parsed)
     if letter is None:
-        return True
+        print("[BlindVerify] AI-2 zwrocilo nieprawidlowy/brakujacy wybor - odrzucam kandydata")
+        return False
     ai2_idx = _QUIZ_LETTER_TO_IDX.get(letter)
     if ai2_idx is None:
-        return True
+        print(f"[BlindVerify] AI-2 zwrocilo nieobslugiwana opcje: {letter!r} - odrzucam kandydata")
+        return False
     return ai2_idx == q.get("correct")
 
 
@@ -3278,10 +3359,8 @@ async def generate_quiz_from_topic(
             last_error = e
             print(f"âŒ Quiz-Scope fallback - blad generacji: {e}")
 
-    # Nic lepszego sie nie udalo - zwroc ostatni wygenerowany quiz (nawet
-    # jesli nie przeszedl walidacji) zamiast twardego bledu. Lepiej dac
-    # userowi quiz o niepewnym temacie niz pusty ekran bledu.
-    if last_quiz_data is not None:
-        return {"success": True, "quiz": last_quiz_data}
-    print(f"âŒ BÅ‚Ä…d: {str(last_error)}")
-    return {"success": False, "error": str(last_error) if last_error else "unknown error"}
+    # FAIL-CLOSED: jesli temat nie przeszedl walidacji, NIE zwracamy go jako
+    # success tylko po to, zeby uniknac pustego ekranu. To chroni produkcje
+    # przed quizem spoza zakresu klasy/przedmiotu.
+    print(f"[Quiz-Scope] brak zweryfikowanego quizu po {MAX_ATTEMPTS} probach")
+    return {"success": False, "error": str(last_error) if last_error else "Nie udalo sie wygenerowac quizu zgodnego z zakresem."}
