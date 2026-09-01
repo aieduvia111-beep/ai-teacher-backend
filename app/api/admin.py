@@ -17,17 +17,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def generation_stats(admin_key: str, feature: str = None, limit: int = 20):
     expected = os.environ.get("ADMIN_STATS_KEY", "")
     if not expected or admin_key != expected:
-        # TYMCZASOWA DIAGNOSTYKA (do usuniecia po ustaleniu przyczyny
-        # niezgodnosci klucza) - dlugosc/reprezentacja obu wartosci,
-        # NIGDY sama wartosc sekretu.
-        return {
-            "success": False,
-            "error": "Brak uprawnien - wymagany poprawny admin_key",
-            "debug_expected_len": len(expected),
-            "debug_received_len": len(admin_key),
-            "debug_expected_repr": repr(expected),
-            "debug_received_repr": repr(admin_key),
-        }
+        return {"success": False, "error": "Brak uprawnien - wymagany poprawny admin_key"}
 
     db = SessionLocal()
     try:
