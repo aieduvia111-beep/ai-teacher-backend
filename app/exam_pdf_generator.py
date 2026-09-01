@@ -2080,7 +2080,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         # tematy dzialaja jak dotychczas (samo slowo trudnosci).
         difficulty_anchor_blok = ""
         if is_quadratic_equation_topic(temat):
-            anchor_text = get_quadratic_difficulty_anchor(trudnosc)
+            anchor_text = get_quadratic_difficulty_anchor(trudnosc, level=klasa)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_sequence_topic(temat):

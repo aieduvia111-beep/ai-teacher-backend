@@ -916,7 +916,7 @@ async def _raw_generate_quiz_topic_once(
     # (samo slowo trudnosci) - to swiadomie ograniczone rozszerzenie.
     difficulty_anchor_blok = ""
     if is_quadratic_equation_topic(topic):
-        anchor_text = get_quadratic_difficulty_anchor(difficulty)
+        anchor_text = get_quadratic_difficulty_anchor(difficulty, level=level)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 

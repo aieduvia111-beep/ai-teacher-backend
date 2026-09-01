@@ -954,14 +954,36 @@ _QUADRATIC_DIFFICULTY_WORD_TO_TIER = {
 }
 
 
-def get_quadratic_difficulty_anchor(difficulty_word: str):
+def get_quadratic_difficulty_anchor(difficulty_word: str, level: str = None):
     """Zwraca tekst kryterium+przykladu (skala 1-10) dla podanego slowa
     trudnosci (easy/medium/hard - Quiz; latwy/sredni/trudny lub
     latwa/srednia/trudna - Sprawdzian). None jesli slowo nierozpoznane
-    (wtedy caller ma spasc na stare, generyczne zachowanie)."""
+    (wtedy caller ma spasc na stare, generyczne zachowanie).
+
+    NAPRAWIONE (real-test, 01.09.2026 - user zglosil realna calkowita
+    porazke generowania: podstawowka_7, "Rownania kwadratowe", medium,
+    20/20 odrzuconych, polowa difficulty_fail): funkcja ZAWSZE zwracala
+    tekst dla bazowego tieru "medium"->5-6 (uklad z parametrem,
+    warunek na delte - realnie material liceum), NIEZALEZNIE od `level`.
+    Jednoczesnie walidator (app/difficulty/modifiers/math_quadratic.py)
+    JEST poziomo-swiadomy i dla podstawowka_7 (nizej niz baseline
+    liceum_2) oczekiwal PRZESUNIETEGO w dol tieru "3-4" (zwykly wzor na
+    delte, bez parametru). AI dostawalo wiec instrukcje pisania jednego
+    rodzaju zadania, a walidator ocenial je wedlug zupelnie innego,
+    prostszego wzorca - gwarantowana, systematyczna niezgodnosc.
+    Teraz `level` (opcjonalny, dla wstecznej zgodnosci wywolan bez niego)
+    przesuwa wybrany tier DOKLADNIE tak samo jak walidator."""
     tier = _QUADRATIC_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
     if not tier:
         return None
+    if level:
+        from .difficulty.calibration import level_adjusted_tier_shift
+        tier_order = list(QUADRATIC_DIFFICULTY_TIERS.keys())
+        shift = level_adjusted_tier_shift(level)
+        if shift:
+            idx = tier_order.index(tier)
+            idx = max(0, min(len(tier_order) - 1, idx + shift))
+            tier = tier_order[idx]
     data = QUADRATIC_DIFFICULTY_TIERS[tier]
     return (
         f"POZIOM TRUDNOSCI {tier}/10 (skala dla rownan kwadratowych): {data['kryterium']} "
