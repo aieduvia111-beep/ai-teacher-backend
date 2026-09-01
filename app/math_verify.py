@@ -1660,10 +1660,22 @@ def _parse_numeric_root_set(option_text: str):
     chunks = _EQ_IN_DOLLARS.findall(text)
     if not chunks:
         chunks = [text]
+    # NAPRAWIONE (01.09.2026, przeglad po realnej calkowitej porazce
+    # generowania quizu "Rownania kwadratowe" - drugorzedne podejrzenie
+    # obok glownej przyczyny w get_quadratic_difficulty_anchor): prefiks
+    # "x = " byl usuwany tylko dla GOLEGO "x" - odpowiedz w notacji z
+    # indeksem dolnym ("x_1 = 2 i x_2 = -3", albo z klamrami LaTeX
+    # "x_{1}", ktore _clean_latex zamienia na "x_(1)", albo unicode
+    # "x₁"/"x₂") nie byla rozpoznawana jako prefiks do usuniecia - trafialo
+    # to do parse_expr jako caly string "x_1=2", co parsuje sie jako
+    # sympy Eq(x_1, 2) zamiast liczby 2, psujac porownanie i prowadzac do
+    # falszywego "no_option_matches"/sympy_mismatch mimo poprawnej
+    # matematycznie odpowiedzi.
+    _x_prefix = r'^x(?:_?\(?\d+\)?|[\u2080-\u2089]+)?\s*=\s*'
     values = set()
     for chunk in chunks:
         c = _clean_latex(chunk)
-        c = re.sub(r'^x\s*=\s*', '', c.strip())
+        c = re.sub(_x_prefix, '', c.strip())
         if '\\pm' in c or '+-' in c or '\u00b1' in c:
             base = re.sub(r'\\pm|\+-|\u00b1', '', c).strip()
             try:
@@ -1675,8 +1687,8 @@ def _parse_numeric_root_set(option_text: str):
             continue
         # "2$ i $x = -3" moze po oczyszczeniu miec resztki "i x" w srodku -
         # rozdziel dodatkowo po polskim "i" pomiedzy liczbami jesli jest
-        for sub in re.split(r'\bi\b(?=\s*x\s*=)|,', c):
-            sub = re.sub(r'^x\s*=\s*', '', sub.strip()).strip()
+        for sub in re.split(r'\bi\b(?=\s*x(?:_?\(?\d+\)?|[\u2080-\u2089]+)?\s*=)|,', c):
+            sub = re.sub(_x_prefix, '', sub.strip()).strip()
             if not sub:
                 continue
             try:
