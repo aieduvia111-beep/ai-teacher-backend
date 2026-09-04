@@ -1025,8 +1025,29 @@ def is_quadratic_equation_topic(topic: str) -> bool:
     (wspolny rdzen dla rownanie/rownania/rownaniami/rownaniom), ale jest
     odporne na literowki w koncowce, takie jak zaobserwowana. Fix jest
     czysto rozszerzajacy (superset istniejacego dopasowania), nie zawezajacy -
-    zero ryzyka przestania wykrywac cos, co dzialalo wczesniej."""
+    zero ryzyka przestania wykrywac cos, co dzialalo wczesniej.
+
+    NAPRAWIONE (real-test, 04.09.2026 - zgloszony wczesniej "total
+    failure" dla tematu "Wzory Viete'a"): temat NIE zawiera ani
+    "rownan"/"równan" ani "kwadratow" (to nazwa TECHNIKI, nie rownania) -
+    wykrywanie zwracalo False, wiec get_quadratic_difficulty_anchor
+    NIGDY nie byl wolany i AI nie dostawalo ZADNEJ wskazowki o
+    docelowym tierze trudnosci. Walidator (Warstwa 3,
+    classify_quadratic_difficulty w math_verify.py) i tak klasyfikuje
+    KAZDE wygenerowane pytanie o sumie/iloczynie pierwiastkow jako
+    tier 7-8 (patrz tam, linia z komentarzem "warunek na znak/sume/
+    iloczyn pierwiastkow (Viete)") NIEZALEZNIE od tematu - dziala na
+    TRESCI pytania, nie na nazwie tematu. Efekt: identyczny mechanizm
+    niezgodnosci co oryginalny blad rownan kwadratowych (prompt i
+    walidator "nie rozmawialy ze soba"), potwierdzony real-testem:
+    82% odrzucen (14/17), w tym difficulty_fail z REASON pokazujacym
+    dokladnie te niezgodnosc. Dodano "viet" (lapie viete/vieta/viète,
+    bez wzgledu na koncowke/pisownie) jako dodatkowy, niezalezny
+    warunek - user MOZE wpisac "Wzory Viete'a" bez slowa "rownanie"
+    ani "kwadratowe" wprost."""
     t = (topic or "").lower()
+    if "viet" in t:
+        return True
     return ("równan" in t or "rownan" in t) and "kwadratow" in t
 
 
