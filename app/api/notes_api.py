@@ -60,7 +60,7 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
                 )
             })
             vision_resp = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": content}],
                 max_tokens=400, timeout=12
             )

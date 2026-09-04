@@ -112,7 +112,7 @@ async def _extract_topic_from_images(images: list) -> str:
         )
     })
     resp = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": content}],
         max_tokens=200, temperature=0.3
     )
