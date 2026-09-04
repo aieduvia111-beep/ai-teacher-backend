@@ -71,7 +71,7 @@
     popup.innerHTML =
       '<div style="' +
       'background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;' +
-      'padding:32px 28px;max-width:380px;width:100%;text-align:center;' +
+      'padding:32px 28px;max-width:380px;width:100%;min-height:398px;box-sizing:border-box;text-align:center;' +
       'box-shadow:0 0 60px rgba(124,106,255,0.15);position:relative;' +
       'animation:popIn .3s cubic-bezier(.34,1.56,.64,1);' +
       '">' +
