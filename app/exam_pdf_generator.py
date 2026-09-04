@@ -39,7 +39,7 @@ from .math_verify import (
     is_too_similar_diversity_tag, build_safe_linear_param_quadratic,
     pick_safe_param_values, check_sequence_formula_open_answer,
     format_avoid_diversity_block, build_safe_trig_skeleton,
-    build_safe_sequence_two_terms, build_safe_law_of_cosines_triangle,
+    build_safe_sequence_two_terms, build_safe_sequence_sum, build_safe_law_of_cosines_triangle,
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
     build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
@@ -1325,6 +1325,19 @@ def _is_hard_arithmetic_sequence_exam(temat: str, trudnosc: str) -> bool:
     is_arithmetic = ("ciąg" in t or "ciag" in t) and "arytmetyczn" in t and "geometryczn" not in t
     trudnosc_word = (trudnosc or "").strip().lower()
     return is_arithmetic and trudnosc_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_medium_arithmetic_sequence_exam(temat: str, trudnosc: str) -> bool:
+    """NOWE (04.09.2026, user: "ciagi arytmetyczne teraz sprobuj
+    naprawiac") - analogiczna do _is_hard_arithmetic_sequence_exam
+    wyzej, ale dla SREDNIEJ trudnosci - patrz pelne uzasadnienie w
+    math_verify.build_safe_sequence_sum (tier 2-3: suma pierwszych n
+    wyrazow, JEDNO dzialanie, w odroznieniu od tieru 4-5 - ukladu
+    rownan - obslugiwanego przez _is_hard_arithmetic_sequence_exam)."""
+    t = (temat or "").lower()
+    is_arithmetic = ("ciąg" in t or "ciag" in t) and "arytmetyczn" in t and "geometryczn" not in t
+    trudnosc_word = (trudnosc or "").strip().lower()
+    return is_arithmetic and trudnosc_word in _MEDIUM_DIFFICULTY_WORDS
 
 
 def _is_hard_law_of_cosines_exam(temat: str, trudnosc: str) -> bool:
@@ -2615,6 +2628,132 @@ ZASADY:
                 pyt["_safe_generated"] = True
         return data
 
+    # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE, SREDNIA TRUDNOSC
+    # (04.09.2026) - patrz pelne uzasadnienie w
+    # math_verify.build_safe_sequence_sum. Ten sam mechanizm co
+    # _raw_generate_safe_sequence_batch wyzej, ale dla tieru 2-3 (JEDNO
+    # dzialanie - suma pierwszych n wyrazow) zamiast 4-5 (uklad rownan).
+    def _raw_generate_safe_sequence_sum_batch(self, n: int) -> dict:
+        """Generuje `n` zadan zamknietych dla archetypu 'ciag arytmetyczny
+        ma a1=X, r=Y - oblicz sume pierwszych n wyrazow' metoda 'safe
+        parameter generation' - zwraca dane w KSZTALCIE sprawdzianu,
+        analogicznie do _raw_generate_safe_sequence_batch."""
+        buffered_n = n + 3
+        skeletons = []
+        attempts = 0
+        while len(skeletons) < buffered_n and attempts < buffered_n * 4:
+            attempts += 1
+            sk = build_safe_sequence_sum()
+            if sk is not None:
+                skeletons.append(sk)
+        letters = "abcd"
+        items_desc = []
+        for i, sk in enumerate(skeletons):
+            options = [sk["correct_text"]] + sk["distractors"]
+            random.shuffle(options)
+            correct_idx = options.index(sk["correct_text"])
+            sk["_options"] = options
+            sk["_correct_idx"] = correct_idx
+            opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+            items_desc.append(
+                f"{i + 1}. Dane: {sk['question_text']} "
+                f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+                f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+            )
+        items_text = "\n".join(items_desc)
+        prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o sumie ciagu arytmetycznego,
+zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja zostaly JUZ
+OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci prawie doslownie, jest juz gotowa jezykowo).
+2. Napisac krotkie wyjasnienie (1-2 zdania) - podstawienie do wzoru
+   $S_n = \\frac{{n}}{{2}}(2a_1+(n-1)r)$.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
+sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
+nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
+system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "sekcje": [
+        {{
+            "typ": "zamkniete",
+            "pytania": [
+                {{
+                    "nr": 1,
+                    "tresc": "Ciąg arytmetyczny ma $a_1 = 2$ i różnicę $r = 3$. Oblicz sumę pierwszych 10 wyrazów tego ciągu.",
+                    "punkty": 1,
+                    "wyjasnienie": "Podstawiamy do wzoru $S_n=\\\\frac{{n}}{{2}}(2a_1+(n-1)r)$: $S_{{10}}=\\\\frac{{10}}{{2}}(4+9\\\\cdot3)=5\\\\cdot31=155$.",
+                    "diversity_tag": {{
+                        "skill": "suma n wyrazow ciagu arytmetycznego", "concept": "wzor na sume S_n",
+                        "task_type": "oblicz sume",
+                        "reasoning": "podstaw a1, r i n do wzoru na sume"
+                    }}
+                }}
+            ]
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} zadan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+        try:
+            r = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content":
+                        "Jestes nauczycielem tworzacym sprawdziany. "
+                        "Odpowiadasz TYLKO czystym JSON. Zero backticks."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7, max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+            )
+            raw = r.choices[0].message.content.strip()
+            raw = self._fix_json(raw)
+            try:
+                ai_data = json.loads(raw)
+            except Exception:
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                ai_data = json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            print(f"[MathVerify][Exam] blad Safe Parameter Generation (ciagi suma): {e}")
+            return {}
+        ai_pytania = []
+        for sekcja in ai_data.get("sekcje", []):
+            if sekcja.get("typ") == "zamkniete":
+                ai_pytania.extend(sekcja.get("pytania", []))
+        n_items = min(len(skeletons), len(ai_pytania)) if ai_pytania else 0
+        pytania = []
+        for i in range(n_items):
+            sk = skeletons[i]
+            ai_p = ai_pytania[i] if isinstance(ai_pytania[i], dict) else {}
+            options = sk["_options"]
+            correct_idx = sk["_correct_idx"]
+            pytania.append({
+                "nr": i + 1,
+                "tresc": ai_p.get("tresc") or sk["question_text"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(options)],
+                "odpowiedz": letters[correct_idx],
+                "final_answer": sk["correct_text"],
+                "punkty": 1,
+                "wyjasnienie": ai_p.get("wyjasnienie", ""),
+                "diversity_tag": ai_p.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        data = {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        data = _fix_latex_in_exam_data(data)
+        for sekcja in data.get("sekcje", []):
+            for pyt in sekcja.get("pytania", []):
+                pyt["_safe_generated"] = True
+        return data
+
     # SAFE PARAMETER GENERATION - TWIERDZENIE COSINUSOW (29.08.2026,
     # port na Sprawdzian) - patrz pelne uzasadnienie w
     # math_verify.build_safe_law_of_cosines_triangle i
@@ -3407,6 +3546,8 @@ ZASADY:
                 return self._raw_generate_safe_trig_quadratic_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_hard_arithmetic_sequence_exam(temat, trudnosc):
                 return self._raw_generate_safe_sequence_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_medium_arithmetic_sequence_exam(temat, trudnosc):
+                return self._raw_generate_safe_sequence_sum_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_hard_law_of_cosines_exam(temat, trudnosc):
                 return self._raw_generate_safe_law_of_cosines_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_hard_geometric_sequence_exam(temat, trudnosc):

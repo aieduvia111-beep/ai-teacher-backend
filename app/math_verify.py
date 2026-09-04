@@ -776,6 +776,62 @@ _SEQ_R_POOL = [v for v in range(-6, 7) if v != 0]  # roznica NIGDY 0 (nie byloby
 _SEQ_INDEX_POOL = list(range(2, 10))  # m,n >= 2 - GWARANTUJE a_m != a1 (patrz distraktor 3 nizej)
 
 
+# SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE, SREDNIA TRUDNOSC (04.09.2026,
+# user: "ma byc 20 na 20... ciagi arytmetyczne teraz spróbuj naprawiac"):
+# build_safe_sequence_two_terms wyzej ZAWSZE generuje wzorzec "dwa wyrazy ->
+# uklad rownan" (tier 4-5, patrz SEQUENCE_DIFFICULTY_TIERS w level_config.py) -
+# dla trudnosci "sredni"/"latwy" (tier 2-3/1) NIE ISTNIAL zaden bezpieczny
+# archetyp, wiec _is_hard_arithmetic_sequence_exam byla CELOWO waska (tylko
+# "trudny") i rundy dogenerowania dla SREDNIEJ trudnosci zawsze spadaly na
+# zawodny, freeform generator - real-test potwierdzil uporczywy niedobor
+# (5/8) NAWET z ostatecznym ratunkiem (relax_difficulty), bo problem nie byl
+# w tierze, tylko w tym, ze zaden archetyp nie mial szans wgenerowac tego
+# WZORCA w ogole. Ten builder domyka luke: wzorzec "a1, r dane wprost ->
+# oblicz sume pierwszych n wyrazow" - DOKLADNIE tier 2-3 z
+# SEQUENCE_DIFFICULTY_TIERS (patrz przyklad tam: "a1=2, r=3, suma pierwszych
+# 10 wyrazow").
+_SEQ_SUM_N_POOL = list(range(5, 16))  # "pierwszych n wyrazow" - 5..15
+
+
+def build_safe_sequence_sum(a1: int = None, r: int = None, n: int = None) -> dict:
+    """Buduje JEDEN bezpieczny szkielet zadania 'ciag arytmetyczny ma a1=X,
+    r=Y - oblicz sume pierwszych n wyrazow' (tier 2-3, JEDNO dzialanie, bez
+    ukladu rownan - w odroznieniu od build_safe_sequence_two_terms wyzej).
+    S_n = n/2 * (2*a1 + (n-1)*r) - zawsze calkowite dla calkowitych a1/r/n
+    (dla n parzyste n/2 calkowite; dla n nieparzyste (n-1) parzyste, wiec
+    (n-1)*r parzyste, wiec 2*a1+(n-1)*r parzyste)."""
+    if a1 is None:
+        a1 = random.choice(_SEQ_A1_POOL)
+    if r is None:
+        r = random.choice(_SEQ_R_POOL)
+    if n is None:
+        n = random.choice(_SEQ_SUM_N_POOL)
+    s_n = n * (2 * a1 + (n - 1) * r) // 2
+    correct_text = f"{s_n}"
+    # DYSTRAKTORY - typowe, realne bledy uczniow: (1) uzycie n zamiast (n-1)
+    # we wzorze (czesty blad "o jeden za duzo"), (2) pomylenie a1<->r,
+    # (3) obliczenie a_n (n-ty wyraz) zamiast sumy S_n (mylenie "wyraz" z
+    # "suma") - kazdy dystraktor liczony NIEZALEZNIE, moze przypadkiem
+    # zbiec sie z poprawna odpowiedzia dla niektorych a1/r/n, wiec
+    # odrzucamy taki szkielet i losujemy od nowa (patrz petla w callerze).
+    wrong1 = n * (2 * a1 + n * r) // 2
+    wrong2 = n * (2 * r + (n - 1) * a1) // 2
+    wrong3 = a1 + (n - 1) * r
+    distractors_vals = [wrong1, wrong2, wrong3]
+    if len({s_n, *distractors_vals}) < 4:
+        return None
+    question_text = (
+        f"Ciąg arytmetyczny ma $a_1 = {a1}$ i różnicę $r = {r}$. "
+        f"Oblicz sumę pierwszych {n} wyrazów tego ciągu."
+    )
+    return {
+        "a1": a1, "r": r, "n": n, "s_n": s_n,
+        "question_text": question_text,
+        "correct_text": correct_text,
+        "distractors": [str(v) for v in distractors_vals],
+    }
+
+
 def build_safe_sequence_two_terms(a1: int = None, r: int = None, m: int = None, n: int = None) -> dict:
     """Buduje JEDEN bezpieczny szkielet zadania 'w ciagu arytmetycznym
     a_m=X, a_n=Y - wyznacz pierwszy wyraz i roznice' (patrz komentarz
