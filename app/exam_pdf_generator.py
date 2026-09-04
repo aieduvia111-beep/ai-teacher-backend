@@ -3272,7 +3272,9 @@ ZASADY:
         used_safe_constants = set()
         data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
-        data = self._apply_b2_difficulty_downgrade(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, metrics=metrics)
+        # BRAK CICHEGO DOWNGRADE: zamowiony poziom trudnosci jest kontraktem.
+        # Jesli B1 nie dowiozl kompletu, generate_exam ma zwrocic kontrolowany
+        # blad zamiast PDF z 10/14 albo z pytaniami na nizszym poziomie.
         return data
 
     def _fill_missing_exam_questions(self, data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, max_rounds=10, t_start=None, seen_fingerprints=None, metrics=None, seen_diversity_tags=None, used_safe_letters=None, used_safe_constants=None, seen_diversity_tag_dicts=None):
@@ -3705,6 +3707,21 @@ ZASADY:
         data = self._get_exam_data(temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot)
         if not data:
             raise ValueError("GPT nie zwrócił poprawnych danych")
+
+        # PRODUKCYJNY FAIL-CLOSED CONTRACT:
+        # PDF nigdy nie może zostać wygenerowany z inną liczbą zadań niż
+        # zamówiona. Kod jest źródłem prawdy, nie pole _shortfall_warning.
+        actual_count = sum(
+            len(s.get("pytania", []))
+            for s in data.get("sekcje", [])
+            if isinstance(s, dict)
+        )
+        if actual_count != int(liczba_pytan):
+            raise RuntimeError(
+                f"Sprawdzian: NIEPELNY/NADMIAROWY WYNIK ZABLOKOWANY "
+                f"({actual_count}/{liczba_pytan}). PDF nie zostanie wygenerowany."
+            )
+
         shortfall_info = None
         # "B2": _difficulty_downgrade_notice moze byc obecne NAWET gdy
         # _shortfall_warning juz nie ma (B2 w pelni domknal luke) - user
