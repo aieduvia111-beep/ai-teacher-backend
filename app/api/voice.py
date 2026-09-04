@@ -191,13 +191,16 @@ async def get_ai_response(data: dict, current_user: User = Depends(get_current_u
             messages.append({"role": "user", "content": text})
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor()
-        # GPT-4o dla zdjec, Groq LLaMA dla glosu
+        # NAPRAWIONE (koszty, user 04.09.2026): realny test (ten sam
+        # SYSTEM_PROMPT, pytanie edukacyjne) pokazal identyczna jakosc i
+        # ton na gpt-4o-mini, szybciej (5.0s vs 5.6s).
+        # gpt-4o-mini dla zdjec, Groq LLaMA dla glosu
         def call_llm():
             if image_b64:
-                return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.75)
+                return openai_client.chat.completions.create(model="gpt-4o-mini",messages=messages,max_tokens=380,temperature=0.75)
             if GROQ_AVAILABLE:
                 return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.75)
-            return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.75)
+            return openai_client.chat.completions.create(model="gpt-4o-mini",messages=messages,max_tokens=380,temperature=0.75)
         response = await loop.run_in_executor(executor, call_llm)
         ai_text = response.choices[0].message.content.strip()
         voice_text = ai_text
@@ -360,7 +363,7 @@ async def respond_stream(data: dict, current_user: User = Depends(get_current_ap
                 return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.76)
         except Exception as ge:
             print(f"[GROQ] fallback: {ge}")
-        return openai_client.chat.completions.create(model="gpt-4o",messages=messages,max_tokens=380,temperature=0.76)
+        return openai_client.chat.completions.create(model="gpt-4o-mini",messages=messages,max_tokens=380,temperature=0.76)
     import time as _t; _t1=_t.time(); resp = await loop.run_in_executor(ex,call_llm); print(f"[LLM] {_t.time()-_t1:.2f}s")
     ai_text = resp.choices[0].message.content.strip()
     tablica = None
