@@ -955,13 +955,16 @@ async def _raw_generate_quiz_topic_once(
     # geometrycznych - dziala TYLKO gdy temat nie zostal juz rozpoznany
     # jako rownanie kwadratowe (temat nie moze byc jednoczesnie obiema).
     elif is_sequence_topic(topic):
-        anchor_text = get_sequence_difficulty_anchor(difficulty)
+        # NAPRAWIONE (user 04.09.2026): brakowalo level= - identyczny blad
+        # i identyczna naprawa jak wyzej dla rownan kwadratowych.
+        anchor_text = get_sequence_difficulty_anchor(difficulty, level=level)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 
     # ETAP 7: analogiczna "gated injection" dla trygonometrii.
     elif is_trigonometry_topic(topic):
-        anchor_text = get_trig_difficulty_anchor(difficulty)
+        # NAPRAWIONE (user 04.09.2026): jw.
+        anchor_text = get_trig_difficulty_anchor(difficulty, level=level)
         if anchor_text:
             difficulty_anchor_blok = f"\n{anchor_text}\n"
 

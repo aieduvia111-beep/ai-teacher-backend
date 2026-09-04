@@ -2084,11 +2084,14 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_sequence_topic(temat):
-            anchor_text = get_sequence_difficulty_anchor(trudnosc)
+            # NAPRAWIONE (user 04.09.2026): brakowalo level=klasa - ten sam
+            # blad i ta sama naprawa co dla rownan kwadratowych wyzej.
+            anchor_text = get_sequence_difficulty_anchor(trudnosc, level=klasa)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_trigonometry_topic(temat):
-            anchor_text = get_trig_difficulty_anchor(trudnosc)
+            # NAPRAWIONE (user 04.09.2026): jw.
+            anchor_text = get_trig_difficulty_anchor(trudnosc, level=klasa)
             if anchor_text:
                 difficulty_anchor_blok = f"\n{anchor_text}\n"
         elif is_linear_function_topic(temat):

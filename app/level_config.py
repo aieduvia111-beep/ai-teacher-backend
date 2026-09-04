@@ -1051,7 +1051,15 @@ SEQUENCE_DIFFICULTY_TIERS = {
             "Wyznaczenie sumy n poczatkowych wyrazow (dane a1 i r/q), ALBO "
             "wyznaczenie liczby wyrazow n z warunku na ostatni wyraz, ALBO "
             "wyznaczenie a1 z danej sumy i r/q - jeden konkretny warunek, "
-            "BEZ ukladu 2 rownan."
+            "BEZ ukladu 2 rownan. NAPRAWIONE (real-test 04.09.2026: AI mimo "
+            "tej instrukcji regularnie generowalo tier 4-5 zamiast 2-3): "
+            "ZAKAZANE na tym poziomie: podanie DWOCH roznych wyrazow ciagu "
+            "naraz (np. 'a4=20 i a8=36' albo 'a3=15 oraz a7=27') - to "
+            "ZAWSZE wymaga ukladu 2 rownan na a1 i r/q, czyli jest tier 4-5, "
+            "NIE 2-3. Na tym poziomie MUSI byc podane WPROST a1 (lub b1) "
+            "ORAZ r (lub q) - uczen podstawia je do JEDNEGO wzoru (na sume "
+            "S_n, albo na n-ty wyraz z warunkiem rownania), nigdy nie "
+            "rozwiazuje ukladu rownan."
         ),
         "przyklad": "Ciąg arytmetyczny ma a1=2, r=3. Oblicz sumę pierwszych 10 wyrazów tego ciągu.",
     },
@@ -1080,14 +1088,33 @@ _SEQUENCE_DIFFICULTY_WORD_TO_TIER = {
 }
 
 
-def get_sequence_difficulty_anchor(difficulty_word: str):
+def get_sequence_difficulty_anchor(difficulty_word: str, level: str = None):
     """Zwraca tekst kryterium+przykladow (skala 1-5) dla podanego slowa
     trudnosci, analogicznie do get_quadratic_difficulty_anchor. None jesli
     slowo nierozpoznane (wtedy caller ma spasc na stare, generyczne
-    zachowanie)."""
+    zachowanie).
+
+    NAPRAWIONE (user 04.09.2026, real-test: liceum_2/medium/n=3 - 0/3 w
+    jednym przebiegu, sporadycznie udane w innym - niestabilne, wysoki
+    rejection rate od difficulty_fail): ta funkcja - IDENTYCZNIE jak
+    get_quadratic_difficulty_anchor PRZED naprawa 01.09.2026 - ZAWSZE
+    zwracala tekst dla bazowego tieru, NIEZALEZNIE od `level`, mimo ze
+    walidator (app/difficulty/modifiers/math_sequences.py) JUZ jest
+    poziomo-swiadomy (uzywa level_adjusted_shift/SEQUENCE_BASELINE_LEVEL/
+    SEQUENCE_MAX_SHIFT - infrastruktura istniala, ale nigdy nie byla tu
+    podpieta). `level` (opcjonalny) przesuwa wybrany tier DOKLADNIE tak
+    samo jak walidator."""
     tier = _SEQUENCE_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
     if not tier:
         return None
+    if level:
+        from .difficulty.calibration import level_adjusted_shift, SEQUENCE_BASELINE_LEVEL, SEQUENCE_MAX_SHIFT
+        tier_order = list(SEQUENCE_DIFFICULTY_TIERS.keys())
+        shift = level_adjusted_shift(level, SEQUENCE_BASELINE_LEVEL, SEQUENCE_MAX_SHIFT)
+        if shift:
+            idx = tier_order.index(tier)
+            idx = max(0, min(len(tier_order) - 1, idx + shift))
+            tier = tier_order[idx]
     data = SEQUENCE_DIFFICULTY_TIERS[tier]
     return (
         f"POZIOM TRUDNOSCI {tier}/5 (skala dla ciagow arytmetycznych/geometrycznych): {data['kryterium']} "
@@ -1164,14 +1191,31 @@ _TRIG_DIFFICULTY_WORD_TO_TIER = {
 }
 
 
-def get_trig_difficulty_anchor(difficulty_word: str):
+def get_trig_difficulty_anchor(difficulty_word: str, level: str = None):
     """Zwraca tekst kryterium+przykladow (skala 1-5) dla podanego slowa
     trudnosci, analogicznie do get_sequence_difficulty_anchor. None jesli
     slowo nierozpoznane (wtedy caller ma spasc na stare, generyczne
-    zachowanie)."""
+    zachowanie).
+
+    NAPRAWIONE (user 04.09.2026, real-test: liceum_2/medium - 1-2/5,
+    wysoki rejection rate od difficulty_fail, wykryto tier 4-5 zamiast
+    zamowionego 2-3): identyczna naprawa i identyczny powod co
+    get_sequence_difficulty_anchor tuz wyzej - walidator
+    (app/difficulty/modifiers/math_trigonometry.py) juz jest
+    poziomo-swiadomy (TRIG_BASELINE_LEVEL/TRIG_MAX_SHIFT), ale ta funkcja
+    nigdy nie przyjmowala `level`. `level` (opcjonalny) przesuwa wybrany
+    tier DOKLADNIE tak samo jak walidator."""
     tier = _TRIG_DIFFICULTY_WORD_TO_TIER.get((difficulty_word or "").strip().lower())
     if not tier:
         return None
+    if level:
+        from .difficulty.calibration import level_adjusted_shift, TRIG_BASELINE_LEVEL, TRIG_MAX_SHIFT
+        tier_order = list(TRIG_DIFFICULTY_TIERS.keys())
+        shift = level_adjusted_shift(level, TRIG_BASELINE_LEVEL, TRIG_MAX_SHIFT)
+        if shift:
+            idx = tier_order.index(tier)
+            idx = max(0, min(len(tier_order) - 1, idx + shift))
+            tier = tier_order[idx]
     data = TRIG_DIFFICULTY_TIERS[tier]
     return (
         f"POZIOM TRUDNOSCI {tier}/5 (skala dla trygonometrii): {data['kryterium']} "
