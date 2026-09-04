@@ -302,46 +302,27 @@ async def vision_solve(request: VisionRequest):
 
 
 # ══ ENDPOINTY EXAM ══
-@app.post("/api/v1/exam/generate", response_model=ExamResponse)
-async def generate_exam(request: ExamRequest):
-    try:
-        result = await generate_exam_from_image(
-            request.image, request.difficulty,
-            request.num_questions, request.include_open_questions
-        )
-        if result["success"]:
-            return ExamResponse(success=True, exam=result["exam"])
-        return ExamResponse(success=False, error=result.get("error"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+# NAPRAWIONE (01.09.2026, audyt kosztow API - user zglosil nagly skok
+# kosztow OpenAI): usuniety stad duplikat /api/v1/exam/generate - ten
+# konkretny byl juz w praktyce martwy (exam_router z app/api/exam_api.py,
+# podlaczony WCZESNIEJ w tym pliku, zawsze wygrywal wyscig routingu na
+# ten sam sciezke+metode), ale zostawiony tu byl myacy i ukrywal
+# prawdziwy problem opisany nizej. Ten sam wzorzec co Quiz (patrz
+# komentarz historyczny przy sekcji Quiz ponizej).
 # ══ ENDPOINTY NOTES ══
-@app.post("/api/v1/notes/generate", response_model=NotesResponse)
-async def generate_notes(request: NotesRequest):
-    try:
-        result = await generate_notes_from_image(request.image, request.style)
-        if result["success"]:
-            return NotesResponse(success=True, notes=result["notes"], style=result["style"])
-        return NotesResponse(success=False, error=result.get("error"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/notes/generate-topic", response_model=NotesTopicResponse)
-async def generate_notes_topic(request: NotesTopicRequest):
-    try:
-        result = await generate_notes_from_topic(
-            request.topic, request.level, request.subject,
-            request.style, request.details
-        )
-        if result["success"]:
-            return NotesTopicResponse(
-                success=True, notes=result["notes"], topic=result["topic"],
-                level=result["level"], subject=result["subject"], style=result["style"]
-            )
-        return NotesTopicResponse(success=False, error=result.get("error"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# NAPRAWIONE (01.09.2026, KRYTYCZNE - realny, aktywny wyciek kosztow):
+# oba te endpointy (/api/v1/notes/generate, /api/v1/notes/generate-topic)
+# NIE kolidowaly z niczym (notes_router z app/api/notes_api.py zyje pod
+# INNA sciezka, /api/v1/notes-pdf/...) - byly wiec naprawde zywe,
+# osiagalne, i (1) BEZ jakiejkolwiek autoryzacji (brak Depends na
+# zweryfikowanego usera), (2) BEZ limit_middleware (nie ma ich w
+# PROTECTED_PREFIXES) - czyli KAZDY, kto zna adres (repo jest publiczne
+# na GitHub), mogl je spamowac bez ograniczen, kazde wywolanie to
+# platne zapytanie do gpt-4o (notatki z obrazka to wywolanie Vision,
+# jeszcze drozsze). Zaden plik frontendu nigdzie ich nie wywoluje
+# (sprawdzone grepem) - byly czystym, niepotrzebnym ryzykiem. Usuniete
+# w calosci, tak jak analogiczny duplikat Quiz zostal usuniety wczesniej
+# (patrz komentarz historyczny ponizej).
 
 
 # ══ ENDPOINTY QUIZ ══
