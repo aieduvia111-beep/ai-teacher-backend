@@ -2897,9 +2897,46 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
 
     final_count = len(quiz_data.get("questions", []))
     if final_count < requested_count:
+        # OSTATECZNY RATUNEK (user 04.09.2026: "ma byc 20 na 20... nie ma
+        # ze jakis temat daje 0 albo 3"): PO wyczerpaniu normalnych i
+        # grace rund, zamiast od razu poddawac sie z niepelnym wynikiem -
+        # JEDNA dodatkowa proba z relax_difficulty=True (patrz
+        # _verify_and_fix_quiz_math) - AI generuje brakujace pytania
+        # normalnie, ale Warstwa 3 (dopasowanie do DOKLADNEGO tieru
+        # trudnosci) NIE odrzuca ich za zly tier - wszystkie inne
+        # warstwy (final_answer/sympy/AI-2 blind-verify) dzialaja BEZ
+        # zmian, wiec kazde przyjete pytanie jest nadal w 100%
+        # matematycznie poprawne, tylko czasem lekko latwiejsze/trudniejsze
+        # niz idealnie zamowiono. NAPRAWIONE (real-test pokazal: JEDNA
+        # proba czasem trafia w partie z INNYM defektem - np. zly LaTeX -
+        # i wtedy ratunek nie pomaga wcale, mimo ze relax_difficulty
+        # zadzialal poprawnie): do 3 prob, nie tylko jedna - kazda kolejna
+        # dostaje ZAKTUALIZOWANY avoid_block, wiec nie powtarza tych samych
+        # bledow. Nadal ograniczone (nie nieskonczona petla) - max 3
+        # dodatkowe wywolania AI w najgorszym przypadku.
+        for _rescue_i in range(1, 4):
+            missing_final = requested_count - final_count
+            if missing_final <= 0:
+                break
+            print(f"[MathVerify] OSTATECZNY RATUNEK {_rescue_i}/3: brakuje {missing_final} pytan - proba z rozluznionym tierem trudnosci")
+            avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
+            try:
+                metrics.retry_count += 1
+                with _Timer(metrics, "generation_time"):
+                    rescue_data = await regenerate(missing_final, avoid_block)
+                metrics.api_request_count += rescue_data.pop("_api_request_count", 1)
+                metrics.generated_count += len(rescue_data.get("questions", []))
+                rescue_data = await _verify_and_fix_quiz_math(rescue_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts, relax_difficulty=True)
+                quiz_data.setdefault("questions", []).extend(rescue_data.get("questions", []))
+            except Exception as e:
+                print(f"[MathVerify] blad ostatecznego ratunku: {e}")
+            final_count = len(quiz_data.get("questions", []))
+
+    if final_count < requested_count:
         # Bardzo rzadki przypadek - wyczerpano max_rounds ALBO max_seconds
-        # i nadal brakuje. Uczciwy komunikat zamiast cichego podania
-        # niepelnego quizu.
+        # ORAZ ostateczny ratunek (relax_difficulty) i nadal brakuje -
+        # temat prawdopodobnie fundamentalnie problematyczny. Uczciwy
+        # komunikat zamiast cichego podania niepelnego quizu.
         total_elapsed = time.monotonic() - t_start
         # NAPRAWIONE (ten sam blad co w exam_pdf_generator.py - patrz
         # commit "Napraw myslacy komunikat shortfallu Sprawdzianu"):
@@ -3072,7 +3109,7 @@ async def _blind_verify_batch_closed_quiz(candidates: list, client=None, topic: 
     return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client, topic=topic) for q in candidates))
 
 
-async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None) -> dict:
+async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None, relax_difficulty: bool = False) -> dict:
     """Trzywarstwowa weryfikacja - AI NIGDY nie decyduje samo, ktora
     opcja jest "correct" (architektura ustalona z userem, patrz commit):
 
@@ -3267,6 +3304,29 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
                 kept2.append(q)
                 continue
             if diff_result["status"] == "fail":
+                # NAPRAWIONE (user 04.09.2026, "ma byc 20 na 20... nie ma
+                # ze jakis temat daje 0 albo 3"): `relax_difficulty` to
+                # WASKI, OSTATECZNY ratunek - uzywany TYLKO przez
+                # _verify_and_fill_quiz_math PO wyczerpaniu normalnych i
+                # grace rund, kiedy nadal brakuje pytan. Poprawnosc
+                # matematyczna (final_answer/sympy/AI-2 wyzej) NIE jest
+                # tu w ogole zlagodzona - tylko dopasowanie do dokladnego
+                # tieru trudnosci. Domyslnie (relax_difficulty=False)
+                # zachowanie identyczne jak zawsze.
+                if relax_difficulty:
+                    # NIE wolamy metrics.record_rejection() - to pytanie
+                    # jest FAKTYCZNIE przyjete (kept2.append), wiec
+                    # liczenie go jako odrzucenia zepsuloby invariant
+                    # rejected_count/accepted_count (patrz docstring
+                    # GenerationMetrics).
+                    print(
+                        f"[MathVerify][Difficulty] RATUNEK (relax_difficulty): '{text[:60]}...' "
+                        f"przyjete mimo REASON={diff_result['reason']} "
+                        f"REQUESTED_TIER={diff_result['requested_tier']} "
+                        f"DETECTED_TIER={diff_result['detected_tier']}"
+                    )
+                    kept2.append(q)
+                    continue
                 print(
                     f"[MathVerify][Difficulty] FAIL: '{text[:60]}...' "
                     f"REASON={diff_result['reason']} "

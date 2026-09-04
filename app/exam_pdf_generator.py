@@ -1689,7 +1689,7 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
     return kept
 
 
-def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None) -> dict:
+def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None, relax_difficulty: bool = False) -> dict:
     """Trzywarstwowa weryfikacja dla zadan zamknietych - ten sam
     mechanizm co w Quizie (openai_exam._verify_and_fix_quiz_math), AI
     NIGDY nie decyduje samo, ktora opcja jest "odpowiedz":
@@ -1880,6 +1880,20 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                     kept2.append(pyt)
                     continue
                 if diff_result["status"] == "fail":
+                    # NAPRAWIONE (user 04.09.2026, "ma byc 20 na 20"):
+                    # identyczny mechanizm ratunkowy co w Quizie (patrz
+                    # _verify_and_fix_quiz_math w openai_exam.py) - NIE
+                    # wolamy record_rejection, bo pytanie jest FAKTYCZNIE
+                    # przyjete.
+                    if relax_difficulty:
+                        print(
+                            f"[MathVerify][Exam][Difficulty] RATUNEK (relax_difficulty): '{tresc[:60]}...' "
+                            f"przyjete mimo REASON={diff_result['reason']} "
+                            f"REQUESTED_TIER={diff_result['requested_tier']} "
+                            f"DETECTED_TIER={diff_result['detected_tier']}"
+                        )
+                        kept2.append(pyt)
+                        continue
                     print(
                         f"[MathVerify][Exam][Difficulty] FAIL: '{tresc[:60]}...' "
                         f"REASON={diff_result['reason']} "
@@ -3374,6 +3388,38 @@ ZASADY:
         # powod byl inny), kazdy `break` ponizej JAWNIE zapisuje dlaczego -
         # `_shortfall_warning` na koncu funkcji uzywa TEGO zamiast zgadywac.
         stop_reason = None
+        # NAPRAWIONE (user 04.09.2026, wydzielone przy naprawie "ma byc 20
+        # na 20"): dispatch do archetypow "bezpiecznej generacji" (kod, nie
+        # AI, liczy matematyke - dużo wyzszy wskaznik akceptacji dla
+        # znanych trudnych podwzorcow) byl WCZESNIEJ tylko wewnatrz petli
+        # ponizej - ostateczny ratunek (dalej w tej funkcji) uzywal wiec
+        # ZAWSZE ogolnego, freeform generatora nawet dla tematow z wlasnym
+        # archetypem, co czynilo go bezuzytecznym dla nich (ten sam,
+        # zawodny generator probowany po prostu wiecej razy). Wydzielone
+        # do wspoldzielonej funkcji, zeby ratunek korzystal z TEGO SAMEGO,
+        # bardziej niezawodnego mechanizmu co normalne rundy.
+        def _dispatch_regen(missing_n, need_type_x, avoid_block_x):
+            if need_type_x == 'otwarte':
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True)
+            elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
+                return self._raw_generate_safe_linear_param_quadratic_batch(max(missing_n, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
+            elif _is_hard_trig_quadratic_exam(temat, trudnosc):
+                return self._raw_generate_safe_trig_quadratic_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_arithmetic_sequence_exam(temat, trudnosc):
+                return self._raw_generate_safe_sequence_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_law_of_cosines_exam(temat, trudnosc):
+                return self._raw_generate_safe_law_of_cosines_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_geometric_sequence_exam(temat, trudnosc):
+                return self._raw_generate_safe_geometric_sequence_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_abs_value_exam(temat, trudnosc):
+                return self._raw_generate_safe_abs_value_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_law_of_sines_exam(temat, trudnosc):
+                return self._raw_generate_safe_law_of_sines_batch(max(missing_n, _MIN_FILL_BATCH_EXAM))
+            elif _is_hard_quadratic_two_positive_roots_exam(temat, trudnosc):
+                return self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing_n, _MIN_FILL_BATCH_EXAM), used_letters=used_safe_letters, used_constants=used_safe_constants)
+            else:
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x)
+
         while True:
             round_i += 1
             current_total = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
@@ -3452,55 +3498,9 @@ ZASADY:
                     # gotowym, poprawnym wynikiem zamiast kolejnej proby
                     # wolnej generacji, ktora regularnie zawodzi wlasnie dla
                     # tego przypadku (stad w ogole te rundy sa potrzebne).
-                    # WSZYSTKIE archetypy (safe-generation) nizej produkuja
-                    # WYLACZNIE zadania zamkniete - dla need_type=='otwarte'
-                    # zadna z nich nie ma zastosowania, wiec idziemy prosto
-                    # do dedykowanej partii only_open=True (patrz komentarz
-                    # nad target_open wyzej).
-                    if need_type == 'otwarte':
-                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block, only_open=True)
-                    elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
-                        extra = self._raw_generate_safe_linear_param_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
-                    elif _is_hard_trig_quadratic_exam(temat, trudnosc):
-                        # Port tego samego wzorca na trygonometrie - patrz
-                        # _is_hard_trig_quadratic_exam i
-                        # _raw_generate_safe_trig_quadratic_batch.
-                        extra = self._raw_generate_safe_trig_quadratic_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_arithmetic_sequence_exam(temat, trudnosc):
-                        # Port tego samego wzorca na ciagi arytmetyczne -
-                        # patrz _is_hard_arithmetic_sequence_exam i
-                        # _raw_generate_safe_sequence_batch.
-                        extra = self._raw_generate_safe_sequence_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_law_of_cosines_exam(temat, trudnosc):
-                        # Port tego samego wzorca na twierdzenie
-                        # cosinusow - patrz _is_hard_law_of_cosines_exam i
-                        # _raw_generate_safe_law_of_cosines_batch.
-                        extra = self._raw_generate_safe_law_of_cosines_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_geometric_sequence_exam(temat, trudnosc):
-                        # Port tego samego wzorca na ciagi geometryczne -
-                        # patrz _is_hard_geometric_sequence_exam i
-                        # _raw_generate_safe_geometric_sequence_batch.
-                        extra = self._raw_generate_safe_geometric_sequence_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_abs_value_exam(temat, trudnosc):
-                        # Port tego samego wzorca na wartosc bezwzgledna -
-                        # patrz _is_hard_abs_value_exam i
-                        # _raw_generate_safe_abs_value_batch.
-                        extra = self._raw_generate_safe_abs_value_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_law_of_sines_exam(temat, trudnosc):
-                        # Port tego samego wzorca na twierdzenie sinusow -
-                        # patrz _is_hard_law_of_sines_exam i
-                        # _raw_generate_safe_law_of_sines_batch.
-                        extra = self._raw_generate_safe_law_of_sines_batch(max(missing, _MIN_FILL_BATCH_EXAM))
-                    elif _is_hard_quadratic_two_positive_roots_exam(temat, trudnosc):
-                        # Port tego samego wzorca na trudne rownania
-                        # kwadratowe z parametrem - patrz
-                        # _is_hard_quadratic_two_positive_roots_exam i
-                        # _raw_generate_safe_quadratic_two_positive_roots_batch.
-                        # used_letters/used_constants: patrz naprawa 30.08.2026
-                        # w docstringu tej funkcji.
-                        extra = self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing, _MIN_FILL_BATCH_EXAM), used_letters=used_safe_letters, used_constants=used_safe_constants)
-                    else:
-                        extra = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block)
+                    # Dispatch wydzielony do _dispatch_regen (patrz wyzej) -
+                    # wspoldzielony z ostatecznym ratunkiem.
+                    extra = _dispatch_regen(missing, need_type, avoid_block)
                 metrics.api_request_count += 1
                 metrics.generated_count += sum(len(s.get('pytania', [])) for s in (extra or {}).get('sekcje', []))
             except Exception as e:
@@ -3575,6 +3575,56 @@ ZASADY:
                     overflow -= 1
                 if overflow <= 0:
                     break
+
+        # OSTATECZNY RATUNEK (user 04.09.2026: "ma byc 20 na 20... nie ma
+        # ze jakis temat daje 0 albo 3") - identyczny mechanizm co w
+        # Quizie (patrz _verify_and_fill_quiz_math w openai_exam.py). PO
+        # wyczerpaniu normalnych i grace rund, jesli nadal brakuje - do 3
+        # dodatkowych prob NA KAZDY brakujacy typ (zamkniete/otwarte) z
+        # relax_difficulty=True: wszystkie inne warstwy (final_answer/
+        # sympy/AI-2) dzialaja bez zmian, tylko dopasowanie do DOKLADNEGO
+        # tieru trudnosci nie jest juz warunkiem odrzucenia. NAPRAWIONE
+        # (real-test: JEDNA proba czasem trafia w partie z INNYM defektem
+        # - np. zly LaTeX - i wtedy ratunek nie pomaga wcale): petla do 3
+        # prob zamiast jednej, kazda z aktualnym avoid_block.
+        for need_type_rescue in ('zamkniete', 'otwarte'):
+            target_n = target_closed if need_type_rescue == 'zamkniete' else target_open
+            for _rescue_i in range(1, 4):
+                current_n = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == need_type_rescue)
+                rescue_missing = target_n - current_n
+                if rescue_missing <= 0:
+                    break
+                print(f"[MathVerify][Exam] OSTATECZNY RATUNEK {_rescue_i}/3: brakuje {rescue_missing} zadan typu '{need_type_rescue}' - proba z rozluznionym tierem trudnosci")
+                avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
+                try:
+                    metrics.retry_count += 1
+                    with _Timer(metrics, "generation_time"):
+                        # NAPRAWIONE (real-test: ratunek uzywal ZAWSZE
+                        # ogolnego freeform generatora, nawet dla tematow z
+                        # wlasnym, dużo bardziej niezawodnym archetypem
+                        # "bezpiecznej generacji" - patrz _dispatch_regen
+                        # wyzej, ta sama funkcja co normalne rundy).
+                        rescue_extra = _dispatch_regen(rescue_missing, need_type_rescue, avoid_block)
+                    metrics.api_request_count += 1
+                    metrics.generated_count += sum(len(s.get('pytania', [])) for s in (rescue_extra or {}).get('sekcje', []))
+                    rescue_extra = _verify_and_fix_exam_math(rescue_extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts, relax_difficulty=True)
+                    rescue_matching = []
+                    for s in (rescue_extra or {}).get('sekcje', []):
+                        if s.get('typ') == need_type_rescue:
+                            rescue_matching.extend(s.get('pytania', []))
+                    rescue_matching = rescue_matching[:rescue_missing]
+                    if rescue_matching:
+                        target = next((s for s in data['sekcje'] if s.get('typ') == need_type_rescue), None)
+                        if target is None:
+                            if need_type_rescue == 'zamkniete':
+                                target = {"nazwa": "Czesc A — Zadania zamkniete", "typ": "zamkniete", "instrukcja_sekcji": "Zaznacz poprawna odpowiedz (a, b, c lub d). Za kazde poprawne: 1 pkt.", "pytania": []}
+                                data.setdefault('sekcje', []).insert(0, target)
+                            else:
+                                target = {"nazwa": "Czesc B — Zadania obliczeniowe", "typ": "otwarte", "instrukcja_sekcji": "Rozwiaz zadania pokazujac pelny sposob obliczen. Podaj jednostki.", "pytania": []}
+                                data.setdefault('sekcje', []).append(target)
+                        target['pytania'].extend(rescue_matching)
+                except Exception as e:
+                    print(f"[MathVerify][Exam] blad ostatecznego ratunku ({need_type_rescue}): {e}")
 
         nr = 1
         for s in data.get('sekcje', []):
