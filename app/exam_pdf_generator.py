@@ -2163,11 +2163,20 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
             wlasne_instrukcje_blok=blok,
             avoid_block=avoid_block,
         )
+        # NAPRAWIONE (koszty, user 04.09.2026): realny test A/B (2 tematy -
+        # geometria podstawowka_6 i trygonometria liceum_2, n=5 kazdy,
+        # zamkniete+otwarte) pokazal identyczna, w pelni poprawna
+        # matematyke na gpt-4o-mini co na gpt-4o (recznie zweryfikowane
+        # kazde pytanie) - patrz test_real_exam_content_model_ab.py.
+        # Wszystkie pozostale wywolania AI w tym pliku (glowny generator +
+        # 8 archetypow "safe generation") przelaczone razem - archetypy sa
+        # nizszego ryzyka niz ten glowny generator (matematyke liczy kod,
+        # AI tylko formuluje tresc po polsku).
         last_error = None
         for attempt in range(2):
             try:
                 r = self.client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content":
                             "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2352,7 +2361,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2457,7 +2466,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2580,7 +2589,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2830,7 +2839,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2951,7 +2960,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -3072,7 +3081,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -3200,7 +3209,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
@@ -3348,7 +3357,7 @@ ZASADY:
 
         try:
             r = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content":
                         "Jestes nauczycielem tworzacym sprawdziany. "
