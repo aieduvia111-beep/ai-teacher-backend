@@ -1039,7 +1039,14 @@ async function startQuiz(){
     // budzet "trudny" obnizony do 45s, sufit grace (_GRACE_MAX_SECONDS w
     // openai_exam.py) do 60s CALKOWITEGO czasu. Timeout frontendu w
     // parze, z marginesem na siec.
-    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 90000);
+    // NAPRAWIONE (04.09.2026, "czy czas jest odpowiedni jak ktos wybierze
+    // 20 pytan"): backend teraz skaluje budzet z liczba pytan (patrz
+    // _max_generation_seconds w openai_exam.py) - timeout frontendu musi
+    // skalowac sie razem z nim, inaczej odcina polaczenie zanim dluzszy,
+    // ale poprawnie konczacy sie backend zdazy odpowiedziec. Ta sama
+    // formula co po stronie backendu (+4.5s za kazde pytanie powyzej 8,
+    // sufit +54s), plus margines na siec.
+    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 90000+Math.min(54000,Math.max(0,num-8)*4500));
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
     return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
     })
@@ -1098,7 +1105,9 @@ async function startQuiz(){
   showPage('pageLoading');
   var quizController2 = new AbortController();
   // ZMNIEJSZONE (30.08.2026): identyczny powod co quizTimeoutId1 wyzej.
-  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 90000);
+  // NAPRAWIONE (04.09.2026): identyczne skalowanie z liczba pytan co
+  // quizTimeoutId1 wyzej - patrz komentarz tam.
+  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 90000+Math.min(54000,Math.max(0,num-8)*4500));
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
   return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
   })

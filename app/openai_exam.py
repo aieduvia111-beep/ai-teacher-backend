@@ -2690,21 +2690,48 @@ _GRACE_EXTRA_ROUNDS = 1
 _GRACE_MAX_SECONDS = 60.0
 
 
-def _max_generation_seconds(topic: str = None, difficulty: str = None) -> float:
+# NAPRAWIONE (user 04.09.2026, "czy czas jest odpowiedni jak ktos wybierze
+# 20 pytan"): potwierdzone realnym testem (test_real_quiz_n20_budget_check.py)
+# - budzet ponizej NIE zalezal wczesniej wcale od num_questions, wiec quiz
+# na 20 pytan mial DOKLADNIE ten sam budzet co na 5. Real-test: n=20, temat
+# LATWY i juz sprawdzony (geometria) - pierwsza (jedyna mozliwa w 30s)
+# runda dala tylko 9/20, bo samo wygenerowanie+zweryfikowanie 26 buforowanych
+# kandydatow zajelo ~27s - budzet wyczerpal sie PRZED jakakolwiek runda
+# dogenerowania (dokladnie ten sam mechanizm co znany wczesniej problem
+# "5/6 pytan" dla trudnych tematow, tylko wywolany duzym n zamiast duza
+# trudnoscia). max_rounds (=6) i tak pozwala na wiele rund - brakowalo
+# tylko CZASU na nie. Skalowanie: +4.5s budzetu za kazde pytanie powyzej
+# baseline=8 (typowy maly quiz, dla ktorego istniejace wartosci ponizej
+# byly stroilone), sufit +54s (n=20) - dodawane NA WIERZCH istniejacej
+# logiki temat/trudnosc, nigdy jej nie zmniejszajac.
+_N_BASELINE_FOR_TIME_BUDGET = 8
+_EXTRA_SECONDS_PER_QUESTION = 4.5
+_MAX_EXTRA_SECONDS_FOR_N = 54.0
+
+
+def _max_generation_seconds(topic: str = None, difficulty: str = None, num_questions: int = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
     generowania+weryfikacji+dogenerowania. 45s dla rownan kwadratowych
     z parametrem na poziomie medium (waski, historyczny wyjatek - patrz
     komentarz wyzej) ORAZ (od 30.08.2026, "max 1 minuta") dla KAZDEGO
     tematu na poziomie "trudny"/"hard" (patrz _HARD_TIMEOUT_SECONDS -
     obnizone z 180s po archetypach Safe Parameter Generation); 30s dla
-    wszystkiego innego."""
+    wszystkiego innego. PONAD to (04.09.2026) - dodatkowy budzet gdy
+    zamowiono wiecej pytan niz baseline (patrz komentarz wyzej)."""
     is_quadratic = topic is not None and is_quadratic_equation_topic(topic)
     diff_word = (difficulty or "").strip().lower()
     if is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS:
-        return _EXTENDED_TIMEOUT_SECONDS
-    if diff_word in _HARD_DIFFICULTY_WORDS:
-        return _HARD_TIMEOUT_SECONDS
-    return _DEFAULT_TIMEOUT_SECONDS
+        base = _EXTENDED_TIMEOUT_SECONDS
+    elif diff_word in _HARD_DIFFICULTY_WORDS:
+        base = _HARD_TIMEOUT_SECONDS
+    else:
+        base = _DEFAULT_TIMEOUT_SECONDS
+    try:
+        n = int(num_questions) if num_questions is not None else 0
+    except (TypeError, ValueError):
+        n = 0
+    extra = min(_MAX_EXTRA_SECONDS_FOR_N, max(0, n - _N_BASELINE_FOR_TIME_BUDGET) * _EXTRA_SECONDS_PER_QUESTION)
+    return base + extra
 
 
 def _require_exact_exam_question_count(exam_data: dict, requested_count: int) -> dict:
@@ -2812,7 +2839,15 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     seen_diversity_tag_dicts = []
     quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
     max_rounds = 6
-    max_seconds = _max_generation_seconds(topic, difficulty)
+    max_seconds = _max_generation_seconds(topic, difficulty, requested_count)
+    # NAPRAWIONE (user 04.09.2026, skalowanie budzetu z liczba pytan - patrz
+    # komentarz nad _max_generation_seconds): _GRACE_MAX_SECONDS byl STALYM,
+    # globalnym sufitem (60s) - dla duzego num_questions max_seconds sam w
+    # sobie moze juz PRZEKRACZAC 60s, co zabijaloby kazda runde grace
+    # natychmiast (elapsed>=grace_ceiling bylby prawdziwy od razu). Sufit
+    # grace liczony wzgledem FAKTYCZNEGO max_seconds (zachowuje ten sam
+    # margines +30s co wczesniej, tylko wzgledny zamiast bezwzglednego).
+    grace_ceiling = max_seconds + (_GRACE_MAX_SECONDS - _DEFAULT_TIMEOUT_SECONDS)
     if t_start is None:
         t_start = time.monotonic()
     round_i = 0
@@ -2837,8 +2872,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             if grace_rounds_used >= _GRACE_EXTRA_ROUNDS:
                 print(f"[MathVerify] wyczerpano {_GRACE_EXTRA_ROUNDS} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
                 break
-            if elapsed >= _GRACE_MAX_SECONDS:
-                print(f"[MathVerify] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {_GRACE_MAX_SECONDS}s) - przerywam dogenerowanie")
+            if elapsed >= grace_ceiling:
+                print(f"[MathVerify] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {grace_ceiling:.1f}s) - przerywam dogenerowanie")
                 break
             grace_rounds_used += 1
             print(f"[MathVerify] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS}): standardowy budzet wyczerpany, ale brakuje tylko {missing} pytan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
