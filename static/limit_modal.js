@@ -106,7 +106,7 @@
       'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
-      'Kup Pro — bez limitów →' +
+      'Wypróbuj 7 dni za darmo →' +
       '</button>' +
       '<button onclick="window.EduviaLimitModal.close()" style="' +
       'width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);' +

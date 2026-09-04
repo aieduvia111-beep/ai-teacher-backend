@@ -96,11 +96,26 @@ class StripeService:
                     except Exception as _e:
                         print(f"Blad walidacji kodu polecajacego: {_e}")
 
+            # NOWE (04.09.2026, user: "zeby uzytkownicy zaczeli placic" -
+            # 7-dniowy darmowy trial, karta wymagana od razu zeby
+            # subskrypcja SAMA przeszla w platna po triale, bez dodatkowej
+            # akcji ze strony usera lub nas). Stripe automatycznie:
+            # - tworzy subskrypcje w statusie "trialing" (karta ZAPISANA,
+            #   ale NIE obciazona) natychmiast po checkout.session.completed,
+            # - po 7 dniach probuje pierwsze obciazenie i przelacza status
+            #   na "active" (albo "past_due"/"unpaid" jesli platnosc padnie -
+            #   obsluzone juz przez istniejacy webhook _handle_payment_failed).
+            # _handle_checkout_completed (webhook) juz nadaje is_premium=True
+            # na PODSTAWIE checkout.session.completed, ktore Stripe wysyla
+            # od razu przy starcie triala (nie czeka na pierwsza platnosc) -
+            # wiec dostep Pro odblokowuje sie natychmiast, zgodnie z
+            # oczekiwaniem "trial = pelny dostep od razu".
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
                 payment_method_types=["card"],
                 line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                 mode="subscription",
+                subscription_data={"trial_period_days": 7},
                                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                 metadata=checkout_metadata,

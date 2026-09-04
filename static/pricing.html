@@ -262,10 +262,11 @@ window._currentUser=()=>currentUser;
     <div class="popular-tag">⭐ Najpopularniejszy</div>
     <div class="plan-name pro-name" style="margin-top:30px">Pro</div>
     <div class="plan-price"><span class="plan-amt pro-amt">29</span><span class="plan-cur">zł</span></div>
-    <div class="plan-period">miesięcznie · anuluj kiedy chcesz</div>
+    <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
+    <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 10px;">🎁 Pierwsze 7 dni za darmo</div>
     <div style="margin-bottom:12px;"><input id="affCode" type="text" placeholder="Kod polecajacy (opcjonalnie)" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:var(--text);font-family:var(--h);font-size:.78em;outline:none;box-sizing:border-box;" oninput="this.value=this.value.toUpperCase()"><div id="affMsg" style="font-size:.68em;margin-top:4px;min-height:14px;"></div></div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
-      <span id="btnText">Kup Pro teraz →</span>
+      <span id="btnText">Wypróbuj 7 dni za darmo →</span>
       <div class="btn-loader" id="btnLoader"></div>
     </button>
     <div class="plan-divider"></div>
@@ -293,8 +294,8 @@ window._currentUser=()=>currentUser;
     <div class="faq-a">Tak, anulowanie jest możliwe w każdej chwili bez żadnych konsekwencji. Po anulowaniu masz dostęp do końca opłaconego okresu, a następnie przechodzisz automatycznie na plan Free.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-q">Kiedy dostanę dostęp po zakupie?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-    <div class="faq-a">Dostęp aktywuje się natychmiast po opłaceniu — wystarczy wrócić do dashboardu i odświeżyć stronę. Nie musisz czekać na żadne maile ani potwierdzenia.</div>
+    <div class="faq-q">Jak działa 7-dniowy okres próbny?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 29 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
     <div class="faq-q">Czy moje dane są bezpieczne?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
@@ -316,8 +317,8 @@ window._currentUser=()=>currentUser;
   <div class="cta-card">
     <h2>Gotowy na naukę bez limitów? 🚀</h2>
     <p>Dołącz do uczniów którzy uczą się szybciej i mądrzej z AI.<br>Plan Free jest darmowy na zawsze — ulepsz kiedy chcesz.</p>
-    <button class="cta-big-btn" onclick="startCheckout()">Kup Pro — 29 zł/mies →</button>
-    <div class="cta-note">🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Dostęp od razu</div>
+    <button class="cta-big-btn" onclick="startCheckout()">Wypróbuj 7 dni za darmo →</button>
+    <div class="cta-note">🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez 7 dni</div>
   </div>
 </div>
 
@@ -377,7 +378,7 @@ async function startCheckout() {
       window.location.href = checkoutData.checkout_url;
     } else {
       btn.disabled = false;
-      btnText.textContent = 'Kup Pro';
+      btnText.textContent = 'Wypróbuj 7 dni za darmo →';
       loader.style.display = 'none';
       showToast('Blad platnosci: ' + (checkoutData.error || 'sprobuj ponownie'), 'error');
     }
