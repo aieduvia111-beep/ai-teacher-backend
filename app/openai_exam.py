@@ -617,8 +617,9 @@ FORMAT (TYLKO JSON):
     {{
         "id": 1,
         "question": "Treść pytania",
-        "options": ["A", "B", "C", "D"],
+        "options": ["Opcja A", "Opcja B", "Opcja C", "Opcja D"],
         "correct": 0,
+        "final_answer": "Opcja A",
         "explanation": "Wyjaśnienie"
     }}
     ]
@@ -627,7 +628,13 @@ FORMAT (TYLKO JSON):
 WAŻNE:
 - Pytania z materiału na obrazku
 - Na początku JSON dodaj pole "subject" z wykrytym przedmiotem (matematyka/biologia/fizyka/chemia/historia)
-- "correct" = index (0-3)
+- "correct" = index (0-3) poprawnej opcji
+- POLE "final_answer" - OBOWIAZKOWE dla KAZDEGO pytania: skopiuj do niego
+  DOKLADNIE (znak w znak, razem z $...$) tekst TEJ JEDNEJ opcji z "options",
+  ktora jest poprawna. NIE parafrazuj, NIE skracaj, NIE pisz samej litery
+  ani wlasnymi slowami - to ma byc DOSLOWNA kopia jednej z opcji z listy
+  "options". System automatycznie ODRZUCA pytanie, jesli "final_answer" nie
+  jest identyczny z zadna opcja - wiec musi dokladnie pasowac.
 - Wzory matematyczne ZAWSZE w dolarach: $x^2$, $\\frac{{a}}{{b}}$, $\\sqrt{{x}}$
 - Zwróć TYLKO JSON
 """
