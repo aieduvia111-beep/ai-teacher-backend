@@ -172,8 +172,12 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
 
         messages.append({"role": "user", "content": user_content})
 
+        # NAPRAWIONE (koszty, user 04.09.2026): realny test A/B (gpt-4o vs
+        # gpt-4o-mini, 3 rozne zadania: rownanie kwadratowe, geometria,
+        # pochodna) pokazal identyczne, poprawne wyniki na obu modelach -
+        # patrz test_real_mini_vs_4o_ab.py.
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=messages,
             max_tokens=8000,
             temperature=0.7,
@@ -252,7 +256,7 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
             try:
                 # Wywołaj OpenAI
                 response = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         *conversation_history

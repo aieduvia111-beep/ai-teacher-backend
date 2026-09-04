@@ -1209,8 +1209,14 @@ ZASADY:
         "Dobry przyklad opcji: [$x = \\\\frac{1}{2}$, $x = 2$, $x = -1$, $x = 0$]"
     )
 
+    # NAPRAWIONE (koszty, user 04.09.2026): realny test A/B (gpt-4o vs
+    # gpt-4o-mini, n=3, trygonometria/liceum_1) pokazal identyczna jakosc
+    # na koncowym wyniku (3/3 poprawne po Warstwie 2.5/AI-2) - patrz
+    # test_real_mini_vs_4o_ab.py. Ta funkcja zasila zarowno Quiz jak i
+    # Fiszki (dziela ten sam kod). Sprawdzian (exam_pdf_generator.py)
+    # NIE jest tu wliczony - zostaje na gpt-4o, osobny temat.
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
