@@ -117,6 +117,19 @@
       '</button>' +
       '</div>';
 
+    // NAPRAWIONE (user 04.09.2026, mobile: "w innych funkcjach trzeba
+    // przewinac na srodek, zeby zobaczyc komunikat, w czacie tak nie ma"):
+    // roznica miedzy stronami - chat.html ma na <body> overflow:hidden
+    // (strona nigdy sie nie przewija), pozostale strony (Quiz, Sprawdzian,
+    // Voice, Notatki, Plan nauki) przewijaja sie normalnie. Na mobile
+    // (Safari/Chrome z chowajacym sie paskiem adresu) position:fixed;inset:0
+    // bywa liczone wzgledem WIEKSZEGO viewportu (bez paska adresu) niz to,
+    // co faktycznie widac, gdy strona jest przewinieta - wiec popup
+    // renderuje sie "ponizej" aktualnie widocznego fragmentu ekranu i
+    // trzeba przewinac, zeby go zobaczyc. Wymuszenie scrollTo(0,0) PRZED
+    // pokazaniem popupu naprawia to niezaleznie od tego, gdzie user byl
+    // przewiniety.
+    window.scrollTo(0, 0);
     document.body.appendChild(popup);
     // Blokada scrolla tla, dopoki modal jest otwarty - to jest BLOKADA
     // uniemozliwiajaca dalsze dzialanie (paywall), wiec strona pod spodem
