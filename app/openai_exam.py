@@ -640,9 +640,18 @@ WAŻNE:
 """
     
     print(f"ðŸŽ“ Quiz z obrazka ({num_questions} pytaÅ„)...")
-    
+
+    # NAPRAWIONE (koszty + szybkosc, user 04.09.2026: "ma byc szybki i
+    # profesjonalne", timeout przy n=5): realny test A/B (n=5, ten sam
+    # obraz, gpt-4o vs gpt-4o-mini) - patrz test_real_quiz_image_speed_ab.py
+    # - pokazal identyczna, w pelni poprawna matematyke na obu modelach,
+    # a mini byl SZYBSZY (16.8s vs 20.3s) i nie potrzebowal ani jednej
+    # rundy dogenerowania (gpt-4o mial 1 odrzucone pytanie - diversity).
+    # Szybsze pojedyncze wywolanie = mniej ryzyka trafienia w budzet
+    # czasowy _verify_and_fill_quiz_math przy wiekszym n, co bylo realnym
+    # zrodlem zgloszonych "2-3 na 5"/timeoutow.
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[
             {
                 "role": "user",
