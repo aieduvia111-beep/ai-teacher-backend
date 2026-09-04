@@ -1374,7 +1374,16 @@ def _is_hard_quadratic_two_positive_roots_exam(temat: str, trudnosc: str) -> boo
     return is_quadratic and trudnosc_word in _HARD_DIFFICULTY_WORDS
 
 
-def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> float:
+# NAPRAWIONE (user 04.09.2026, "przetestuj sprawdzian... jak znajdziesz
+# blad to popraw"): identyczny blad jak w Quizie (naprawiony wczesniej
+# tego samego dnia, patrz _max_generation_seconds w openai_exam.py) -
+# budzet NIE zalezal wcale od liczba_pytan. Ten sam mechanizm skalowania.
+_N_BASELINE_FOR_TIME_BUDGET_EXAM = 8
+_EXTRA_SECONDS_PER_QUESTION_EXAM = 4.5
+_MAX_EXTRA_SECONDS_FOR_N_EXAM = 54.0
+
+
+def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None, liczba_pytan: int = None) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla calego procesu
     generowania+weryfikacji+dogenerowania sprawdzianu (NIE liczac budowy
     PDF - patrz komentarz nad _TIMEOUT_SECONDS_EXAM). 45s dla tematow na
@@ -1384,11 +1393,20 @@ def _max_generation_seconds_exam(temat: str = None, trudnosc: str = None) -> flo
     domyslnego 60s - to swiadome, nie blad: dla latwy/sredni 60s nigdy nie
     bylo problemem (user nigdy sie na to nie skarzyl), wiec zostaje bez
     zmian - obnizka dotyczy WYLACZNIE zgloszonego przypadku (trudne tematy
-    spoza archetypow, do 4 minut oczekiwania)."""
+    spoza archetypow, do 4 minut oczekiwania). PONAD to (04.09.2026) -
+    dodatkowy budzet gdy zamowiono wiecej zadan niz baseline=8, tak samo
+    jak w Quizie."""
     diff_word = (trudnosc or "").strip().lower()
     if diff_word in _HARD_DIFFICULTY_WORDS:
-        return _HARD_TIMEOUT_SECONDS_EXAM
-    return _TIMEOUT_SECONDS_EXAM
+        base = _HARD_TIMEOUT_SECONDS_EXAM
+    else:
+        base = _TIMEOUT_SECONDS_EXAM
+    try:
+        n = int(liczba_pytan) if liczba_pytan is not None else 0
+    except (TypeError, ValueError):
+        n = 0
+    extra = min(_MAX_EXTRA_SECONDS_FOR_N_EXAM, max(0, n - _N_BASELINE_FOR_TIME_BUDGET_EXAM) * _EXTRA_SECONDS_PER_QUESTION_EXAM)
+    return base + extra
 
 _ONLY_CLOSED_KEYWORDS = ['TYLKO', 'ZAMKNIETYCH', 'NIE DODAWAJ CZESCI B', 'SPRAWDZIAN MA MIEC']
 
@@ -3307,7 +3325,21 @@ ZASADY:
         from .metrics import GenerationMetrics, _Timer
         if metrics is None:
             metrics = GenerationMetrics(requested_count=liczba_pytan)
-        max_seconds = _max_generation_seconds_exam(temat, trudnosc)
+        max_seconds = _max_generation_seconds_exam(temat, trudnosc, liczba_pytan)
+        # NAPRAWIONE (04.09.2026, real-test: "srednia"/n=8 trafialo w
+        # "sufit rozszerzenia" natychmiast, mimo ze brakowalo tylko 1
+        # zadania - grace nigdy nie mial szansy zadzialac): oryginalny
+        # komentarz nad _GRACE_MAX_SECONDS_EXAM mowi wprost "standardowy
+        # budzet 45s + do 15s na grace" - ale to zakladalo TYLKO przypadek
+        # "trudny" (45s). Dla domyslnego "latwy"/"sredni" (60s = ta sama
+        # wartosc co _GRACE_MAX_SECONDS_EXAM) margines grace wychodzil
+        # dokladnie 0 - grace byl wiec martwy dla najczestszego przypadku,
+        # wbrew wlasnemu udokumentowanemu zamiarowi. Teraz margines +15s
+        # jest jawny i staly (zamiast wynikac przypadkiem z odejmowania
+        # dwoch stalych), wiec dziala tak samo dla kazdej trudnosci -
+        # oraz (jak w Quizie) skaluje sie razem z max_seconds dla duzego
+        # liczba_pytan.
+        grace_ceiling_exam = max_seconds + 15.0
         if t_start is None:
             t_start = time.monotonic()
         # NAPRAWIONE (user zglosil real przypadek: wygenerowany sprawdzian
@@ -3396,9 +3428,9 @@ ZASADY:
                     stop_reason = f"wyczerpano {_GRACE_EXTRA_ROUNDS_EXAM} dodatkowych prob rozszerzenia (B1) dla typu '{need_type}', zadania nadal nie przechodzily weryfikacji"
                     print(f"[MathVerify][Exam] wyczerpano {_GRACE_EXTRA_ROUNDS_EXAM} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
                     break
-                if elapsed >= _GRACE_MAX_SECONDS_EXAM:
-                    stop_reason = f"przekroczono sufit rozszerzenia czasowego ({elapsed:.0f}s >= {_GRACE_MAX_SECONDS_EXAM:.0f}s)"
-                    print(f"[MathVerify][Exam] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {_GRACE_MAX_SECONDS_EXAM}s) - przerywam dogenerowanie")
+                if elapsed >= grace_ceiling_exam:
+                    stop_reason = f"przekroczono sufit rozszerzenia czasowego ({elapsed:.0f}s >= {grace_ceiling_exam:.0f}s)"
+                    print(f"[MathVerify][Exam] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {grace_ceiling_exam:.1f}s) - przerywam dogenerowanie")
                     break
                 grace_rounds_used += 1
                 print(f"[MathVerify][Exam] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS_EXAM}): standardowy budzet wyczerpany, ale brakuje tylko {missing} zadan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
