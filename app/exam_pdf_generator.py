@@ -3626,6 +3626,26 @@ ZASADY:
                 except Exception as e:
                     print(f"[MathVerify][Exam] blad ostatecznego ratunku ({need_type_rescue}): {e}")
 
+        # NAPRAWIONE (real-test: "Procenty i proporcje" wyszlo 11/8 po
+        # ratunku) - ratunek moze dodac WIECEJ niz `liczba_pytan` w
+        # sumie, bo target_closed/target_open sa liczone raz na poczatku
+        # funkcji i NIE uwzgledniaja ewentualnego nadmiaru z WCZESNIEJSZYCH
+        # rund (przycinanie wyzej dzialalo TYLKO na wyniku glownej petli,
+        # PRZED ratunkiem). Identyczne przyciecie jeszcze raz, PO ratunku -
+        # bezpiecznik dzialajacy niezaleznie od zrodla nadmiaru.
+        total_after_rescue = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
+        overflow_after_rescue = total_after_rescue - liczba_pytan
+        if overflow_after_rescue > 0:
+            sekcje_do_przyciecia2 = sorted(
+                data.get('sekcje', []), key=lambda s: 0 if s.get('typ') == 'zamkniete' else 1
+            )
+            for s in sekcje_do_przyciecia2:
+                while overflow_after_rescue > 0 and s.get('pytania'):
+                    s['pytania'].pop()
+                    overflow_after_rescue -= 1
+                if overflow_after_rescue <= 0:
+                    break
+
         nr = 1
         for s in data.get('sekcje', []):
             for pyt in s.get('pytania', []):
