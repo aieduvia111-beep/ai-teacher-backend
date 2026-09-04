@@ -561,7 +561,10 @@ Zwróć TYLKO Markdown.
 async def generate_quiz_from_image(
     image_data: str,
     num_questions: int = 5,
-    difficulty: str = "medium"
+    difficulty: str = "medium",
+    level: str = None,
+    subject: str = None,
+    topic: str = None
 ) -> Dict:
     """ðŸŽ“ Generuje quiz z obrazka"""
     try:
@@ -569,14 +572,14 @@ async def generate_quiz_from_image(
             image_data = image_data.split("base64,")[1]
 
         async def _raw_call(n: int) -> dict:
-            return await _raw_generate_quiz_from_image_call(image_data, n, difficulty)
+            return await _raw_generate_quiz_from_image_call(image_data, n, difficulty, level=level, subject=subject, topic=topic)
 
         t_start = time.monotonic()
         quiz_data = await _raw_call(_buffered_count(num_questions))
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
-            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(_adaptive_fill_batch(n)), t_start=t_start, difficulty=difficulty
+            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(_adaptive_fill_batch(n)), t_start=t_start, difficulty=difficulty, level=level, topic=topic
         )
         quiz_data = _require_exact_question_count(quiz_data, num_questions, "Quiz z obrazka")
         return {"success": True, "quiz": quiz_data}
@@ -586,16 +589,26 @@ async def generate_quiz_from_image(
         return {"success": False, "error": str(e)}
 
 
-async def _raw_generate_quiz_from_image_call(image_data: str, num_questions: int, difficulty: str) -> dict:
+async def _raw_generate_quiz_from_image_call(image_data: str, num_questions: int, difficulty: str, level: str = None, subject: str = None, topic: str = None) -> dict:
     """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
     generate_quiz_from_image - wydzielone, zeby dogenerowywanie
     brakujacych pytan moglo to wywolywac wielokrotnie."""
+    # NAPRAWIONE (user 04.09.2026, "0 na 5 wygenerowanych", "poziom ma byc
+    # odpowiedni"): ta funkcja wczesniej NIE przyjmowala level/subject/topic
+    # w ogole - wpisany przez ucznia temat byl calkowicie ignorowany, a bez
+    # poziomu klasy kalibracja trudnosci (level_adjusted_tier_shift w
+    # _verify_and_fill_quiz_math) nie miala do czego sie odniesc. To byl
+    # realny powod niespojnych/zbyt trudnych/zbyt latwych wynikow i
+    # powtarzajacych sie odrzuceń przez Warstwe 2.5 az do calkowitego
+    # zablokowania wyniku (_require_exact_question_count).
+    poziom_blok = f"\n- Poziom ucznia: {describe_level(level, subject=(subject or 'ogolny'))}\n  DOSTOSUJ trudnosc pytan do tego poziomu - to NIE moze byc za latwe ani za trudne." if level else ""
+    temat_blok = f"\n- Uczen dodatkowo podal temat: \"{topic}\" - jesli pasuje do materialu na zdjeciu, SKUP pytania na tej czesci materialu. Jesli zdjecie nie dotyczy tego tematu, bazuj na tym co faktycznie widac na zdjeciu." if topic and topic.strip() else ""
     prompt = f"""
 StwÃ³rz QUIZ na podstawie tego materiału.
 
 PARAMETRY:
 - Liczba pytaÅ„: {num_questions}
-- TrudnoÅ›Ä‡: {difficulty}
+- TrudnoÅ›Ä‡: {difficulty}{poziom_blok}{temat_blok}
 
 FORMAT (TYLKO JSON):
 {{

@@ -65,6 +65,9 @@ class QuizImageRequest(BaseModel):
     num_questions: int = 10
     difficulty: str = "medium"
     wlasne_instrukcje: str = ""
+    topic: Optional[str] = None
+    subject: Optional[str] = None
+    level: Optional[str] = None
 
 class QuizTopicRequest(BaseModel):
     topic: str
@@ -126,7 +129,15 @@ def _extract_text(doc_base64: str, doc_type: str, doc_name: str) -> str:
 @router.post("/generate")
 async def quiz_from_image(req: QuizImageRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
-        result = await generate_quiz_from_image(req.image, req.num_questions, req.difficulty)
+        # NAPRAWIONE (user 04.09.2026, "0 na 5 wygenerowanych", "poziom ma
+        # byc odpowiedni"): topic/subject/level byly juz wysylane przez
+        # quiz_app.html (patrz body fetch w startQuiz()), ale ten model
+        # Pydantic ich nie deklarowal - FastAPI je cicho odrzucal, wiec
+        # wpisany temat i poziom klasy nigdy nie docieraly do generatora.
+        result = await generate_quiz_from_image(
+            req.image, req.num_questions, req.difficulty,
+            level=req.level, subject=req.subject, topic=req.topic
+        )
         if not result["success"]:
             return {"success": False, "error": result.get("error")}
         # Jezeli sa wlasne instrukcje - dodaj je do tytulu zeby zaznaczyc ze zostaly uwzglednione
