@@ -2814,6 +2814,17 @@ _GRACE_MAX_MISSING = 2
 _GRACE_EXTRA_ROUNDS = 1
 _GRACE_MAX_SECONDS = 60.0
 
+# NAPRAWIONE (user 05.09.2026: "ma byc szybkie a nie tak samo jak quiz" -
+# ten sam bug/fix co _RESCUE_EXTRA_SECONDS_EXAM w exam_pdf_generator.py,
+# patrz tam pelne uzasadnienie): OSTATECZNY RATUNEK ponizej (dodany
+# 04.09.2026 dla "20 na 20") biegl bez zadnego sprawdzenia czasu, do 3
+# prob PO already wyczerpaniu grace_ceiling - w najgorszym razie doklada
+# ~45s ponad juz zuzyty budzet, regularnie przekraczajac 90s timeout
+# frontendu (quiz_app.html). Wlasny, jawny budzet PONAD grace_ceiling -
+# po jego przekroczeniu ratunek przestaje probowac i oddaje czesciowy
+# wynik zamiast ryzykowac calkowity timeout.
+_RESCUE_EXTRA_SECONDS = 20.0
+
 
 # NAPRAWIONE (user 04.09.2026, "czy czas jest odpowiedni jak ktos wybierze
 # 20 pytan"): potwierdzone realnym testem (test_real_quiz_n20_budget_check.py)
@@ -3036,9 +3047,14 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         # dostaje ZAKTUALIZOWANY avoid_block, wiec nie powtarza tych samych
         # bledow. Nadal ograniczone (nie nieskonczona petla) - max 3
         # dodatkowe wywolania AI w najgorszym przypadku.
+        rescue_ceiling = grace_ceiling + _RESCUE_EXTRA_SECONDS
         for _rescue_i in range(1, 4):
             missing_final = requested_count - final_count
             if missing_final <= 0:
+                break
+            rescue_elapsed = time.monotonic() - t_start
+            if rescue_elapsed >= rescue_ceiling:
+                print(f"[MathVerify] OSTATECZNY RATUNEK: przekroczono budzet ratunku ({rescue_elapsed:.0f}s >= {rescue_ceiling:.0f}s) - przerywam dalsze proby")
                 break
             print(f"[MathVerify] OSTATECZNY RATUNEK {_rescue_i}/3: brakuje {missing_final} pytan - proba z rozluznionym tierem trudnosci")
             avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)

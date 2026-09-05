@@ -1295,6 +1295,24 @@ _GRACE_EXTRA_ROUNDS_EXAM = 3  # ile dodatkowych rund ponad max_rounds
 # na budowe PDF + siec, nie 260s).
 _GRACE_MAX_SECONDS_EXAM = 60.0
 
+# NAPRAWIONE (user 05.09.2026: "sprawdziany pisało przekroczony czas
+# oczekiwania, ma być szybkie"): OSTATECZNY RATUNEK (patrz nizej w
+# _fill_missing_exam_questions, dodany 04.09.2026 dla "20 na 20") biegl
+# BEZ ZADNEGO sprawdzenia czasu - do 3 prob NA KAZDY brakujacy typ
+# (zamkniete/otwarte), kazda to PELNE wywolanie generacji+weryfikacji AI,
+# URUCHAMIANE PO already wyczerpaniu glownego budzetu (grace_ceiling_exam)
+# przez petle wyzej. W najgorszym przypadku dokladalo to nawet ~90s PONAD
+# juz zuzyty budzet - dla tematow "trudny" (budzet bazowy tylko 45s) to
+# regularnie przekraczalo 100s timeout frontendu (exam_generator.html),
+# ktory NIE wie nic o tym dodatkowym, nieograniczonym czasie ratunku.
+# Ratunek dostaje teraz WLASNY, jawny budzet PONAD grace_ceiling_exam -
+# gdy go przekroczy, przestaje probowac i oddaje to, co ma (uczciwy,
+# czesciowy wynik + widoczny komunikat na froncie), zamiast ryzykowac
+# calkowity timeout bez zadnej odpowiedzi. Kompromis: troche czesciej
+# niepelny wynik (rzadko, tylko dla naprawde upartych tematow), zero
+# ryzyka calkowitego braku odpowiedzi po >100s czekania.
+_RESCUE_EXTRA_SECONDS_EXAM = 20.0
+
 
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - PORT z Quizu
@@ -3737,12 +3755,17 @@ ZASADY:
         # (real-test: JEDNA proba czasem trafia w partie z INNYM defektem
         # - np. zly LaTeX - i wtedy ratunek nie pomaga wcale): petla do 3
         # prob zamiast jednej, kazda z aktualnym avoid_block.
+        rescue_ceiling_exam = grace_ceiling_exam + _RESCUE_EXTRA_SECONDS_EXAM
         for need_type_rescue in ('zamkniete', 'otwarte'):
             target_n = target_closed if need_type_rescue == 'zamkniete' else target_open
             for _rescue_i in range(1, 4):
                 current_n = sum(len(s.get('pytania', [])) for s in data.get('sekcje', []) if s.get('typ') == need_type_rescue)
                 rescue_missing = target_n - current_n
                 if rescue_missing <= 0:
+                    break
+                rescue_elapsed = time.monotonic() - t_start
+                if rescue_elapsed >= rescue_ceiling_exam:
+                    print(f"[MathVerify][Exam] OSTATECZNY RATUNEK: przekroczono budzet ratunku ({rescue_elapsed:.0f}s >= {rescue_ceiling_exam:.0f}s) - przerywam dalsze proby dla '{need_type_rescue}'")
                     break
                 print(f"[MathVerify][Exam] OSTATECZNY RATUNEK {_rescue_i}/3: brakuje {rescue_missing} zadan typu '{need_type_rescue}' - proba z rozluznionym tierem trudnosci")
                 avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
