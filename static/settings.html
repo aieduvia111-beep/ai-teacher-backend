@@ -390,8 +390,15 @@ function updateXPBar(xp,data){
   setTimeout(()=>{document.getElementById('hXpFill').style.width=pct+'%';},200);
   
   // Osiagniecia
-  const q=data.totalQuizzes||0;
-  const n=data.notes?.length||0;
+  // NAPRAWIONE (04.09.2026, user: "czy osiagniecia dizialaja" -> 3/8
+  // nigdy sie nie odblokowywaly): dane o quizach/notatkach JUZ ISTNIALY
+  // od dawna w Firestore (quiz_app.html/notes_generator.html zapisuja je
+  // przy kazdym uzyciu przez arrayUnion), tylko pod INNYMI nazwami pol
+  // niz te, ktorych szukal ten kod - "quizHistory"/"notesHistory", nie
+  // "totalQuizzes"/"notes". Zero nowego trackingu do zbudowania, sama
+  // literowka w nazwie pola.
+  const q=data.quizHistory?.length||0;
+  const n=data.notesHistory?.length||0;
   const streak=data.streak||0;
   if(q>=1)document.getElementById('ach1').classList.add('unlocked');
   if(streak>=3)document.getElementById('ach2').classList.add('unlocked');
