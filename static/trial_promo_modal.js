@@ -7,14 +7,18 @@
    dziala end-to-end) chcial dodatkowy, "miekki" komunikat marketingowy
    dla darmowych userow, niezalezny od trafienia w limit - zeby
    przyciagnac do zakupu tych, ktorzy nigdy nie uzywaja apki na tyle,
-   zeby zobaczyc paywall.
+   zeby zobaczyc paywall. Design CELOWO odrozniony od limit_modal.js
+   (user 05.09.2026: "ma byc lepszy design niz komunikat jak konczy sie
+   limit") - to ma czuc sie jak prezent/zaproszenie, nie jak restrykcja:
+   badge "oferta powitalna", ikona prezentu zamiast tarczy, duzy naglowek
+   z "7 dni", lista korzysci z checkmarkami zamiast samego akapitu.
 
    Pokazywany max raz na 24h na uzytkownika (localStorage, jak reszta
    dobowych liczników w apce - patrz limit_modal.js/voice_usage_date) i
    TYLKO gdy plan === 'free' (jesli user jest w trialu lub ma Pro,
    Firestore 'plan' juz jest 'pro' - patrz dashboard_FINAL.html
-   payment=success handler). Nie blokuje scrolla tla (to nie paywall,
-   user moze to zignorowac i dzialac dalej).
+   payment=success handler). Pelnoekranowe tlo jak w limit_modal.js, ale
+   NIE blokuje scrolla (to nie paywall, user moze to zignorowac).
    ============================================================ */
 (function () {
   'use strict';
@@ -42,30 +46,51 @@
     popup.id = 'trialPromoPopup';
     popup.style.cssText =
       'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;' +
-      'background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;';
+      'background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);padding:20px;';
+
+    var feats = [
+      'Nieograniczony Czat AI i Voice AI',
+      'Quizy, Notatki i Sprawdziany bez limitu',
+      'Plan nauki i wszystkie funkcje Pro'
+    ];
+    var featsHTML = feats.map(function (f) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">' +
+        '<div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(124,106,255,.15);display:flex;align-items:center;justify-content:center;">' +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
+        '</div>' +
+        '<span style="font-size:.85em;color:#c8c8d8;text-align:left;">' + f + '</span>' +
+        '</div>';
+    }).join('');
 
     popup.innerHTML =
       '<div style="' +
-      'background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;' +
-      'padding:32px 28px;max-width:380px;width:100%;box-sizing:border-box;text-align:center;' +
-      'box-shadow:0 0 60px rgba(124,106,255,0.15);position:relative;' +
-      'animation:popIn .3s cubic-bezier(.34,1.56,.64,1);' +
+      'background:radial-gradient(circle at 50% 0%,rgba(124,106,255,.1),transparent 60%),#0f0f18;' +
+      'border:1px solid rgba(124,106,255,0.35);border-radius:26px;' +
+      'padding:40px 32px 32px;max-width:420px;width:100%;box-sizing:border-box;text-align:center;' +
+      'box-shadow:0 0 80px rgba(124,106,255,0.2);position:relative;overflow:hidden;' +
+      'animation:trialPopIn .35s cubic-bezier(.34,1.56,.64,1);' +
       '">' +
-      '<style>@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}</style>' +
-      '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">' +
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="10"/></svg>' +
+      '<style>@keyframes trialPopIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}</style>' +
+      '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.3);border-radius:100px;padding:5px 14px;font-size:.7em;font-weight:700;color:#a78bfa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;font-family:\'Syne\',sans-serif;">' +
+      '🎁 Oferta powitalna' +
       '</div>' +
-      '<div style="font-family:\'Syne\',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">' +
-      'Wypróbuj Eduvia Pro' +
+      '<div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,rgba(124,106,255,.25),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 0 30px rgba(124,106,255,.2);">' +
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' +
       '</div>' +
-      '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
-      '7 dni <strong style="color:#a78bfa">za darmo</strong>, bez limitów w Czacie, Quizach, Notatkach i Sprawdzianach. Zrezygnuj w każdej chwili — nic nie płacisz, jeśli anulujesz przed końcem triala.' +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:1.4em;font-weight:800;color:#eeeef5;margin-bottom:6px;line-height:1.25;">' +
+      '7 dni Pro <span style="white-space:nowrap;background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">za darmo</span>' +
+      '</div>' +
+      '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:18px;">' +
+      'Odblokuj wszystko na tydzień. Zrezygnuj kiedy chcesz — jeśli anulujesz przed końcem triala, nic nie płacisz.' +
       '</p>' +
+      '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:6px 18px;margin-bottom:24px;">' +
+      featsHTML +
+      '</div>' +
       '<button onclick="window.location.href=\'pricing.html\'" style="' +
-      'width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);' +
-      'border:none;border-radius:12px;color:white;font-family:\'Syne\',sans-serif;' +
-      'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
-      'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
+      'width:100%;padding:15px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);' +
+      'border:none;border-radius:13px;color:white;font-family:\'Syne\',sans-serif;' +
+      'font-size:.92em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
+      'box-shadow:0 4px 24px rgba(124,106,255,.35);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
       'Wypróbuj 7 dni za darmo →' +
       '</button>' +
