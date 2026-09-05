@@ -19,6 +19,15 @@
    Firestore 'plan' juz jest 'pro' - patrz dashboard_FINAL.html
    payment=success handler). Pelnoekranowe tlo jak w limit_modal.js, ale
    NIE blokuje scrolla (to nie paywall, user moze to zignorowac).
+
+   Copy zmieniony 05.09.2026 (user: "bardziej rodzice to kupuja") - z
+   "prezentowego" tonu na tonu ZAUFANIA: glowna obiekcja rodzica przy
+   platnej subskrypcji dla dziecka to strach przed "pulapka" (zapomni
+   anulowac, zaplaci bez wiedzy) - stad najwazniejszy punkt listy to
+   teraz "anuluj jednym kliknieciem", nie funkcje produktu. Ikona
+   zmieniona z prezentu na tarcze+checkmark (ten sam ksztalt tarczy co
+   w limit_modal.js, dla spojnosci wizualnej, ale z checkiem = bezpieczne/
+   zweryfikowane) zamiast "nagrody/upominku".
    ============================================================ */
 (function () {
   'use strict';
@@ -49,9 +58,9 @@
       'background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);padding:20px;';
 
     var feats = [
-      'Nieograniczony Czat AI i Voice AI',
-      'Quizy, Notatki i Sprawdziany bez limitu',
-      'Plan nauki i wszystkie funkcje Pro'
+      'Anulujesz jednym kliknięciem — zero zobowiązań',
+      'Nieograniczony Czat AI, Quizy i Sprawdziany',
+      'Notatki, Voice AI i Plan nauki bez limitu'
     ];
     var featsHTML = feats.map(function (f) {
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">' +
@@ -72,16 +81,16 @@
       '">' +
       '<style>@keyframes trialPopIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}</style>' +
       '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.3);border-radius:100px;padding:5px 14px;font-size:.7em;font-weight:700;color:#a78bfa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;font-family:\'Syne\',sans-serif;">' +
-      '🎁 Oferta powitalna' +
+      '✅ Próba bez ryzyka' +
       '</div>' +
       '<div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,rgba(124,106,255,.25),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 0 30px rgba(124,106,255,.2);">' +
-      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' +
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
       '</div>' +
       '<div style="font-family:\'Syne\',sans-serif;font-size:1.4em;font-weight:800;color:#eeeef5;margin-bottom:6px;line-height:1.25;">' +
       '7 dni Pro <span style="white-space:nowrap;background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">za darmo</span>' +
       '</div>' +
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:18px;">' +
-      'Odblokuj wszystko na tydzień. Zrezygnuj kiedy chcesz — jeśli anulujesz przed końcem triala, nic nie płacisz.' +
+      'Pełny dostęp na tydzień, bez zobowiązań. Anulujesz w każdej chwili jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
       '</p>' +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:6px 18px;margin-bottom:24px;">' +
       featsHTML +
@@ -101,6 +110,9 @@
       '" onmouseover="this.style.borderColor=\'rgba(255,255,255,.15)\';this.style.color=\'#8888a0\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.08)\';this.style.color=\'#55556a\'">' +
       'Nie teraz' +
       '</button>' +
+      '<div style="margin-top:14px;font-size:.72em;color:#4a4a5e;">' +
+      '🔒 Bezpieczne płatności obsługiwane przez Stripe' +
+      '</div>' +
       '</div>';
 
     window.scrollTo(0, 0);
