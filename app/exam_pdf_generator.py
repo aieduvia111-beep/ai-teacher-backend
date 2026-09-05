@@ -279,20 +279,49 @@ to dodatkowa, darmowa siatka bezpieczenstwa wylapujaca bledy arytmetyczne,
 WIEC WZOR MUSI BYC NAPRAWDE POPRAWNY (dokladnie taki, z jakiego wyliczyles
 "expected"), inaczej zadanie zostanie ODRZUCONE mimo ze tresc jest dobra.
 
-POLE "diversity_tag" (Czesc A) - NOWE, OBOWIAZKOWE (pomaga systemowi
-pilnowac roznorodnosci w sprawdzianie): dla KAZDEGO zadania zamknietego
-podaj obiekt z 4 KROTKIMI (kilka slow, NIE zdaniami) polami opisujacymi
-WLASNYMI slowami typ rozumowania w TYM zadaniu:
+POLE "diversity_tag" (Czesc A I Czesc B - NAPRAWIONE 05.09.2026, patrz
+nizej) - NOWE, OBOWIAZKOWE (pomaga systemowi pilnowac roznorodnosci w
+sprawdzianie): dla KAZDEGO zadania (zamknietego W CZESCI A, OTWARTEGO
+W CZESCI B - OBU, nie tylko zamknietych) podaj obiekt z 4 KROTKIMI
+(kilka slow, NIE zdaniami) polami opisujacymi WLASNYMI slowami typ
+rozumowania w TYM zadaniu:
   "skill" - glowna umiejetnosc/wzor uzyty (np. "wzor na delte", "wzory Viete'a", "twierdzenie sinusow")
   "concept" - kluczowe pojecie/wariant (np. "parametr jako wspolczynnik liniowy", "parametr jako wyraz wolny")
   "task_type" - co dokladnie trzeba zrobic (np. "wyznacz parametr z warunku na delte", "oblicz wartosc wyrazenia")
   "reasoning" - krotki opis krokow (np. "oblicz delte, rozwiaz nierownosc, zapisz przedzial")
-KRYTYCZNE: jesli generujesz WIELE zadan tego samego tematu, CELOWO
-ROZNICUJ te 4 pola miedzy zadaniami - to jest sygnal dla systemu, ktory
-pilnuje, zeby sprawdzian nie skladal sie z wielu zadan o tym samym
-schemacie (tylko z innymi liczbami/literami). Jesli dwa zadania maja
-NAPRAWDE ten sam typ rozumowania - ich tagi tez powinny to szczerze
-odzwierciedlac.
+KRYTYCZNE: jesli generujesz WIELE zadan tego samego tematu (W DOWOLNEJ
+CZESCI, TAKZE W CZESCI B), CELOWO ROZNICUJ te 4 pola MIEDZY zadaniami -
+to jest sygnal dla systemu, ktory pilnuje, zeby sprawdzian nie skladal
+sie z wielu zadan o tym samym schemacie (tylko z innymi liczbami/
+literami). Jesli dwa zadania maja NAPRAWDE ten sam typ rozumowania -
+ich tagi tez powinny to szczerze odzwierciedlac.
+
+NAPRAWIONE (05.09.2026, user zglosil real-test: zadania OTWARTE tego
+samego tematu wyszly WSZYSTKIE z identycznym sformulowaniem zdania,
+podczas gdy zamkniete juz mialy roznorodnosc): powyzsza instrukcja
+diversity_tag wczesniej mowila WPROST "(Czesc A)" - sugerujac AI, ze
+roznorodnosc sformulowan dotyczy TYLKO zadan zamknietych, mimo ze
+mechanizm weryfikujacy podobienstwo (Diversity Engine, patrz
+is_too_similar_diversity_tag) DZIALA IDENTYCZNIE dla obu czesci. AI
+posluchalo instrukcji doslownie i nie staralo sie roznicowac Czesci B.
+Ta sama zasada "ROZNICUJ SFORMULOWANIA" (patrz podwzorzec rownan
+kwadratowych z parametrem ponizej) dotyczy TERAZ ROWNIEZ zadan
+otwartych - nie kopiuj jednego szablonu zdania do wszystkich zadan
+obliczeniowych w Czesci B.
+
+PRZYKLAD (dotyczy KAZDEGO tematu, nie tylko rownan kwadratowych) - jesli
+Czesc B ma 3 zadania o tym samym podtemacie:
+BLEDNIE (wszystkie 3 zaczynaja sie identycznie, rozna sie tylko liczby):
+  "Dla jakich wartości parametru p rownanie ... ma dwa rozne pierwiastki? Oblicz przedzial."
+  "Dla jakich wartości parametru p rownanie ... ma dwa rozne pierwiastki? Oblicz przedzial."
+  "Dla jakich wartości parametru p rownanie ... ma dwa rozne pierwiastki? Oblicz przedzial."
+POPRAWNIE (kazde zadanie ma INNA konstrukcje zdania, nie tylko inne liczby):
+  "Dla jakich wartości parametru p rownanie ... ma dwa rozne pierwiastki?"
+  "Wyznacz warunek na parametr k, przy ktorym ... posiada dwa rozne rozwiazania rzeczywiste."
+  "Zbadaj, dla jakich wartosci m rownanie ... nie ma jednego (podwojnego) pierwiastka."
+Zasada dotyczy WSZYSTKICH tematow (nie tylko algebry) - te same 3
+zadania geometrii/fizyki/chemii NIE moga zaczynac sie od identycznego
+zdania wprowadzajacego.
 
 ZAKAZ DUPLIKATOW W JEDNEJ PARTII (05.09.2026, user zglosil real-test:
 79 wygenerowanych zadan na 20 zamowionych, az 29 odrzuconych jako
@@ -444,7 +473,7 @@ SZCZEGOLNIE wazne.
 - punkty lacznie: 25-35 pkt
 - trudnosc rosnaca w obrebie kazdej sekcji
 - final_answer (zadania zamkniete) = doslowna kopia tresci poprawnej opcji, BEZ prefiksu "a) " (patrz wyzej)
-- diversity_tag (zadania zamkniete) = 4 krotkie pola opisujace typ rozumowania (patrz wyzej) - ROZNE dla roznych zadan
+- diversity_tag (WSZYSTKIE zadania - zamkniete I otwarte) = 4 krotkie pola opisujace typ rozumowania (patrz wyzej) - ROZNE dla roznych zadan
 - PO POLSKU, konkretne liczby w zadaniach, nie ogolniki"""
 
 _MATH_INDICATOR_RE = re.compile(r'[\d\\=+\-*/^<>_{}]')
