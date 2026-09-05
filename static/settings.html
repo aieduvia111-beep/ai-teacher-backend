@@ -252,9 +252,9 @@ button:active{transform:scale(.95)!important;}
           <div class="item-txt"><div class="item-title">Zmień hasło</div><div class="item-sub">Link resetowania na email</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
-        <div class="item" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/pricing.html'">
+        <div class="item" id="planSubItem" onclick="location.href='https://ai-teacher-backend-inky.vercel.app/pricing.html'">
           <div class="item-ic ic-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-          <div class="item-txt"><div class="item-title">Plan i subskrypcja</div><div class="item-sub">Odblokuj pełne możliwości AI</div></div>
+          <div class="item-txt"><div class="item-title">Plan i subskrypcja</div><div class="item-sub" id="planSubSub">Odblokuj pełne możliwości AI</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
       </div>
@@ -452,6 +452,30 @@ async function saveLevelChange(value,label){
   }
 }
 
+// NOWE (04.09.2026, user: "jak ludzie moga anulowac subskrypcje?") -
+// wywoluje istniejacy juz od dawna backend (/api/v1/payments/cancel-subscription),
+// ktory dotad nie mial ZADNEGO miejsca w UI go wywolujacego. Anuluje NA
+// KONIEC oplaconego okresu (albo triala - user nadal nie placi, jesli
+// anuluje przed jego koncem), nie natychmiast - zgodnie z tekstem FAQ na
+// pricing.html ("dostep do konca oplaconego okresu").
+async function cancelSubscriptionFlow(){
+  if(!confirm('Na pewno chcesz anulować subskrypcję Pro?\n\nZachowasz dostęp do końca opłaconego okresu (albo do końca darmowego triala, jeśli jeszcze trwa) — nic więcej Cię nie obciąży.'))return;
+  try{
+    const u=auth.currentUser;
+    if(!u)throw new Error('Nie jestes zalogowany.');
+    const token=await u.getIdToken();
+    const res=await fetch(window.API_BASE+'/api/v1/payments/cancel-subscription',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const data=await res.json();
+    if(!data.success)throw new Error(data.error||'Nie udalo sie anulowac subskrypcji.');
+    window.showError('Subskrypcja anulowana — dostęp do końca opłaconego okresu.');
+  }catch(e){
+    window.showError(e.message||'Nie udalo sie anulowac subskrypcji. Sprobuj ponownie albo napisz do nas.');
+  }
+}
+
 onAuthStateChanged(auth,async u=>{
   if(!u){window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';return;}
   const name=u.displayName||u.email?.split('@')[0]||'Użytkownik';
@@ -467,7 +491,22 @@ onAuthStateChanged(auth,async u=>{
       document.getElementById('hStreak').textContent=(d.streak||0)+'d';
       const days=d.createdAt?.seconds?Math.floor((Date.now()-d.createdAt.seconds*1000)/86400000):0;
       document.getElementById('hDays').textContent=days+'d';
-      if(d.plan==='pro'){const b=document.getElementById('hBadge');b.textContent='Pro';b.className='badge pro';}
+      if(d.plan==='pro'){
+        const b=document.getElementById('hBadge');b.textContent='Pro';b.className='badge pro';
+        // NOWE (04.09.2026, user: "jak ludzie moga anulowac subskrypcje?" -
+        // backend (/api/v1/payments/cancel-subscription) juz istnial, ale
+        // ZERO miejsca w UI go wywolywalo - user nie mial jak samodzielnie
+        // anulowac, musialby pisac z prosba recznie). Dla Pro usera ten sam
+        // kafelek "Plan i subskrypcja" (wczesniej ZAWSZE prowadzil do
+        // pricing.html, tez dla juz platnych userow) teraz zarzadza/anuluje
+        // zamiast namawiac do ponownego zakupu.
+        const item=document.getElementById('planSubItem');
+        const sub=document.getElementById('planSubSub');
+        if(item&&sub){
+          sub.textContent='Zarządzaj lub anuluj subskrypcję';
+          item.onclick=cancelSubscriptionFlow;
+        }
+      }
       updateXPBar(d.xp||0,d);
     }
   }catch(e){}
