@@ -73,8 +73,9 @@
       '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">' +
       '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
       '</div>' +
-      '<div style="font-family:\'Syne\',sans-serif;font-size:1.05em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
-      'Ucz się bez ograniczeń<br>— 7 dni gratis' +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:1.1em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
+      'Ucz się bez ograniczeń<br>' +
+      '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">7 dni gratis</span>' +
       '</div>' +
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
       '7 dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
