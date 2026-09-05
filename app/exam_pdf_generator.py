@@ -294,6 +294,19 @@ schemacie (tylko z innymi liczbami/literami). Jesli dwa zadania maja
 NAPRAWDE ten sam typ rozumowania - ich tagi tez powinny to szczerze
 odzwierciedlac.
 
+ZAKAZ DUPLIKATOW W JEDNEJ PARTII (05.09.2026, user zglosil real-test:
+79 wygenerowanych zadan na 20 zamowionych, az 29 odrzuconych jako
+CZYSTE duplikaty w tej samej partii - kazda odrzucona proba to kolejne
+niepotrzebne wywolanie AI, dluzszy czas i wyzszy koszt): dotyczy TAK
+SAMO Czesci A jak i Czesci B. Zanim oddasz odpowiedz, PRZEJRZYJ
+WSZYSTKIE wygenerowane zadania (obie czesci razem) i upewnij sie, ze
+ZADNE DWA nie uzywaja tych samych liczb/wspolczynnikow/scenariusza w
+tym samym schemacie (np. DWA zadania "$x^2+mx+16=0$, ile ma
+pierwiastkow" z ta sama stala 16, choc inna litera parametru - to JEST
+duplikat, nie dwa rozne zadania). Kazde zadanie MUSI miec INNA liczbowa
+konfiguracje niz KAZDE inne zadanie w TEJ partii, nawet jesli to samo
+zadanie pojawia sie ponownie kilka pytan dalej.
+
 GRAMATYKA - KRYTYCZNE (czesty blad): gdy odpowiedzia jest ZBIOR/
 PRZEDZIAL/NIEROWNOSC (nie jedna liczba), pytanie o parametr MUSI byc w
 LICZBIE MNOGIEJ: "Dla jakich wartości parametru {{x}}..." - NIGDY "Dla

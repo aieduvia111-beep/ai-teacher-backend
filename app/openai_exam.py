@@ -1160,6 +1160,16 @@ Jesli dwa pytania maja NAPRAWDE ten sam typ rozumowania - ich tagi
 tez powinny to szczerze odzwierciedlac (nie oszukuj systemu sztucznie
 roznymi slowami dla identycznego zadania).
 
+ZAKAZ DUPLIKATOW W JEDNEJ PARTII (05.09.2026, user zglosil real-test:
+duzo odrzucen jako czyste duplikaty w tej samej partii - kazda
+odrzucona proba to kolejne niepotrzebne wywolanie AI, dluzszy czas i
+wyzszy koszt): zanim oddasz odpowiedz, PRZEJRZYJ WSZYSTKIE
+wygenerowane pytania i upewnij sie, ze ZADNE DWA nie uzywaja tych
+samych liczb/wspolczynnikow/scenariusza w tym samym schemacie (np.
+DWA pytania "$x^2+mx+16=0$, ile ma pierwiastkow" z ta sama stala 16,
+choc inna litera parametru - to JEST duplikat). Kazde pytanie MUSI
+miec INNA liczbowa konfiguracje niz KAZDE inne pytanie w TEJ partii.
+
 FORMAT (TYLKO JSON):
 {{
     "title": "{topic} - Quiz",
