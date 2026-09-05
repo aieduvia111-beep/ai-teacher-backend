@@ -396,6 +396,36 @@ async def startup():
     except Exception as e:
         print(f"⚠️ Migracja kolumn users: {e}")
 
+    # NAPRAWIONE (user 04.09.2026, real-blad: proba anulowania subskrypcji
+    # rzucila surowy blad SQL Postgresa "invalid input syntax for type
+    # integer" przy zapytaniu o subscriptions.user_id): kolumna byla
+    # blednie utworzona jako Integer (patrz models.py Subscription), mimo
+    # ze user_id to zawsze Firebase UID - alfanumeryczny string (np.
+    # "yXsgnTJdl1OLsFmvLte2zWLBQcR2"). Na SQLite dzialalo to przypadkiem
+    # (luzne typowanie), na Postgresie/Supabase (produkcja) kazde
+    # zapytanie/insert z prawdziwym UID w tej kolumnie konczylo sie
+    # twardym bledem typu. ALTER COLUMN TYPE ... USING to skladnia
+    # WYLACZNIE Postgresa (SQLite nie wspiera ALTER COLUMN w ten sposob),
+    # stad jawny warunek - na SQLite nic nie robimy (i tak "dzialalo").
+    # Idempotentne: sprawdzamy PRAWDZIWY typ kolumny w bazie przed zmiana,
+    # bezpieczne przy kazdym restarcie.
+    try:
+        from sqlalchemy import inspect as _sa_inspect2, text as _sa_text2
+        if "sqlite" not in settings.DATABASE_URL:
+            _insp2 = _sa_inspect2(engine)
+            if "subscriptions" in _insp2.get_table_names():
+                _sub_cols = {c["name"]: str(c["type"]).upper() for c in _insp2.get_columns("subscriptions")}
+                _uid_type = _sub_cols.get("user_id", "")
+                if _uid_type and "CHAR" not in _uid_type and "TEXT" not in _uid_type:
+                    with engine.connect() as _conn2:
+                        _conn2.execute(_sa_text2(
+                            "ALTER TABLE subscriptions ALTER COLUMN user_id TYPE VARCHAR(128) USING user_id::VARCHAR"
+                        ))
+                        _conn2.commit()
+                        print("✅ Naprawiono typ subscriptions.user_id (Integer -> VARCHAR)")
+    except Exception as e:
+        print(f"⚠️ Migracja typu subscriptions.user_id: {e}")
+
     print("=" * 60)
     print("🚀 AI TEACHER BACKEND STARTED!")
     print(f"🔑 OpenAI: {'✅ ' + settings.OPENAI_API_KEY[:20] + '...' if settings.OPENAI_API_KEY else '❌ MISSING'}")

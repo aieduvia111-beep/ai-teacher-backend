@@ -125,9 +125,21 @@ class User(Base):
 class Subscription(Base):
     """Subskrypcja Stripe"""
     __tablename__ = "subscriptions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True, nullable=False)
+    # NAPRAWIONE (user 04.09.2026, real-blad: proba anulowania subskrypcji
+    # rzucila surowy blad SQL "invalid input syntax for type integer" na
+    # produkcyjnej (Postgres/Supabase) bazie) - user_id tutaj byl blednie
+    # Integer, mimo ze w calej reszcie aplikacji (np. Lesson.user_id wyzej)
+    # user_id to Firebase UID - alfanumeryczny STRING (np.
+    # "yXsgnTJdl1OLsFmvLte2zWLBQcR2"), nigdy liczba. Na SQLite (lokalnie)
+    # dzialalo to przypadkiem (luzne typowanie), na Postgresie (produkcja)
+    # kazde zapytanie/insert z prawdziwym Firebase UID w tej kolumnie
+    # konczylo sie twardym bledem typu - stad KAZDA proba anulowania
+    # subskrypcji musiala sie wywalac, a insert w _handle_checkout_completed
+    # prawdopodobnie tez cicho zawodzil (bez wplywu na is_premium, ktore
+    # jest ustawiane WCZESNIEJ, osobnym commitem, na innej tabeli).
+    user_id = Column(String(128), index=True, nullable=False)
     
     # Stripe IDs
     stripe_subscription_id = Column(String(255), unique=True, nullable=False)
