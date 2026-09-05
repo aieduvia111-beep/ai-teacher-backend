@@ -2328,7 +2328,9 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
 poprawny warunek na DWA ROZNE PIERWIASTKI zostal JUZ OBLICZONY (przez
 niezalezny system matematyczny) - Twoje jedyne zadania to:
-1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie.
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie -
+   patrz punkt "RÓŻNICUJ SFORMUŁOWANIA" ponizej, KAZDE pytanie MUSI
+   brzmiec inaczej.
 2. Wymyslic 3 SENSOWNE, ale MATEMATYCZNIE BLEDNE dystraktory (inne
    liczby/znaki, realistyczne, ale niepoprawne) - NIE kopiuj poprawnej
    wartosci do dystraktorow.
@@ -2337,6 +2339,18 @@ niezalezny system matematyczny) - Twoje jedyne zadania to:
 4. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie
    frazy) - dla WSZYSTKICH tych zadan concept to zawsze "parametr jako
    wspolczynnik liniowy" (to jest ten sam podwzorzec, celowo).
+
+RÓŻNICUJ SFORMUŁOWANIA (05.09.2026, user zglosil ze wszystkie zadania
+tego podwzorca brzmialy IDENTYCZNIE - rozne tylko litera/liczba):
+KAZDE z {len(skeletons)} zadan MUSI miec INNA konstrukcje zdania - NIE
+kopiuj jednego szablonu do wszystkich. Rotuj miedzy stylami, np.:
+- "Dla jakich wartości parametru {{litera}} równanie ... ma dwa różne pierwiastki?"
+- "Wyznacz zbiór wartości parametru {{litera}}, dla których równanie ... ma dwa różne pierwiastki."
+- "Dla jakich {{litera}} podane równanie ... posiada dwa różne rozwiązania rzeczywiste?"
+- "Ustal warunek na parametr {{litera}}, przy którym równanie ... ma dwa różne pierwiastki."
+- "Kiedy (dla jakich wartości {{litera}}) równanie ... ma dwa różne pierwiastki?"
+Uzyj kazdego stylu co najwyzej 1-2 razy w tej partii - jesli zadan jest
+wiecej niz stylow, wymysl WLASNE, ale wciaz rozne od siebie sformulowanie.
 
 KRYTYCZNE: NIE PRZELICZAJ podanego warunku od nowa i NIE ZMIENIAJ go w
 zadnym stopniu - jest juz zweryfikowany przez niezalezny system. Twoja
