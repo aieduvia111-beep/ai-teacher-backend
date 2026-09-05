@@ -8,6 +8,7 @@ from ..exam_pdf_generator import ExamGenerator
 from ..openai_vision import analyze_image_with_gpt4_vision
 from ..firebase_auth import require_feature_limit
 from ..models import User
+from ..job_store import create_job, set_done, set_error, get_job, pop_job, cleanup_old_jobs
 import os, json, zipfile, tempfile
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -223,3 +224,144 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NOWE (05.09.2026, user: "nie moze byc tak ze zamawiasz 5 pytan a dostajesz
+# 1 - profesjonalne aplikacje tak nie robia"): endpoint /generate powyzej
+# trzyma JEDNO polaczenie HTTP otwarte przez caly czas generowania - a
+# kazde polaczenie HTTP ma jakis limit czasu (przegladarka, ewentualny
+# proxy). Wczesniejszy fix ograniczyl czasowo mechanizm "ostatecznego
+# ratunku" zeby zmiescic sie w tym limicie - kosztem czasem niepelnego
+# kompletu pytan, co user uznal za nieakceptowalne.
+#
+# Prawdziwe rozwiazanie: rozdzielic "poprosic o wygenerowanie" od "czekac
+# na wynik". /generate/start odpala generowanie W TLE (bez zadnego
+# sztucznego sufitu czasowego innego niz sam, dlugi proces generowania) i
+# OD RAZU zwraca job_id. Przegladarka co pare sekund pyta /generate/status
+# - dzieki temu NIC nie "timeoutuje" w trakcie oczekiwania, bo nie ma
+# jednego dlugiego polaczenia - jest tylko seria krotkich, natychmiastowych
+# zapytan o postep. Gdy status=="done", przegladarka pobiera plik z
+# /generate/result. Stary /generate (wyzej) zostaje nietkniety (na wypadek
+# bezposrednich wywolan API z pominieciem frontendu) - nowe endpointy sa
+# tym, czego uzywa teraz exam_generator.html.
+# ══════════════════════════════════════════════════════════════════════
+
+async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wariant, wlasne_instrukcje):
+    try:
+        loop = asyncio.get_event_loop()
+        if wariant == "AB":
+            (filename_a, shortfall_a), (filename_b, shortfall_b) = await asyncio.gather(
+                loop.run_in_executor(
+                    _executor, _generate_blocking,
+                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "A", wlasne_instrukcje
+                ),
+                loop.run_in_executor(
+                    _executor, _generate_blocking,
+                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "B", wlasne_instrukcje
+                ),
+            )
+            if filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b):
+                zip_path = tempfile.mktemp(suffix=".zip")
+                with zipfile.ZipFile(zip_path, "w") as zf:
+                    zf.write(filename_a, arcname="wariant_A.pdf")
+                    zf.write(filename_b, arcname="wariant_B.pdf")
+                set_done(job_id, {"kind": "zip", "path": zip_path, "shortfall": shortfall_a or shortfall_b})
+                return
+            if shortfall_a or shortfall_b:
+                set_done(job_id, {"kind": "shortfall_only", "shortfall": shortfall_a or shortfall_b})
+                return
+            set_error(job_id, "Nie udalo sie wygenerowac PDF")
+            return
+
+        filename, shortfall = await loop.run_in_executor(
+            _executor, _generate_blocking,
+            pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, wariant, wlasne_instrukcje
+        )
+        if filename and os.path.exists(filename):
+            set_done(job_id, {"kind": "pdf", "path": filename, "shortfall": shortfall})
+            return
+        if shortfall:
+            set_done(job_id, {"kind": "shortfall_only", "shortfall": shortfall})
+            return
+        set_error(job_id, "Nie udalo sie wygenerowac PDF")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        set_error(job_id, str(e))
+
+
+@router.post("/generate/start")
+async def generate_exam_start(req: ExamRequest, user: User = Depends(require_feature_limit("exam"))):
+    try:
+        os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        all_images = req.images or ([req.image] if req.image else [])
+        temat = req.temat
+        przedmiot = req.przedmiot
+
+        if all_images:
+            vision_data = await _extract_topic_from_images(all_images)
+            temat = vision_data.get('temat', temat)
+            przedmiot = vision_data.get('przedmiot', przedmiot)
+            print(f"[Vision->Exam] {len(all_images)} zdj -> {przedmiot}: {temat}")
+
+        if not temat:
+            raise HTTPException(status_code=422, detail="Podaj temat lub wyslij zdjecie")
+
+        pelny_temat = f"{przedmiot}: {temat}"
+        cleanup_old_jobs()
+        job_id = create_job()
+        asyncio.create_task(_run_exam_job(
+            job_id, pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, req.wariant, req.wlasne_instrukcje
+        ))
+        return {"success": True, "job_id": job_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/generate/status/{job_id}")
+async def generate_exam_status(job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Nieznane zadanie generowania (mogło wygasnąć)")
+    if job["status"] == "pending":
+        return {"status": "pending"}
+    if job["status"] == "error":
+        return {"status": "error", "error": job["error"]}
+    # status == "done" - jesli wynik to WYLACZNIE niedobor bez zadnego pliku
+    # (patrz _run_exam_job), oddajemy to od razu tutaj (bez pliku do pobrania),
+    # zamiast zmuszac frontend do wywolania /result po nic.
+    result = job["result"]
+    if result.get("kind") == "shortfall_only":
+        pop_job(job_id)
+        return _shortfall_response(result["shortfall"])
+    return {"status": "done"}
+
+
+@router.get("/generate/result/{job_id}")
+async def generate_exam_result(job_id: str):
+    job = pop_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Nieznane zadanie generowania (mogło wygasnąć)")
+    if job["status"] == "error":
+        raise HTTPException(status_code=500, detail=job["error"])
+    if job["status"] != "done":
+        raise HTTPException(status_code=425, detail="Wynik jeszcze niegotowy")
+    result = job["result"]
+    if result.get("kind") == "shortfall_only":
+        return _shortfall_response(result["shortfall"])
+    is_zip = result["kind"] == "zip"
+    fname = "sprawdzian_AB.zip" if is_zip else "sprawdzian.pdf"
+    headers = {"Content-Disposition": f"attachment; filename={fname}"}
+    if result.get("shortfall"):
+        headers.update(_shortfall_headers(result["shortfall"]))
+    return FileResponse(
+        path=result["path"],
+        media_type="application/zip" if is_zip else "application/pdf",
+        filename=fname,
+        headers=headers,
+    )

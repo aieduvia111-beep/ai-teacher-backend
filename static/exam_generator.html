@@ -917,59 +917,76 @@ async function fetchWariant(temat,numQ,wariant){
 
   const finalInstr=auto+(wlasneInstr||'');
   const body={temat,klasa:vals.klasa,przedmiot:vals.przedmiot,trudnosc:vals.trudnosc,liczba_pytan:numQ,wariant,wlasne_instrukcje:finalInstr||undefined,images:photos.length>0?photos:undefined,image:photos.length>0?photos[0]:undefined};
-  const examController = new AbortController();
-  // ZMNIEJSZONE (30.08.2026, user: "max 1 minuta na czekanie, a nie 4
-  // minuty - to jest wogole nieprofesjonalne" - odwraca dzisiejsza
-  // wczesniejsza eskalacje 60->120->180s): standardowy budzet "trudny"
-  // obnizony do 45s, sufit grace (_GRACE_MAX_SECONDS_EXAM w
-  // exam_pdf_generator.py) do 60s CALKOWITEGO czasu. Timeout frontendu w
-  // parze, z marginesem na budowe PDF + siec (nie 260s).
-  // NAPRAWIONE (31.08.2026, user: "ze zdjecia nie dziala... przekroczono
-  // czas oczekiwania"): przy zdjeciu backend robi DODATKOWE wywolanie AI
-  // (_extract_topic_from_images w exam_api.py - rozpoznanie tematu ze
-  // zdjecia) ZANIM w ogole zacznie sie generowanie objete budzetem 60s -
-  // ten krok nie byl wliczony do 100s timeoutu frontendu, wiec tryb "ze
-  // zdjeciem" regularnie go przekraczal. Dajemy dodatkowy zapas TYLKO gdy
-  // faktycznie wysylamy zdjecia - zwykly tryb z samym tematem zostaje
-  // szybki (100s), zgodnie z wczesniejszym "ma byc szybko".
-  // NAPRAWIONE (04.09.2026, ten sam fix co w quiz_app.html - patrz
-  // komentarz tam): backend teraz skaluje budzet z liczba_pytan (patrz
-  // _max_generation_seconds_exam w exam_pdf_generator.py) - timeout
-  // frontendu skalowany identycznie.
-  const examTimeoutMs = (photos.length>0 ? 130000 : 100000) + Math.min(54000, Math.max(0, numQ-8)*4500);
-  const examTimeoutId = setTimeout(()=>examController.abort(), examTimeoutMs);
   const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
   const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
   const _base=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
-  const res=await fetch(_base+'/api/v1/exam/generate',{signal:examController.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
-  clearTimeout(examTimeoutId);
-  if(!res.ok){
-    // NAPRAWIONE: wczesniej tresc bledu byla ignorowana dla KAZDEJ
-    // odpowiedzi !res.ok - rzucalismy zawsze goly 'Blad serwera '+status,
-    // wiec np. przy 429 (dzienny limit Sprawdzianow wyczerpany - patrz
-    // usage_limits.py LIMIT_MESSAGES) FastAPI zwraca w ciele JSON
-    // {"detail": "Wykorzystales juz dzisiejszy darmowy limit..."}, ale ten
-    // tekst nigdy nie byl czytany - user dostawal goly "Blad serwera 429",
-    // ktory nie pasuje do ZADNEGO z bardziej szczegolowych komunikatow
-    // nizej (m.in. sprawdzenia .includes('limit')) i pokazywal sie jako
-    // mylacy, ogolny komunikat "Ups! Cos poszlo nie tak" - mimo ze
-    // prawidlowy, konkretny komunikat o limicie JUZ ISTNIAL w kodzie,
-    // po prostu nigdy nie byl osiagalny. Teraz czytamy faktyczna tresc
-    // bledu z odpowiedzi (FastAPI HTTPException -> pole "detail"), jesli
-    // jest dostepna - dzieki temu istniejaca logika ponizej (m.in.
-    // .includes('limit')) poprawnie dopasowuje wlasciwy komunikat.
+
+  // NAPRAWIONE (05.09.2026, user: "nie moze byc tak ze zamawiasz 5 pytan a
+  // dostajesz 1 - profesjonalne aplikacje tak nie robia"): wczesniej
+  // TRZYMALISMY jedno polaczenie fetch() otwarte przez caly czas
+  // generowania, z AbortController-em, ktory je ucinal po stalym limicie
+  // (~100-180s) - zeby zmiescic sie w tym limicie, backend musial czasem
+  // POD DAWAC NIEPELNY komplet pytan zamiast czekac dluzej. Zamiast tego:
+  // /generate/start odpala generowanie w tle i OD RAZU zwraca job_id, a
+  // tutaj co ~2.5s pytamy /generate/status, dopoki nie bedzie gotowe. Nic
+  // juz nie "timeoutuje" w trakcie oczekiwania (nie ma jednego dlugiego
+  // polaczenia) - backend probuje NAPRAWDE tak dlugo, jak potrzeba, zeby
+  // dostarczyc PELNY komplet. Jedyny limit to POLL_MAX_MS ponizej - bardzo
+  // dluga, uczciwa "poddaje sie" granica na wypadek fundamentalnie
+  // zepsutego tematu, nie sztuczny sufit UX-owy jak wczesniej.
+  const startRes=await fetch(_base+'/api/v1/exam/generate/start',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},body:JSON.stringify(body)});
+  if(!startRes.ok){
     let _detail='';
-    try{ const _errBody=await res.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
-    throw new Error(_detail||('Błąd serwera '+res.status));
+    try{ const _errBody=await startRes.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+    throw new Error(_detail||('Błąd serwera '+startRes.status));
   }
-  const ct=res.headers.get('content-type')||'';
+  const startData=await startRes.json();
+  if(!startData.success||!startData.job_id) throw new Error(startData.error||'Nie udało się rozpocząć generowania');
+  const jobId=startData.job_id;
+
+  const POLL_INTERVAL_MS=2500;
+  const POLL_MAX_MS=6*60000; // 6 minut - bardzo hojna, ale NIE nieskonczona granica
+  const pollStart=Date.now();
+  let statusData=null;
+  while(true){
+    if(Date.now()-pollStart>POLL_MAX_MS){
+      throw new Error('Ten temat okazał się wyjątkowo trudny do wygenerowania. Spróbuj inny temat albo prostszy poziom trudności.');
+    }
+    await new Promise(r=>setTimeout(r,POLL_INTERVAL_MS));
+    const statusRes=await fetch(_base+'/api/v1/exam/generate/status/'+jobId,{headers:{'Authorization':'Bearer '+_idToken}});
+    if(!statusRes.ok){
+      let _detail='';
+      try{ const _errBody=await statusRes.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+      throw new Error(_detail||('Błąd serwera '+statusRes.status));
+    }
+    statusData=await statusRes.json();
+    if(statusData.status==='pending')continue;
+    break;
+  }
+  if(statusData.status==='error'){
+    throw new Error(statusData.error||'Nieznany błąd generowania');
+  }
+  if(statusData.status==='incomplete_generation'){
+    // Ten sam przypadek co wczesniej - PDF naprawde NIE powstal w ogole
+    // (0 zaakceptowanych zadan), status juz niesie ta informacje bez
+    // potrzeby wywolywania /result.
+    const _ie=new Error(statusData.message||('Udało się przygotować tylko '+statusData.accepted_count+' z '+statusData.requested_count+' zadań.'));
+    _ie.isIncomplete=true;
+    throw _ie;
+  }
+  // status==='done' i mamy plik do pobrania - dopiero teraz pobieramy
+  // faktyczne bajty PDF/ZIP (jedno, krotkie polaczenie - plik juz lezy
+  // gotowy na serwerze, wiec to zajmuje sekunde, nie minuty).
+  const resultRes=await fetch(_base+'/api/v1/exam/generate/result/'+jobId,{headers:{'Authorization':'Bearer '+_idToken}});
+  if(!resultRes.ok){
+    let _detail='';
+    try{ const _errBody=await resultRes.json(); _detail=_errBody.detail||_errBody.error||''; }catch(_){}
+    throw new Error(_detail||('Błąd serwera '+resultRes.status));
+  }
+  const ct=resultRes.headers.get('content-type')||'';
   if(!ct.includes('application/pdf')&&!ct.includes('application/zip')){
-    const d=await res.json();
+    const d=await resultRes.json();
     if(d.status==='incomplete_generation'){
-      // NAPRAWIONE (user: "bez jaj czekac 5 minut na sprawdzian"): TEN
-      // blad teraz oznacza, ze PDF naprawde NIE powstal w ogole (0
-      // zaakceptowanych zadan) - prawdziwy przypadek "13 z 15" NIZEJ
-      // dostaje PLIK z naglowkiem X-Shortfall, nie ten JSON blad.
       const _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' zadań.'));
       _ie.isIncomplete=true;
       throw _ie;
@@ -982,11 +999,11 @@ async function fetchWariant(temat,numQ,wariant){
   // pokazac WYRAZNE, ale NIEBLOKUJACE ostrzezenie zamiast kazac userowi
   // czekac od zera po raz drugi za utrate calej juz wykonanej pracy AI.
   let shortfallMessage=null;
-  if(res.headers.get('X-Shortfall')==='1'){
-    const _raw=res.headers.get('X-Shortfall-Message');
+  if(resultRes.headers.get('X-Shortfall')==='1'){
+    const _raw=resultRes.headers.get('X-Shortfall-Message');
     try{ shortfallMessage=_raw?decodeURIComponent(_raw):null; }catch(_){ shortfallMessage=_raw; }
   }
-  return {blob:await res.blob(), shortfallMessage};
+  return {blob:await resultRes.blob(), shortfallMessage};
 }
 
 async function generate(){

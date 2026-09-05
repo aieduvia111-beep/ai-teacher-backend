@@ -1,6 +1,6 @@
 from ..error_logger import log_error
 """QUIZ API - generowanie quizu z obrazka, tematu lub pliku PDF/DOCX"""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
@@ -10,6 +10,7 @@ from ..openai_exam import (
 )
 from ..firebase_auth import require_feature_limit
 from ..models import User
+from ..job_store import create_job, set_done, set_error, get_job, pop_job, cleanup_old_jobs
 import os, base64, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -183,6 +184,120 @@ async def quiz_from_topic(req: QuizTopicRequest, user: User = Depends(require_fe
         return {"success": False, "error": result.get("error")}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+def _quiz_job_status_response(job_id: str):
+    """Wspoldzielona miedzy /generate/status i /generate-topic/status -
+    ten sam ksztalt odpowiedzi niezaleznie od tego, ktory sposob
+    generowania (obraz czy temat) stworzyl job. Patrz uzasadnienie
+    calego mechanizmu nad _run_quiz_image_job ponizej."""
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Nieznane zadanie generowania (mogło wygasnąć)")
+    if job["status"] == "pending":
+        return {"status": "pending"}
+    if job["status"] == "error":
+        return {"status": "error", "error": job["error"]}
+    result = job["result"]
+    pop_job(job_id)
+    quiz = result["quiz"]
+    shortfall = _shortfall_response(quiz, result["requested_count"])
+    if shortfall:
+        # NAPRAWIONE (znalezione przed wdrozeniem, przy pisaniu frontendu):
+        # setdefault, NIE zwykle przypisanie - przypadek "0 zaakceptowanych"
+        # (accepted==0) juz ma wlasne "status":"incomplete_generation" z
+        # _shortfall_response, ktore frontend rozpoznaje jako TWARDY blad
+        # (isIncomplete=True). Zwykle przypisanie nadpisywaloby to na
+        # "done", gubiac ten sygnal - frontend traktowalby PUSTY quiz jako
+        # sukces. setdefault dodaje "status":"done" TYLKO przypadku
+        # sukcesu-z-ostrzezeniem (accepted>0), ktory tego pola jeszcze nie ma.
+        shortfall.setdefault("status", "done")
+        return shortfall
+    return {"status": "done", "success": True, "quiz": quiz}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NOWE (05.09.2026, identyczny powod i mechanizm co /generate/start w
+# exam_api.py - patrz tam pelne uzasadnienie: "profesjonalne aplikacje nie
+# pokazuja niepelnego wyniku zamiast tego, o co poprosiles"): generowanie
+# odpala sie w tle, przegladarka odpytuje o postep zamiast trzymac jedno
+# dlugie polaczenie HTTP z wlasnym limitem czasu. Quiz zwraca JSON (nie
+# plik), wiec /status od razu niesie gotowy wynik - nie ma osobnego
+# /result jak w exam_api.py.
+# ══════════════════════════════════════════════════════════════════════
+
+async def _run_quiz_image_job(job_id, image, num_questions, difficulty, level, subject, topic, wlasne_instrukcje):
+    try:
+        result = await generate_quiz_from_image(
+            image, num_questions, difficulty, level=level, subject=subject, topic=topic
+        )
+        if not result["success"]:
+            set_error(job_id, result.get("error") or "Nie udalo sie wygenerowac quizu")
+            return
+        quiz = result["quiz"]
+        if wlasne_instrukcje and wlasne_instrukcje.strip():
+            quiz["_instrukcje"] = wlasne_instrukcje.strip()
+        set_done(job_id, {"quiz": quiz, "requested_count": num_questions})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        set_error(job_id, str(e))
+
+
+@router.post("/generate/start")
+async def quiz_from_image_start(req: QuizImageRequest, user: User = Depends(require_feature_limit("quiz"))):
+    try:
+        cleanup_old_jobs()
+        job_id = create_job()
+        asyncio.create_task(_run_quiz_image_job(
+            job_id, req.image, req.num_questions, req.difficulty, req.level, req.subject, req.topic, req.wlasne_instrukcje
+        ))
+        return {"success": True, "job_id": job_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/generate/status/{job_id}")
+async def quiz_from_image_status(job_id: str):
+    return _quiz_job_status_response(job_id)
+
+
+async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, difficulty, wlasne_instrukcje):
+    try:
+        result = await generate_quiz_from_topic(
+            topic=topic, subject=subject, level=level,
+            num_questions=num_questions, difficulty=difficulty,
+            wlasne_instrukcje=wlasne_instrukcje
+        )
+        if not result["success"]:
+            set_error(job_id, result.get("error") or "Nie udalo sie wygenerowac quizu")
+            return
+        quiz = result["quiz"]
+        set_done(job_id, {"quiz": quiz, "requested_count": num_questions})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        set_error(job_id, str(e))
+
+
+@router.post("/generate-topic/start")
+async def quiz_from_topic_start(req: QuizTopicRequest, user: User = Depends(require_feature_limit("quiz"))):
+    try:
+        wlasne = (req.wlasne_instrukcje or "").strip()
+        print(f"[Quiz-Topic-Start] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
+        cleanup_old_jobs()
+        job_id = create_job()
+        asyncio.create_task(_run_quiz_topic_job(
+            job_id, req.topic, req.subject, req.level, req.num_questions, req.difficulty, wlasne
+        ))
+        return {"success": True, "job_id": job_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/generate-topic/status/{job_id}")
+async def quiz_from_topic_status(job_id: str):
+    return _quiz_job_status_response(job_id)
+
 
 @router.post("/generate-file")
 async def quiz_from_file(req: QuizFileRequest, user: User = Depends(require_feature_limit("quiz"))):

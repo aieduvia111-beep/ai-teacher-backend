@@ -1024,6 +1024,54 @@ function confetti(){
 const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
 const BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 
+// NAPRAWIONE (05.09.2026, user: "nie moze byc tak ze zamawiasz 5 pytan a
+// dostajesz 1 - profesjonalne aplikacje tak nie robia"): identyczny
+// mechanizm i uzasadnienie co w exam_generator.html fetchWariant() - patrz
+// tam pelny komentarz. Zamiast jednego dlugiego fetch() z AbortController-em
+// (ktory zawsze musial miec jakis limit, zmuszajac backend do poddawania
+// sie za wczesnie), startujemy generowanie w tle (/start) i odpytujemy o
+// postep (/status) co 2.5s - backend probuje NAPRAWDE tak dlugo, jak trzeba,
+// zeby dostarczyc PELNY komplet pytan, bo nic go juz nie "timeoutuje" w
+// trakcie oczekiwania. Wspoldzielone miedzy trybem "ze zdjeciem" (startUrl=
+// /quiz/generate/start) i "z tematem" (startUrl=/quiz/generate-topic/start).
+async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body){
+  const startRes=await fetch(BASE+startUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify(body)});
+  if(!startRes.ok){
+    let _detail='';try{const d=await startRes.json();_detail=d.detail||d.error||'';}catch(_){}
+    throw new Error(_detail||('Błąd serwera '+startRes.status));
+  }
+  const startData=await startRes.json();
+  if(!startData.success||!startData.job_id)throw new Error(startData.error||'Nie udało się rozpocząć generowania');
+  const jobId=startData.job_id;
+  const POLL_INTERVAL_MS=2500;
+  const POLL_MAX_MS=6*60000; // 6 minut - bardzo hojna, ale NIE nieskonczona granica
+  const pollStart=Date.now();
+  const _loadingP=document.querySelector('#pageLoading p');
+  if(_loadingP)_loadingP.textContent='AI tworzy pytania dopasowane do Twojego poziomu';
+  let _reassured=false;
+  while(true){
+    const _elapsed=Date.now()-pollStart;
+    if(_elapsed>POLL_MAX_MS){
+      throw new Error('Ten temat okazał się wyjątkowo trudny do wygenerowania. Spróbuj inny temat albo prostszy poziom trudności.');
+    }
+    // Po 15s zmieniamy tekst na ladny widok "wciaz dziala", zeby dluzsze
+    // (ale juz nie 'timeoutujace') oczekiwanie nie wygladalo na zawieszone.
+    if(!_reassured&&_elapsed>15000&&_loadingP){
+      _loadingP.textContent='To może chwilę potrwać dla trudniejszych tematów — nie zamykaj strony.';
+      _reassured=true;
+    }
+    await new Promise(function(r){setTimeout(r,POLL_INTERVAL_MS);});
+    const statusRes=await fetch(BASE+statusUrlBase+jobId,{headers:{'Authorization':'Bearer '+idToken}});
+    if(!statusRes.ok){
+      let _detail='';try{const d=await statusRes.json();_detail=d.detail||d.error||'';}catch(_){}
+      throw new Error(_detail||('Błąd serwera '+statusRes.status));
+    }
+    const d=await statusRes.json();
+    if(d.status==='pending')continue;
+    return d;
+  }
+}
+
 async function startQuiz(){
   const _lim=await checkLimit('quiz');if(!_lim.allowed)return;
   let err=document.getElementById('errMsg');err.style.display='none';
@@ -1033,38 +1081,16 @@ async function startQuiz(){
   if(photos.length>0){
     showPage('pageLoading');
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
-    var quizController1 = new AbortController();
-    // ZMNIEJSZONE (30.08.2026, user: "max 1 minuta na czekanie, a nie 4
-    // minuty" - odwraca dzisiejsza wczesniejsza eskalacje): standardowy
-    // budzet "trudny" obnizony do 45s, sufit grace (_GRACE_MAX_SECONDS w
-    // openai_exam.py) do 60s CALKOWITEGO czasu. Timeout frontendu w
-    // parze, z marginesem na siec.
-    // NAPRAWIONE (04.09.2026, "czy czas jest odpowiedni jak ktos wybierze
-    // 20 pytan"): backend teraz skaluje budzet z liczba pytan (patrz
-    // _max_generation_seconds w openai_exam.py) - timeout frontendu musi
-    // skalowac sie razem z nim, inaczej odcina polaczenie zanim dluzszy,
-    // ale poprawnie konczacy sie backend zdazy odpowiedziec. Ta sama
-    // formula co po stronie backendu (+4.5s za kazde pytanie powyzej 8,
-    // sufit +54s), plus margines na siec.
-    var quizTimeoutId1 = setTimeout(function(){quizController1.abort();}, 90000+Math.min(54000,Math.max(0,num-8)*4500));
     (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
-    return fetch(BASE+'/api/v1/quiz/generate',{signal:quizController1.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
+    return _quizStartAndPoll(_t,'/api/v1/quiz/generate/start','/api/v1/quiz/generate/status/',{image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr});
     })
-    .then(function(r){clearTimeout(quizTimeoutId1);if(!r.ok){
-      // NAPRAWIONE: tresc odpowiedzi byla ignorowana - patrz identyczny
-      // fix w exam_generator.html (dotyczylo m.in. CTA "Kup Pro..." przy
-      // wyczerpanym limicie, ktore nigdy nie bylo czytane z ciala
-      // odpowiedzi). r.json() zuzywa strumien, wiec robimy to raz i
-      // przekazujemy dalej jako odrzucona obietnica zamiast throw tutaj.
-      return r.json().catch(function(){return{};}).then(function(d){throw new Error(d.detail||d.error||('Błąd '+r.status));});
-    }return r.json();})
     .then(function(d){
       if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
       if(!d.success)throw new Error(d.error||'Błąd');
       quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
       if(d.shortfall_message)setTimeout(function(){window.showPartialToast(d.shortfall_message);},400);
     })
-    .catch(function(e){clearTimeout(quizTimeoutId1);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
+    .catch(function(e){showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.isIncomplete){_errMsg=e.message;}
     else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania. Spróbuj ponownie.';}
     else if(e.message){
@@ -1103,27 +1129,16 @@ async function startQuiz(){
   window._lastLevel=VALS.level||'liceum_2';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
-  var quizController2 = new AbortController();
-  // ZMNIEJSZONE (30.08.2026): identyczny powod co quizTimeoutId1 wyzej.
-  // NAPRAWIONE (04.09.2026): identyczne skalowanie z liczba pytan co
-  // quizTimeoutId1 wyzej - patrz komentarz tam.
-  var quizTimeoutId2 = setTimeout(function(){quizController2.abort();}, 90000+Math.min(54000,Math.max(0,num-8)*4500));
   (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
-  return fetch(BASE+'/api/v1/quiz/generate-topic',{signal:quizController2.signal,method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr})});
+  return _quizStartAndPoll(_t,'/api/v1/quiz/generate-topic/start','/api/v1/quiz/generate-topic/status/',{topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr});
   })
-  .then(function(r){clearTimeout(quizTimeoutId2);if(!r.ok){
-    // NAPRAWIONE: patrz identyczny fix przy pierwszym wywolaniu wyzej
-    // (quizController1) - r.json() musi byc uzyty raz, wiec throw idzie
-    // przez .then(), nie bezposrednio.
-    return r.json().catch(function(){return{};}).then(function(d){throw new Error(d.detail||d.error||('Błąd '+r.status));});
-  }return r.json();})
   .then(function(d){
     if(d.status==='incomplete_generation'){var _ie=new Error(d.message||('Udało się przygotować tylko '+d.accepted_count+' z '+d.requested_count+' pytań.'));_ie.isIncomplete=true;throw _ie;}
     if(!d.success)throw new Error(d.error||'Błąd');
     quiz=d.quiz;useLimit('quiz');beginQuiz(quiz.questions,false);
     if(d.shortfall_message)setTimeout(function(){window.showPartialToast(d.shortfall_message);},400);
   })
-  .catch(function(e){clearTimeout(quizTimeoutId2);showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
+  .catch(function(e){showPage('pageSetup');var _errMsg = 'Ups! Coś poszło nie tak. Spróbuj ponownie za chwilę. 😊';
     if(e.isIncomplete){_errMsg=e.message;}
     else if(e.name==='AbortError'){_errMsg='Przekroczono czas oczekiwania. Spróbuj ponownie.';}
     else if(e.message){
