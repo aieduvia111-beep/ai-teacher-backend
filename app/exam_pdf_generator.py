@@ -43,6 +43,7 @@ from .math_verify import (
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
     build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
+    WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL,
@@ -2504,6 +2505,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
 2. Napisac krotkie wyjasnienie (1-2 zdania) uzasadniajace poprawna opcje.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
 
+{WORDING_DIVERSITY_MANDATE}
+
 KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
 nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
@@ -2626,6 +2629,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
 2. Napisac krotkie wyjasnienie (1-2 zdania) - ulozenie ukladu dwoch
    rownan z wzoru $a_n = a_1 + (n-1)r$ i rozwiazanie go.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
 
 KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
@@ -2753,6 +2758,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
    $S_n = \\frac{{n}}{{2}}(2a_1+(n-1)r)$.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
 
+{WORDING_DIVERSITY_MANDATE}
+
 KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
 nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
@@ -2876,6 +2883,8 @@ system matematyczny) - Twoje JEDYNE zadania to:
    wzor $P=\\frac{{1}}{{2}}ab\\sin(\\gamma)$ z podstawionymi liczbami.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
 
+{WORDING_DIVERSITY_MANDATE}
+
 KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system (wyniki zaokraglone do 2
 miejsc po przecinku). Twoja rola to TYLKO jezyk, nie matematyka. NIE
@@ -2998,6 +3007,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
    rownan stronami, zeby wyeliminowac $a_1$).
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
 
+{WORDING_DIVERSITY_MANDATE}
+
 KRYTYCZNE: NIE ZMIENIAJ zadania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
 nie matematyka. NIE dolaczaj pol "opcje"/"odpowiedz"/"final_answer" -
@@ -3118,6 +3129,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
    SPRAWDZENIE ktory przypadek spelnia swoja dziedzine (odrzucenie
    pierwiastka pozornego z drugiego przypadku).
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
 
 KRYTYCZNE: NIE ZMIENIAJ rownania ani opcji odpowiedzi w zadnym stopniu -
 sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO jezyk,
@@ -3246,6 +3259,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
    proporcja z twierdzenia sinusow $\\frac{{a}}{{\\sin A}}=\\frac{{b}}{{\\sin B}}$,
    wyznaczenie b.
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
 
 KRYTYCZNE: NIE ZMIENIAJ liczb (katow, boku a) ani opcji odpowiedzi w zadnym
 stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO
@@ -3394,6 +3409,8 @@ OBLICZONE (przez niezalezny system matematyczny) - Twoje JEDYNE zadania to:
    warunek dodatniosci drugiego pierwiastka (parametr>0) i roznicy
    pierwiastkow (parametr!=K).
 3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
 
 KRYTYCZNE: NIE ZMIENIAJ rownania, liczb ani opcji odpowiedzi w zadnym
 stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to TYLKO

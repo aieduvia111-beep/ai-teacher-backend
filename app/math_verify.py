@@ -38,6 +38,34 @@ from sympy.parsing.sympy_parser import (
 
 _TRANSFORMS = standard_transformations + (implicit_multiplication_application, convert_xor)
 
+# WSPOLDZIELONY (05.09.2026, user: "zrob dla calego systemu, nie po kolei" -
+# po naprawieniu roznorodnosci sformulowan NAJPIERW tylko dla jednego
+# archetypu (rownania kwadratowe z parametrem), potem zgloszonym real-
+# testem drugim (ciagi arytmetyczne) z TYM SAMYM problemem: KAZDA z
+# licznych funkcji "Safe Parameter Generation" (w openai_exam.py i
+# exam_pdf_generator.py) ma WLASNY prompt proszacy AI o "naturalne
+# sformulowanie pytania", z WLASNYM jednym przykladem formatu - AI
+# nagminnie kopiowalo ten jeden przyklad doslownie do WSZYSTKICH zadan w
+# partii. Zamiast naprawiac kazda funkcje osobno (i pomijac te, ktore nie
+# zostaly jeszcze zgloszone), JEDNA wspoldzielona stala wstawiana do
+# WSZYSTKICH tych promptow na raz - i do KAZDEGO nowego archetypu w
+# przyszlosci, jesli tylko uzyje tej samej stalej zamiast wlasnego tekstu.
+WORDING_DIVERSITY_MANDATE = """KRYTYCZNE - ROZNORODNOSC SFORMULOWAN: jesli w tej partii generujesz WIELE
+zadan/pytan tego samego podwzorca, KAZDE MUSI miec INNA konstrukcje
+zdania - NIE kopiuj jednego szablonu do wszystkich, roznicujac tylko
+liczby/litery. Przyklad - BLEDNIE (3 zadania, ten sam szablon):
+  "Dla jakich wartości X ... ma dwa różne pierwiastki? Oblicz przedział."
+  "Dla jakich wartości X ... ma dwa różne pierwiastki? Oblicz przedział."
+  "Dla jakich wartości X ... ma dwa różne pierwiastki? Oblicz przedział."
+POPRAWNIE (kazde zadanie INNA konstrukcja zdania):
+  "Dla jakich wartości X ... ma dwa różne pierwiastki?"
+  "Wyznacz zbiór wartości k, dla których ... posiada dwa różne rozwiązania."
+  "Ustal warunek na parametr m, przy którym ..."
+Rotuj miedzy otwarciami typu "Dla jakich...", "Wyznacz...", "Oblicz...",
+"Ustal...", "Zbadaj...", "Ile wynosi...", "Sprawdz, czy...". Uzyj kazdego
+stylu co najwyzej 1-2 razy w partii. Zasada dotyczy zadan w KAZDEJ
+sekcji sprawdzianu (zamknietej I otwartej), nie tylko jednej."""
+
 _EQ_IN_DOLLARS = re.compile(r'\$([^$]+)\$')
 
 # Unicode operatory bez LaTeX odpowiednika juz obslugiwanego w _clean_latex
