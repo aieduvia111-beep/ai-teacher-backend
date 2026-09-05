@@ -700,6 +700,14 @@ onAuthStateChanged(auth,async(user)=>{
       const badges=document.querySelectorAll('.plan-badge-slot');
       badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
     },100);
+    // Miekki popup zachecajacy do triala (patrz trial_promo_modal.js) -
+    // tylko dla free, max raz/24h, nigdy gdy trwa payment=success flow ponizej.
+    // (Nowy URLSearchParams tutaj celowo, zamiast zmiennej `urlParams`
+    // zdefiniowanej NIZEJ w tym samym bloku - const ma temporal dead zone,
+    // odwolanie sie do niej przed inicjalizacja rzucaloby ReferenceError.)
+    if(!(new URLSearchParams(window.location.search)).get('payment')){
+      setTimeout(()=>{ if(window.EduviaTrialPromo) window.EduviaTrialPromo.maybeShow(plan); }, 1200);
+    }
   }
 
   // Sprawdź czy użytkownik wrócił po płatności
@@ -1027,6 +1035,7 @@ function getPlanBadgeHTML(plan) {
 <script src="animations.js"></script>
 <script src="calendar_picker.js"></script>
 <script src="limit_modal.js?v=3"></script>
+<script src="trial_promo_modal.js?v=1"></script>
 <link rel="stylesheet" href="calendar_picker.css">
 </head>
 
