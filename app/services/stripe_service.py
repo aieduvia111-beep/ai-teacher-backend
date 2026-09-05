@@ -319,7 +319,7 @@ class StripeService:
 
 
     @staticmethod
-    def cancel_subscription(user_id: int, db: Session) -> Dict:
+    def cancel_subscription(user_id: str, db: Session) -> Dict:
         """Anuluje subskrypcje uzytkownika (na koniec okresu rozliczeniowego)"""
         try:
             subscription = db.query(Subscription).filter(
@@ -327,18 +327,58 @@ class StripeService:
                 Subscription.status.in_(['active', 'trialing'])
             ).first()
 
-            if not subscription:
+            if subscription:
+                stripe.Subscription.modify(subscription.stripe_subscription_id, cancel_at_period_end=True)
+                subscription.cancel_at_period_end = True
+                db.commit()
+                return {
+                    "success": True,
+                    "message": "Subskrypcja zostanie anulowana po zakonczeniu okresu rozliczeniowego",
+                    "ends_at": subscription.current_period_end.isoformat()
+                }
+
+            # NAPRAWIONE (user 04.09.2026, real-blad: "nie znaleziono
+            # aktywnej subskrypcji" mimo posiadania Pro) - lokalny wiersz
+            # subskrypcji prawdopodobnie NIGDY nie powstal poprawnie z
+            # powodu historycznego bledu typu subscriptions.user_id
+            # (Integer zamiast String - patrz models.py, naprawione
+            # wczesniej tego samego dnia, ale TYLKO na przyszlosc, nie
+            # retroaktywnie dla juz istniejacych, "cicho nieudanych"
+            # insertow z _handle_checkout_completed). Stripe jest
+            # zawsze zrodlem prawdy o TYM, czy subskrypcja istnieje -
+            # ten fallback szuka jej TAM po stripe_customer_id (kolumna
+            # ta byla ZAWSZE poprawnie typowana, wiec User.stripe_customer_id
+            # jest niezawodny), anuluje bezposrednio w Stripe, i przy
+            # okazji uzupelnia brakujacy lokalny wiersz, zeby przyszle
+            # zapytania (i inni uzytkownicy z ta sama historyczna luka)
+            # dzialaly juz bez tego fallbacku.
+            user = db.query(User).filter(User.firebase_uid == user_id).first()
+            if not user or not user.stripe_customer_id:
                 return {"success": False, "error": "Nie znaleziono aktywnej subskrypcji"}
 
-            stripe.Subscription.modify(subscription.stripe_subscription_id, cancel_at_period_end=True)
+            stripe_subs = stripe.Subscription.list(customer=user.stripe_customer_id, status="all", limit=10)
+            active_sub = next((s for s in stripe_subs.data if s.status in ("active", "trialing")), None)
+            if not active_sub:
+                return {"success": False, "error": "Nie znaleziono aktywnej subskrypcji"}
 
-            subscription.cancel_at_period_end = True
+            stripe.Subscription.modify(active_sub.id, cancel_at_period_end=True)
+
+            db.add(Subscription(
+                user_id=user_id,
+                stripe_subscription_id=active_sub.id,
+                stripe_customer_id=user.stripe_customer_id,
+                stripe_price_id=active_sub["items"]["data"][0]["price"]["id"],
+                status=active_sub.status,
+                cancel_at_period_end=True,
+                current_period_start=datetime.fromtimestamp(active_sub.current_period_start),
+                current_period_end=datetime.fromtimestamp(active_sub.current_period_end),
+            ))
             db.commit()
 
             return {
                 "success": True,
                 "message": "Subskrypcja zostanie anulowana po zakonczeniu okresu rozliczeniowego",
-                "ends_at": subscription.current_period_end.isoformat()
+                "ends_at": datetime.fromtimestamp(active_sub.current_period_end).isoformat()
             }
 
         except Exception as e:
