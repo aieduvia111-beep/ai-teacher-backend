@@ -3,7 +3,25 @@
 // ═══ PAGE TRANSITIONS ═══
 var style=document.createElement('style');
 style.textContent=`
-  body{animation:pageIn .3s cubic-bezier(.22,1,.36,1) forwards;}
+  /* NAPRAWIONE (user 05.09.2026: "przycisk trzeba przewinac zeby kliknac"
+     w popupie triala na Dashboardzie) - "forwards" tutaj sprawial, ze
+     transform:translateX(0) z konca animacji ZOSTAWAL na <body>
+     NA STALE (fill-mode:forwards utrzymuje ostatnia klatke). Nawet
+     "zerowy" transform (translateX(0)) tworzy NOWY containing block dla
+     KAZDEGO potomka position:fixed (m.in. limit_modal.js, trial_promo_modal.js)
+     - taki popup przestaje byc fixed wzgledem viewportu, a zamiast tego
+     rozciaga sie na CALA wysokosc <body> (caly scrollowalny dokument), i
+     centruje sie w jego SRODKU - na dlugich stronach (jak Dashboard) to
+     realnie renderuje przycisk setki pikseli ponizej widocznego ekranu.
+     Bez "forwards" animacja normalnie konczy sie z powrotem na
+     transform:none (bo zadna inna regula nie ustawia transform na body),
+     co nie tworzy containing blocka - zweryfikowane bezposrednio
+     (getComputedStyle(body).transform 'none' vs 'matrix(1,0,0,1,0,0)'
+     dawaly odpowiednio popupBottom=914 (poprawnie, = viewportH) vs 3040
+     (zepsute, = cala wysokosc 3000px-owej testowej strony) w lokalnym
+     tescie). Wizualny efekt animacji (fade+slide przy wejsciu) bez zmian -
+     usuwamy tylko czesc, ktora TRWALE zostawiala transform po jej koncu. */
+  body{animation:pageIn .3s cubic-bezier(.22,1,.36,1);}
   @keyframes pageIn{
     from{opacity:0;transform:translateX(18px);}
     to{opacity:1;transform:translateX(0);}
