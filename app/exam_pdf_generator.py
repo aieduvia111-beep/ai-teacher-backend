@@ -324,6 +324,15 @@ Zasada dotyczy WSZYSTKICH tematow (nie tylko algebry) - te same 3
 zadania geometrii/fizyki/chemii NIE moga zaczynac sie od identycznego
 zdania wprowadzajacego.
 
+NAPRAWIONE (05.09.2026, user zglosil real-test spoza matematyki -
+Biologia/Fotosynteza): realny test pokazal, ze 8 z 10 pytan zaczynalo
+sie od tego samego slowa "Jakie...", mimo ze tresc byla rozna. Rozniaca
+sie TRESC pytan to NIE to samo, co rozniaca sie KONSTRUKCJA zdan - oba
+maja byc rozne. Unikaj zaczynania wiekszosci zadan w partii tym samym
+slowem pytajnym ("Jakie...", "Czym...", "Ktory...") - rotuj rowniez
+OTWARCIA zdan dla przedmiotow humanistycznych/przyrodniczych, nie
+tylko dla matematyki.
+
 ZAKAZ DUPLIKATOW W JEDNEJ PARTII (05.09.2026, user zglosil real-test:
 79 wygenerowanych zadan na 20 zamowionych, az 29 odrzuconych jako
 CZYSTE duplikaty w tej samej partii - kazda odrzucona proba to kolejne

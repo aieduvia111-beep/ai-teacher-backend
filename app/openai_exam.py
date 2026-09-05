@@ -1161,6 +1161,18 @@ Jesli dwa pytania maja NAPRAWDE ten sam typ rozumowania - ich tagi
 tez powinny to szczerze odzwierciedlac (nie oszukuj systemu sztucznie
 roznymi slowami dla identycznego zadania).
 
+{WORDING_DIVERSITY_MANDATE}
+
+NAPRAWIONE (05.09.2026, user zglosil real-test spoza matematyki -
+Biologia/Fotosynteza): powyzsza zasada dotyczy KAZDEGO przedmiotu, nie
+tylko matematyki - realny test pokazal, ze 8 z 10 pytan zaczynalo sie
+od tego samego slowa "Jakie...", mimo ze tresc (co dokladnie sie pyta)
+byla rozna. Rozniaca sie TRESC pytan to NIE to samo, co rozniaca sie
+KONSTRUKCJA zdan - oba maja byc rozne. Unikaj zaczynania wiekszosci
+pytan w partii tym samym slowem pytajnym ("Jakie...", "Czym...",
+"Ktory...") - rotuj rowniez OTWARCIA zdan dla przedmiotow
+humanistycznych/przyrodniczych, nie tylko dla matematyki.
+
 ZAKAZ DUPLIKATOW W JEDNEJ PARTII (05.09.2026, user zglosil real-test:
 duzo odrzucen jako czyste duplikaty w tej samej partii - kazda
 odrzucona proba to kolejne niepotrzebne wywolanie AI, dluzszy czas i
