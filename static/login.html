@@ -348,7 +348,25 @@ button:active{transform:scale(.95)!important;}
   // Ten check dotyczy wylacznie Androida/TWA (Trusted Web Activity wymaga prawdziwego Chrome).
   // Natywne apki (iOS WKWebView, natywny Android WebView) nie uzywaja TWA/Chrome w ogole,
   // wiec navigator.vendor nigdy nie bedzie "Google Inc." i falszywie wywolywalby ten ekran.
-  var isNativeIosApp = ua.includes('PWAShell');
+  //
+  // NAPRAWIONE (wrzesien 2026, user zglosil REALNY przypadek: komunikat
+  // "zainstaluj Chrome" pojawil sie na iOS mimo TEGO guarda): poleganie
+  // WYLACZNIE na "PWAShell" w navigator.userAgent bylo zawodne - user-
+  // agent na prawdziwym urzadzeniu najwyrazniej NIE zawieral tego
+  // sufiksu w momencie odpalenia tego skryptu (przyczyna: WebView.swift
+  // ustawia webView.customUserAgent PO stworzeniu WKWebView, ale PRZED
+  // pierwszym load() - mimo to jakis mechanizm WebKita/timing potrafi
+  // zwrocic tu STARY UA). Dodano DRUGI, niezalezny od UA sygnal:
+  // obecnosc window.webkit.messageHandlers.print - most JS<->natywny
+  // rejestrowany BEZWARUNKOWO w KAZDEJ natywnej apce iOS (WebView.swift,
+  // userContentController.add), wiec jego obecnosc jest niepodrabialna z
+  // poziomu strony i dostepna NATYCHMIAST (rejestracja handlera dzieje
+  // sie PRZED load(), nie zalezy od tego samego UA co zawiodl wyzej).
+  // TA SAMA naprawa (identyczny warunek OR) zastosowana wszedzie indziej,
+  // gdzie sprawdzamy isNativeIosApp - patrz #2 nizej w tym pliku i
+  // pricing.html.
+  var hasIosNativeBridge = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+  var isNativeIosApp = ua.includes('PWAShell') || hasIosNativeBridge;
   var isNativeAndroidApp = ua.includes('EduviaAndroidApp');
   if(isNativeIosApp || isNativeAndroidApp) return;
 
@@ -497,8 +515,16 @@ window.doReset=async function(){
 // Natywna apka Android (WebView) nie obsluguje window.open ani OAuth Google -
 // logowanie idzie przez most JS<->natywny (Credential Manager), patrz MainActivity.java.
 const isNativeAndroidApp = navigator.userAgent.includes('EduviaAndroidApp');
-// iOS: WKWebView tag dodawany w WebView.swift (customUserAgent konczy sie na "PWAShell").
-const isNativeIosApp = navigator.userAgent.includes('PWAShell');
+// iOS: WKWebView tag dodawany w WebView.swift (customUserAgent konczy sie na
+// "PWAShell"). NAPRAWIONE (wrzesien 2026, patrz identyczny, pelny komentarz
+// wyzej w tym pliku przy sprawdzaniu Chrome) - poleganie WYLACZNIE na tym
+// suffiksie bylo zawodne na realnym urzadzeniu, wiec dodano niezalezny,
+// niepodrabialny sygnal (obecnosc mostka window.webkit.messageHandlers) -
+// jesli TO rowniez zawiedzie, i tak spadamy do dzialajacego (choc gorszego)
+// signInWithPopup, wiec ten warunek moze byc tylko BEZPIECZNIEJSZY, nigdy
+// gorszy niz poprzednio.
+const hasIosNativeBridge = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+const isNativeIosApp = navigator.userAgent.includes('PWAShell') || hasIosNativeBridge;
 
 window.onNativeGoogleSignIn=async function(idToken){
   try{
@@ -520,6 +546,17 @@ window.doGoogle=async function(){
   load(true,'Logowanie przez Google...');
   if(isNativeAndroidApp && window.AndroidNative){
     window.AndroidNative.signInWithGoogle();
+    return;
+  }
+  // NOWE (wrzesien 2026, naprawa logowania Google na iOS - patrz
+  // GoogleSignInManager.swift): identyczny wzorzec co doApple() ponizej -
+  // logowanie Google na iOS WCZESNIEJ NIE MIALO tego sprawdzenia w ogole,
+  // wiec ZAWSZE (nie tylko jako rzadki fallback) szlo przez zepsuty
+  // signInWithPopup. window.onNativeGoogleSignIn (callback wywolywany z
+  // Swift) juz istnieje ponizej - byl zbudowany dla Androida, jest
+  // platform-agnostyczny.
+  if(isNativeIosApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.signInWithGoogle){
+    window.webkit.messageHandlers.signInWithGoogle.postMessage({});
     return;
   }
   try{

@@ -229,7 +229,7 @@ window._currentUser=()=>currentUser;
   <p class="hero-sub">Zacznij za darmo. Ulepsz kiedy chcesz. Żadnych ukrytych opłat.</p>
   <div class="trust-row">
     <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Anuluj kiedy chcesz</div>
-    <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Bezpieczna płatność Stripe</div>
+    <div class="trust-item" id="trustPaymentProvider"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Bezpieczna płatność Stripe</div>
     <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Dostęp od razu po zakupie</div>
   </div>
 </div>
@@ -261,7 +261,12 @@ window._currentUser=()=>currentUser;
   <div class="plan pro" style="animation-delay:.3s">
     <div class="popular-tag">⭐ Najpopularniejszy</div>
     <div class="plan-name pro-name" style="margin-top:30px">Pro</div>
-    <div class="plan-price"><span class="plan-amt pro-amt">29</span><span class="plan-cur">zł</span></div>
+    <!-- NOWE (wrzesien 2026, App Store IAP): cena wstawiana przez JS
+         (patrz applyPlatformPrice() nizej) - 39,99 zl w natywnej apce iOS
+         (DOKLADNA cena produktu "com.eduvia.ios.pro.monthly" w App Store
+         Connect - StoreKit, Apple bierze prowizje), 29 zl wszedzie indziej
+         (Android/Web, Stripe). id="proAmt" zamiast twardej wartosci. -->
+    <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">29</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
     <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;">🎁 Pierwsze 7 dni za darmo</div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
@@ -277,7 +282,7 @@ window._currentUser=()=>currentUser;
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> planów nauki AI</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>PDF Export notatek i sprawdzianów</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Priorytetowe wsparcie 24/7</div>
-    <div class="stripe-badge">
+    <div class="stripe-badge" id="proCardPaymentProvider">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Bezpieczna płatność przez Stripe
     </div>
@@ -294,7 +299,7 @@ window._currentUser=()=>currentUser;
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
     <div class="faq-q">Jak działa 7-dniowy okres próbny?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-    <div class="faq-a">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 29 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
+    <div class="faq-a" id="faqTrialAnswer">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 29 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
     <div class="faq-q">Czy moje dane są bezpieczne?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
@@ -326,7 +331,99 @@ const PAYMENT_LINK = 'https://buy.stripe.com/dRm5kCbHobRp46D3xncV200';
 const _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
 const API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
 
+// NOWE (wrzesien 2026, App Store IAP - odpowiedz na wymog Apple 2.1(b)):
+// natywna apka iOS MUSI kupowac subskrypcje przez StoreKit (Apple bierze
+// prowizje), nie przez Stripe - stad WYZSZA cena na iOS niz na Android/Web
+// (Stripe), zeby po prowizji Apple marza wyszla podobna. 39,99 zl to
+// DOKLADNA cena skonfigurowana w App Store Connect dla produktu
+// "com.eduvia.ios.pro.monthly" (NIE zaokraglona "39 zl" - musi sie zgadzac
+// co do grosza z tym, co Apple faktycznie pokaze/pobierze w natywnym
+// oknie zakupu, inaczej user zobaczy dwie rozne ceny). String (nie liczba)
+// z przecinkiem - polska notacja dziesietna, zeby pasowalo do tego, co
+// StoreKit i tak pokaze automatycznie w systemowym oknie platnosci.
+// Ta sama detekcja co w login.html (isNativeIosApp) - custom UA suffix
+// "PWAShell" dodawany TYLKO przez natywny wrapper iOS (WebView.swift).
+const IOS_PRICE = '39,99';
+const ANDROID_WEB_PRICE = '29';
+// NAPRAWIONE (wrzesien 2026, patrz identyczna naprawa i pelne uzasadnienie
+// w login.html): poleganie WYLACZNIE na "PWAShell" w user-agencie bylo
+// zawodne na realnym urzadzeniu (user zgłosił falszywy komunikat "zainstaluj
+// Chrome" mimo identycznego guarda w login.html) - dodano niezalezny,
+// niepodrabialny sygnal (obecnosc mostka window.webkit.messageHandlers).
+const hasIosNativeBridge = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+const isNativeIosApp = navigator.userAgent.includes('PWAShell') || hasIosNativeBridge;
+const PRO_PRICE = isNativeIosApp ? IOS_PRICE : ANDROID_WEB_PRICE;
+
+function applyPlatformPrice(){
+  const amtEl = document.getElementById('proAmt');
+  if(amtEl) amtEl.textContent = String(PRO_PRICE);
+  const faqEl = document.getElementById('faqTrialAnswer');
+  if(faqEl) faqEl.textContent = 'Dostęp Pro aktywuje się natychmiast po ' + (isNativeIosApp ? 'rozpoczęciu triala' : 'podaniu karty') + ' — wystarczy wrócić do dashboardu i odświeżyć stronę. ' + (isNativeIosApp ? 'Obciążymy Twoje konto Apple ID' : 'Kartę obciążymy') + ' dopiero po 7 dniach, ' + PRO_PRICE + ' zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.';
+  // NOWE (wrzesien 2026, App Store IAP): na iOS platnosc idzie przez Apple/
+  // StoreKit, NIE Stripe - wzmianka "Stripe" bylaby tu po prostu faktycznie
+  // bledna (i myllaca dla recenzenta Apple patrzacego na zrzut ekranu).
+  const paymentText = isNativeIosApp ? 'Bezpieczna płatność przez Apple' : 'Bezpieczna płatność przez Stripe';
+  const trustEl = document.getElementById('trustPaymentProvider');
+  if(trustEl) trustEl.lastChild.textContent = isNativeIosApp ? 'Bezpieczna płatność Apple' : 'Bezpieczna płatność Stripe';
+  const proCardEl = document.getElementById('proCardPaymentProvider');
+  if(proCardEl) proCardEl.lastChild.textContent = paymentText;
+}
+applyPlatformPrice();
+
+// NOWE: callbacki wywolywane z natywnego kodu Swift (IAPManager.swift) po
+// zakonczeniu zakupu StoreKit - patrz window.webkit.messageHandlers.
+// startIAPPurchase ponizej w startCheckout(). Mirror wzorca
+// onNativeAppleSignIn/onNativeAppleSignInError z login.html.
+window.onNativeIAPSuccess=async function(transactionId){
+  const btn = document.getElementById('proBuyBtn');
+  const btnText = document.getElementById('btnText');
+  const loader = document.getElementById('btnLoader');
+  try{
+    const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+    const res = await fetch(`${API_BASE}/api/v1/payments/verify-ios-purchase`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},
+      body: JSON.stringify({transaction_id: transactionId})
+    });
+    const data = await res.json();
+    if(data.success){
+      localStorage.setItem('eduvia_plan','pro');
+      if(typeof window._fbSetPlan === 'function') window._fbSetPlan('pro');
+      window.location.href = 'dashboard_FINAL.html?payment=success';
+      return;
+    }
+    throw new Error(data.error || 'Weryfikacja zakupu nie powiodła się');
+  }catch(e){
+    if(btn){btn.disabled=false;}
+    if(btnText)btnText.textContent='Wypróbuj 7 dni za darmo →';
+    if(loader)loader.style.display='none';
+    showToast('Blad weryfikacji zakupu: '+(e.message||e), 'error');
+  }
+};
+window.onNativeIAPError=function(message){
+  const btn = document.getElementById('proBuyBtn');
+  const btnText = document.getElementById('btnText');
+  const loader = document.getElementById('btnLoader');
+  if(btn){btn.disabled=false;}
+  if(btnText)btnText.textContent='Wypróbuj 7 dni za darmo →';
+  if(loader)loader.style.display='none';
+  if(message!=='cancel')showToast('Zakup nie powiódł się: '+(message||'sprobuj ponownie'), 'error');
+};
+
 async function startCheckout() {
+  // NOWE: na iOS - natywny StoreKit zamiast Stripe (Guideline 2.1(b)).
+  // Most JS<->natywny identyczny wzorzec co signInWithApple (login.html) -
+  // patrz IAPManager.swift (rejestruje "startIAPPurchase" w WebView.swift).
+  if(isNativeIosApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.startIAPPurchase){
+    const btn = document.getElementById('proBuyBtn');
+    const btnText = document.getElementById('btnText');
+    const loader = document.getElementById('btnLoader');
+    btn.disabled = true;
+    btnText.textContent = 'Otwieram zakup...';
+    loader.style.display = 'block';
+    window.webkit.messageHandlers.startIAPPurchase.postMessage({});
+    return;
+  }
   const btn = document.getElementById('proBuyBtn');
   const btnText = document.getElementById('btnText');
   const loader = document.getElementById('btnLoader');

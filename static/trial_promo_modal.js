@@ -36,6 +36,14 @@
 (function () {
   'use strict';
 
+  // NOWE (wrzesien 2026, App Store IAP) - patrz identyczny komentarz w
+  // limit_modal.js. 39,99 zl = DOKLADNA cena produktu
+  // "com.eduvia.ios.pro.monthly" w App Store Connect.
+  // NAPRAWIONE: samo "PWAShell" w UA bylo zawodne na realnym urzadzeniu
+  // (patrz pelne uzasadnienie w login.html) - dodano niepodrabialny sygnal.
+  var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+  var PRO_PRICE = isIosApp ? '39,99' : '29';
+
   function shouldShow() {
     var uid = localStorage.getItem('eduvia_uid') || 'anon';
     var today = new Date().toISOString().split('T')[0];
@@ -81,7 +89,7 @@
       '7 dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
       '</p>' +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">' +
-      '<div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies (po triale)</div>' +
+      '<div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)</div>' +
       '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Anulujesz jednym kliknięciem — zero zobowiązań' +

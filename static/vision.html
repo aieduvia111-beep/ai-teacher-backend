@@ -476,6 +476,15 @@ function showLimitPopup(feature, limit) {
   const old = document.getElementById('limitPopup');
   if (old) old.remove();
 
+  // NOWE (wrzesien 2026, App Store IAP) - patrz identyczny komentarz w
+  // limit_modal.js. 39,99 zl = DOKLADNA cena produktu
+  // "com.eduvia.ios.pro.monthly" w App Store Connect.
+  // NAPRAWIONE: samo "PWAShell" w UA bylo zawodne na realnym urzadzeniu
+  // (patrz naprawa w login.html) - dodano niepodrabialny sygnal
+  // (obecnosc mostka window.webkit.messageHandlers).
+  const isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+  const PRO_PRICE = isIosApp ? '39,99' : '29';
+
   const names = {
     chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki'
@@ -506,7 +515,7 @@ function showLimitPopup(feature, limit) {
         Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
       </p>
       <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
-        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — 29 zł/mies</div>
+        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ${PRO_PRICE} zł/mies</div>
         <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Nieograniczony Chat, Vision, Quiz
