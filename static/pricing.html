@@ -198,6 +198,14 @@ onAuthStateChanged(auth,async(user)=>{
       btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg> Masz już plan Pro';
       btn.classList.remove('primary');btn.classList.add('outline');btn.disabled=true;
     }
+    // NOWE (07.09.2026, user: "po co komus kto wykupil Pro ten komunikat" -
+    // promocja triala nie ma sensu dla kogos, kto juz placi za Pro): flaga
+    // globalna (window, bo to inny <script type="module"> niz ten, ktory
+    // pokazuje baner nizej - modul ma wlasny scope, window jest wspolny)
+    // sprawdzana z OBU stron (przed pokazaniem I po, na wypadek gdyby
+    // baner zdazyl sie juz pokazac zanim ten async fetch planu sie skonczyl).
+    window.userIsPro = true;
+    if (typeof window.hidePromoIfPro === 'function') window.hidePromoIfPro();
   }
 });
 window._fbSetPlan=async function(plan){
@@ -436,7 +444,15 @@ function formatPromoCountdown(totalSeconds){
   return _pad2(h) + ':' + _pad2(m) + ':' + _pad2(sec);
 }
 
+// NOWE (07.09.2026): patrz komentarz przy window.userIsPro w onAuthStateChanged
+// (script type="module" wyzej) - promocja nie ma sensu dla usera z Pro.
+window.hidePromoIfPro = function(){
+  var banner = document.getElementById('promoBanner');
+  if(banner) banner.style.display = 'none';
+};
+
 function showPromoCountdown(deadlineIso){
+  if(window.userIsPro) return; // user ma juz Pro - promocja triala go nie dotyczy
   var banner = document.getElementById('promoBanner');
   var countdownEl = document.getElementById('promoCountdown');
   if(!banner || !countdownEl) return;

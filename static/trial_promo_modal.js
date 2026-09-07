@@ -126,8 +126,8 @@
       'animation:trialPopIn .3s cubic-bezier(.34,1.56,.64,1);' +
       '">' +
       '<style>@keyframes trialPopIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}</style>' +
-      '<div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">' +
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
+      '<div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.08));border:1px solid rgba(124,106,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 0 26px rgba(124,106,255,.3);">' +
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
       '</div>' +
       '<div style="font-family:\'Syne\',sans-serif;font-size:1.1em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
       'Ucz się bez ograniczeń<br>' +
@@ -141,18 +141,18 @@
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
       TRIAL_DAYS + ' dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
       '</p>' +
-      '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">' +
-      '<div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)</div>' +
-      '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:left;">' +
+      '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)</div>' +
+      '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2.5" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Anulujesz jednym kliknięciem — zero zobowiązań' +
       '</div>' +
-      '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2.5" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Nieograniczony Czat AI, Quizy i Sprawdziany' +
       '</div>' +
-      '<div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;">' +
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2.5" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Notatki, Voice AI i Plan nauki bez limitu' +
       '</div>' +
       '</div>' +
