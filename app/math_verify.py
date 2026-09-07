@@ -4633,3 +4633,95 @@ def verify_word_problem_validation_rule(validation_rule: dict, claimed_answer, t
     if abs(claimed_f - expected_f) > tolerance:
         return False, f"Odpowiedz oznaczona jako poprawna ({claimed_f}) nie zgadza sie z validation_rule (expected={expected_f})"
     return True, "OK: validation_rule potwierdza odpowiedz"
+
+
+# SAFE PARAMETER GENERATION - ZBIOR WARTOSCI FUNKCJI KWADRATOWEJ
+# (07.09.2026, user zglosil realny test: "Funkcje kwadratowe"/medium
+# konsekwentnie zawodzilo - sprawdzone bezposrednio, 2/2 powtorzone proby,
+# za kazdym razem dominujacy powod odrzucenia to sympy_mismatch/
+# NO_OPTION_MATCHES na pytaniach o "zbior wartosci"/"postac kanoniczna" -
+# AI regularnie zle liczy wspolrzedna y wierzcholka lub myli sie w
+# kierunku nierownosci (ramiona w gore/w dol). IDENTYCZNY wzorzec
+# problemu i naprawy co build_safe_linear_param_quadratic wyzej (i port
+# na trygonometrie/ciagi) - zamiast prosic AI o policzenie zbioru
+# wartosci, KOD liczy go z wlasnych, ustalonych a/b/c (bezposrednio z
+# wierzcholka, wiec BEZ zaokraglen/ulamkow) - AI dostaje gotowa, poprawna
+# odpowiedz I gotowe dystraktory (rowniez liczone kodem - patrz komentarz
+# nad build_safe_trig_skeleton: "dystraktory tez mozna liczyc kodem, nie
+# wymyslac przez AI") i pisze WYLACZNIE tresc pytania po polsku +
+# wyjasnienie + diversity_tag."""
+def _fmt_signed_int(n: int) -> str:
+    """Formatuje liczbe calkowita jako czlon wzoru ze znakiem, np. dla
+    uzycia po istniejacym znaku '+'/'-' w budowanym wzorze."""
+    return str(abs(n))
+
+
+def build_safe_quadratic_function_range() -> dict:
+    """Buduje JEDEN bezpieczny (gwarantowanie poprawny) szkielet pytania
+    o zbior wartosci funkcji kwadratowej f(x)=ax^2+bx+c. Wspolczynniki
+    dobierane OD WIERZCHOLKA (a, calkowite p, q) - wspolrzedna y
+    wierzcholka to wiec PRAWDZIWA, znana z definicji wartosc q, zero
+    ryzyka bledu obliczeniowego (w odroznieniu od liczenia jej z gotowego
+    a/b/c przez wzor -b/2a, ktory to wlasnie AI regularnie psulo).
+    Dystraktory (3, wszystkie code-generated): odwrocony kierunek
+    nierownosci (typowy blad - pomylenie ramion w gore/w dol), oraz
+    kierunek poprawny/odwrocony z wartoscia c (=f(0)) podstawiona zamiast
+    prawdziwej wspolrzednej wierzcholka - typowy blad, gdy uczen/AI
+    myli wyraz wolny z minimum/maksimum funkcji."""
+    a = random.choice([1, -1, 2, -2, 3, -3])
+    p = random.randint(-5, 5)
+    q = random.randint(-9, 9)
+    b = -2 * a * p
+    c = a * p * p + q
+
+    def fmt_range(bound: int, opens_up: bool) -> str:
+        if opens_up:
+            return f"$[{bound}, +\\infty)$"
+        return f"$(-\\infty, {bound}]$"
+
+    opens_up = a > 0
+    correct_text = fmt_range(q, opens_up)
+
+    # Dystraktor 1: poprawna wspolrzedna, odwrocony kierunek (pomylone ramiona).
+    wrong_dir = fmt_range(q, not opens_up)
+    # Dystraktor 2/3: c (=f(0), wyraz wolny) podstawiony zamiast prawdziwej
+    # wspolrzednej wierzcholka q - jesli przypadkiem c==q, przesuwamy o
+    # stala (2), zeby dystraktor pozostal odrebny od poprawnej odpowiedzi.
+    c_alt = c if c != q else q + 2
+    with_c_same_dir = fmt_range(c_alt, opens_up)
+    with_c_wrong_dir = fmt_range(c_alt, not opens_up)
+
+    distractors = [wrong_dir, with_c_same_dir, with_c_wrong_dir]
+    # Deduplikacja (rzadkie kolizje przy malych |q-c|) - jesli po odjeciu
+    # duplikatow zostalo za malo unikalnych dystraktorow, dosuwamy kolejne
+    # przesuniecia (q+4, q-4) z odwrotnym/tym samym kierunkiem, az bedzie 3.
+    seen = {correct_text}
+    unique_distractors = []
+    for d in distractors:
+        if d not in seen:
+            seen.add(d)
+            unique_distractors.append(d)
+    extra_offset = 4
+    while len(unique_distractors) < 3:
+        for opens in (opens_up, not opens_up):
+            candidate = fmt_range(q + extra_offset, opens)
+            if candidate not in seen:
+                seen.add(candidate)
+                unique_distractors.append(candidate)
+            if len(unique_distractors) >= 3:
+                break
+        extra_offset += 4
+    distractors = unique_distractors[:3]
+
+    b_term = "" if b == 0 else (f" + {_fmt_signed_int(b)}x" if b > 0 else f" - {_fmt_signed_int(b)}x")
+    c_term = "" if c == 0 else (f" + {_fmt_signed_int(c)}" if c > 0 else f" - {_fmt_signed_int(c)}")
+    a_term = "x^2" if a == 1 else ("-x^2" if a == -1 else f"{a}x^2")
+    fn_formula = f"{a_term}{b_term}{c_term}"
+    default_question = f"Oblicz zbiór wartości funkcji $f(x) = {fn_formula}$."
+
+    return {
+        "correct_text": correct_text,
+        "distractors": distractors,
+        "default_question": default_question,
+        "prompt_context": f"Funkcja: $f(x) = {fn_formula}$. Zadanie dotyczy zbioru wartości tej funkcji.",
+    }

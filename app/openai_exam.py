@@ -20,6 +20,7 @@ from .math_verify import (
     build_safe_law_of_cosines_triangle, build_safe_geometric_sequence_two_terms,
     build_safe_abs_value_equation, build_safe_law_of_sines_triangle,
     build_safe_quadratic_two_positive_roots,
+    build_safe_quadratic_function_range,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     WORDING_DIVERSITY_MANDATE,
 )
@@ -1767,6 +1768,106 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - FUNKCJA KWADRATOWA: ZBIOR WARTOSCI
+# (07.09.2026) - patrz pelne uzasadnienie w
+# math_verify.build_safe_quadratic_function_range. Identyczny mechanizm co
+# trygonometria/ciagi wyzej: AI dostaje gotowe opcje + poprawna odpowiedz
+# (obie strony liczone kodem, nie zgadywane), pisze TYLKO tresc pytania po
+# polsku + wyjasnienie + diversity_tag.
+async def _raw_generate_safe_quadratic_function_range_batch(n: int) -> Dict:
+    """Generuje `n` pytan o zbior wartosci funkcji kwadratowej metoda
+    'safe parameter generation' - patrz komentarz wyzej. Jedno wywolanie
+    AI dla calej partii, analogicznie do _raw_generate_safe_trig_quadratic_batch."""
+    buffered_n = n + 3
+    skeletons = [build_safe_quadratic_function_range() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. {sk['prompt_context']} "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o zbiorze wartosci funkcji
+kwadratowej, zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna opcja
+zostaly JUZ OBLICZONE (przez niezalezny system matematyczny) - Twoje
+JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci "default question" prawie doslownie - jest juz gotowa jezykowo -
+   patrz {{'RÓŻNICUJ SFORMUŁOWANIA'}} ponizej, zeby nie brzmialy identycznie).
+2. Napisac krotkie wyjasnienie (1-2 zdania) odwolujace sie do wspolrzednych
+   wierzcholka paraboli i kierunku ramion (w gore dla a>0, w dol dla a<0).
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
+
+KRYTYCZNE: NIE ZMIENIAJ podanych opcji ani poprawnej odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to
+TYLKO jezyk, nie matematyka. NIE dolaczaj pol "options"/"correct"/
+"final_answer" - system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Funkcje kwadratowe - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Oblicz zbiór wartości funkcji $f(x) = x^2 - 4x + 1$.",
+            "explanation": "Współrzędne wierzchołka to $(2, -3)$, a ponieważ $a=1>0$ (ramiona w górę), zbiorem wartości jest $[-3, +\\infty)$.",
+            "diversity_tag": {{
+                "skill": "zbior wartosci funkcji kwadratowej", "concept": "wspolrzedne wierzcholka",
+                "task_type": "oblicz zbior wartosci", "reasoning": "wyznacz wierzcholek, okresl kierunek ramion"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["default_question"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Funkcje kwadratowe - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
 # Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
 # Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
@@ -2510,6 +2611,23 @@ def _is_medium_linear_param_quadratic(topic: str, difficulty: str) -> bool:
     return is_quadratic and diff_word in _MEDIUM_DIFFICULTY_WORDS
 
 
+def _is_medium_quadratic_function(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla FUNKCJI
+    KWADRATOWEJ (zbior wartosci) na poziomie medium (port wzorca z
+    _is_medium_linear_param_quadratic wyzej). Real-test (07.09.2026, user
+    zglosil): temat "Funkcje kwadratowe"/medium konsekwentnie nie zbieral
+    pelnej liczby pytan - dominujacy powod odrzucenia to zle policzony
+    przez AI zbior wartosci (sympy_mismatch/NO_OPTION_MATCHES). Jak wyzej:
+    UZYWANE TYLKO w rundach dogenerowania, pierwsza partia zostaje wolna
+    generacja (roznorodnosc pytan o rozne wlasciwosci funkcji - wierzcholek/
+    postac kanoniczna/miejsca zerowe/zbior wartosci), TYLKO uzupelnianie
+    brakujacych przelacza sie na bezpieczna metode (jeden, gwarantowanie
+    poprawny podwzorzec: zbior wartosci)."""
+    is_quad_fn = topic is not None and is_quadratic_function_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    return is_quad_fn and diff_word in _MEDIUM_DIFFICULTY_WORDS
+
+
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla TRYGONOMETRII na
     poziomie trudny/hard (port wzorca z _is_medium_linear_param_quadratic
@@ -2714,6 +2832,11 @@ async def _generate_quiz_topic_once(
     used_safe_constants = set()
     if _is_medium_linear_param_quadratic(topic, difficulty):
         regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(_adaptive_fill_batch(n), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
+    elif _is_medium_quadratic_function(topic, difficulty):
+        # Port tego samego wzorca na zbior wartosci funkcji kwadratowej -
+        # patrz _is_medium_quadratic_function i
+        # _raw_generate_safe_quadratic_function_range_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_function_range_batch(_adaptive_fill_batch(n))
     elif _is_hard_trig_quadratic(topic, difficulty):
         # Port tego samego wzorca na trygonometrie - patrz
         # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
