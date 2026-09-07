@@ -2047,7 +2047,9 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                     print(f"[MathVerify][Exam][Difficulty] blad walidacji trudnosci: {e}")
                     kept2.append(pyt)
                     continue
-                if diff_result["status"] == "fail":
+                # NAPRAWIONE (07.09.2026): .get() zamiast [...] - patrz pelne
+                # uzasadnienie w app/difficulty/analyzer.py (KeyError: 'status').
+                if diff_result.get("status") == "fail":
                     # NAPRAWIONE (user 04.09.2026, "ma byc 20 na 20"):
                     # identyczny mechanizm ratunkowy co w Quizie (patrz
                     # _verify_and_fix_quiz_math w openai_exam.py) - NIE

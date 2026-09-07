@@ -3629,7 +3629,9 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
                 print(f"[MathVerify][Difficulty] blad walidacji trudnosci: {e}")
                 kept2.append(q)
                 continue
-            if diff_result["status"] == "fail":
+            # NAPRAWIONE (07.09.2026): .get() zamiast [...] - patrz pelne
+            # uzasadnienie w app/difficulty/analyzer.py (KeyError: 'status').
+            if diff_result.get("status") == "fail":
                 # NAPRAWIONE (user 04.09.2026, "ma byc 20 na 20... nie ma
                 # ze jakis temat daje 0 albo 3"): `relax_difficulty` to
                 # WASKI, OSTATECZNY ratunek - uzywany TYLKO przez

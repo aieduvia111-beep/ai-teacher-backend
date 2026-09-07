@@ -51,7 +51,17 @@ class DifficultyAnalyzer:
                 result = matched_modifier.evaluate(question_text, option_texts, requested_difficulty_word, level=level)
             except Exception as e:
                 result = None
-                domain_detail = {"error": str(e)}
+                # NAPRAWIONE (07.09.2026, user zglosil realny crash: "Calki
+                # oznaczone", 6 pytan, medium -> KeyError: 'status'):
+                # wywolujacy (openai_exam.py/exam_pdf_generator.py) ZAWSZE
+                # czyta diff_result["status"] (bez .get) - brak tego klucza
+                # tutaj powodowal DRUGI, niezwiazany crash zaraz PO tym, ze
+                # modifier sam sie wywalil (dla calek oznaczonych rzucal
+                # wyjatek przy analizie). "status": "error" (nie "fail")
+                # sprawia, ze pytanie jest normalnie PRZYJETE - modifier,
+                # ktory sam padl, nie powinien wiec odrzucac pytania, ktorego
+                # nawet nie zdolal ocenic.
+                domain_detail = {"status": "error", "error": str(e)}
             if result is not None:
                 domain_verdict = result.get("status")
                 domain_detail = result
