@@ -571,10 +571,16 @@ function restart(){ showCards(); }
 </script>
 <script>
 // Android back button - wroc do dashboard
-window.addEventListener('popstate', function() {
-  if(document.referrer.includes('chat')) history.back(); else window.location.href = 'chat.html';
-});
-history.pushState(null, '', window.location.href);
+// NAPRAWIONE (07.09.2026): TYLKO na Androidzie - na iOS gest "przesun od
+// krawedzi" odpala ten sam popstate i wyrywa z ekranu, patrz pelne
+// uzasadnienie w voice_conversation.html (gdzie user to zglosil).
+var _isIosAppBackBtn = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+if (!_isIosAppBackBtn) {
+  window.addEventListener('popstate', function() {
+    if(document.referrer.includes('chat')) history.back(); else window.location.href = 'chat.html';
+  });
+  history.pushState(null, '', window.location.href);
+}
 </script>
 </body>
 </html>

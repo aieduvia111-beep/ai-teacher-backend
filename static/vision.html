@@ -871,7 +871,13 @@ async function startCamera(){
   try{
     if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1920},height:{ideal:1080}}});
-    document.getElementById('cameraVideo').srcObject=cameraStream;
+    const _v=document.getElementById('cameraVideo');
+    _v.srcObject=cameraStream;
+    // NOWE (07.09.2026, user zglosil z prawdziwego iPhone'a: podglad kamery
+    // caly czarny): samo autoplay na <video> nie zawsze wystarcza w WKWebView
+    // po programowym ustawieniu srcObject (w odroznieniu od zwyklej Safari) -
+    // jawne .play() to standardowy, bezpieczny fix (no-op, jesli juz gra).
+    _v.play().catch(()=>{});
   }catch(e){alert('Brak dostepu do kamery. Uzyj galerii.');closeCamera();}
 }
 function closeCamera(){

@@ -2211,7 +2211,22 @@ function cSendToChat() {
 function scrollDown() { const m = document.getElementById('msgsArea'); requestAnimationFrame(() => m.scrollTo({ top: m.scrollHeight, behavior: 'smooth' })); }
 
 let recognition = null, isListening = false;
-function toggleSpeech() {
+// NAPRAWIONE (07.09.2026, user zglosil z prawdziwego iPhone'a: "mikrofon w
+// Chat AI nie dziala, zablokowane"): webkitSpeechRecognition/SpeechRecognition
+// (Web Speech API) NIE ISTNIEJE w ogole w WKWebView (to funkcja tylko
+// prawdziwej Safari/Chrome, niedostepna wewnatrz natywnych apek) - stary kod
+// zawsze trafial w gorna galaz if() i pokazywal mylacy alert "Uzyj Chrome"
+// (identyczny wzorzec falszywego alarmu jak "zainstaluj Chrome" naprawiony
+// wczesniej gdzie indziej, ale TEN konkretny przycisk nigdy nie mial tej
+// poprawki). Na iOS uzywamy wiec DOKLADNIE tego samego natywnego pipeline'u
+// co Voice AI (patrz voice_conversation.html process()): nagranie
+// getUserMedia+MediaRecorder -> /api/v1/voice/transcribe (Whisper) -> tekst
+// wstawiony do pola wiadomosci. Android/Web (gdzie Web Speech API dziala)
+// zostaja bez zmian.
+var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+let iosMicStream = null, iosMediaRecorder = null, iosAudioChunks = [];
+async function toggleSpeech() {
+  if (isIosApp) { toggleIosDictation(); return; }
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Użyj Chrome.'); return; }
   if (isListening) { recognition.stop(); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2222,6 +2237,35 @@ function toggleSpeech() {
   recognition.onend = () => { isListening = false; btn.classList.remove('listening'); input.placeholder = 'Wpisz pytanie lub wrzuć plik...'; if (input.value.trim()) sendMessage(); };
   recognition.onerror = () => { isListening = false; btn.classList.remove('listening'); };
   recognition.start();
+}
+async function toggleIosDictation() {
+  const btn = document.getElementById('micBtn'), input = document.getElementById('msgInput');
+  if (isListening) { if (iosMediaRecorder && iosMediaRecorder.state !== 'inactive') iosMediaRecorder.stop(); return; }
+  try {
+    iosMicStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+  } catch (e) { alert('Brak dostępu do mikrofonu.'); return; }
+  isListening = true; btn.classList.add('listening'); input.placeholder = 'Mów...';
+  iosAudioChunks = [];
+  const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  try { iosMediaRecorder = new MediaRecorder(iosMicStream, mime ? { mimeType: mime } : {}); }
+  catch (e) { iosMediaRecorder = new MediaRecorder(iosMicStream); }
+  iosMediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) iosAudioChunks.push(e.data); };
+  iosMediaRecorder.onstop = async () => {
+    isListening = false; btn.classList.remove('listening'); input.placeholder = 'Wpisz pytanie lub wrzuć plik...';
+    iosMicStream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(iosAudioChunks, { type: iosAudioChunks[0]?.type || 'audio/mp4' });
+    iosAudioChunks = [];
+    if (blob.size < 2500) return;
+    try {
+      const audioB64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+      const _idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+      const sr = await fetch(BACKEND_URL + '/api/v1/voice/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _idToken }, body: JSON.stringify({ audio: audioB64 }) });
+      const srData = await sr.json();
+      const txt = (srData.text || '').trim();
+      if (txt) { input.value = txt; autoResize(input); sendMessage(); }
+    } catch (e) { console.warn('[Chat mic] transkrypcja nie powiodla sie:', e); }
+  };
+  iosMediaRecorder.start(100);
 }
 
 window.addEventListener('load', () => {
@@ -2506,10 +2550,15 @@ window.go = go;
 
 <script>
 // Android back button - wroc do dashboard
-window.addEventListener('popstate', function() {
-  window.location.href = 'dashboard_FINAL.html';
-});
-history.pushState(null, '', window.location.href);
+// NAPRAWIONE (07.09.2026): TYLKO na Androidzie - na iOS gest "przesun od
+// krawedzi" odpala ten sam popstate i wyrywa z ekranu na dashboard, patrz
+// pelne uzasadnienie w voice_conversation.html (gdzie user to zglosil).
+if (!isIosApp) {
+  window.addEventListener('popstate', function() {
+    window.location.href = 'dashboard_FINAL.html';
+  });
+  history.pushState(null, '', window.location.href);
+}
 </script>
 
 </body>

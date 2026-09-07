@@ -1105,6 +1105,15 @@ async function startQuiz(){
         showLimitPopup('quiz', LIMITS_FREE.quiz);
         return;
       }
+      // NOWE (07.09.2026, diagnoza "Quiz sie nie generuje" zgloszona z
+      // prawdziwego iPhone'a - nie dalo sie ustalic PRAWDZIWEJ przyczyny,
+      // bo kazdy nieprzewidziany blad byl tu chowany za ogolnikowym "Ups!
+      // Sprobuj ponownie"): jesli zaden ze znanych przypadkow powyzej nie
+      // pasuje, pokaz PRAWDZIWY komunikat z backendu/przegladarki zamiast
+      // go ukrywac - przy nastepnym teście od razu zobaczymy prawdziwa
+      // przyczyne (np. "Nieznane zadanie generowania" = wygasl/zniknal
+      // job, konkretny blad OpenAI, itp.) zamiast zgadywac.
+      else { _errMsg = 'Ups! Coś poszło nie tak: ' + e.message; }
     };err.textContent=_errMsg;err.style.display='block';});
     return;
   }
@@ -1153,6 +1162,15 @@ async function startQuiz(){
         showLimitPopup('quiz', LIMITS_FREE.quiz);
         return;
       }
+      // NOWE (07.09.2026, diagnoza "Quiz sie nie generuje" zgloszona z
+      // prawdziwego iPhone'a - nie dalo sie ustalic PRAWDZIWEJ przyczyny,
+      // bo kazdy nieprzewidziany blad byl tu chowany za ogolnikowym "Ups!
+      // Sprobuj ponownie"): jesli zaden ze znanych przypadkow powyzej nie
+      // pasuje, pokaz PRAWDZIWY komunikat z backendu/przegladarki zamiast
+      // go ukrywac - przy nastepnym teście od razu zobaczymy prawdziwa
+      // przyczyne (np. "Nieznane zadanie generowania" = wygasl/zniknal
+      // job, konkretny blad OpenAI, itp.) zamiast zgadywac.
+      else { _errMsg = 'Ups! Coś poszło nie tak: ' + e.message; }
     };err.textContent=_errMsg;err.style.display='block';});
 }
 
@@ -1603,10 +1621,16 @@ window.animateCounter = animateCounter;
 
 <script>
 // Android back button - wroc do dashboard
-window.addEventListener('popstate', function() {
-  window.location.href = 'dashboard_FINAL.html';
-});
-history.pushState(null, '', window.location.href);
+// NAPRAWIONE (07.09.2026): TYLKO na Androidzie - na iOS gest "przesun od
+// krawedzi" odpala ten sam popstate i wyrywa z ekranu na dashboard, patrz
+// pelne uzasadnienie w voice_conversation.html (gdzie user to zglosil).
+var _isIosAppBackBtn = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+if (!_isIosAppBackBtn) {
+  window.addEventListener('popstate', function() {
+    window.location.href = 'dashboard_FINAL.html';
+  });
+  history.pushState(null, '', window.location.href);
+}
 window.addEventListener('popstate', function() {
   window.location.href = 'dashboard_FINAL.html';
 });

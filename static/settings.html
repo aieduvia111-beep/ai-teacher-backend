@@ -257,6 +257,17 @@ button:active{transform:scale(.95)!important;}
           <div class="item-txt"><div class="item-title">Plan i subskrypcja</div><div class="item-sub" id="planSubSub">Odblokuj pełne możliwości AI</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
+        <!-- NOWE (wrzesien 2026, App Store Guideline 5.1.1(v)): kazda apka
+             z rejestracja MUSI oferowac samoobslugowe USUNIECIE konta -
+             nie tylko wylogowanie. Widoczne wprost w sekcji "Konto"
+             (nie ukryte glebiej), stylizowane jak "Wyloguj sie" (czerwone,
+             ostrzegawcze), ale z osobnym, mocniejszym potwierdzeniem
+             (patrz #deleteAccountModal) - to nieodwracalne. -->
+        <div class="item red" onclick="showDeleteAccountModal()">
+          <div class="item-ic ic-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></div>
+          <div class="item-txt"><div class="item-title">Usuń konto</div><div class="item-sub">Trwałe usunięcie konta i danych</div></div>
+          <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
       </div>
     </div>
 
@@ -354,6 +365,18 @@ button:active{transform:scale(.95)!important;}
   </div>
 </div>
 
+<!-- NOWE (wrzesien 2026, App Store Guideline 5.1.1(v)) - osobny modal od
+     wylogowania, bo to nieodwracalne: usuwa konto, subskrypcje Stripe
+     (natychmiast, nie na koniec okresu) i wszystkie dane. -->
+<div class="modal" id="deleteAccountModal">
+  <div class="modal-box">
+    <div class="modal-title">Usunąć konto na stałe?</div>
+    <div class="modal-desc">Ta operacja jest <strong>nieodwracalna</strong>. Usuniemy Twoje konto, wszystkie zapisane dane (plany nauki, historię) i natychmiast anulujemy aktywną subskrypcję — nie zostaniesz już obciążony.</div>
+    <button class="mbtn danger" id="deleteAccountConfirmBtn" onclick="doDeleteAccount()">Usuń konto na stałe</button>
+    <button class="mbtn sec" onclick="hideDeleteAccountModal()">Anuluj</button>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="m-nav">
   <a class="m-nb" href="dashboard_FINAL.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Start</span></a>
@@ -367,6 +390,10 @@ button:active{transform:scale(.95)!important;}
 function showModal(){document.getElementById('modal').classList.add('on');}
 function hideModal(){document.getElementById('modal').classList.remove('on');}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)hideModal();});
+
+function showDeleteAccountModal(){document.getElementById('deleteAccountModal').classList.add('on');}
+function hideDeleteAccountModal(){document.getElementById('deleteAccountModal').classList.remove('on');}
+document.getElementById('deleteAccountModal').addEventListener('click',function(e){if(e.target===this)hideDeleteAccountModal();});
 </script>
 
 <script type="module">
@@ -537,6 +564,39 @@ window.resetPass=async function(){
   if(!u?.email)return;
   try{await sendPasswordResetEmail(auth,u.email);alert('✓ Link wysłany na '+u.email);}
   catch(e){alert('Błąd');}
+};
+
+// NOWE (wrzesien 2026, App Store Guideline 5.1.1(v)): woła DELETE /users/me
+// (patrz app/api/users.py delete_account) - backend anuluje Stripe
+// NATYCHMIAST, usuwa powiazane rekordy SQL, dokument Firestore i konto
+// Firebase Auth. Przycisk pokazuje stan "Usuwanie..." i jest blokowany na
+// czas requestu (nieodwracalna operacja - lepiej nie dac klikac dwa razy).
+window.doDeleteAccount=async function(){
+  const btn=document.getElementById('deleteAccountConfirmBtn');
+  const u=auth.currentUser;
+  if(!u){hideDeleteAccountModal();return;}
+  const original=btn.textContent;
+  btn.disabled=true;btn.textContent='Usuwanie konta...';btn.style.opacity='.6';
+  try{
+    const token=await u.getIdToken();
+    const res=await fetch(window.API_BASE+'/users/me',{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const data=await res.json();
+    if(!res.ok||!data.success){
+      throw new Error(data.error||('Blad serwera (HTTP '+res.status+')'));
+    }
+    // Konto Firebase Auth juz usuniete backendem - lokalne signOut czysci
+    // sesje w tej przegladarce/aplikacji (samo usuniecie konta juz
+    // uniewaznilo token, ale to sprzata lokalny stan Firebase SDK).
+    try{await signOut(auth);}catch(e){}
+    window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html?account_deleted=1';
+  }catch(e){
+    console.error('[Ustawienia] Usuniecie konta nie powiodlo sie:',e);
+    alert('Nie udało się usunąć konta: '+(e.message||e)+'\n\nSpróbuj ponownie lub napisz do nas.');
+    btn.disabled=false;btn.textContent=original;btn.style.opacity='';
+  }
 };
 </script>
 
@@ -711,10 +771,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script>
 // Android back button - wroc do dashboard
-window.addEventListener('popstate', function() {
-  window.location.href = 'dashboard_FINAL.html';
-});
-history.pushState(null, '', window.location.href);
+// NAPRAWIONE (07.09.2026): TYLKO na Androidzie - na iOS gest "przesun od
+// krawedzi" odpala ten sam popstate i wyrywa z ekranu na dashboard, patrz
+// pelne uzasadnienie w voice_conversation.html (gdzie user to zglosil).
+var _isIosAppBackBtn = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+if (!_isIosAppBackBtn) {
+  window.addEventListener('popstate', function() {
+    window.location.href = 'dashboard_FINAL.html';
+  });
+  history.pushState(null, '', window.location.href);
+}
 </script>
 </body>
 </html>

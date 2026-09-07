@@ -1912,10 +1912,24 @@ window.animateCounter=animateCounter;
 
 <script>
 // Android back button - wroc do dashboard
-window.addEventListener('popstate', function() {
-  window.location.href = 'dashboard_FINAL.html';
-});
-history.pushState(null, '', window.location.href);
+// NAPRAWIONE (07.09.2026, user zglosil z prawdziwego iPhone'a: "Voice AI
+// crashuje, wraca do ekranu glownego" - PO przyznaniu dostepu do mikrofonu):
+// prawdziwa przyczyna to NIE crash - ten mechanizm byl pomyslany WYLACZNIE
+// pod fizyczny przycisk "Wstecz" na Androidzie, ale WKWebView.allowsBackForward
+// NavigationGestures=true (patrz WebView.swift) daje iOS wlasny, natywny gest
+// "przesun od lewej krawedzi = wstecz", ktory ODPALA TEN SAM popstate. Latwo
+// go przypadkowo wywolac kciukiem trzymajac telefon (np. przy okazji
+// klikniecia "Zezwalaj" na mikrofon), co wyrywa z rozmowy prosto na
+// Dashboard - wyglada jak crash, ale to w rzeczywistosci przechwycony gest
+// nawigacji. Na iOS w ogole NIE instalujemy tego hacka - swipe-back dziala
+// wtedy normalnie (WKWebView), zamiast wymuszac skok na dashboard.
+var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
+if (!isIosApp) {
+  window.addEventListener('popstate', function() {
+    window.location.href = 'dashboard_FINAL.html';
+  });
+  history.pushState(null, '', window.location.href);
+}
 </script>
 </body>
 </html>
