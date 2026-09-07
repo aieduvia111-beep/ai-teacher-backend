@@ -52,13 +52,44 @@
   // co trwa dluzej niz ten jeden fetch) wartosc byla juz zaktualizowana.
   var TRIAL_DAYS = 7;
   var PROMO_ACTIVE = false;
+  var PROMO_DEADLINE_ISO = null;
   var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
   var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:8000' : _isPrivateLAN ? location.origin : 'https://eduvia-backend-2.onrender.com';
   if (!isIosApp) {
     fetch(BASE + '/api/v1/payments/trial-info').then(function (r) { return r.json(); }).then(function (info) {
       TRIAL_DAYS = info.trial_days || 7;
       PROMO_ACTIVE = !!info.promo_active;
+      PROMO_DEADLINE_ISO = info.promo_deadline_iso || null;
     }).catch(function () {});
+  }
+
+  // NOWE (07.09.2026, user: "zrob licznik od sekundy, w kolorze czerwonym" -
+  // ten sam mechanizm co pricing.html, ale tykajacy co sekunde (nie co 30s)
+  // i w kolorze czerwonym (pilnosc/urgency), bo to popup pokazywany
+  // CODZIENNIE - ma zwracac uwage bardziej niz spokojny fioletowy akcent.
+  function _pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function formatPromoCountdownTicking(totalSeconds) {
+    var s = Math.max(0, Math.floor(totalSeconds));
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    if (d > 0) return d + ' dni ' + _pad2(h) + ':' + _pad2(m) + ':' + _pad2(sec);
+    return _pad2(h) + ':' + _pad2(m) + ':' + _pad2(sec);
+  }
+  function startTickingCountdown(elementId, deadlineIso) {
+    var el = document.getElementById(elementId);
+    if (!el || !deadlineIso) return;
+    var deadline = new Date(deadlineIso);
+    function tick() {
+      var el2 = document.getElementById(elementId);
+      if (!el2) return; // popup zamkniety - przestan tykac
+      var secsLeft = Math.floor((deadline.getTime() - Date.now()) / 1000);
+      if (secsLeft <= 0) { el2.textContent = '00:00:00'; clearInterval(iv); return; }
+      el2.textContent = formatPromoCountdownTicking(secsLeft);
+    }
+    tick();
+    var iv = setInterval(tick, 1000);
   }
 
   function shouldShow() {
@@ -103,7 +134,10 @@
       '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">' + TRIAL_DAYS + ' dni gratis</span>' +
       '</div>' +
       (PROMO_ACTIVE ?
-        '<div style="background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.35);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:.75em;font-weight:700;color:#22d3a0;">🔥 Zapisz się do piątku — 14 dni zamiast 7!</div>'
+        '<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:10px 12px;margin-bottom:14px;">' +
+        '<div style="font-size:.75em;font-weight:700;color:#f87171;margin-bottom:4px;">🔥 Zapisz się do piątku — 14 dni zamiast 7!</div>' +
+        '<div style="font-size:.95em;font-weight:800;color:#f87171;font-family:\'Syne\',sans-serif;letter-spacing:.02em;">Zostało: <span id="trialModalCountdown">—</span></div>' +
+        '</div>'
         : '') +
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
       TRIAL_DAYS + ' dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
@@ -146,6 +180,9 @@
     popup.addEventListener('click', function (e) {
       if (e.target === popup) closeTrialPromo();
     });
+    if (PROMO_ACTIVE && PROMO_DEADLINE_ISO) {
+      startTickingCountdown('trialModalCountdown', PROMO_DEADLINE_ISO);
+    }
   }
 
   function maybeShow(plan) {

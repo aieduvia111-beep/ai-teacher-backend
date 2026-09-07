@@ -38,7 +38,8 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 
 .hero{text-align:center;padding:72px 24px 48px;position:relative;z-index:5;}
 .hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.25);border-radius:100px;font-family:var(--h);font-size:0.72em;font-weight:700;color:var(--accent2);letter-spacing:0.06em;margin-bottom:24px;animation:fadeUp 0.5s ease backwards;}
-.promo-banner{max-width:600px;margin:0 auto 22px;padding:13px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(124,106,255,.22),rgba(167,139,250,.14));border:1px solid rgba(124,106,255,.4);color:#eeeef5;font-size:.85em;line-height:1.5;font-weight:600;text-align:center;box-shadow:0 0 26px rgba(124,106,255,.3);animation:fadeUp 0.5s ease backwards;}
+.promo-banner{max-width:600px;margin:0 auto 22px;padding:13px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(248,113,113,.16),rgba(248,113,113,.08));border:1px solid rgba(248,113,113,.4);color:#eeeef5;font-size:.85em;line-height:1.5;font-weight:600;text-align:center;box-shadow:0 0 26px rgba(248,113,113,.25);animation:fadeUp 0.5s ease backwards;}
+.promo-banner strong{color:#f87171;}
 .hero-h1{font-family:var(--h);font-size:3em;font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:16px;animation:fadeUp 0.5s ease 0.1s backwards;}
 .grad{background:linear-gradient(120deg,#fff 0%,var(--accent2) 50%,var(--green) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .hero-sub{font-size:1em;color:var(--muted2);font-weight:300;max-width:520px;margin:0 auto 24px;line-height:1.7;animation:fadeUp 0.5s ease 0.15s backwards;}
@@ -420,14 +421,19 @@ if(!isNativeIosApp){
   }).catch(function(){});
 }
 
+// NAPRAWIONE (07.09.2026, user: "zrob licznik od sekundy, w kolorze
+// czerwonym"): tyka co sekunde (nie co 30s) - dokladnie ten sam mechanizm
+// i format co trial_promo_modal.js (spojnosc miedzy tym bannerem a
+// codziennym popupem na Dashboardzie).
+function _pad2(n){ return n < 10 ? '0' + n : '' + n; }
 function formatPromoCountdown(totalSeconds){
-  var s = Math.max(0, totalSeconds);
+  var s = Math.max(0, Math.floor(totalSeconds));
   var d = Math.floor(s / 86400);
   var h = Math.floor((s % 86400) / 3600);
   var m = Math.floor((s % 3600) / 60);
-  if(d > 0) return d + ' dni ' + h + ' godz.';
-  if(h > 0) return h + ' godz. ' + m + ' min';
-  return m + ' min';
+  var sec = s % 60;
+  if(d > 0) return d + ' dni ' + _pad2(h) + ':' + _pad2(m) + ':' + _pad2(sec);
+  return _pad2(h) + ':' + _pad2(m) + ':' + _pad2(sec);
 }
 
 function showPromoCountdown(deadlineIso){
@@ -447,7 +453,7 @@ function showPromoCountdown(deadlineIso){
     countdownEl.textContent = formatPromoCountdown(secsLeft);
   }
   tick();
-  iv = setInterval(tick, 30000);
+  iv = setInterval(tick, 1000);
 }
 
 // NOWE: callbacki wywolywane z natywnego kodu Swift (IAPManager.swift) po
