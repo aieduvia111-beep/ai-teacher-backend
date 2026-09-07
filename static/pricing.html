@@ -38,6 +38,7 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 
 .hero{text-align:center;padding:72px 24px 48px;position:relative;z-index:5;}
 .hero-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.25);border-radius:100px;font-family:var(--h);font-size:0.72em;font-weight:700;color:var(--accent2);letter-spacing:0.06em;margin-bottom:24px;animation:fadeUp 0.5s ease backwards;}
+.promo-banner{max-width:600px;margin:0 auto 22px;padding:13px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(124,106,255,.22),rgba(167,139,250,.14));border:1px solid rgba(124,106,255,.4);color:#eeeef5;font-size:.85em;line-height:1.5;font-weight:600;text-align:center;box-shadow:0 0 26px rgba(124,106,255,.3);animation:fadeUp 0.5s ease backwards;}
 .hero-h1{font-family:var(--h);font-size:3em;font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:16px;animation:fadeUp 0.5s ease 0.1s backwards;}
 .grad{background:linear-gradient(120deg,#fff 0%,var(--accent2) 50%,var(--green) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .hero-sub{font-size:1em;color:var(--muted2);font-weight:300;max-width:520px;margin:0 auto 24px;line-height:1.7;animation:fadeUp 0.5s ease 0.15s backwards;}
@@ -225,7 +226,13 @@ window._currentUser=()=>currentUser;
 
 <div class="hero">
   <div class="hero-badge">🚀 Naucz się 3× szybciej z AI</div>
-  <h1 class="hero-h1">Ucz się bez ograniczeń<br><span class="grad">7 dni gratis</span></h1>
+  <!-- NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE
+       w app/services/stripe_service.py): ukryty domyslnie, pokazywany przez
+       JS TYLKO gdy /api/v1/payments/trial-info potwierdzi promo_active. -->
+  <div class="promo-banner" id="promoBanner" style="display:none;">
+    🔥 Zapisz się do piątku — <strong>14 dni Pro gratis</strong> zamiast 7! Zostało: <strong id="promoCountdown">—</strong>
+  </div>
+  <h1 class="hero-h1">Ucz się bez ograniczeń<br><span class="grad" id="heroTrialDays">7 dni gratis</span></h1>
   <p class="hero-sub">Zacznij za darmo. Ulepsz kiedy chcesz. Żadnych ukrytych opłat.</p>
   <div class="trust-row">
     <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Anuluj kiedy chcesz</div>
@@ -268,7 +275,7 @@ window._currentUser=()=>currentUser;
          (Android/Web, Stripe). id="proAmt" zamiast twardej wartosci. -->
     <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">29</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
-    <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;">🎁 Pierwsze 7 dni za darmo</div>
+    <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;" id="badgeTrialDays">🎁 Pierwsze 7 dni za darmo</div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
       <span id="btnText">Wypróbuj 7 dni za darmo →</span>
       <div class="btn-loader" id="btnLoader"></div>
@@ -298,7 +305,7 @@ window._currentUser=()=>currentUser;
     <div class="faq-a">Tak, anulowanie jest możliwe w każdej chwili bez żadnych konsekwencji. Po anulowaniu masz dostęp do końca opłaconego okresu, a następnie przechodzisz automatycznie na plan Free.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-q">Jak działa 7-dniowy okres próbny?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-q"><span id="faqTrialQuestion">Jak działa 7-dniowy okres próbny?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
     <div class="faq-a" id="faqTrialAnswer">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 29 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
@@ -317,8 +324,8 @@ window._currentUser=()=>currentUser;
   <div class="cta-card">
     <h2>Gotowy na naukę bez limitów? 🚀</h2>
     <p>Dołącz do uczniów którzy uczą się szybciej i mądrzej z AI.<br>Plan Free jest darmowy na zawsze — ulepsz kiedy chcesz.</p>
-    <button class="cta-big-btn" onclick="startCheckout()">Wypróbuj 7 dni za darmo →</button>
-    <div class="cta-note">🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez 7 dni</div>
+    <button class="cta-big-btn" onclick="startCheckout()" id="bottomCtaBtn">Wypróbuj 7 dni za darmo →</button>
+    <div class="cta-note" id="ctaNoteText">🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez 7 dni</div>
   </div>
 </div>
 
@@ -353,12 +360,23 @@ const ANDROID_WEB_PRICE = '29';
 const hasIosNativeBridge = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
 const isNativeIosApp = navigator.userAgent.includes('PWAShell') || hasIosNativeBridge;
 const PRO_PRICE = isNativeIosApp ? IOS_PRICE : ANDROID_WEB_PRICE;
+// NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
+// app/services/stripe_service.py): domyslnie 7 (dotyczy TYLKO Android/Web -
+// iOS ma wlasny, oddzielny trial w App Store Connect, nie zmieniany przez
+// ta promocje), nadpisywane przez /api/v1/payments/trial-info ponizej,
+// zeby liczba dni na ekranie ZAWSZE zgadzala sie z tym, co faktycznie
+// dostanie user po kliknieciu Subskrybuj.
+let TRIAL_DAYS = 7;
+
+function trialButtonLabel(){
+  return 'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →';
+}
 
 function applyPlatformPrice(){
   const amtEl = document.getElementById('proAmt');
   if(amtEl) amtEl.textContent = String(PRO_PRICE);
   const faqEl = document.getElementById('faqTrialAnswer');
-  if(faqEl) faqEl.textContent = 'Dostęp Pro aktywuje się natychmiast po ' + (isNativeIosApp ? 'rozpoczęciu triala' : 'podaniu karty') + ' — wystarczy wrócić do dashboardu i odświeżyć stronę. ' + (isNativeIosApp ? 'Obciążymy Twoje konto Apple ID' : 'Kartę obciążymy') + ' dopiero po 7 dniach, ' + PRO_PRICE + ' zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.';
+  if(faqEl) faqEl.textContent = 'Dostęp Pro aktywuje się natychmiast po ' + (isNativeIosApp ? 'rozpoczęciu triala' : 'podaniu karty') + ' — wystarczy wrócić do dashboardu i odświeżyć stronę. ' + (isNativeIosApp ? 'Obciążymy Twoje konto Apple ID' : 'Kartę obciążymy') + ' dopiero po ' + TRIAL_DAYS + ' dniach, ' + PRO_PRICE + ' zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.';
   // NOWE (wrzesien 2026, App Store IAP): na iOS platnosc idzie przez Apple/
   // StoreKit, NIE Stripe - wzmianka "Stripe" bylaby tu po prostu faktycznie
   // bledna (i myllaca dla recenzenta Apple patrzacego na zrzut ekranu).
@@ -367,8 +385,70 @@ function applyPlatformPrice(){
   if(trustEl) trustEl.lastChild.textContent = isNativeIosApp ? 'Bezpieczna płatność Apple' : 'Bezpieczna płatność Stripe';
   const proCardEl = document.getElementById('proCardPaymentProvider');
   if(proCardEl) proCardEl.lastChild.textContent = paymentText;
+  // NOWE (07.09.2026, promocja): iOS NIE dostaje dynamicznej liczby dni
+  // (StoreKit ma wlasny, stale 7-dniowy trial niezalezny od tego kodu) -
+  // elementy ponizej aktualizujemy TYLKO dla Android/Web.
+  if(!isNativeIosApp){
+    const heroEl = document.getElementById('heroTrialDays');
+    if(heroEl) heroEl.textContent = TRIAL_DAYS + ' dni gratis';
+    const badgeEl = document.getElementById('badgeTrialDays');
+    if(badgeEl) badgeEl.textContent = '🎁 Pierwsze ' + TRIAL_DAYS + ' dni za darmo';
+    const faqQEl = document.getElementById('faqTrialQuestion');
+    if(faqQEl) faqQEl.textContent = 'Jak działa ' + TRIAL_DAYS + '-dniowy okres próbny?';
+    const btnTextEl = document.getElementById('btnText');
+    if(btnTextEl) btnTextEl.textContent = trialButtonLabel();
+    const bottomBtnEl = document.getElementById('bottomCtaBtn');
+    if(bottomBtnEl) bottomBtnEl.textContent = trialButtonLabel();
+    const ctaNoteEl = document.getElementById('ctaNoteText');
+    if(ctaNoteEl) ctaNoteEl.textContent = '🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez ' + TRIAL_DAYS + ' dni';
+  }
 }
 applyPlatformPrice();
+
+// NOWE (07.09.2026, promocja): pobiera aktualny status promocji z backendu
+// (jedno, wspolne zrodlo prawdy - patrz get_promo_status w stripe_service.py)
+// i dopiero WTEDY aktualizuje wszystkie miejsca z liczba dni + pokazuje
+// odliczanie. Ciche niepowodzenie (np. offline) - zostaje domyslne 7 dni,
+// bez zadnego bledu widocznego dla usera.
+if(!isNativeIosApp){
+  fetch(API_BASE + '/api/v1/payments/trial-info').then(function(r){ return r.json(); }).then(function(info){
+    TRIAL_DAYS = info.trial_days || 7;
+    applyPlatformPrice();
+    if(info.promo_active && info.promo_deadline_iso){
+      showPromoCountdown(info.promo_deadline_iso);
+    }
+  }).catch(function(){});
+}
+
+function formatPromoCountdown(totalSeconds){
+  var s = Math.max(0, totalSeconds);
+  var d = Math.floor(s / 86400);
+  var h = Math.floor((s % 86400) / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  if(d > 0) return d + ' dni ' + h + ' godz.';
+  if(h > 0) return h + ' godz. ' + m + ' min';
+  return m + ' min';
+}
+
+function showPromoCountdown(deadlineIso){
+  var banner = document.getElementById('promoBanner');
+  var countdownEl = document.getElementById('promoCountdown');
+  if(!banner || !countdownEl) return;
+  var deadline = new Date(deadlineIso);
+  banner.style.display = 'block';
+  var iv = null;
+  function tick(){
+    var secsLeft = Math.floor((deadline.getTime() - Date.now()) / 1000);
+    if(secsLeft <= 0){
+      banner.style.display = 'none';
+      if(iv) clearInterval(iv);
+      return;
+    }
+    countdownEl.textContent = formatPromoCountdown(secsLeft);
+  }
+  tick();
+  iv = setInterval(tick, 30000);
+}
 
 // NOWE: callbacki wywolywane z natywnego kodu Swift (IAPManager.swift) po
 // zakonczeniu zakupu StoreKit - patrz window.webkit.messageHandlers.
@@ -470,7 +550,7 @@ async function startCheckout() {
       window.location.href = checkoutData.checkout_url;
     } else {
       btn.disabled = false;
-      btnText.textContent = 'Wypróbuj 7 dni za darmo →';
+      btnText.textContent = trialButtonLabel();
       loader.style.display = 'none';
       showToast('Blad platnosci: ' + (checkoutData.error || 'sprobuj ponownie'), 'error');
     }

@@ -44,6 +44,23 @@
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
   var PRO_PRICE = isIosApp ? '39,99' : '29';
 
+  // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
+  // app/services/stripe_service.py): domyslnie 7 (dotyczy TYLKO Android/Web,
+  // iOS ma wlasny, stale 7-dniowy trial w App Store Connect, nie zmieniany
+  // przez ta promocje) - odpalane RAZEM z zaladowaniem skryptu, zeby do
+  // czasu faktycznego pokazania popupu (uzytkownik musi wejsc na Dashboard,
+  // co trwa dluzej niz ten jeden fetch) wartosc byla juz zaktualizowana.
+  var TRIAL_DAYS = 7;
+  var PROMO_ACTIVE = false;
+  var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+  var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:8000' : _isPrivateLAN ? location.origin : 'https://eduvia-backend-2.onrender.com';
+  if (!isIosApp) {
+    fetch(BASE + '/api/v1/payments/trial-info').then(function (r) { return r.json(); }).then(function (info) {
+      TRIAL_DAYS = info.trial_days || 7;
+      PROMO_ACTIVE = !!info.promo_active;
+    }).catch(function () {});
+  }
+
   function shouldShow() {
     var uid = localStorage.getItem('eduvia_uid') || 'anon';
     var today = new Date().toISOString().split('T')[0];
@@ -83,10 +100,13 @@
       '</div>' +
       '<div style="font-family:\'Syne\',sans-serif;font-size:1.1em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
       'Ucz się bez ograniczeń<br>' +
-      '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">7 dni gratis</span>' +
+      '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">' + TRIAL_DAYS + ' dni gratis</span>' +
       '</div>' +
+      (PROMO_ACTIVE ?
+        '<div style="background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.35);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:.75em;font-weight:700;color:#22d3a0;">🔥 Zapisz się do piątku — 14 dni zamiast 7!</div>'
+        : '') +
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
-      '7 dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
+      TRIAL_DAYS + ' dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
       '</p>' +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">' +
       '<div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)</div>' +
@@ -109,7 +129,7 @@
       'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
-      'Wypróbuj 7 dni za darmo →' +
+      'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →' +
       '</button>' +
       '<button onclick="window.EduviaTrialPromo.close()" style="' +
       'width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);' +

@@ -47,6 +47,7 @@ NAPRAWIONA WERSJA - dodana brakujaca synchronizacja Firebase
 
 import stripe
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 from typing import Dict, Optional
 
@@ -54,6 +55,49 @@ from ..config import settings
 from ..models import User, Subscription
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+# ══════════════════════════════════════════════════════════════════════
+# PROMOCJA OGRANICZONA CZASOWO (07.09.2026) - USUNAC LUB ZMIENIC DATE PO
+# JEJ ZAKONCZENIU. Komunikat: "Zapisz sie na Eduvia Pro do piatku - dostaniesz
+# 14 dni za darmo zamiast standardowych 7". Decyzja usera: liczy sie MOMENT
+# KLIKNIECIA "Subskrybuj" (czyli chwila wywolania create_checkout_session
+# ponizej), NIE data rejestracji konta - zgodnie z trescia promocji ("zapisz
+# sie NA Pro", nie "zaloz konto"). Dotyczy TYLKO Android/Web (Stripe) - iOS/
+# StoreKit ma WLASNY, oddzielny 7-dniowy trial skonfigurowany recznie w App
+# Store Connect (Introductory Offer), nie sterowany tym kodem w ogole -
+# zmiana tej stalej NIE MA wplywu na iOS.
+#
+# Po uplywie PROMO_DEADLINE system AUTOMATYCZNIE wraca do 7 dni - to
+# zwykle porownanie dat, zaden dodatkowy krok "wylaczania" nie jest
+# potrzebny. Ten sam PROMO_DEADLINE czyta /api/v1/payments/trial-info
+# (patrz app/api/payments.py), zeby frontend (pricing.html,
+# trial_promo_modal.js, limit_modal.js) pokazywal DOKLADNIE ta sama
+# liczbe dni i to samo odliczanie co faktycznie dostanie user.
+WARSAW_TZ = ZoneInfo("Europe/Warsaw")
+PROMO_DEADLINE = datetime(2026, 9, 11, 23, 59, 59, tzinfo=WARSAW_TZ)  # piatek
+STANDARD_TRIAL_DAYS = 7
+PROMO_TRIAL_DAYS = 14
+
+
+def get_trial_days() -> int:
+    """Zwraca AKTUALNA dlugosc darmowego triala (Android/Web/Stripe) w
+    momencie wywolania - 14 dni podczas promocji, 7 dni standardowo."""
+    return PROMO_TRIAL_DAYS if datetime.now(WARSAW_TZ) <= PROMO_DEADLINE else STANDARD_TRIAL_DAYS
+
+
+def get_promo_status() -> dict:
+    """Pelny status promocji do /api/v1/payments/trial-info - frontend
+    uzywa tego, zeby pokazac poprawna liczbe dni ORAZ odliczanie czasu,
+    spojne co do sekundy z tym, co faktycznie dostanie user."""
+    now = datetime.now(WARSAW_TZ)
+    active = now <= PROMO_DEADLINE
+    seconds_remaining = max(0, int((PROMO_DEADLINE - now).total_seconds())) if active else 0
+    return {
+        "trial_days": PROMO_TRIAL_DAYS if active else STANDARD_TRIAL_DAYS,
+        "promo_active": active,
+        "promo_deadline_iso": PROMO_DEADLINE.isoformat(),
+        "seconds_remaining": seconds_remaining,
+    }
 
 
 class StripeService:
@@ -110,12 +154,16 @@ class StripeService:
             # od razu przy starcie triala (nie czeka na pierwsza platnosc) -
             # wiec dostep Pro odblokowuje sie natychmiast, zgodnie z
             # oczekiwaniem "trial = pelny dostep od razu".
+            # PROMOCJA (patrz stala PROMO_DEADLINE na gorze pliku) - liczone
+            # DOKLADNIE w tym miejscu, bo to jest moment "kliknal Subskrybuj",
+            # ktory decyduje o dlugosci triala wg tresci promocji.
+            trial_days = get_trial_days()
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
                 payment_method_types=["card"],
                 line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                 mode="subscription",
-                subscription_data={"trial_period_days": 7},
+                subscription_data={"trial_period_days": trial_days},
                                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                 metadata=checkout_metadata,

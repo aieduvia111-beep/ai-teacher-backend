@@ -11,11 +11,23 @@ from ..database import get_db
 from ..services.stripe_service import StripeService
 from ..services.apple_iap_service import AppleIAPService
 from ..models import User, Subscription
-from ..services.stripe_service import _update_firebase_plan
+from ..services.stripe_service import _update_firebase_plan, get_promo_status
 from ..firebase_auth import get_verified_firebase_user
 import stripe
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
+
+
+@router.get("/trial-info")
+async def trial_info():
+    """PROMOCJA (07.09.2026, patrz stala PROMO_DEADLINE w stripe_service.py) -
+    publiczny (bez autoryzacji - to tylko tekst marketingowy, nie dane usera)
+    endpoint zwracajacy AKTUALNA dlugosc darmowego triala (Android/Web) i
+    status promocji, zeby frontend (pricing.html, trial_promo_modal.js,
+    limit_modal.js) mogl pokazac DOKLADNIE ta sama liczbe dni i to samo
+    odliczanie czasu, ktore faktycznie dostanie user po kliknieciu
+    Subskrybuj (get_trial_days() jest wolane W TYM SAMYM momencie tam)."""
+    return get_promo_status()
 
 
 # =============================================================================

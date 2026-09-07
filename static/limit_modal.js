@@ -24,6 +24,19 @@
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
   var PRO_PRICE = isIosApp ? '39,99' : '29';
 
+  // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
+  // app/services/stripe_service.py): identyczny mechanizm co
+  // trial_promo_modal.js - domyslnie 7 (TYLKO Android/Web), odpalane od
+  // razu przy zaladowaniu skryptu.
+  var TRIAL_DAYS = 7;
+  var _isPrivateLAN = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+  var BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:8000' : _isPrivateLAN ? location.origin : 'https://eduvia-backend-2.onrender.com';
+  if (!isIosApp) {
+    fetch(BASE + '/api/v1/payments/trial-info').then(function (r) { return r.json(); }).then(function (info) {
+      TRIAL_DAYS = info.trial_days || 7;
+    }).catch(function () {});
+  }
+
   var NAMES = {
     chat: 'Chatu AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
@@ -115,7 +128,7 @@
       'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
-      'Wypróbuj 7 dni za darmo →' +
+      'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →' +
       '</button>' +
       '<button onclick="window.EduviaLimitModal.close()" style="' +
       'width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);' +
