@@ -4725,3 +4725,95 @@ def build_safe_quadratic_function_range() -> dict:
         "default_question": default_question,
         "prompt_context": f"Funkcja: $f(x) = {fn_formula}$. Zadanie dotyczy zbioru wartości tej funkcji.",
     }
+
+
+# SAFE PARAMETER GENERATION - CALKA NIEOZNACZONA Z WARUNKIEM POCZATKOWYM
+# (07.09.2026, user zglosil realny test: "Calki nieoznaczone"/hard tez
+# konsekwentnie nie zbieralo pelnej liczby pytan - identyczny wzorzec i
+# przyczyna co build_safe_quadratic_function_range wyzej, patrz tam pelne
+# uzasadnienie ogolnej zasady). Klasyczny "trudny" archetyp calek
+# nieoznaczonych na poziomie licealnym: wyznacz funkcje pierwotna F(x)
+# funkcji f(x) spelniajaca warunek poczatkowy F(x0)=y0 (dwa kroki:
+# scalkuj, potem wyznacz stala C z warunku) - wspolczynniki dobierane
+# tak, zeby calkowanie NIGDY nie dawalo ulamkow (mnoznik x^2 zawsze
+# podzielny przez 3, mnoznik x zawsze podzielny przez 2).
+def build_safe_indefinite_integral_initial_condition() -> dict:
+    """Buduje JEDEN bezpieczny szkielet pytania o funkcje pierwotna
+    wielomianu f(x)=3k1*x^2+2k2*x+c spelniajaca warunek F(x0)=y0. Stala
+    calkowania C liczona KODEM (podstawienie x0 do F(x)=k1*x^3+k2*x^2+c*x+C
+    i rozwiazanie liniowego rownania na C - zero ryzyka bledu). Dystraktory
+    (3, code-generated): typowe bledy ucznia/AI przy wyznaczaniu C -
+    pominiecie odejmowania (C=y0 wprost), zly znak C, przesunieta wartosc C."""
+    k1 = random.choice([-2, -1, 1, 2])
+    k2 = random.choice([-3, -2, -1, 1, 2, 3])
+    c = random.randint(-5, 5)
+    x0 = random.choice([-2, -1, 1, 2])
+    y0 = random.randint(-10, 10)
+
+    f_value_at_x0 = k1 * x0 ** 3 + k2 * x0 ** 2 + c * x0
+    C = y0 - f_value_at_x0
+
+    def fmt_signed(n: int) -> str:
+        return f" + {n}" if n >= 0 else f" - {abs(n)}"
+
+    def fmt_signed_coef(n: int) -> str:
+        """Jak fmt_signed, ale pomija '1' przy wspolczynniku |n|==1 (np.
+        '+ x' zamiast '+ 1x') - dopisywana litera zmiennej osobno przez callera."""
+        if n >= 0:
+            return " + " if n == 1 else f" + {n}"
+        return " - " if n == -1 else f" - {abs(n)}"
+
+    def fmt_F(const: int) -> str:
+        k1_term = "x^3" if k1 == 1 else ("-x^3" if k1 == -1 else f"{k1}x^3")
+        k2_term = fmt_signed_coef(k2) + "x^2" if k2 != 0 else ""
+        c_term = fmt_signed_coef(c) + "x" if c != 0 else ""
+        const_term = fmt_signed(const) if const != 0 else ""
+        return f"$F(x) = {k1_term}{k2_term}{c_term}{const_term}$"
+
+    correct_text = fmt_F(C)
+
+    # Dystraktor 1: typowy blad - podstawienie C=y0 wprost (pominiete
+    # odjecie f_value_at_x0, czyli wartosci wielomianu bez stalej w x0).
+    wrong_direct = fmt_F(y0) if y0 != C else fmt_F(y0 + 3)
+    # Dystraktor 2: zly znak stalej.
+    wrong_sign = fmt_F(-C) if -C != C else fmt_F(C + 4)
+    # Dystraktor 3: przesunieta stala (o wartosc f_value_at_x0 w druga strone).
+    wrong_offset = fmt_F(C + 2 * f_value_at_x0) if f_value_at_x0 != 0 else fmt_F(C + 5)
+
+    distractors_raw = [wrong_direct, wrong_sign, wrong_offset]
+    seen = {correct_text}
+    distractors = []
+    for d in distractors_raw:
+        if d not in seen:
+            seen.add(d)
+            distractors.append(d)
+    extra = 3
+    while len(distractors) < 3:
+        candidate = fmt_F(C + extra)
+        if candidate not in seen:
+            seen.add(candidate)
+            distractors.append(candidate)
+        extra += 3
+    distractors = distractors[:3]
+
+    # f(x) ma wspolczynnik 3*k1 przy x^2 (zeby po scalkowaniu dac czysto
+    # k1*x^3 bez ulamka) - 3*k1 dla k1 w [-2,-1,1,2] nigdy nie jest +-1,
+    # wiec zawsze pokazujemy go jawnie (bez specjalnego przypadku dla 1/-1).
+    f_k1_term = f"{3 * k1}x^2"
+    f_k2_term = fmt_signed(2 * k2) + "x" if k2 != 0 else ""
+    f_c_term = fmt_signed(c) if c != 0 else ""
+    f_formula = f"{f_k1_term}{f_k2_term}{f_c_term}"
+    default_question = (
+        f"Wyznacz funkcję pierwotną $F(x)$ funkcji $f(x) = {f_formula}$, "
+        f"spełniającą warunek $F({x0}) = {y0}$."
+    )
+
+    return {
+        "correct_text": correct_text,
+        "distractors": distractors,
+        "default_question": default_question,
+        "prompt_context": (
+            f"Funkcja: $f(x) = {f_formula}$. Warunek początkowy: $F({x0}) = {y0}$. "
+            f"Zadanie dotyczy wyznaczenia funkcji pierwotnej spełniającej ten warunek."
+        ),
+    }

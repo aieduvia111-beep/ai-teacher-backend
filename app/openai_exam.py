@@ -21,6 +21,7 @@ from .math_verify import (
     build_safe_abs_value_equation, build_safe_law_of_sines_triangle,
     build_safe_quadratic_two_positive_roots,
     build_safe_quadratic_function_range,
+    build_safe_indefinite_integral_initial_condition,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     WORDING_DIVERSITY_MANDATE,
 )
@@ -1868,6 +1869,103 @@ ZASADY:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - CALKA NIEOZNACZONA Z WARUNKIEM POCZATKOWYM
+# (07.09.2026) - patrz pelne uzasadnienie w
+# math_verify.build_safe_indefinite_integral_initial_condition. Identyczny
+# mechanizm co funkcja kwadratowa/trygonometria/ciagi wyzej.
+async def _raw_generate_safe_indefinite_integral_batch(n: int) -> Dict:
+    """Generuje `n` pytan o funkcje pierwotna z warunkiem poczatkowym
+    metoda 'safe parameter generation' - patrz komentarz wyzej."""
+    buffered_n = n + 3
+    skeletons = [build_safe_indefinite_integral_initial_condition() for _ in range(buffered_n)]
+    letters = "abcd"
+    items_desc = []
+    for i, sk in enumerate(skeletons):
+        options = [sk["correct_text"]] + sk["distractors"]
+        random.shuffle(options)
+        correct_idx = options.index(sk["correct_text"])
+        sk["_options"] = options
+        sk["_correct_idx"] = correct_idx
+        opts_desc = " | ".join(f"{letters[j]}) {opt}" for j, opt in enumerate(options))
+        items_desc.append(
+            f"{i + 1}. {sk['prompt_context']} "
+            f"Opcje (JUZ GOTOWE I POPRAWNE, NIE ZMIENIAJ): {opts_desc}. "
+            f"Poprawna opcja to: {letters[correct_idx]}) {sk['correct_text']}"
+        )
+    items_text = "\n".join(items_desc)
+    prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych zadan o funkcji pierwotnej z
+warunkiem poczatkowym, zadanie, WSZYSTKIE 4 opcje odpowiedzi ORAZ poprawna
+opcja zostaly JUZ OBLICZONE (przez niezalezny system matematyczny) -
+Twoje JEDYNE zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku (mozesz uzyc podanej
+   tresci "default question" prawie doslownie - patrz {{'RÓŻNICUJ SFORMUŁOWANIA'}}
+   ponizej, zeby pytania nie brzmialy identycznie).
+2. Napisac krotkie wyjasnienie (1-2 zdania) - scalkuj f(x) wyraz po
+   wyrazie, potem podstaw warunek poczatkowy, zeby wyznaczyc stala C.
+3. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie frazy).
+
+{WORDING_DIVERSITY_MANDATE}
+
+KRYTYCZNE: NIE ZMIENIAJ podanych opcji ani poprawnej odpowiedzi w zadnym
+stopniu - sa juz zweryfikowane przez niezalezny system. Twoja rola to
+TYLKO jezyk, nie matematyka. NIE dolaczaj pol "options"/"correct"/
+"final_answer" - system doda je automatycznie.
+
+{items_text}
+
+FORMAT (TYLKO JSON):
+{{
+    "title": "Całki nieoznaczone - Quiz",
+    "questions": [
+        {{
+            "id": 1,
+            "question": "Wyznacz funkcję pierwotną $F(x)$ funkcji $f(x) = 3x^2 - 2x$, spełniającą warunek $F(1) = 5$.",
+            "explanation": "Całkujemy wyraz po wyrazie: $F(x) = x^3 - x^2 + C$. Z warunku $F(1)=5$ mamy $1-1+C=5$, czyli $C=5$, więc $F(x) = x^3 - x^2 + 5$.",
+            "diversity_tag": {{
+                "skill": "calka nieoznaczona wielomianu", "concept": "warunek poczatkowy",
+                "task_type": "wyznacz funkcje pierwotna", "reasoning": "scalkuj wyraz po wyrazie, podstaw warunek, wyznacz C"
+            }}
+        }}
+    ]
+}}
+
+ZASADY:
+- Dokladnie {len(skeletons)} pytan, po jednym na kazde podane zadanie, w tej samej kolejnosci
+- Po polsku
+- TYLKO JSON"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=min(6000, max(1500, 250 * len(skeletons))),
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    raw = sanitize_latex_json_backslashes(response.choices[0].message.content)
+    ai_data = json.loads(raw)
+    ai_questions = ai_data.get("questions", [])
+    n_items = min(len(skeletons), len(ai_questions)) if ai_questions else 0
+    questions = []
+    for i in range(n_items):
+        sk = skeletons[i]
+        ai_q = ai_questions[i] if isinstance(ai_questions[i], dict) else {}
+        questions.append({
+            "id": i + 1,
+            "question": ai_q.get("question") or sk["default_question"],
+            "options": sk["_options"],
+            "correct": sk["_correct_idx"],
+            "final_answer": sk["correct_text"],
+            "explanation": ai_q.get("explanation", ""),
+            "diversity_tag": ai_q.get("diversity_tag"),
+            "_safe_generated": True,
+        })
+    quiz_data = {"title": ai_data.get("title", "Całki nieoznaczone - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
 # Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
 # Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
@@ -2628,6 +2726,19 @@ def _is_medium_quadratic_function(topic: str, difficulty: str) -> bool:
     return is_quad_fn and diff_word in _MEDIUM_DIFFICULTY_WORDS
 
 
+def _is_hard_indefinite_integral(topic: str, difficulty: str) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla CALEK
+    NIEOZNACZONYCH na poziomie trudny/hard (port wzorca z
+    _is_medium_quadratic_function wyzej). Real-test (07.09.2026, user
+    zglosil): temat "Calki nieoznaczone"/hard tez konsekwentnie nie
+    zbieral pelnej liczby pytan - ten sam wzorzec (AI zle liczy stala
+    calkowania C z warunku poczatkowego). Jak wyzej: UZYWANE TYLKO w
+    rundach dogenerowania."""
+    is_integral = topic is not None and is_integral_topic(topic)
+    diff_word = (difficulty or "").strip().lower()
+    return is_integral and diff_word in _HARD_DIFFICULTY_WORDS
+
+
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla TRYGONOMETRII na
     poziomie trudny/hard (port wzorca z _is_medium_linear_param_quadratic
@@ -2837,6 +2948,11 @@ async def _generate_quiz_topic_once(
         # patrz _is_medium_quadratic_function i
         # _raw_generate_safe_quadratic_function_range_batch.
         regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_function_range_batch(_adaptive_fill_batch(n))
+    elif _is_hard_indefinite_integral(topic, difficulty):
+        # Port tego samego wzorca na calki nieoznaczone - patrz
+        # _is_hard_indefinite_integral i
+        # _raw_generate_safe_indefinite_integral_batch.
+        regenerate = lambda n, avoid_block="": _raw_generate_safe_indefinite_integral_batch(_adaptive_fill_batch(n))
     elif _is_hard_trig_quadratic(topic, difficulty):
         # Port tego samego wzorca na trygonometrie - patrz
         # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
