@@ -134,7 +134,7 @@
       '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">' + TRIAL_DAYS + ' dni gratis</span>' +
       '</div>' +
       (PROMO_ACTIVE ?
-        '<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:100px;padding:7px 14px;margin-bottom:14px;font-size:.72em;font-weight:700;color:#f87171;line-height:1.4;">' +
+        '<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:9px 12px;margin-bottom:14px;font-size:.7em;font-weight:700;color:#f87171;line-height:1.45;">' +
         '🔥 Do piątku ' + TRIAL_DAYS + ' dni zamiast 7 — zostało <span id="trialModalCountdown">—</span>' +
         '</div>'
         : '') +
