@@ -130,10 +130,32 @@ def parse_blind_verify_final_answer(raw_json: dict):
     return val if val else None
 
 
+# NAPRAWIONE (wrzesien 2026, user: "wszystkie tematy maja dzialac" - audyt
+# blind-verify na fizyce wykazal 6/6 zadan OTWARTYCH falszywie odrzuconych,
+# WSZYSTKIE faktycznie poprawne): AI-1 dostaje w tresci zadania "podaj
+# jednostki" (typowe dla fizyki/chemii) -> final_answer="150 J", ale
+# promptem AI-2 jest jawnie proszone o wartosc "BEZ jednostek" ->
+# final_answer="150". Przed ta naprawa _extract_single_value("150 J")
+# nie parsowalo sie jako czysta liczba (_to_num rzuca wyjatek na literze),
+# wiec spadalo do _parse_expr, ktore (przez implicit_multiplication)
+# CICHO sparsowalo to jako "150*J" (J jako WOLNY SYMBOL, nie jednostka) -
+# 150*J nigdy nie rowna sie liczbie 150, wiec KAZDA odpowiedz z jednostka
+# byla oznaczana jako niezgodna z AI-2, niezaleznie od poprawnosci. Ten
+# regex lapie WYLACZNIE ksztalt "liczba + spacja + jednostka" (np. "150 J",
+# "9.81 m/s^2", "60 km/h") - jesli po odcieciu sufiksu reszta parsuje sie
+# jako CZYSTA liczba, uzywamy jej. Nie dotyka innych przypadkow (np.
+# "m = -3", "x^2+1") - te nadal spadaja do _parse_expr jak dotychczas.
+_UNIT_SUFFIX_RE = re.compile(
+    r'^([\-+]?\d+(?:[.,]\d+)?(?:\s*/\s*\d+(?:[.,]\d+)?)?)\s+'
+    r'[a-zA-Z°%Ω][a-zA-Z0-9°%Ω²³/^.\-⋅·\s]*$'
+)
+
+
 def _extract_single_value(s: str):
     """'m = -3' -> -3 (sympy). 'S10 = 150' -> 150. '5/7' -> Rational(5,7).
-    Bierze tekst PO ostatnim '=' (jesli jest), zeby ignorowac nazwe
-    zmiennej po lewej. None jesli niesparsowalne."""
+    '150 J' -> 150 (patrz _UNIT_SUFFIX_RE - jednostka odcieta, jesli
+    reszta jest czysta liczba). Bierze tekst PO ostatnim '=' (jesli jest),
+    zeby ignorowac nazwe zmiennej po lewej. None jesli niesparsowalne."""
     s = _normalize_subscripts(str(s)).strip()
     if '=' in s:
         s = s.rsplit('=', 1)[-1]
@@ -144,6 +166,12 @@ def _extract_single_value(s: str):
         return _to_num(s)
     except Exception:
         pass
+    m = _UNIT_SUFFIX_RE.match(s)
+    if m:
+        try:
+            return _to_num(m.group(1))
+        except Exception:
+            pass
     try:
         return _parse_expr(s)
     except Exception:

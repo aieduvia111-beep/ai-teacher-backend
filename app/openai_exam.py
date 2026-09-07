@@ -93,6 +93,37 @@ _LATEX_CMDS_AT_RISK = [
     'overline', 'over', 'vec', 'hat', 'dot', 'quad', 'qquad', 'ldots',
     'sigma', 'omega', 'lambda', 'partial', 'prod', 'mu', 'phi', 'chi', 'psi',
     'subset', 'cup', 'cap', 'exists', 'in',
+    # NAPRAWIONE (zgloszony przez uzytkownika real problem, wrzesien 2026:
+    # "wzory zle sie generuja w Quizie i Sprawdzianie, ok. 50% odrzucanych/
+    # zle wyrenderowanych"): lista mimo deklarowanej "wyczerpujacosci"
+    # (patrz komentarz przy _LATEX_CMDS_AT_RISK_SET nizej) NIE zawierala
+    # najbardziej PODSTAWOWYCH komend funkcji trygonometrycznych/logarytmow
+    # (\sin, \cos, \log, \ln) ANI wielkiej litery "\Delta" (dyskryminanta -
+    # patrz UZYCIE WLASNEGO KODU w math_verify.py, sekcja rownan
+    # kwadratowych z parametrem: "$\\Delta = ...$"), mimo ze sa to
+    # najczesciej generowane wzory w matematyce liceum (trygonometria,
+    # rownania kwadratowe, logarytmy). Skutek: gdy AI zwrocilo taka
+    # komende POZA $ $ (defekt formatowania), ani auto_wrap_bare_latex
+    # (naprawa), ani validate_latex_formatting (wykrycie/odrzucenie) jej
+    # nie widzialy - zamiast naprawy albo kontrolowanego odrzucenia +
+    # dogenerowania, zepsuty wzor przechodzil NIEZAUWAZONY do przegladarki
+    # jako literalny, nieladny tekst ("sin30°=1/2" zamiast wyrenderowanego
+    # wzoru). "Delta" (wielka litera) to OSOBNY wpis niz juz istniejace
+    # "delta" (mala litera) - LaTeX rozroznia wielkosc liter (\Delta i
+    # \delta to dwa rozne symbole), wiec nie mozna po prostu polegac na
+    # istniejacym wpisie "delta".
+    'sin', 'cos', 'log', 'ln', 'Delta', 'circ', 'le', 'ge', 'ne',
+    # Reszta czesto uzywanych w matematyce liceum/matury komend tej samej
+    # klasy ryzyka (funkcje/symbole, ktore poza $ $ tez wyrenderuja sie
+    # jako literalny tekst) - dodane przy tej samej okazji, zeby lista byla
+    # faktycznie wyczerpujaca dla calego zakresu przedmiotu, nie tylko
+    # juz-zgloszonych przypadkow (ta sama filozofia co "Warstwa 1.5" -
+    # patrz komentarz przy validate_latex_formatting nizej).
+    'cot', 'sec', 'csc', 'arcsin', 'arccos', 'arctan', 'exp', 'lim',
+    'min', 'max', 'equiv', 'sim', 'perp', 'parallel', 'emptyset',
+    'setminus', 'wedge', 'vee', 'neg', 'Rightarrow', 'Leftarrow',
+    'Leftrightarrow', 'implies', 'iff', 'dfrac', 'tfrac', 'choose',
+    'operatorname',
 ]
 
 
@@ -777,83 +808,102 @@ def _strip_mistaken_dollar_pairs(t):
             i += 1  # sierocy $ - pomin, NIE konsumuj drugiego $
     return ''.join(out)
 
+def fix_latex_string(t):
+    """Naprawia typowe bledy LaTeX w POJEDYNCZYM polu tekstowym (proza
+    zmieszana z matematyka - tresc/wyjasnienie/odpowiedz_modelowa) zanim
+    dotrze do frontendu. WYDZIELONE z fix_latex_in_quiz (wrzesien 2026,
+    user: "wzory zle sie generuja w Quizie I SPRAWDZIANIE") - dotychczas
+    ta logika byla ZAMKNIETA jako lokalna funkcja wewnatrz
+    fix_latex_in_quiz, ktora dziala TYLKO na strukturze {"questions": [...]}
+    Quizu, wiec Sprawdzian (exam_pdf_generator.py) nie mial do niej dostepu
+    i dla analogicznych pol proza+matematyka (tresc/wyjasnienie/
+    odpowiedz_modelowa) w ogole nie probowal naprawy PRZED odrzuceniem -
+    stad realnie zaobserwowane odrzucenia "latex_malformed" dla goleg
+    "\\cdot"/"\\frac" w odpowiedz_modelowa zadan otwartych, ktorych
+    analogiczny przypadek w Quizie ("question"/"explanation") jest
+    naprawiany TU, PRZED walidacja/odrzuceniem (patrz wywolanie
+    fix_latex_in_quiz PRZED _verify_and_fill_quiz_math)."""
+    if not t: return t
+    # Napraw $1 jako pm/plus-minus - TYLKO gdy "1" jest CALA
+    # zawartoscia wyrazenia (np. "$1$", "$1 $", "=$1$") - NIGDY gdy
+    # jest czescia dluzszego, prawdziwego wyrazenia liczbowego.
+    # NAPRAWIONE (zgloszony realny bug, potwierdzony realnym testem
+    # generacji trygonometrii, sierpien 2026): poprzednia wersja
+    # robila BEZWARUNKOWY string-replace kazdego "$1 " GDZIEKOLWIEK
+    # w tekscie - psulo to KAZDE rownanie zaczynajace sie od cyfry 1
+    # (np. prawdziwa tozsamosc "$1 - 2\\sin^2(x) = \\cos(2x)$")
+    # zamieniajac na uszkodzone "$\\pm$- 2\\sin^2(x)...", z dodatkowym
+    # rozjechaniem parzystosci dolarow w reszcie tekstu (dokladnie
+    # zgloszony objaw "±±..." + polamane "$"). Regex z kotwicami do
+    # konca wyrazenia ($) eliminuje ten falszywy alarm, zachowujac
+    # oryginalny, historyczny przypadek (samotne "$1$" zamiast "±").
+    t = re_module.sub(r'\$\s*1\s*\$', '$\\\\pm$', t)
+    t = re_module.sub(r'=\s*\$\s*1\s*\$', '=$\\\\pm$', t)
+    # Napraw spacje w frac
+    import re as _r3
+    t = _r3.sub(r'\\frac\{\s*-\s*', r'\\frac{-', t)
+    t = _r3.sub(r'\\frac\{\s*', r'\\frac{', t)
+    # Napraw znak funkcji (⁡) i stopnie (o -> °)
+    t = t.replace('\u2061', '')  # invisible function application
+    t = _r3.sub(r'(sin|cos|tan|log|ln)(\d+)o\b', r'\\1(\2°)', t)
+    # Usun \newline / \\ (komendy lamania linii) - model czasem wstawia
+    # je jako separator krokow w wielokrokowych wyjasnieniach (np. Viete),
+    # co razem z ponizszym naiwnym "$$"->"$" psuje parzystosc dolarow i
+    # objawia sie w przegladarce jako zdublowany/polamany tekst (KaTeX
+    # renderuje $...$ pary przesuniete o jeden segment). Usuwamy PRZED
+    # zwijaniem "$$", zeby nie zostawiac dziury w parzystosci dolarow.
+    t = t.replace('\\newline', ' ').replace('\\\\', ' ')
+    # Napraw podwojne (lub wiecej) dolary na pojedyncze - regex (nie
+    # str.replace, ktory nie usuwa NIEPARZYSTYCH ciagow jak "$$$" w
+    # jednym przebiegu) lapie caly ciag naraz.
+    t = _r3.sub(r'\${2,}', '$', t)
+    # Usun $...$ pary, ktorych zawartosc nie wyglada na matematyke (patrz
+    # _strip_mistaken_dollar_pairs) - to niemal zawsze "sierocy" dolar
+    # wstawiony tuz przed prawdziwym wzorem, ktory inaczej przesuwa
+    # parzystosc WSZYSTKICH kolejnych par (patrz docstring funkcji).
+    # Kolejny \${2,} sprzata ewentualna nowa przyleglosc po usunieciu.
+    t = _strip_mistaken_dollar_pairs(t)
+    t = _r3.sub(r'\${2,}', '$', t)
+    # Napraw rac{ -> \frac{
+    t = t.replace("\\rac{", "\\frac{")
+    t = re_module.sub(r"(?<![a-zA-Z\\])rac\{", r"\\frac{", t)
+    # Napraw ext{ -> \text{
+    t = t.replace("\\ext{", "\\text{")
+    t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
+    # Napraw imes -> \times (backslash+t z \times bywa "zjadany" jak tabulator)
+    # UWAGA: \b nie dziala miedzy litera a cyfra (np. "4imes1"), stad lookahead na litere
+    t = t.replace("\\imes", "\\times")
+    t = re_module.sub(r"(?<![a-zA-Z\\])imes(?![a-zA-Z])", r"\\times", t)
+    # Usun \text{...} - zamien na sam tekst bez komendy
+    t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
+    # Opakuj "nagie" wzory LaTeX w $...$, jesli model zapomnial dolarow.
+    # UWAGA: poprzedni warunek sprawdzal podwojny backslash ("\\\\" w
+    # zrodle Pythona = dwa literalne znaki \\), a po json.loads() wzor
+    # ma TYLKO pojedynczy backslash (\frac) - warunek nigdy sie nie
+    # spelnial i "nagie" wzory (np. w opcjach odpowiedzi z ulamkami)
+    # trafialy na frontend bez dolarow, wiec KaTeX ich nie renderowal.
+    t = _wrap_naked_latex(t)
+    # Ostatni bezpiecznik: _wrap_naked_latex czasem opakowuje "zewnetrzny"
+    # fragment, ktory zaczyna sie TUZ PO juz istniejacym $ (np. gdy caly
+    # fragment miedzy wzorami zawiera "\") - to tworzy NOWY, przypadkowy
+    # "$$" na styku. KaTeX auto-render traktuje "$$" jako poczatek
+    # DISPLAY math (szuka NASTEPNEGO "$$"), wiec taki przypadkowy styk
+    # potrafi polknac cala reszte tekstu jako jeden zle sformatowany
+    # wzor - stad finalny collapse PO wszystkich innych krokach.
+    t = _r3.sub(r'\${2,}', '$', t)
+    return t
+
+
 def fix_latex_in_quiz(quiz_data):
-    """Naprawia typowe bledy LaTeX zanim dotrze do frontendu"""
-    def fix(t):
-        if not t: return t
-        # Napraw $1 jako pm/plus-minus - TYLKO gdy "1" jest CALA
-        # zawartoscia wyrazenia (np. "$1$", "$1 $", "=$1$") - NIGDY gdy
-        # jest czescia dluzszego, prawdziwego wyrazenia liczbowego.
-        # NAPRAWIONE (zgloszony realny bug, potwierdzony realnym testem
-        # generacji trygonometrii, sierpien 2026): poprzednia wersja
-        # robila BEZWARUNKOWY string-replace kazdego "$1 " GDZIEKOLWIEK
-        # w tekscie - psulo to KAZDE rownanie zaczynajace sie od cyfry 1
-        # (np. prawdziwa tozsamosc "$1 - 2\\sin^2(x) = \\cos(2x)$")
-        # zamieniajac na uszkodzone "$\\pm$- 2\\sin^2(x)...", z dodatkowym
-        # rozjechaniem parzystosci dolarow w reszcie tekstu (dokladnie
-        # zgloszony objaw "±±..." + polamane "$"). Regex z kotwicami do
-        # konca wyrazenia ($) eliminuje ten falszywy alarm, zachowujac
-        # oryginalny, historyczny przypadek (samotne "$1$" zamiast "±").
-        t = re_module.sub(r'\$\s*1\s*\$', '$\\\\pm$', t)
-        t = re_module.sub(r'=\s*\$\s*1\s*\$', '=$\\\\pm$', t)
-        # Napraw spacje w frac
-        import re as _r3
-        t = _r3.sub(r'\\frac\{\s*-\s*', r'\\frac{-', t)
-        t = _r3.sub(r'\\frac\{\s*', r'\\frac{', t)
-        # Napraw znak funkcji (⁡) i stopnie (o -> °)
-        t = t.replace('\u2061', '')  # invisible function application
-        t = _r3.sub(r'(sin|cos|tan|log|ln)(\d+)o\b', r'\\1(\2°)', t)
-        # Usun \newline / \\ (komendy lamania linii) - model czasem wstawia
-        # je jako separator krokow w wielokrokowych wyjasnieniach (np. Viete),
-        # co razem z ponizszym naiwnym "$$"->"$" psuje parzystosc dolarow i
-        # objawia sie w przegladarce jako zdublowany/polamany tekst (KaTeX
-        # renderuje $...$ pary przesuniete o jeden segment). Usuwamy PRZED
-        # zwijaniem "$$", zeby nie zostawiac dziury w parzystosci dolarow.
-        t = t.replace('\\newline', ' ').replace('\\\\', ' ')
-        # Napraw podwojne (lub wiecej) dolary na pojedyncze - regex (nie
-        # str.replace, ktory nie usuwa NIEPARZYSTYCH ciagow jak "$$$" w
-        # jednym przebiegu) lapie caly ciag naraz.
-        t = _r3.sub(r'\${2,}', '$', t)
-        # Usun $...$ pary, ktorych zawartosc nie wyglada na matematyke (patrz
-        # _strip_mistaken_dollar_pairs) - to niemal zawsze "sierocy" dolar
-        # wstawiony tuz przed prawdziwym wzorem, ktory inaczej przesuwa
-        # parzystosc WSZYSTKICH kolejnych par (patrz docstring funkcji).
-        # Kolejny \${2,} sprzata ewentualna nowa przyleglosc po usunieciu.
-        t = _strip_mistaken_dollar_pairs(t)
-        t = _r3.sub(r'\${2,}', '$', t)
-        # Napraw rac{ -> \frac{
-        t = t.replace("\\rac{", "\\frac{")
-        t = re_module.sub(r"(?<![a-zA-Z\\])rac\{", r"\\frac{", t)
-        # Napraw ext{ -> \text{
-        t = t.replace("\\ext{", "\\text{")
-        t = re_module.sub(r"(?<![a-zA-Z\\])ext\{", r"\\text{", t)
-        # Napraw imes -> \times (backslash+t z \times bywa "zjadany" jak tabulator)
-        # UWAGA: \b nie dziala miedzy litera a cyfra (np. "4imes1"), stad lookahead na litere
-        t = t.replace("\\imes", "\\times")
-        t = re_module.sub(r"(?<![a-zA-Z\\])imes(?![a-zA-Z])", r"\\times", t)
-        # Usun \text{...} - zamien na sam tekst bez komendy
-        t = re_module.sub(r"\\text\{([^}]*)\}", r"\1", t)
-        # Opakuj "nagie" wzory LaTeX w $...$, jesli model zapomnial dolarow.
-        # UWAGA: poprzedni warunek sprawdzal podwojny backslash ("\\\\" w
-        # zrodle Pythona = dwa literalne znaki \\), a po json.loads() wzor
-        # ma TYLKO pojedynczy backslash (\frac) - warunek nigdy sie nie
-        # spelnial i "nagie" wzory (np. w opcjach odpowiedzi z ulamkami)
-        # trafialy na frontend bez dolarow, wiec KaTeX ich nie renderowal.
-        t = _wrap_naked_latex(t)
-        # Ostatni bezpiecznik: _wrap_naked_latex czasem opakowuje "zewnetrzny"
-        # fragment, ktory zaczyna sie TUZ PO juz istniejacym $ (np. gdy caly
-        # fragment miedzy wzorami zawiera "\") - to tworzy NOWY, przypadkowy
-        # "$$" na styku. KaTeX auto-render traktuje "$$" jako poczatek
-        # DISPLAY math (szuka NASTEPNEGO "$$"), wiec taki przypadkowy styk
-        # potrafi polknac cala reszte tekstu jako jeden zle sformatowany
-        # wzor - stad finalny collapse PO wszystkich innych krokach.
-        t = _r3.sub(r'\${2,}', '$', t)
-        return t
+    """Stosuje fix_latex_string() do wszystkich pol tekstowych Quizu
+    (question/explanation/options) - patrz fix_latex_string dla samej
+    logiki naprawy (wydzielonej stad, zeby Sprawdzian mogl uzyc TEJ SAMEJ
+    naprawy dla analogicznych pol tresc/wyjasnienie/odpowiedz_modelowa)."""
     if "questions" in quiz_data:
         for q in quiz_data["questions"]:
-            if "question" in q: q["question"] = fix(q["question"])
-            if "explanation" in q: q["explanation"] = fix(q["explanation"])
-            if "options" in q: q["options"] = [fix(o) for o in q["options"]]
+            if "question" in q: q["question"] = fix_latex_string(q["question"])
+            if "explanation" in q: q["explanation"] = fix_latex_string(q["explanation"])
+            if "options" in q: q["options"] = [fix_latex_string(o) for o in q["options"]]
     return quiz_data
 
 
@@ -1281,7 +1331,16 @@ ZASADY:
         # naraz) odpowiedz AI byla ucinana w polowie generowania, co
         # psulo JSON calkowicie (blad "Unterminated string" - caly quiz
         # padal, nie tylko nadmiarowe pytania). Skalujemy z liczba pytan.
-        max_tokens=min(8000, max(2500, 500 + num_questions * 350)),
+        # PODNIESIONE (07.09.2026, user zglosil identyczny blad na iOS i
+        # Androidzie, odtworzone lokalnie): 350 tok/pytanie bylo zbyt
+        # ciasne dla pelnego pytania z 4 opcjami + explanation +
+        # diversity_tag (realnie blizej 700-800 dla bardziej rozbudowanych
+        # tematow) - DOKLADNIE ten sam problem juz kiedys naprawiony w
+        # exam_pdf_generator.py (_get_exam_data_raw: 750 tok/pytanie, floor
+        # 5500) dla Sprawdzianu, ale nigdy nie sportowany tutaj do Quizu -
+        # to byla realna przyczyna, dla ktorej Sprawdzian dzialal, a Quiz
+        # nie. Wyrownane do tej samej, juz sprawdzonej formuly.
+        max_tokens=min(12000, max(5500, 750 * num_questions)),
         temperature=0.7,
         response_format={"type": "json_object"}
     )
@@ -1475,44 +1534,71 @@ async def _raw_generate_safe_linear_param_quadratic_batch(n: int, level: str = N
     ]
     items_desc = "\n".join(
         f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
-        f"POPRAWNY, JUZ OBLICZONY warunek na dwa rozne pierwiastki (NIE PRZELICZAJ, NIE ZMIENIAJ): "
+        f"POPRAWNY, JUZ OBLICZONY warunek na {sk['condition_desc']} (NIE PRZELICZAJ, NIE ZMIENIAJ): "
         f"{sk['correct_text']}"
         for i, sk in enumerate(skeletons)
     )
+    # NAPRAWIONE (wrzesien 2026 - patrz build_safe_linear_param_quadratic
+    # w math_verify.py): kazdy szkielet moze teraz dotyczyc INNEGO
+    # warunku (dwa rozne pierwiastki / dokladnie jeden / brak
+    # pierwiastkow), NIE tylko "dwa rozne pierwiastki" - stad przyklady
+    # rotacji sformulowan uzywaja placeholdera "{{warunek}}" zamiast
+    # zaszytego na sztywno "ma dwa rozne pierwiastki", zeby pasowaly do
+    # KAZDEGO z trzech wariantow ponizej.
     prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
-poprawny warunek na DWA ROZNE PIERWIASTKI zostal JUZ OBLICZONY (przez
-niezalezny system matematyczny) - Twoje jedyne zadania to:
-1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie -
-   patrz punkt "RÓŻNICUJ SFORMUŁOWANIA" ponizej, KAZDE pytanie MUSI
-   brzmiec inaczej.
+poprawny warunek na podane pytanie (rozne dla kazdego zadania - patrz
+opis ponizej: dwa rozne pierwiastki / dokladnie jeden pierwiastek / brak
+pierwiastkow rzeczywistych) zostal JUZ OBLICZONY (przez niezalezny system
+matematyczny) - Twoje jedyne zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie,
+   pytajace DOKLADNIE o warunek podany przy danym zadaniu (NIE zamieniaj
+   go na inny warunek) - patrz punkt "RÓŻNICUJ SFORMUŁOWANIA" ponizej,
+   KAZDE pytanie MUSI brzmiec inaczej.
 2. Wymyslic 3 SENSOWNE, ale MATEMATYCZNIE BLEDNE dystraktory (inne
    liczby/znaki, realistyczne, ale niepoprawne) - NIE kopiuj poprawnej
-   wartosci do dystraktorow.
+   wartosci do dystraktorow. UWAGA (real-test, wrzesien 2026): dla
+   warunku "dokladnie jeden pierwiastek" podany warunek to CZESTO DWIE
+   wartosci polaczone "lub" (np. "$m = -8$ lub $m = 8$", bo OBIE
+   symetryczne wartosci parametru daja podwojny pierwiastek) - JEDNA z 4
+   opcji MUSI byc TA CALA fraza, ZNAK W ZNAK, WLACZNIE z "lub X" - NIE
+   WOLNO jej skrocic do jednej wartosci (np. samego "$m = 8$"), to
+   BLEDNA, NIEPELNA odpowiedz, nawet jesli jedna z dwoch wartosci jest
+   poprawna.
 3. Napisac krotkie wyjasnienie (1-2 zdania) odwolujace sie do wzoru na
    delte.
 4. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie
-   frazy) - dla WSZYSTKICH tych pytan concept to zawsze "parametr jako
-   wspolczynnik liniowy" (to jest ten sam podwzorzec, celowo).
+   frazy) - "concept" to zawsze "parametr jako wspolczynnik liniowy"
+   (to jest ten sam podwzorzec rownania, celowo), ale "task_type" MUSI
+   odzwierciedlac KONKRETNY warunek tego zadania (np. "warunek na dwa
+   rozne pierwiastki" / "warunek na jeden pierwiastek" / "warunek na
+   brak pierwiastkow").
 
 RÓŻNICUJ SFORMUŁOWANIA (05.09.2026, user zglosil ze wszystkie pytania
 tego podwzorca brzmialy IDENTYCZNIE - rozne tylko litera/liczba):
 KAZDE z {len(skeletons)} pytan MUSI miec INNA konstrukcje zdania - NIE
-kopiuj jednego szablonu do wszystkich. Rotuj miedzy stylami, np.:
-- "Dla jakich wartości parametru {{litera}} równanie ... ma dwa różne pierwiastki?"
-- "Wyznacz zbiór wartości parametru {{litera}}, dla których równanie ... ma dwa różne pierwiastki."
-- "Dla jakich {{litera}} podane równanie ... posiada dwa różne rozwiązania rzeczywiste?"
-- "Ustal warunek na parametr {{litera}}, przy którym równanie ... ma dwa różne pierwiastki."
-- "Kiedy (dla jakich wartości {{litera}}) równanie ... ma dwa różne pierwiastki?"
+kopiuj jednego szablonu do wszystkich. Rotuj miedzy stylami, np. (gdzie
+"{{warunek}}" to WLASNIE TEN warunek podany przy danym zadaniu, nie
+zawsze "dwa rozne pierwiastki"):
+- "Dla jakich wartości parametru {{litera}} równanie ... {{warunek}}?"
+- "Wyznacz zbiór wartości parametru {{litera}}, dla których równanie ... {{warunek}}."
+- "Dla jakich {{litera}} podane równanie ... {{warunek}}?"
+- "Ustal warunek na parametr {{litera}}, przy którym równanie ... {{warunek}}."
+- "Kiedy (dla jakich wartości {{litera}}) równanie ... {{warunek}}?"
 Uzyj kazdego stylu co najwyzej 1-2 razy w tej partii - jesli pytan jest
 wiecej niz stylow, wymysl WLASNE, ale wciaz rozne od siebie sformulowanie.
 
 KRYTYCZNE: NIE PRZELICZAJ podanego warunku od nowa i NIE ZMIENIAJ go w
 zadnym stopniu - jest juz zweryfikowany przez niezalezny system. Twoja
-rola to TYLKO jezyk i dystraktory, nie matematyka.
+rola to TYLKO jezyk i dystraktory, nie matematyka. Jesli podany warunek
+zawiera "lub" (dwie wartosci/przedzialy), poprawna opcja w "options" I
+"final_answer" MUSZA zawierac OBIE, DOKLADNIE jak podano - to NIE jest
+literowka do skrocenia.
 
 {items_desc}
 
-FORMAT (TYLKO JSON):
+FORMAT (TYLKO JSON) - ponizszy przyklad pokazuje STRUKTURE JSON, NIE
+zawsze uzywaj akurat "dwa rozne pierwiastki" - kazde zadanie ma WLASNY
+warunek podany wyzej w liscie:
 {{
     "title": "Rownania kwadratowe - Quiz",
     "questions": [
@@ -1525,8 +1611,21 @@ FORMAT (TYLKO JSON):
             "explanation": "Delta rownania to $m^2-64$, warunek $\\Delta>0$ daje $m<-8$ lub $m>8$.",
             "diversity_tag": {{
                 "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
-                "task_type": "wyznacz parametr z warunku na delte",
+                "task_type": "warunek na dwa rozne pierwiastki",
                 "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+            }}
+        }},
+        {{
+            "id": 2,
+            "question": "Kiedy równanie $x^2 + kx + 9 = 0$ ma dokładnie jeden pierwiastek (podwójny)?",
+            "options": ["$k = -6$ lub $k = 6$", "$k = 6$", "$k = 0$", "$k = -3$ lub $k = 3$"],
+            "correct": 0,
+            "final_answer": "$k = -6$ lub $k = 6$",
+            "explanation": "Delta rownania to $k^2-36$, warunek $\\Delta=0$ daje $k=-6$ lub $k=6$.",
+            "diversity_tag": {{
+                "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
+                "task_type": "warunek na jeden pierwiastek",
+                "reasoning": "oblicz delte, rozwiaz rownanie delta=0"
             }}
         }}
     ]
@@ -2556,9 +2655,33 @@ async def _generate_quiz_topic_once(
     metrics = GenerationMetrics(requested_count=num_questions, batch_size=batch_size)
     try:
         with _Timer(metrics, "generation_time"):
-            quiz_data = await _raw_generate_quiz_topic_batch(
-                topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
-            )
+            try:
+                quiz_data = await _raw_generate_quiz_topic_batch(
+                    topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
+                )
+            except Exception as e:
+                # NAPRAWIONE (07.09.2026, user zglosil IDENTYCZNY blad na
+                # prawdziwym iPhonie i na Androidzie - "Quiz sie nie generuje,
+                # Sprobuj ponownie" bez prawdziwej przyczyny): odtworzone
+                # bezposrednio lokalnie (temat "Czasy gramatyczne", angielski,
+                # medium, 7 pytan) - OpenAI CZASAMI zwraca urwany JSON
+                # (odpowiedz konczy sie w polowie stringa - "Unterminated
+                # string..."). Trzy proby naprawy w _raw_generate_quiz_topic_once
+                # (ponizej) NAPRAWIAJA tylko zle escape'owane znaki - ZADNA z
+                # nich nie odtworzy brakujacych, uciete zamykajacych
+                # nawiasow/cudzyslowow, bo tej informacji po prostu juz nie ma.
+                # Wczesniej taki wyjatek natychmiast lecial do usera - JEDNA
+                # nieudana proba = caly Quiz pada, bez wzgledu na platforme
+                # (stad identyczny blad iOS+Android - to NIE byl bug
+                # platformowy). Jedna dodatkowa proba - NOWE wywolanie AI, nie
+                # ponowne parsowanie tego samego zepsutego stringa - w
+                # zdecydowanej wiekszosci przypadkow po prostu dostaje inna,
+                # kompletna odpowiedz za drugim razem.
+                print(f"⚠️ Quiz: surowa generacja padla ({e}), probuje ponownie...")
+                metrics.retry_count += 1
+                quiz_data = await _raw_generate_quiz_topic_batch(
+                    topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
+                )
         metrics.api_request_count += quiz_data.pop("_api_request_count", 1)
         metrics.generated_count += len(quiz_data.get("questions", []))
     except Exception:
@@ -2759,7 +2882,14 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
     elif diff_word in _HARD_DIFFICULTY_WORDS:
         numerator = 4
     else:
-        numerator = 3
+        # ZWIEKSZONE (wrzesien 2026 - identyczna naprawa i uzasadnienie co
+        # w Sprawdzianie, patrz komentarz przy _buffered_question_count w
+        # exam_pdf_generator.py "else" branch): tematy SPOZA listy
+        # archetypow (bez Safe Parameter Generation, bez dedykowanego
+        # weryfikatora sympy) polegaja WYLACZNIE na "slepej" AI-2 i maja
+        # WYZSZY odsetek odrzucen niz zakladane tu 30%, mimo NIE bycia
+        # "hard" - a mialy NAJMNIEJSZY bufor w calym systemie. 3->5.
+        numerator = 5
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
@@ -2770,7 +2900,12 @@ def _buffered_count(n: int, topic: str = None, difficulty: str = None) -> int:
 # parametrem", podczas gdy partia 4-pytaniowa miala ~50%. Prosimy wiec
 # zawsze o co najmniej tyle - nadmiar i tak zostaje przyciety do
 # requested_count na koncu.
-_MIN_FILL_BATCH = 4
+# ZWIEKSZONE (wrzesien 2026 - identyczna naprawa i uzasadnienie co w
+# Sprawdzianie, patrz komentarz przy _MIN_FILL_BATCH_EXAM w
+# exam_pdf_generator.py): 4->6, zeby JEDNA runda dogenerowania czesciej
+# wystarczala zamiast dwoch sekwencyjnych - szybciej, BEZ zmiany kryteriow
+# akceptacji.
+_MIN_FILL_BATCH = 6
 
 # Dla wiekszych quizow nie robimy pojedynczych retry. Jedna mala partia
 # jest znacznie drozsza czasowo niz jeden sensowny batch, bo kazda runda

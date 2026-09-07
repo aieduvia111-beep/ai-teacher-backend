@@ -140,12 +140,29 @@ class Subscription(Base):
     # prawdopodobnie tez cicho zawodzil (bez wplywu na is_premium, ktore
     # jest ustawiane WCZESNIEJ, osobnym commitem, na innej tabeli).
     user_id = Column(String(128), index=True, nullable=False)
-    
-    # Stripe IDs
-    stripe_subscription_id = Column(String(255), unique=True, nullable=False)
-    stripe_customer_id = Column(String(255), nullable=False)
-    stripe_price_id = Column(String(255), nullable=False)
-    
+
+    # NOWE (wrzesien 2026, App Store IAP): subskrypcja moze teraz pochodzic
+    # z Apple (StoreKit, natywna apka iOS) albo Stripe (Android/Web) - te
+    # dwie sciezki maja INNE ID/inny sposob anulowania (Stripe API vs
+    # Apple App Store Server API), wiec kod MUSI wiedziec, ktora to jest,
+    # zeby np. cancel_subscription nie probowal wolac Stripe API dla wiersza
+    # zawierajacego w rzeczywistosci ID transakcji Apple. Domyslnie "stripe"
+    # (istniejace wiersze sprzed tej zmiany sa Stripe'em).
+    provider = Column(String(20), nullable=False, default="stripe", server_default="stripe")
+
+    # Stripe IDs (NULL dla wierszy provider="apple")
+    stripe_subscription_id = Column(String(255), unique=True, nullable=True)
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_price_id = Column(String(255), nullable=True)
+
+    # Apple IDs (NULL dla wierszy provider="stripe") - originalTransactionId
+    # jest STABILNY przez cala historie subskrypcji (renewale/upgrade'y
+    # dostaja NOWY transactionId, ale ten sam originalTransactionId), wiec
+    # to WLASCIWY klucz do identyfikacji "tej samej" subskrypcji w czasie -
+    # dokladnie jak stripe_subscription_id dla Stripe.
+    apple_original_transaction_id = Column(String(255), unique=True, nullable=True)
+    apple_product_id = Column(String(255), nullable=True)
+
     # Status
     status = Column(String(50))  # active, canceled, past_due, etc.
     cancel_at_period_end = Column(Boolean, default=False)

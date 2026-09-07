@@ -576,31 +576,76 @@ def pick_safe_param_values(pool: list, used: set, count: int) -> list:
     return picks
 
 
-def build_safe_linear_param_quadratic(param_letter: str = None, c_value: int = None) -> dict:
+# NAPRAWIONE (wrzesien 2026, user: real-test Sprawdzianu pokazal 8 z 10
+# zadan z TYM SAMYM podwzorcem "dwa rozne pierwiastki" - rozne tylko
+# litera/stala, mimo ze rotacja SFORMULOWAN dzialala poprawnie - problem
+# byl JEDEN POZIOM NIZEJ, w samym ZADANIU MATEMATYCZNYM). Funkcja
+# obslugiwala WYLACZNIE warunek delta>0 ("pos"), mimo ze uzywana tu
+# solve_discriminant_condition JUZ wspiera 'zero'/'neg'/'nonneg' - `kind`
+# (domyslnie losowany z ponizszej puli) rozszerza podwzorzec na TRZY
+# naturalne, rownie czeste w liceum warianty pytania o TA SAMA postac
+# rownania (dwa rozne pierwiastki / dokladnie jeden (podwojny) / brak
+# pierwiastkow rzeczywistych), zachowujac DOKLADNIE ten sam mechanizm
+# bezpieczenstwa (KOD liczy warunek przez solve_discriminant_condition,
+# AI TYLKO formuluje jezyk + dystraktory - zero nowej niepewnosci
+# matematycznej). Przy okazji eliminuje to znany real-bug: audyt tej
+# sesji zlapal AI odwracajace kierunek przedzialu WLASNIE dla warunku
+# "brak pierwiastkow" (final_answer "$p < -\\sqrt5$ lub $p > \\sqrt5$"
+# zamiast poprawnego "$-\\sqrt5 < p < \\sqrt5$") - poprawnie odrzucone
+# przez Warstwe 2, ale bez Safe Generation ten typ pytania byl CALY CZAS
+# generowany z zerowa ochrona przed dokladnie tym bledem.
+_SAFE_DISCRIMINANT_KINDS = ("pos", "zero", "neg")
+_SAFE_KIND_QUESTION_TAIL = {
+    "pos": "ma dwa różne pierwiastki",
+    "zero": "ma dokładnie jeden pierwiastek (podwójny)",
+    "neg": "nie ma pierwiastków rzeczywistych",
+}
+_SAFE_KIND_CONDITION_NOUN = {
+    "pos": "dwa różne pierwiastki",
+    "zero": "dokładnie jeden pierwiastek (podwójny)",
+    "neg": "brak pierwiastków rzeczywistych",
+}
+
+
+def build_safe_linear_param_quadratic(param_letter: str = None, c_value: int = None, kind: str = None) -> dict:
     """Buduje JEDEN bezpieczny (gwarantowanie poprawny) szkielet pytania
     dla x^2 + {param}x + {C} = 0 (parametr jako goly wspolczynnik
     liniowy). C dobierany z kwadratow idealnych, jesli nie podano -
-    gwarantuje wymierna (calkowita) granice 2*sqrt(C). Warunek liczony
-    PRZEZ solve_discriminant_condition (ten sam kod co Warstwa 2 dla
-    zwyklej weryfikacji - zero duplikacji logiki). Zwraca dict z
-    gotowym tekstem pytania, poprawnym tekstem odpowiedzi i surowym
-    sympy Set (do ewentualnej dalszej weryfikacji)."""
+    gwarantuje wymierna (calkowita) granice 2*sqrt(C). `kind` ('pos'/
+    'zero'/'neg', domyslnie losowany) wybiera KTORY warunek na
+    pierwiastki jest przedmiotem pytania - patrz komentarz wyzej. Warunek
+    liczony PRZEZ solve_discriminant_condition (ten sam kod co Warstwa 2
+    dla zwyklej weryfikacji - zero duplikacji logiki). Zwraca dict z
+    gotowym tekstem pytania, poprawnym tekstem odpowiedzi, krotkim opisem
+    warunku (do uzycia w promptcie) i surowym sympy Set (do ewentualnej
+    dalszej weryfikacji)."""
     if c_value is None:
         c_value = random.choice(_SAFE_PERFECT_SQUARES)
     if param_letter is None:
         param_letter = random.choice(_SAFE_PARAM_LETTERS)
+    if kind is None:
+        kind = random.choice(_SAFE_DISCRIMINANT_KINDS)
     param = Symbol(param_letter)
-    true_set = solve_discriminant_condition(S.One, param, sp.Integer(c_value), param, 'pos')
+    true_set = solve_discriminant_condition(S.One, param, sp.Integer(c_value), param, kind)
     bound = int(2 * sp.sqrt(c_value))
-    correct_text = f"${param_letter} < -{bound}$ lub ${param_letter} > {bound}$"
+    p = param_letter
+    if kind == "zero":
+        correct_text = f"${p} = -{bound}$ lub ${p} = {bound}$"
+    elif kind == "neg":
+        correct_text = f"${-bound} < {p} < {bound}$"
+    else:
+        kind = "pos"
+        correct_text = f"${p} < -{bound}$ lub ${p} > {bound}$"
     question_text = (
-        f"Dla jakich wartości parametru {param_letter} równanie "
-        f"$x^2 + {param_letter}x + {c_value} = 0$ ma dwa różne pierwiastki?"
+        f"Dla jakich wartości parametru {p} równanie "
+        f"$x^2 + {p}x + {c_value} = 0$ {_SAFE_KIND_QUESTION_TAIL[kind]}?"
     )
     return {
         "param_letter": param_letter,
         "c_value": c_value,
         "bound": bound,
+        "kind": kind,
+        "condition_desc": _SAFE_KIND_CONDITION_NOUN[kind],
         "question": question_text,
         "correct_text": correct_text,
         "true_set": true_set,

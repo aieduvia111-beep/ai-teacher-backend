@@ -52,7 +52,7 @@ from .blind_verify import (
     parse_blind_verify_final_answer, safe_json_loads, values_match,
     _extract_single_value,
 )
-from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes, validate_question_latex, auto_wrap_bare_latex_in_question
+from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes, validate_question_latex, auto_wrap_bare_latex_in_question, fix_latex_string
 from .difficulty import DifficultyAnalyzer
 
 # ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
@@ -1260,7 +1260,23 @@ def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) ->
     elif is_hard_other:
         numerator = 4
     else:
-        numerator = 3
+        # ZWIEKSZONE (wrzesien 2026, user: "jak ktos zamawia 10 zadan, ma
+        # dostac 10 zadan" - real-test na temacie SPOZA listy archetypow
+        # (fizyka/kinematyka, "srednia") pokazal SHORTFALL 7/10, mimo ze
+        # to najczestsza kategoria tematow (kazdy temat bez dedykowanego
+        # Safe Parameter Generation ANI dedykowanego weryfikatora sympy -
+        # wiekszosc przedmiotow/tematow w calym systemie). Te tematy
+        # polegaja WYLACZNIE na "slepej" weryfikacji AI-2 (Warstwa 2.5) -
+        # audyt pokazal dla nich WYZSZY odsetek odrzucen niz zakladane tu
+        # 30% ("numerator=3"), mimo NIE bycia "trudny/trudna" tematem -
+        # ten branch mial NAJMNIEJSZY bufor w calym systemie (30%), a
+        # powinien miec WIEKSZY, bo (w odroznieniu od rownan kwadratowych/
+        # trygonometrii/ciagow) NIE ma zadnej "Safe Generation" siatki
+        # bezpieczenstwa podnoszacej skutecznosc pierwszej proby. 3->5
+        # (30%->50%, jak "medium quadratic" wyzej) - mniejszy bufor niz
+        # dedykowane archetypy jest nadal uzasadniony (te maja gwarantowana
+        # matematyke), ale wyraznie wiekszy niz poprzednie 30%.
+        numerator = 5
     return n + max(2, -(-n * numerator // 10))  # ceil(n * numerator/10), min 2
 
 
@@ -1268,7 +1284,16 @@ def _buffered_question_count(n: int, temat: str = None, trudnosc: str = None) ->
 # dokladnie 1 brakujace zadanie. Empirycznie partie 1-zadaniowe mialy w
 # praktyce ~0% szans na przejscie weryfikacji dla tematow typu "rownania
 # kwadratowe z parametrem", podczas gdy wieksza partia miala ~50%.
-_MIN_FILL_BATCH_EXAM = 4
+# ZWIEKSZONE (wrzesien 2026, user: "kurwa to dlugo, przyspiesz, ale bez
+# straty jakosci" - real-test fizyki/kinematyki potrzebowal 2 SEKWENCYJNE
+# rundy dogenerowania samych "otwarte", bo runda prosila tylko o
+# max(missing, 4)=4 kandydatow przy ~50% realnym odrzuceniu (blind AI-2)
+# - statystycznie zbyt malo, zeby zamknac luke JEDNA runda): 4->6. Nie
+# zmienia ZADNEGO kryterium akceptacji (jakosc/poprawnosc bez zmian) -
+# tylko zwieksza SZANSE, ze JEDNA runda wystarczy zamiast dwoch, co
+# bezposrednio skraca laczny czas oczekiwania (mniej sekwencyjnych
+# wywolan AI, nie mniej rygorystyczna weryfikacja).
+_MIN_FILL_BATCH_EXAM = 6
 
 # ZMIENIONE (jawna decyzja usera, sierpien 2026 - w odroznieniu od Quizu,
 # TO JEST celowe, globalne podniesienie limitu, NIE waska naprawa jednego
@@ -1337,7 +1362,16 @@ _HARD_TIMEOUT_SECONDS_EXAM = 45.0
 # tw. cosinusow), gdzie dalsze probowanie prawdopodobnie i tak zawiedzie,
 # wiec NIE przedluzamy czekania usera bez gwarancji sukcesu - od razu
 # oddajemy uczciwy komunikat.
-_GRACE_MAX_MISSING_EXAM = 2  # rozszerzenie TYLKO gdy brakuje <=2 zadan
+### ZWIEKSZONE (wrzesien 2026, user: "jak ktos zamawia 10 zadan, ma dostac
+### 10 zadan, nie mniej ani wiecej" - real-test na temacie SPOZA listy
+### archetypow (fizyka/kinematyka) zakonczyl sie SHORTFALLEM 7/10, WLASNIE
+### dlatego, ze brakowalo 3 zadan - o JEDNO wiecej niz dotychczasowy limit
+### 2, wiec grace w ogole sie nie uruchomil, mimo ze user woli poczekac
+### troche dluzej niz dostac niepelny sprawdzian): 2->4. Nadal WASKI,
+### WARUNKOWY wyjatek (patrz uzasadnienie ponizej - "wiekszy niedobor to
+### fundamentalny problem z tematem") - NIE usunieto go calkowicie, tylko
+### podniesiono prog o tyle, zeby pokryc realnie zaobserwowany przypadek.
+_GRACE_MAX_MISSING_EXAM = 4  # rozszerzenie TYLKO gdy brakuje <=4 zadan
 _GRACE_EXTRA_ROUNDS_EXAM = 3  # ile dodatkowych rund ponad max_rounds
 # ZMNIEJSZONE (30.08.2026, "max 1 minuta" - ta sama zmiana co
 # _HARD_TIMEOUT_SECONDS_EXAM wyzej): 220s->60s - to jest teraz TWARDY,
@@ -1699,7 +1733,7 @@ def _blind_verify_batch_open(client, candidates: list, topic: str = None) -> dic
     return results
 
 
-def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = "", seen_fingerprints: set = None) -> list:
+def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = "", seen_fingerprints: set = None, seen_diversity_tags: list = None, seen_diversity_tag_dicts: list = None) -> list:
     """NAPRAWIONE (user: "wszedzie bledy w quizie i sprawdzinie" - real-test
     PDF pokazal 4 z 7 zadan otwartych z BLEDNA odpowiedzia koncowa, ZERO
     niezaleznej weryfikacji): dla kazdego zadania otwartego, najpierw proba
@@ -1713,7 +1747,21 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
     `seen_fingerprints` (opcjonalny, WSPOLDZIELONY z Czescia A - patrz
     call site w _verify_and_fix_exam_math) - jesli podany, odrzuca
     zadania, ktorych fingerprint (patrz _question_fingerprint) JUZ
-    wystapil GDZIEKOLWIEK w dokumencie, nie tylko w obrebie Czesci B."""
+    wystapil GDZIEKOLWIEK w dokumencie, nie tylko w obrebie Czesci B.
+
+    NAPRAWIONE (wrzesien 2026, user: real-test pokazal 4/4 zadania Czesci
+    B "Rownania kwadratowe" z IDENTYCZNYM schematem "dwa rozne
+    pierwiastki", mimo ze prompt/docstring TWIERDZIL "Diversity Engine
+    (is_too_similar_diversity_tag) DZIALA IDENTYCZNIE dla obu czesci" -
+    to bylo NIEPRAWDA: `seen_diversity_tags`/`seen_diversity_tag_dicts`
+    byly deklarowane w _verify_and_fix_exam_math, ale NIGDY nie
+    przekazywane do TEJ funkcji (patrz call site) - Czesc B nie miala
+    WIEC zadnej ochrony przed powtarzajacym sie SCHEMATEM zadania, tylko
+    przed DOSLOWNYM duplikatem tekstu (fingerprints wyzej). Teraz
+    (opcjonalne, jak fingerprints) - identyczny mechanizm i wspoldzielony
+    stan co w Czesci A (patrz _verify_and_fix_exam_math), zeby "ten sam
+    podwzorzec z innymi liczbami" byl wykrywany TAKZE w zadaniach
+    otwartych, nie tylko zamknietych."""
     kept = []
     needs_blind_check = []
     for pyt in pytania:
@@ -1729,10 +1777,17 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
         # WARSTWA 1.5 (identyczny mechanizm co dla zamknietych - patrz
         # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
         # NAJPIERW proba automatycznej naprawy dla "final_answer" (krotka,
-        # pojedyncza wartosc) - NIE dla "tresc"/"odpowiedz_modelowa"
-        # (mieszaja proze z matematyka). Potem walidacja strukturalna,
-        # sprawdzona PRZED sympy/blind-check.
+        # pojedyncza wartosc) - "tresc"/"odpowiedz_modelowa" (mieszaja
+        # proze z matematyka, np. pelne rozwiazanie krok po kroku) DOSTAJA
+        # analogiczna naprawe co Quiz (fix_latex_string - patrz identyczny
+        # komentarz i uzasadnienie w _verify_and_fix_exam_math wyzej, ta
+        # sama naprawiona luka: real-test pokazal odrzucenia
+        # "latex_malformed" wlasnie dla goleg "\cdot"/"\frac" w
+        # odpowiedz_modelowa, bez zadnej proby naprawy PRZED odrzuceniem).
+        # Potem walidacja strukturalna, sprawdzona PRZED sympy/blind-check.
         auto_wrap_bare_latex_in_question(pyt, ["final_answer"])
+        if pyt.get("tresc"): pyt["tresc"] = fix_latex_string(pyt["tresc"])
+        if pyt.get("odpowiedz_modelowa"): pyt["odpowiedz_modelowa"] = fix_latex_string(pyt["odpowiedz_modelowa"])
         latex_ok, latex_reason = validate_question_latex(pyt, ["tresc", "odpowiedz_modelowa", "final_answer"])
         if not latex_ok:
             print(f"[LatexValidate][Exam][Otwarte] USUNIETO zadanie ({latex_reason}): '{tresc[:60]}...'")
@@ -1769,6 +1824,27 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
                     metrics.record_rejection("blind_ai_mismatch_open")
     else:
         kept.extend(needs_blind_check)
+
+    # UNIVERSAL DIVERSITY ENGINE - PORT do Czesci B (wrzesien 2026, patrz
+    # docstring wyzej) - identyczny mechanizm co Czesc A (_verify_and_fix_
+    # exam_math): dedup wyzej lapie IDENTYCZNY tekst, to sprawdza, czy dwa
+    # zadania maja TEN SAM SCHEMAT/TYP ROZUMOWANIA (diversity_tag).
+    if seen_diversity_tags is not None:
+        diverse = []
+        for pyt in kept:
+            too_similar, tokens = is_too_similar_diversity_tag(pyt.get("diversity_tag"), seen_diversity_tags, question_text=pyt.get("tresc"))
+            if too_similar:
+                print(f"[MathVerify][Exam][Otwarte][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego zadania: '{pyt.get('tresc', '')[:60]}...' tag={pyt.get('diversity_tag')}")
+                if metrics:
+                    metrics.record_rejection("diversity_too_similar")
+                continue
+            if tokens:
+                seen_diversity_tags.append(tokens)
+                if seen_diversity_tag_dicts is not None and isinstance(pyt.get("diversity_tag"), dict):
+                    seen_diversity_tag_dicts.append(pyt["diversity_tag"])
+            diverse.append(pyt)
+        kept = diverse
+
     return kept
 
 
@@ -1847,7 +1923,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
         _validation_timer.__enter__()
     for sekcja in data.get("sekcje", []):
         if sekcja.get("typ") == "otwarte":
-            sekcja["pytania"] = _verify_open_section(sekcja.get("pytania", []), metrics=metrics, client=client, tytul=data.get("tytul", ""), seen_fingerprints=seen_fingerprints)
+            sekcja["pytania"] = _verify_open_section(sekcja.get("pytania", []), metrics=metrics, client=client, tytul=data.get("tytul", ""), seen_fingerprints=seen_fingerprints, seen_diversity_tags=seen_diversity_tags, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
             continue
         if sekcja.get("typ") != "zamkniete":
             continue
@@ -1876,10 +1952,19 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
             # WARSTWA 1.5 (NOWE - identyczny mechanizm co w Quizie, patrz
             # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
             # NAJPIERW proba automatycznej naprawy dla "opcje" (real-test:
-            # 75% partii Trygonometrii mialo TU brakujacy $) - NIE dla
-            # "tresc"/"wyjasnienie" (mieszaja proze z matematyka). Potem
+            # 75% partii Trygonometrii mialo TU brakujacy $) - "tresc"/
+            # "wyjasnienie" (mieszaja proze z matematyka) NIE moga byc
+            # slepo owiniete calym polem w $ $ (auto_wrap_bare_latex), ale
+            # DOSTAJA analogiczna naprawe co Quiz ("question"/"explanation")
+            # - fix_latex_string (Warstwa 1.5b, wrzesien 2026: real-test
+            # ujawnil odrzucenia "latex_malformed" dla golego "\cdot"/
+            # "\frac" w prozie, ktorych Quiz w ogole nie mial, bo TAM ta
+            # naprawa juz istniala - patrz fix_latex_in_quiz w
+            # openai_exam.py, wywolane PRZED analogiczna walidacja). Potem
             # walidacja strukturalna, sprawdzona PRZED Warstwa 2/2.5.
             auto_wrap_bare_latex_in_question(pyt, ["opcje"])
+            if pyt.get("tresc"): pyt["tresc"] = fix_latex_string(pyt["tresc"])
+            if pyt.get("wyjasnienie"): pyt["wyjasnienie"] = fix_latex_string(pyt["wyjasnienie"])
             latex_ok, latex_reason = validate_question_latex(pyt, ["tresc", "opcje", "wyjasnienie"])
             if not latex_ok:
                 print(f"[LatexValidate][Exam] USUNIETO zadanie ({latex_reason}): '{tresc[:60]}...'")
@@ -2373,44 +2458,70 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         ]
         items_desc = "\n".join(
             f"{i + 1}. Rownanie: $x^2 + {sk['param_letter']}x + {sk['c_value']} = 0$. "
-            f"POPRAWNY, JUZ OBLICZONY warunek na dwa rozne pierwiastki (NIE PRZELICZAJ, NIE ZMIENIAJ): "
+            f"POPRAWNY, JUZ OBLICZONY warunek na {sk['condition_desc']} (NIE PRZELICZAJ, NIE ZMIENIAJ): "
             f"{sk['correct_text']}"
             for i, sk in enumerate(skeletons)
         )
+        # NAPRAWIONE (wrzesien 2026 - patrz build_safe_linear_param_quadratic
+        # w math_verify.py, identyczna naprawa jak w Quizie): kazdy
+        # szkielet moze teraz dotyczyc INNEGO warunku (dwa rozne
+        # pierwiastki / dokladnie jeden / brak pierwiastkow), NIE tylko
+        # "dwa rozne pierwiastki" - stad "{{warunek}}" zamiast zaszytego
+        # na sztywno tekstu w przykladach rotacji sformulowan.
         prompt = f"""Dla KAZDEGO z {len(skeletons)} ponizszych rownan kwadratowych z parametrem,
-poprawny warunek na DWA ROZNE PIERWIASTKI zostal JUZ OBLICZONY (przez
-niezalezny system matematyczny) - Twoje jedyne zadania to:
-1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie -
-   patrz punkt "RÓŻNICUJ SFORMUŁOWANIA" ponizej, KAZDE pytanie MUSI
-   brzmiec inaczej.
+poprawny warunek na podane pytanie (rozne dla kazdego zadania - patrz
+opis ponizej: dwa rozne pierwiastki / dokladnie jeden pierwiastek / brak
+pierwiastkow rzeczywistych) zostal JUZ OBLICZONY (przez niezalezny system
+matematyczny) - Twoje jedyne zadania to:
+1. Sformulowac naturalne, poprawne pytanie po polsku o podane rownanie,
+   pytajace DOKLADNIE o warunek podany przy danym zadaniu (NIE zamieniaj
+   go na inny warunek) - patrz punkt "RÓŻNICUJ SFORMUŁOWANIA" ponizej,
+   KAZDE pytanie MUSI brzmiec inaczej.
 2. Wymyslic 3 SENSOWNE, ale MATEMATYCZNIE BLEDNE dystraktory (inne
    liczby/znaki, realistyczne, ale niepoprawne) - NIE kopiuj poprawnej
-   wartosci do dystraktorow.
+   wartosci do dystraktorow. UWAGA (real-test, wrzesien 2026): dla
+   warunku "dokladnie jeden pierwiastek" podany warunek to CZESTO DWIE
+   wartosci polaczone "lub" (np. "$m = -8$ lub $m = 8$", bo OBIE
+   symetryczne wartosci parametru daja podwojny pierwiastek) - JEDNA z 4
+   opcji MUSI byc TA CALA fraza, ZNAK W ZNAK, WLACZNIE z "lub X" - NIE
+   WOLNO jej skrocic do jednej wartosci (np. samego "$m = 8$"), to
+   BLEDNA, NIEPELNA odpowiedz, nawet jesli jedna z dwoch wartosci jest
+   poprawna.
 3. Napisac krotkie wyjasnienie (1-2 zdania) odwolujace sie do wzoru na
    delte.
 4. Podac diversity_tag (skill/concept/task_type/reasoning, krotkie
-   frazy) - dla WSZYSTKICH tych zadan concept to zawsze "parametr jako
-   wspolczynnik liniowy" (to jest ten sam podwzorzec, celowo).
+   frazy) - "concept" to zawsze "parametr jako wspolczynnik liniowy"
+   (to jest ten sam podwzorzec rownania, celowo), ale "task_type" MUSI
+   odzwierciedlac KONKRETNY warunek tego zadania (np. "warunek na dwa
+   rozne pierwiastki" / "warunek na jeden pierwiastek" / "warunek na
+   brak pierwiastkow").
 
 RÓŻNICUJ SFORMUŁOWANIA (05.09.2026, user zglosil ze wszystkie zadania
 tego podwzorca brzmialy IDENTYCZNIE - rozne tylko litera/liczba):
 KAZDE z {len(skeletons)} zadan MUSI miec INNA konstrukcje zdania - NIE
-kopiuj jednego szablonu do wszystkich. Rotuj miedzy stylami, np.:
-- "Dla jakich wartości parametru {{litera}} równanie ... ma dwa różne pierwiastki?"
-- "Wyznacz zbiór wartości parametru {{litera}}, dla których równanie ... ma dwa różne pierwiastki."
-- "Dla jakich {{litera}} podane równanie ... posiada dwa różne rozwiązania rzeczywiste?"
-- "Ustal warunek na parametr {{litera}}, przy którym równanie ... ma dwa różne pierwiastki."
-- "Kiedy (dla jakich wartości {{litera}}) równanie ... ma dwa różne pierwiastki?"
+kopiuj jednego szablonu do wszystkich. Rotuj miedzy stylami, np. (gdzie
+"{{warunek}}" to WLASNIE TEN warunek podany przy danym zadaniu, nie
+zawsze "dwa rozne pierwiastki"):
+- "Dla jakich wartości parametru {{litera}} równanie ... {{warunek}}?"
+- "Wyznacz zbiór wartości parametru {{litera}}, dla których równanie ... {{warunek}}."
+- "Dla jakich {{litera}} podane równanie ... {{warunek}}?"
+- "Ustal warunek na parametr {{litera}}, przy którym równanie ... {{warunek}}."
+- "Kiedy (dla jakich wartości {{litera}}) równanie ... {{warunek}}?"
 Uzyj kazdego stylu co najwyzej 1-2 razy w tej partii - jesli zadan jest
 wiecej niz stylow, wymysl WLASNE, ale wciaz rozne od siebie sformulowanie.
 
 KRYTYCZNE: NIE PRZELICZAJ podanego warunku od nowa i NIE ZMIENIAJ go w
 zadnym stopniu - jest juz zweryfikowany przez niezalezny system. Twoja
-rola to TYLKO jezyk i dystraktory, nie matematyka.
+rola to TYLKO jezyk i dystraktory, nie matematyka. Jesli podany warunek
+zawiera "lub" (dwie wartosci/przedzialy), poprawna opcja w "opcje" I
+"final_answer" MUSZA zawierac OBIE, DOKLADNIE jak podano - to NIE jest
+literowka do skrocenia.
 
 {items_desc}
 
-FORMAT (TYLKO JSON):
+FORMAT (TYLKO JSON) - ponizszy przyklad pokazuje STRUKTURE JSON, NIE
+zawsze uzywaj akurat "dwa rozne pierwiastki" - kazde zadanie ma WLASNY
+warunek podany wyzej w liscie:
 {{
     "sekcje": [
         {{
@@ -2426,8 +2537,22 @@ FORMAT (TYLKO JSON):
                     "wyjasnienie": "Delta rownania to $m^2-64$, warunek $\\Delta>0$ daje $m<-8$ lub $m>8$.",
                     "diversity_tag": {{
                         "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
-                        "task_type": "wyznacz parametr z warunku na delte",
+                        "task_type": "warunek na dwa rozne pierwiastki",
                         "reasoning": "oblicz delte, rozwiaz nierownosc, zapisz przedzial"
+                    }}
+                }},
+                {{
+                    "nr": 2,
+                    "tresc": "Kiedy równanie $x^2 + kx + 9 = 0$ ma dokładnie jeden pierwiastek (podwójny)?",
+                    "opcje": ["a) $k = -6$ lub $k = 6$", "b) $k = 6$", "c) $k = 0$", "d) $k = -3$ lub $k = 3$"],
+                    "odpowiedz": "a",
+                    "final_answer": "$k = -6$ lub $k = 6$",
+                    "punkty": 1,
+                    "wyjasnienie": "Delta rownania to $k^2-36$, warunek $\\Delta=0$ daje $k=-6$ lub $k=6$.",
+                    "diversity_tag": {{
+                        "skill": "wzor na delte", "concept": "parametr jako wspolczynnik liniowy",
+                        "task_type": "warunek na jeden pierwiastek",
+                        "reasoning": "oblicz delte, rozwiaz rownanie delta=0"
                     }}
                 }}
             ]

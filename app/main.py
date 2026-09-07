@@ -426,6 +426,43 @@ async def startup():
     except Exception as e:
         print(f"⚠️ Migracja typu subscriptions.user_id: {e}")
 
+    # NOWE (wrzesien 2026, App Store IAP - Guideline 2.1(b)): subskrypcje
+    # moga teraz pochodzic z Apple (StoreKit) albo Stripe - dolozenie
+    # kolumn "provider"/"apple_*" (patrz models.py Subscription) i
+    # poluzowanie NOT NULL na stripe_* (wiersze Apple ich nie maja).
+    # Identyczny idempotentny wzorzec co migracja users.* wyzej.
+    try:
+        from sqlalchemy import inspect as _sa_inspect3, text as _sa_text3
+        _insp3 = _sa_inspect3(engine)
+        if "subscriptions" in _insp3.get_table_names():
+            _sub_cols3 = {c["name"]: c for c in _insp3.get_columns("subscriptions")}
+            _new_sub_cols = {
+                "provider": "VARCHAR(20) NOT NULL DEFAULT 'stripe'",
+                "apple_original_transaction_id": "VARCHAR(255)",
+                "apple_product_id": "VARCHAR(255)",
+            }
+            with engine.connect() as _conn3:
+                for _col3, _sqltype3 in _new_sub_cols.items():
+                    if _col3 not in _sub_cols3:
+                        _conn3.execute(_sa_text3(f"ALTER TABLE subscriptions ADD COLUMN {_col3} {_sqltype3}"))
+                        _conn3.commit()
+                        print(f"✅ Dodano kolumne subscriptions.{_col3}")
+                if "apple_original_transaction_id" not in _sub_cols3:
+                    _conn3.execute(_sa_text3("CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_apple_original_transaction_id ON subscriptions (apple_original_transaction_id)"))
+                    _conn3.commit()
+                # Poluzuj NOT NULL na stripe_* - wiersze provider="apple" ich nie maja.
+                # SQLite nie wspiera ALTER COLUMN DROP NOT NULL - pomijamy tam (i tak
+                # dziala luznie typowane); dotyczy WYLACZNIE Postgresa/produkcji.
+                if "sqlite" not in settings.DATABASE_URL:
+                    for _stripe_col in ("stripe_subscription_id", "stripe_customer_id", "stripe_price_id"):
+                        _col_info = _sub_cols3.get(_stripe_col)
+                        if _col_info is not None and not _col_info.get("nullable", True):
+                            _conn3.execute(_sa_text3(f"ALTER TABLE subscriptions ALTER COLUMN {_stripe_col} DROP NOT NULL"))
+                            _conn3.commit()
+                            print(f"✅ Poluzowano NOT NULL na subscriptions.{_stripe_col}")
+    except Exception as e:
+        print(f"⚠️ Migracja kolumn subscriptions (Apple IAP): {e}")
+
     print("=" * 60)
     print("🚀 AI TEACHER BACKEND STARTED!")
     print(f"🔑 OpenAI: {'✅ ' + settings.OPENAI_API_KEY[:20] + '...' if settings.OPENAI_API_KEY else '❌ MISSING'}")

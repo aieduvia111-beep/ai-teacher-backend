@@ -9,6 +9,7 @@ from typing import Optional
 
 from ..database import get_db
 from ..services.stripe_service import StripeService
+from ..services.apple_iap_service import AppleIAPService
 from ..models import User, Subscription
 from ..services.stripe_service import _update_firebase_plan
 from ..firebase_auth import get_verified_firebase_user
@@ -148,15 +149,36 @@ def cancel_subscription(
     podac cudzego user_id w body.
 
     Subskrypcja zostanie anulowana na koniec okresu rozliczeniowego
+
+    NOWE (wrzesien 2026, App Store IAP): subskrypcje Apple (provider="apple")
+    NIE MOGA byc anulowane przez nasz backend - Apple celowo NIE udostepnia
+    takiej mozliwosci w App Store Server API (w odroznieniu od Stripe).
+    User musi anulowac przez Ustawienia iOS (Apple ID -> Subskrypcje) albo
+    natywny przycisk "Zarzadzaj subskrypcja" w apce (AppStore.
+    showManageSubscriptions() po stronie Swift) - zwracamy jasny komunikat
+    zamiast probowac (i failowac) wolac Stripe API dla subskrypcji, ktora
+    nigdy tam nie istniala.
     """
     try:
+        apple_sub = db.query(Subscription).filter(
+            Subscription.user_id == firebase_user["uid"],
+            Subscription.provider == "apple",
+            Subscription.status.in_(["active"]),
+        ).first()
+        if apple_sub:
+            return {
+                "success": False,
+                "error": "apple_managed",
+                "message": "Ta subskrypcja zostala kupiona przez App Store i musi byc anulowana przez Ustawienia iOS (Apple ID -> Subskrypcje) albo przycisk 'Zarzadzaj subskrypcja' w aplikacji.",
+            }
+
         result = StripeService.cancel_subscription(
             user_id=firebase_user["uid"],
             db=db
         )
-        
+
         return result
-        
+
     except Exception as e:
         print(f"❌ Błąd anulowania: {e}")
         return {
@@ -211,8 +233,9 @@ def get_subscription(
         if subscription:
             result["subscription"] = {
                 "id": subscription.id,
+                "provider": subscription.provider,
                 "status": subscription.status,
-                "current_period_end": subscription.current_period_end.isoformat(),
+                "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
                 "cancel_at_period_end": subscription.cancel_at_period_end
             }
         else:
@@ -226,3 +249,71 @@ def get_subscription(
             "success": False,
             "error": str(e)
         }
+
+
+# =============================================================================
+# APPLE IN-APP PURCHASE (wrzesien 2026, App Store Guideline 2.1(b))
+# =============================================================================
+
+class VerifyIOSPurchaseRequest(BaseModel):
+    transaction_id: str  # w rzeczywistosci CALY podpisany JWS (Transaction.jwsRepresentation), nie sama liczba - patrz IAPManager.swift
+
+
+@router.post("/verify-ios-purchase")
+def verify_ios_purchase(
+    request: VerifyIOSPurchaseRequest,
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
+):
+    """
+    🍎 Weryfikuje zakup StoreKit 2 zaraz po jego zakonczeniu w apce iOS i
+    nadaje Pro - natywny odpowiednik /verify-session (Stripe).
+
+    Wymaga naglowka: Authorization: Bearer <firebase_id_token>. `transaction_id`
+    w body to w rzeczywistosci CALY podpisany JWS zwrocony przez StoreKit
+    (Transaction.jwsRepresentation) - weryfikowany kryptograficznie po
+    stronie serwera (app/services/apple_iap_service.py) PRZED nadaniem Pro,
+    nigdy nie ufamy samemu zgloszeniu klienta.
+    """
+    try:
+        result = AppleIAPService.grant_premium_from_client_transaction(
+            signed_transaction=request.transaction_id,
+            firebase_uid=firebase_user["uid"],
+            db=db,
+        )
+        return result
+    except Exception as e:
+        print(f"❌ Błąd weryfikacji zakupu iOS: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/apple-webhook")
+async def apple_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    🔔 Webhook endpoint dla Apple App Store Server Notifications V2 -
+    natywny odpowiednik /webhook (Stripe). Apple wysyla tu zdarzenia
+    cyklu zycia subskrypcji (odnowienie/wygasniecie/refund/nieudane
+    odnowienie) NIEZALEZNIE od tego, czy user ma otwarta apke - to
+    JEDYNE wiarygodne zrodlo prawdy dla dlugoterminowego stanu.
+
+    WAZNE: ten endpoint NIE wymaga naglowka Authorization (Apple nie
+    wysyla tokenu Firebase) - autentycznosc jest weryfikowana przez
+    podpis kryptograficzny (JWS) samego payloadu, dokladnie jak Stripe
+    signature dla /webhook.
+
+    KONFIGURACJA: App Store Connect -> Twoja apka -> App Information ->
+    App Store Server Notifications -> ustaw Production/Sandbox URL na
+    https://<twoj-backend>/api/v1/payments/apple-webhook
+    """
+    try:
+        body = await request.json()
+        signed_payload = body.get("signedPayload")
+        if not signed_payload:
+            raise HTTPException(status_code=400, detail="Brak signedPayload")
+        result = AppleIAPService.handle_server_notification(signed_payload, db)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Błąd webhook Apple: {e}")
+        raise HTTPException(status_code=400, detail=str(e))

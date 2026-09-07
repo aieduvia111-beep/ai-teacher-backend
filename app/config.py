@@ -17,7 +17,26 @@ class Settings:
     STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
     STRIPE_PRICE_ID: str = os.getenv("STRIPE_PRICE_ID", "")
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    
+
+    # Apple In-App Purchase (wrzesien 2026, App Store Guideline 2.1(b) -
+    # subskrypcja iOS MUSI isc przez StoreKit, nie Stripe). Klucz API
+    # App Store Connect: Users and Access -> Integrations -> App Store
+    # Connect API -> wygeneruj klucz z rola "App Manager" (wystarcza do
+    # weryfikacji transakcji - NIE potrzeba pelnych uprawnien admina).
+    # APPLE_IAP_PRIVATE_KEY to CALA zawartosc pobranego pliku .p8
+    # (zaczyna sie od "-----BEGIN PRIVATE KEY-----"), wklejona wprost
+    # jako zmienna srodowiskowa (ten sam wzorzec co FIREBASE_SERVICE_ACCOUNT_JSON).
+    APPLE_BUNDLE_ID: str = os.getenv("APPLE_BUNDLE_ID", "com.eduvia.ios")
+    # Numeryczne Apple ID APLIKACJI (NIE bundle_id!) - App Store Connect ->
+    # Twoja apka -> App Information -> General Information -> "Apple ID"
+    # (cyfry, np. "1234567890"). Wymagane przez biblioteke Apple dla
+    # environment=Production (uzywane do weryfikacji online/OCSP).
+    APPLE_APP_ID: str = os.getenv("APPLE_APP_ID", "")
+    APPLE_IAP_KEY_ID: str = os.getenv("APPLE_IAP_KEY_ID", "")
+    APPLE_IAP_ISSUER_ID: str = os.getenv("APPLE_IAP_ISSUER_ID", "")
+    APPLE_IAP_PRIVATE_KEY: str = os.getenv("APPLE_IAP_PRIVATE_KEY", "")
+    APPLE_IAP_ENVIRONMENT: str = os.getenv("APPLE_IAP_ENVIRONMENT", "Production")  # "Production" albo "Sandbox"
+
     # Database
     # NAPRAWIONE (31.08.2026): fallback byl WCZESNIEJ prawdziwym connection
     # stringiem do produkcyjnej/stagingowej bazy Supabase Z HASLEM WPROST W
