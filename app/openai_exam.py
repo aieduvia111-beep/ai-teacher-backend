@@ -3237,8 +3237,18 @@ _HARD_TIMEOUT_SECONDS = 60.0
 # calego procesu (standardowy budzet 45s + do 15s na grace), nie tylko
 # sufit "dodatkowego" rozszerzenia. Frontend (quiz_app.html) obnizony w
 # parze do 90s (margines na siec, nie 250s).
-_GRACE_MAX_MISSING = 2
-_GRACE_EXTRA_ROUNDS = 1
+### NAPRAWIONE (08.09.2026, user zglosil: Quiz ze zdjecia, tylko 5 pytan,
+### 4/5 zablokowane jako niepelny wynik - "nawet 5 pytan nie potrafi
+### dokonczyc"): te dwie stale byly znaczaco cisniejsze niz juz sprawdzony,
+### rownowazny mechanizm w Sprawdzianie (_GRACE_MAX_MISSING_EXAM=4,
+### _GRACE_EXTRA_ROUNDS_EXAM=3 - patrz exam_pdf_generator.py) - dokladnie
+### ten sam wzorzec asymetrii "naprawione w Sprawdzianie, zapomniane w
+### Quizie", ktory juz raz dzisiaj zlapano (Safe Generation dla Funkcji
+### kwadratowych/Calek). Quiz mial WIECEJ szans na porazke przy "prawie
+### udanym" wyniku (np. 4/5) niz identyczny przypadek w Sprawdzianie -
+### wyrownano do juz sprawdzonych, dzialajacych wartosci.
+_GRACE_MAX_MISSING = 4
+_GRACE_EXTRA_ROUNDS = 3
 _GRACE_MAX_SECONDS = 60.0
 
 # NAPRAWIONE (user 05.09.2026: "ma byc szybkie a nie tak samo jak quiz" -
