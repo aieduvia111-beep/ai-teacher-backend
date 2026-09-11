@@ -75,6 +75,13 @@ except Exception as e:
     print(f"❌ payments: {e}")
 
 try:
+    from .api.analytics import router as analytics_router
+    app.include_router(analytics_router)
+    print("✅ analytics OK")
+except Exception as e:
+    print(f"❌ analytics: {e}")
+
+try:
     from .api.notes_api import router as notes_router
 except Exception as e:
     print(f"notes_api error: {e}")

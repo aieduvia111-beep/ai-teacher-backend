@@ -47,6 +47,13 @@ class Settings:
     # laczyc sie z prawdziwa baza produkcyjna zaszytym w kodzie haslem.
     DATABASE_URL: str = os.getenv("SUPABASE_URL", os.getenv("DATABASE_URL", "sqlite:///./ai_teacher.db"))
     
+    # NOWE (11.09.2026, minimalna wlasna analityka lejka "Kup Pro" - patrz
+    # app/api/analytics.py, FunnelEvent w models.py): sekret do
+    # GET /api/v1/analytics/funnel-summary (agregaty, zero PII, ale i tak
+    # nie powinno byc publicznie dostepne bez klucza). Brak w .env -
+    # endpoint po prostu odmawia (fail-closed), NIE otwiera sie domyslnie.
+    ANALYTICS_ADMIN_KEY: str = os.getenv("ANALYTICS_ADMIN_KEY", "")
+
     # App
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://eduvia-backend-2.onrender.com/static")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")

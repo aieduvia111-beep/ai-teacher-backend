@@ -461,6 +461,22 @@ function applyPlatformPrice(){
 }
 applyPlatformPrice();
 
+// NOWE (11.09.2026, minimalna wlasna analityka lejka - patrz
+// app/api/analytics.py): fire-and-forget, nigdy nie blokuje ani nie
+// przerywa niczego dla usera (catch cichy, keepalive zeby wysylka
+// przezyla nawigacje np. przy click_upgrade tuz przed przekierowaniem
+// do Stripe). Dziala TEZ przed zalogowaniem (view_pricing) - stad
+// user_id opcjonalny po stronie backendu.
+function trackEvent(event, meta){
+  try{
+    fetch(API_BASE + '/api/v1/analytics/track', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, keepalive: true,
+      body: JSON.stringify({event: event, user_id: (window._currentUser && window._currentUser()) ? window._currentUser().uid : null, meta: meta || {}})
+    }).catch(function(){});
+  }catch(e){}
+}
+trackEvent('view_pricing');
+
 // NOWE (07.09.2026, promocja): pobiera aktualny status promocji z backendu
 // (jedno, wspolne zrodlo prawdy - patrz get_promo_status w stripe_service.py)
 // i dopiero WTEDY aktualizuje wszystkie miejsca z liczba dni + pokazuje
@@ -560,6 +576,7 @@ window.onNativeIAPError=function(message){
 };
 
 async function startCheckout() {
+  trackEvent('click_upgrade', {payment_method: isNativeIosApp ? 'ios_iap' : selectedPaymentMethod});
   // NOWE: na iOS - natywny StoreKit zamiast Stripe (Guideline 2.1(b)).
   // Most JS<->natywny identyczny wzorzec co signInWithApple (login.html) -
   // patrz IAPManager.swift (rejestruje "startIAPPurchase" w WebView.swift).
@@ -636,15 +653,24 @@ async function startCheckout() {
 (function(){
   const p = new URLSearchParams(window.location.search);
   if(p.get('payment') === 'success'){
+    trackEvent('payment_success', {payment_method: 'card'});
     localStorage.setItem('eduvia_plan','pro');
     if(typeof window._fbSetPlan === 'function') window._fbSetPlan('pro');
     // Rejestruj sprzedaz afiliacyjna
     localStorage.removeItem('eduvia_aff_code');
     showToast('🎉 Dziękujemy! Plan Pro aktywowany!', 'success');
     setTimeout(()=>{ window.location.href = 'dashboard_FINAL.html'; }, 2500);
-  } else if(p.get('payment') === 'cancel'){
+  } else if(p.get('payment') === 'cancelled'){
+    trackEvent('payment_cancelled', {payment_method: 'card'});
+    // NAPRAWIONE (11.09.2026): sprawdzalo 'cancel', ale
+    // create_checkout_session (app/services/stripe_service.py) ustawia
+    // cancel_url z '...?payment=cancelled' - ten toast nigdy sie nie
+    // pokazywal dla karty. Znalezione przy okazji pracy nad BLIK-iem
+    // (ktory dostal wlasny, POPRAWNY parametr 'blik_setup=cancelled'
+    // ponizej - stad ta literowka byla widoczna dopiero przy porownaniu).
     showToast('Płatność anulowana.', '');
   } else if(p.get('blik_setup') === 'cancelled'){
+    trackEvent('blik_setup_cancelled');
     // NOWE (BLIK recurring) - powrot z Checkout mode="setup" bez
     // zatwierdzenia mandatu (np. bank nie wspiera BLIK recurring, user
     // zrezygnowal). Zasugeruj karte jako alternatywe, skoro juz tu jest.

@@ -725,6 +725,11 @@ onAuthStateChanged(auth,async(user)=>{
           const vdata = await vres.json();
           if (!vdata.success) { console.warn('[Payment] weryfikacja nieudana:', vdata.error); return; }
         }
+        // NOWE (11.09.2026, patrz app/api/analytics.py) - fire-and-forget.
+        fetch(`${DASH_BASE}/api/v1/analytics/track`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({event:'payment_success', user_id: currentUser ? currentUser.uid : null, meta:{payment_method:'card'}})
+        }).catch(()=>{});
         localStorage.setItem('eduvia_plan','pro');
         document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML('pro'));
         // Usuń parametr z URL
@@ -755,6 +760,11 @@ onAuthStateChanged(auth,async(user)=>{
         });
         const sdata = await sres.json();
         if(sdata.is_premium){
+          // NOWE (11.09.2026, patrz app/api/analytics.py) - fire-and-forget.
+          fetch(`${DASH_BASE}/api/v1/analytics/track`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({event:'payment_success', user_id: currentUser.uid, meta:{payment_method:'blik'}})
+          }).catch(()=>{});
           localStorage.setItem('eduvia_plan','pro');
           document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML('pro'));
           window.history.replaceState({}, '', 'dashboard_FINAL.html');

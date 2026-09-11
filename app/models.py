@@ -226,6 +226,27 @@ class GenerationRequestLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class FunnelEvent(Base):
+    """Instrumentacja lejka 'Kup Pro' (11.09.2026, audyt "dlaczego ludzie
+    nie chca placic" - okazalo sie, ze caly frontend (pricing.html i in.)
+    nie mial ZADNEGO trackingu, wiec kazda diagnoza drop-offu byla
+    czystym zgadywaniem z czytania kodu, nie danymi. Celowo WLASNA,
+    minimalna tabela zamiast Google Analytics/Mixpanel (zero kontraktu
+    zewnetrznego do zakladania) - identyczny duch co GenerationRequestLog
+    powyzej ("dane teraz, zanim ruch bezpowrotnie znika"). Zero PII -
+    user_id to Firebase UID (juz i tak widoczny w reszcie bazy), meta to
+    plaski JSON bez tresci wrazliwych."""
+    __tablename__ = "funnel_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # np. "view_pricing", "click_upgrade", "payment_success",
+    # "payment_cancelled", "blik_setup_cancelled" - patrz static/pricing.html.
+    event = Column(String(50), nullable=False, index=True)
+    user_id = Column(String(128), nullable=True, index=True)  # Firebase UID, None dla niezalogowanych
+    meta = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 class UsageStats(Base):
     """Statystyki użycia (FREE limity)"""
     __tablename__ = "usage_stats"
