@@ -84,8 +84,12 @@ print("=" * 70)
 check("n=13, rownania kwadratowe, srednia -> bufor 20 (13+7, +50%)",
       _buffered_question_count(13, temat="Rownania kwadratowe", trudnosc="srednia") == 20,
       _buffered_question_count(13, temat="Rownania kwadratowe", trudnosc="srednia"))
-check("n=13, inny temat, srednia -> bufor bez zmian (+30%)",
-      _buffered_question_count(13, temat="Trygonometria", trudnosc="srednia") == 17,
+# ZWIEKSZONE (wrzesien 2026, patrz komentarz przy _buffered_question_count
+# "else" branch): 30%->50% dla tematow SPOZA listy archetypow (real-test
+# fizyki pokazal SHORTFALL przy starym, zbyt malym buforze) - 13+7=20,
+# nie 13+4=17.
+check("n=13, inny temat, srednia -> bufor +50% (jak medium quadratic, nie juz +30%)",
+      _buffered_question_count(13, temat="Trygonometria", trudnosc="srednia") == 20,
       _buffered_question_count(13, temat="Trygonometria", trudnosc="srednia"))
 check("n=13, rownania kwadratowe, trudna -> bufor +60% bez zmian",
       _buffered_question_count(13, temat="Rownania kwadratowe", trudnosc="trudna") == 21,

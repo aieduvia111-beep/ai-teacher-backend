@@ -57,14 +57,19 @@ check("medium + rownania kwadratowe -> podniesiony bufor +50% (20+10=30)", r == 
 r = _buffered_count(20, topic="Trygonometria", difficulty="hard")
 check("hard + INNY temat (nie kwadratowe) -> podniesiony bufor +40% (20+8=28)", r == 28, r)
 
+# ZWIEKSZONE (wrzesien 2026, user: "jak ktos zamawia 10 zadan, ma dostac
+# 10 zadan" - real-test na temacie SPOZA archetypow (fizyka) pokazal
+# SHORTFALL przy starym +30% - patrz komentarz w _buffered_count "else"
+# branch): domyslny/"brak archetypu" bufor podniesiony z +30% do +50% -
+# CELOWA, swiadoma zmiana, nie regresja.
 r = _buffered_count(20)
-check("brak topic/difficulty (np. sciezka z obrazka) -> domyslne +30% (26)", r == 26, r)
+check("brak topic/difficulty (np. sciezka z obrazka) -> podniesiony bufor +50% (30)", r == 30, r)
 
 r = _buffered_count(2, topic="Równania kwadratowe", difficulty="trudny")
 check("male n (2), hard+kwadratowe -> nadal min +2 respektowane (2+2=4, bo ceil(2*0.6)=2)", r == 4, r)
 
 r_easy = _buffered_count(10, topic="Równania kwadratowe", difficulty="easy")
-check("easy + rownania kwadratowe -> dotychczasowe +30% (10+3=13, easy NIE jest w _HARD_DIFFICULTY_WORDS)", r_easy == 13, r_easy)
+check("easy + rownania kwadratowe -> podniesiony bufor +50% (10+5=15, easy NIE jest w _HARD_DIFFICULTY_WORDS ani w _MEDIUM_DIFFICULTY_WORDS)", r_easy == 15, r_easy)
 
 
 # ============================================================
@@ -91,8 +96,10 @@ check("srednia + rownania kwadratowe -> podniesiony bufor +50% (10+5=15)", r == 
 r = _buffered_question_count(10, temat="Fizyka: Dynamika", trudnosc="trudna")
 check("trudna + INNY temat -> podniesiony bufor +40% (10+4=14)", r == 14, r)
 
+# ZWIEKSZONE (wrzesien 2026 - identyczna naprawa jak dla Quizu wyzej):
+# +30% -> +50%.
 r = _buffered_question_count(10)
-check("brak temat/trudnosc -> domyslne +30% (13)", r == 13, r)
+check("brak temat/trudnosc -> podniesiony bufor +50% (15)", r == 15, r)
 
 
 # ============================================================

@@ -74,6 +74,24 @@ ok5, reason5 = validate_question_latex(q_missing_field, ["question", "options", 
 check("Brakujace pola (None) -> nie crashuje, OK", ok5 is True, reason5)
 
 print()
+print("=" * 70)
+print("NAPRAWIONE (wrzesien 2026, user: 'wzory zle sie generuja w Quizie i")
+print("Sprawdzianie, ok. 50% odrzucanych') - lista brakowala sin/cos/log/ln/Delta")
+print("=" * 70)
+check("Literalny '\\sin(30)' BEZ $ -> wykryte jako niepoprawne",
+      validate_latex_formatting("a) 5\\sin(30)")[0] is False)
+check("Literalny '\\cos(x)' BEZ $ -> wykryte jako niepoprawne",
+      validate_latex_formatting("Wartosc \\cos(x) w tym punkcie")[0] is False)
+check("Literalny '\\log(x)' BEZ $ -> wykryte jako niepoprawne",
+      validate_latex_formatting("\\log(x) to logarytm")[0] is False)
+check("Literalny '\\Delta' (wielka litera) BEZ $ -> wykryte jako niepoprawne",
+      validate_latex_formatting("Liczymy \\Delta ze wzoru")[0] is False)
+check("Te same wzory POPRAWNIE owiniete w $ -> OK",
+      validate_latex_formatting("a) $5\\sin(30)$, $\\cos(x)$, $\\log(x)$, $\\Delta$")[0] is True)
+check("'\\leq'/'\\geq' (dluzsze formy) nadal NIE kolliduja z nowymi 'le'/'ge'",
+      validate_latex_formatting("$x \\leq 5$ oraz $y \\geq 2$")[0] is True)
+
+print()
 if FAILED:
     print(f"WYNIK: {len(FAILED)} test(y) NIE PRZESZLY:")
     for name, detail in FAILED:
