@@ -483,7 +483,8 @@ function showLimitPopup(feature, limit) {
   // (patrz naprawa w login.html) - dodano niepodrabialny sygnal
   // (obecnosc mostka window.webkit.messageHandlers).
   const isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
-  const PRO_PRICE = isIosApp ? '39,99' : '29';
+  // NAPRAWIONE 11.09.2026: 30 zl (nie 29) - wyrownano do realnej ceny Stripe Price.
+  const PRO_PRICE = isIosApp ? '39,99' : '30';
 
   const names = {
     chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',

@@ -42,7 +42,8 @@
   // NAPRAWIONE: samo "PWAShell" w UA bylo zawodne na realnym urzadzeniu
   // (patrz pelne uzasadnienie w login.html) - dodano niepodrabialny sygnal.
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
-  var PRO_PRICE = isIosApp ? '39,99' : '29';
+  // NAPRAWIONE 11.09.2026: 30 zl (nie 29) - wyrownano do realnej ceny Stripe Price.
+  var PRO_PRICE = isIosApp ? '39,99' : '30';
 
   // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
   // app/services/stripe_service.py): domyslnie 7 (dotyczy TYLKO Android/Web,

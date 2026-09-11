@@ -17,12 +17,14 @@
 
   // NOWE (wrzesien 2026, App Store IAP): 39,99 zl na natywnej iOS (DOKLADNA
   // cena produktu "com.eduvia.ios.pro.monthly" w App Store Connect - StoreKit,
-  // prowizja Apple), 29 zl wszedzie indziej (Android/Web, Stripe).
+  // prowizja Apple), 30 zl wszedzie indziej (Android/Web, Stripe -
+  // NAPRAWIONE 11.09.2026: wyrownano do realnej ceny Stripe Price, patrz
+  // pricing.html).
   // NAPRAWIONE: samo "PWAShell" w UA bylo zawodne na realnym urzadzeniu
   // (patrz pelne uzasadnienie w login.html) - dodano niepodrabialny sygnal
   // (obecnosc mostka window.webkit.messageHandlers), niezalezny od UA.
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
-  var PRO_PRICE = isIosApp ? '39,99' : '29';
+  var PRO_PRICE = isIosApp ? '39,99' : '30';
 
   // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
   // app/services/stripe_service.py): identyczny mechanizm co

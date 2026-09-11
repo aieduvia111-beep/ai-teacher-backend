@@ -280,9 +280,14 @@ window._currentUser=()=>currentUser;
     <!-- NOWE (wrzesien 2026, App Store IAP): cena wstawiana przez JS
          (patrz applyPlatformPrice() nizej) - 39,99 zl w natywnej apce iOS
          (DOKLADNA cena produktu "com.eduvia.ios.pro.monthly" w App Store
-         Connect - StoreKit, Apple bierze prowizje), 29 zl wszedzie indziej
-         (Android/Web, Stripe). id="proAmt" zamiast twardej wartosci. -->
-    <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">29</span><span class="plan-cur">zł</span></div>
+         Connect - StoreKit, Apple bierze prowizje), 30 zl wszedzie indziej
+         (Android/Web, Stripe - NAPRAWIONE 11.09.2026: realna cena Stripe
+         Price byla 30 zl, tekst mowil 29 zl - user zauwazyl rozbieznosc
+         przy audycie UX checkout, ktora psula zaufanie tuz przed wpisaniem
+         karty; wyrownano tekst DO realnej ceny, nie odwrotnie, bo zmiana
+         Stripe Price zerwalaby istniejace subskrypcje). id="proAmt"
+         zamiast twardej wartosci. -->
+    <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">30</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
     <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;" id="badgeTrialDays">🎁 Pierwsze 7 dni za darmo</div>
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
@@ -315,7 +320,7 @@ window._currentUser=()=>currentUser;
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
     <div class="faq-q"><span id="faqTrialQuestion">Jak działa 7-dniowy okres próbny?</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-    <div class="faq-a" id="faqTrialAnswer">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 29 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
+    <div class="faq-a" id="faqTrialAnswer">Dostęp Pro aktywuje się natychmiast po podaniu karty — wystarczy wrócić do dashboardu i odświeżyć stronę. Kartę obciążymy dopiero po 7 dniach, 30 zł. Możesz anulować w każdej chwili przed końcem triala i nic nie zapłacisz.</div>
   </div>
   <div class="faq-item" onclick="toggleFaq(this)">
     <div class="faq-q">Czy moje dane są bezpieczne?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
@@ -360,7 +365,7 @@ const API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.
 // Ta sama detekcja co w login.html (isNativeIosApp) - custom UA suffix
 // "PWAShell" dodawany TYLKO przez natywny wrapper iOS (WebView.swift).
 const IOS_PRICE = '39,99';
-const ANDROID_WEB_PRICE = '29';
+const ANDROID_WEB_PRICE = '30';
 // NAPRAWIONE (wrzesien 2026, patrz identyczna naprawa i pelne uzasadnienie
 // w login.html): poleganie WYLACZNIE na "PWAShell" w user-agencie bylo
 // zawodne na realnym urzadzeniu (user zgłosił falszywy komunikat "zainstaluj
