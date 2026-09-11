@@ -186,7 +186,19 @@ class StripeService:
             event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
             print(f"Webhook otrzymany: {event['type']}")
 
+            # NOWE (wrzesien 2026, BLIK recurring) - import lokalny, zeby
+            # uniknac cyklu importow (blik_service.py importuje z TEGO
+            # pliku _update_firebase_plan/get_trial_days).
+            from .blik_service import BlikService
+
             if event['type'] == 'checkout.session.completed':
+                session = event['data']['object']
+                # mode="setup" (BLIK, patrz BlikService.create_setup_session)
+                # vs mode="subscription" (karta, istniejaca sciezka) - BLIK
+                # nie ma session['subscription'], wiec MUSI byc rozgraniczone
+                # PRZED wejsciem do _handle_checkout_completed.
+                if session.get('mode') == 'setup':
+                    return BlikService._handle_setup_completed(event, db)
                 return StripeService._handle_checkout_completed(event, db)
             elif event['type'] == 'customer.subscription.updated':
                 return StripeService._handle_subscription_updated(event, db)
@@ -194,6 +206,20 @@ class StripeService:
                 return StripeService._handle_subscription_deleted(event, db)
             elif event['type'] == 'invoice.payment_failed':
                 return StripeService._handle_payment_failed(event, db)
+            elif event['type'] == 'setup_intent.setup_failed':
+                return BlikService._handle_setup_failed(event, db)
+            elif event['type'] == 'payment_intent.succeeded':
+                # Filtr po metadata - inaczej zareagowalibysmy na KAZDY
+                # PaymentIntent, nie tylko te, ktore MY stworzylismy w
+                # charge_due_subscription (np. przyszle, niezwiazane uzycia
+                # Stripe w tej apce).
+                if event['data']['object'].get('metadata', {}).get('blik_charge') == 'true':
+                    return BlikService._handle_charge_succeeded(event, db)
+            elif event['type'] == 'payment_intent.payment_failed':
+                if event['data']['object'].get('metadata', {}).get('blik_charge') == 'true':
+                    return BlikService._handle_charge_failed(event, db)
+            elif event['type'] == 'mandate.updated':
+                return BlikService._handle_mandate_revoked(event, db)
 
             return {"success": True, "message": f"Event {event['type']} received"}
 

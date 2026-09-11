@@ -163,6 +163,22 @@ class Subscription(Base):
     apple_original_transaction_id = Column(String(255), unique=True, nullable=True)
     apple_product_id = Column(String(255), nullable=True)
 
+    # NOWE (wrzesien 2026, BLIK): BLIK recurring NIE MA obiektu Stripe
+    # Subscription (w odroznieniu od karty) - to my sami, raz dziennie,
+    # zlecamy kazde pojedyncze obciazenie (patrz app/services/blik_service.py).
+    # stripe_subscription_id zostaje wiec zawsze NULL dla provider="blik",
+    # a te 4 kolumny sa jedynym stanem, na ktorym opiera sie caly mechanizm.
+    blik_payment_method_id = Column(String(255), nullable=True)
+    # next_charge_at CELOWO oddzielone od current_period_end (to co widzi
+    # user w GET /subscription) - scheduler pisze/czyta next_charge_at,
+    # webhook pisze current_period_end/status - rozdzielenie unika wyscigu
+    # miedzy zapisem schedulera a odczytem API w trakcie przetwarzania.
+    next_charge_at = Column(DateTime(timezone=True), nullable=True)
+    blik_last_payment_intent_id = Column(String(255), nullable=True)
+    # Blokada przed podwojnym obciazeniem (nakladajace sie uruchomienia
+    # joba) - patrz charge_due_subscription w blik_service.py.
+    blik_charge_in_progress = Column(Boolean, default=False)
+
     # Status
     status = Column(String(50))  # active, canceled, past_due, etc.
     cancel_at_period_end = Column(Boolean, default=False)

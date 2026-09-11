@@ -126,5 +126,23 @@ def send_daily_reminder():
 
 _scheduler = BackgroundScheduler(timezone=pytz.timezone('Europe/Warsaw'))
 _scheduler.add_job(send_daily_reminder, CronTrigger(hour=18, minute=0), id='daily_push_reminder', replace_existing=True)
+
+# ═══ BLIK - codzienne pobieranie naleznych oplat (03:00, Europe/Warsaw) ═══
+# NOWE (wrzesien 2026, BLIK recurring - patrz app/services/blik_service.py):
+# BLIK nie ma obiektu Stripe Subscription, wiec MY jestesmy "robotem", ktory
+# raz dziennie recznie zleca kazde nalezne obciazenie. Rejestrowane na TYM
+# SAMYM, juz istniejacym _scheduler (nie druga instancja BackgroundScheduler -
+# unikamy dwoch konkurujacych watkow). Inna godzina niz push (18:00), zeby
+# logi billingowe nie mieszaly sie z marketingowymi. max_instances=1 - druga
+# warstwa ochrony przed nakladajacymi sie uruchomieniami (pierwsza to
+# blik_charge_in_progress w samej bazie).
+def _run_blik_charge_sweep():
+    from ..services.blik_service import charge_due_blik_subscriptions
+    charge_due_blik_subscriptions()
+
+
+_scheduler.add_job(_run_blik_charge_sweep, CronTrigger(hour=3, minute=0), id='blik_charge_sweep', replace_existing=True, max_instances=1)
+
 _scheduler.start()
 print("✅ Harmonogram powiadomien push uruchomiony - codziennie o 18:00")
+print("✅ Harmonogram pobierania platnosci BLIK uruchomiony - codziennie o 3:00")

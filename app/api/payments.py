@@ -10,6 +10,7 @@ from typing import Optional
 from ..database import get_db
 from ..services.stripe_service import StripeService
 from ..services.apple_iap_service import AppleIAPService
+from ..services.blik_service import BlikService
 from ..models import User, Subscription
 from ..services.stripe_service import _update_firebase_plan, get_promo_status
 from ..firebase_auth import get_verified_firebase_user
@@ -39,6 +40,10 @@ class CreateCheckoutRequest(BaseModel):
     user_id: str
     email: str
     affiliate_code: str = ""
+    # NOWE (wrzesien 2026, BLIK recurring): "card" (domyslnie, dotychczasowe
+    # zachowanie) albo "blik" - patrz BlikService.create_setup_session,
+    # kompletnie inny mechanizm (mode="setup", bez Stripe Subscription).
+    payment_method: str = "card"
 
 class CheckoutResponse(BaseModel):
     """Response z checkout URL"""
@@ -95,15 +100,23 @@ def create_checkout(
     try:
         verified_uid = firebase_user["uid"]
         verified_email = firebase_user.get("email") or request.email
-        print(f"💳 Request checkout dla user {verified_uid}")
+        print(f"💳 Request checkout dla user {verified_uid} (metoda: {request.payment_method})")
 
-        result = StripeService.create_checkout_session(
-            user_id=verified_uid,
-            email=verified_email,
-            db=db,
-            affiliate_code=request.affiliate_code
-        )
-        
+        if request.payment_method == "blik":
+            result = BlikService.create_setup_session(
+                user_id=verified_uid,
+                email=verified_email,
+                db=db,
+                affiliate_code=request.affiliate_code
+            )
+        else:
+            result = StripeService.create_checkout_session(
+                user_id=verified_uid,
+                email=verified_email,
+                db=db,
+                affiliate_code=request.affiliate_code
+            )
+
         return result
         
     except Exception as e:
@@ -183,6 +196,17 @@ def cancel_subscription(
                 "error": "apple_managed",
                 "message": "Ta subskrypcja zostala kupiona przez App Store i musi byc anulowana przez Ustawienia iOS (Apple ID -> Subskrypcje) albo przycisk 'Zarzadzaj subskrypcja' w aplikacji.",
             }
+
+        # NOWE (wrzesien 2026, BLIK recurring): BLIK nie ma obiektu Stripe
+        # Subscription, wiec StripeService.cancel_subscription (ktory wola
+        # stripe.Subscription.modify) tu nie zadziala - osobna sciezka.
+        blik_sub = db.query(Subscription).filter(
+            Subscription.user_id == firebase_user["uid"],
+            Subscription.provider == "blik",
+            Subscription.status.in_(["active", "trialing"]),
+        ).first()
+        if blik_sub:
+            return BlikService.mark_canceled(db, blik_sub)
 
         result = StripeService.cancel_subscription(
             user_id=firebase_user["uid"],

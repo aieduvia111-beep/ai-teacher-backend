@@ -440,6 +440,14 @@ async def startup():
                 "provider": "VARCHAR(20) NOT NULL DEFAULT 'stripe'",
                 "apple_original_transaction_id": "VARCHAR(255)",
                 "apple_product_id": "VARCHAR(255)",
+                # NOWE (wrzesien 2026, BLIK recurring) - patrz models.py
+                # Subscription i app/services/blik_service.py. Wszystkie
+                # nullable, wiec zwykle ADD COLUMN wystarcza (bez dodatkowej
+                # migracji NOT NULL jak przy "provider" wyzej).
+                "blik_payment_method_id": "VARCHAR(255)",
+                "next_charge_at": "TIMESTAMP WITH TIME ZONE" if "sqlite" not in settings.DATABASE_URL else "TIMESTAMP",
+                "blik_last_payment_intent_id": "VARCHAR(255)",
+                "blik_charge_in_progress": "BOOLEAN NOT NULL DEFAULT FALSE",
             }
             with engine.connect() as _conn3:
                 for _col3, _sqltype3 in _new_sub_cols.items():
