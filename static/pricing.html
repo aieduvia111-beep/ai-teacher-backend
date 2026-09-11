@@ -273,8 +273,17 @@ window._currentUser=()=>currentUser;
     </button>
     <div class="plan-divider"></div>
     <div class="plan-feature-label">Co dostajesz</div>
+    <!-- NAPRAWIONE (11.09.2026, audyt "dlaczego ludzie nie chca placic"):
+         lista Free NIE wspominala WCALE o Chat AI ani Vision AI (mimo ze
+         obie maja realny, egzekwowany serwerowo limit - patrz
+         app/usage_limits.py FREE_DAILY_LIMITS) - user widzial tu liste bez
+         limitu Chatu, a potem trafial na blokade w srodku apki bez
+         ostrzezenia (moment frustracji zamiast "aha, kupie Pro"). Fiszki
+         mialy tu BLEDNA liczbe (1 zamiast realnych 2/dzien z backendu). -->
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Chat AI — 5 wiadomości dziennie</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Quiz AI — 3 quizy dziennie</div>
-    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Fiszki AI — 1 zestaw dziennie</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Vision AI (zdjęcia) — 2 analizy dziennie</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Fiszki AI — 2 zestawy dziennie</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Notatki AI — 2 notatki dziennie</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Sprawdziany AI — 1 dziennie</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Voice AI — 5 minut dziennie</div>
@@ -311,6 +320,7 @@ window._currentUser=()=>currentUser;
     <div class="plan-divider"></div>
     <div class="plan-feature-label">Wszystko z Free, plus:</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> Chat AI — bez żadnych limitów</div>
+    <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> Vision AI — rozwiązuj zadania ze zdjęć bez limitu</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> quizów, notatek i fiszek AI</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> Voice AI — rozmowa głosem</div>
     <div class="feature yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><strong>Unlimited</strong> sprawdzianów A+B z kluczem</div>
