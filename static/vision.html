@@ -501,7 +501,7 @@ function showLimitPopup(feature, limit) {
   popup.innerHTML = `
     <div style="
       background:#0f0f18;border:1px solid rgba(124,106,255,0.3);border-radius:22px;
-      padding:32px 28px;max-width:380px;width:100%;text-align:center;
+      padding:32px 28px;max-width:380px;width:100%;max-height:calc(100vh - 40px);overflow-y:auto;box-sizing:border-box;text-align:center;
       box-shadow:0 0 60px rgba(124,106,255,0.15);position:relative;
       animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
     ">
@@ -513,7 +513,7 @@ function showLimitPopup(feature, limit) {
         Limit ${name} wyczerpany
       </div>
       <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
-        Wykorzystałeś ${limit} darmowych użyć dzisiaj.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
+        Wykorzystałeś ${limit} darmowych użyć dzisiaj. Odnawia się o północy.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
       </p>
       <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
         <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ${PRO_PRICE} zł/mies</div>

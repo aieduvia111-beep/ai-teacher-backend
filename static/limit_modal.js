@@ -88,9 +88,17 @@
       'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;' +
       'background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:20px;';
 
+    // NAPRAWIONE (12.09.2026, audyt "dlaczego ludzie nie chca placic"):
+    // popup NIGDY nie mowil userowi KIEDY limit sie odnowi - wygladalo
+    // to jak calkowita, bezterminowa sciana zamiast "wroc jutro", co
+    // pasuje do powtarzajacego sie w tym kodzie wzorca skarg o
+    // niejasnosci limitow (patrz "logowalem sie na rozne konta i limit
+    // byl ten sam" w 6 innych plikach). Dodano jawna informacje o
+    // resecie o polnocy - uczciwiej pokazuje, ze to NIE jest "nigdy
+    // wiecej", tylko "poczekaj albo zaplac za dostep od razu".
     var bodyText = feature === 'voice'
-      ? 'Wykorzystałeś dzisiejszy darmowy limit rozmów (5 minut).'
-      : 'Wykorzystałeś ' + limit + ' ' + freeUsesPhrase(limit) + ' dzisiaj.';
+      ? 'Wykorzystałeś dzisiejszy darmowy limit rozmów (5 minut). Odnawia się o północy.'
+      : 'Wykorzystałeś ' + limit + ' ' + freeUsesPhrase(limit) + ' dzisiaj. Odnawia się o północy.';
 
     popup.innerHTML =
       '<div style="' +
