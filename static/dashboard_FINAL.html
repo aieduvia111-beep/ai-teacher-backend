@@ -705,7 +705,14 @@ onAuthStateChanged(auth,async(user)=>{
     // (Nowy URLSearchParams tutaj celowo, zamiast zmiennej `urlParams`
     // zdefiniowanej NIZEJ w tym samym bloku - const ma temporal dead zone,
     // odwolanie sie do niej przed inicjalizacja rzucaloby ReferenceError.)
-    if(!(new URLSearchParams(window.location.search)).get('payment')){
+    // NAPRAWIONE (12.09.2026, audyt lejka konwersji): rowniez pomijane gdy
+    // ?onboarding=done (patrz onboarding.html) - user WLASNIE skonczyl
+    // ankiete, popup "Kup Pro" 1.2s pozniej ladowal sie PRZED jakimkolwiek
+    // doswiadczeniem wartosci (pierwszy quiz/czat/notatka). Odroczenie, nie
+    // trwale wylaczenie - shouldShow() w trial_promo_modal.js i tak pokaze
+    // popup normalnie przy nastepnej wizycie tego samego dnia.
+    const _pp = new URLSearchParams(window.location.search);
+    if(!_pp.get('payment') && !_pp.get('onboarding')){
       setTimeout(()=>{ if(window.EduviaTrialPromo) window.EduviaTrialPromo.maybeShow(plan); }, 1200);
     }
   }

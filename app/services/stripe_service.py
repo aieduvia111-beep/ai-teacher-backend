@@ -263,7 +263,16 @@ class StripeService:
         affiliate_code = session.get('metadata', {}).get('affiliate_code')
         if affiliate_code and _fdb:
             try:
-                amount = 26.10
+                # NAPRAWIONE (12.09.2026, audyt lejka konwersji): "26.10"
+                # bylo na sztywno wpisana kwota bez zadnego uzasadnienia w
+                # kodzie (nie zgadzala sie ani ze stara cena 29 zl, ani z
+                # obecna 30 zl) - identyczny blad jak rozbieznosc 29-vs-30
+                # zl naprawiona wczesniej na pricing.html, tylko przeoczona
+                # tutaj. Pobierana teraz z TEGO SAMEGO Stripe Price co
+                # realna cena checkout, zeby nie mogla juz nigdy sama
+                # wypasc z synchronizacji.
+                price = stripe.Price.retrieve(settings.STRIPE_PRICE_ID)
+                amount = price.unit_amount / 100
                 commission = round(amount * 0.30, 2)
                 aff_ref = _fdb.collection('affiliates').document(affiliate_code)
                 aff_doc = aff_ref.get()

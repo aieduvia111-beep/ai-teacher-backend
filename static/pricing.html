@@ -199,7 +199,15 @@ const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDo
 const auth=getAuth(app),db=getFirestore(app);
 let currentUser=null;
 onAuthStateChanged(auth,async(user)=>{
-  if(!user){window.location.href='login.html';return;}
+  // NAPRAWIONE (12.09.2026, audyt lejka konwersji): przekierowywalo
+  // KAZDEGO niezalogowanego prosto na login.html - ale login.html ma
+  // link "Zobacz plany" WLASNIE tutaj, wiec ktos kto chcial zobaczyc
+  // cennik PRZED zalozeniem konta odbijal sie od razu z powrotem -
+  // martwa petla. Cennik jest teraz publicznie widoczny (ceny/FAQ nie
+  // wymagaja logowania - patrz /api/v1/payments/trial-info, publiczny);
+  // logowanie wymagane jest dopiero w momencie klikniecia "Kup Pro"
+  // (patrz guard na poczatku startCheckout() nizej).
+  if(!user){currentUser=null;return;}
   currentUser=user;
   const snap=await getDoc(doc(db,'users',user.uid));
   if(snap.exists()&&snap.data().plan==='pro'){
@@ -577,6 +585,15 @@ window.onNativeIAPError=function(message){
 
 async function startCheckout() {
   trackEvent('click_upgrade', {payment_method: isNativeIosApp ? 'ios_iap' : selectedPaymentMethod});
+  // NOWE (12.09.2026, audyt lejka konwersji): cennik jest teraz widoczny
+  // BEZ logowania (patrz onAuthStateChanged wyzej) - wiec dopiero TU,
+  // przy faktycznej probie zakupu, trzeba sprawdzic czy user ma konto.
+  // Bez tego pusty idToken lecialby do backendu i konczyl sie mylacym
+  // "Blad platnosci" zamiast czytelnego przekierowania do logowania.
+  if(!window._currentUser()){
+    window.location.href = 'login.html';
+    return;
+  }
   // NOWE: na iOS - natywny StoreKit zamiast Stripe (Guideline 2.1(b)).
   // Most JS<->natywny identyczny wzorzec co signInWithApple (login.html) -
   // patrz IAPManager.swift (rejestruje "startIAPPurchase" w WebView.swift).
@@ -643,7 +660,12 @@ async function startCheckout() {
     }
   } catch (e) {
     btn.disabled = false;
-    btnText.textContent = 'Kup Pro';
+    // NAPRAWIONE (12.09.2026, audyt lejka konwersji): jedyne miejsce, ktore
+    // po bledzie wracalo do plaskiego "Kup Pro" zamiast trialButtonLabel()
+    // ("Wypróbuj X dni za darmo →") jak wszedzie indziej - niespojny,
+    // mniej przekonujacy tekst akurat w momencie, gdy checkout sie nie
+    // udal i trzeba zachecic do ponownej proby.
+    btnText.textContent = trialButtonLabel();
     loader.style.display = 'none';
     showToast('Blad polaczenia, sprobuj ponownie', 'error');
   }

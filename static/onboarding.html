@@ -586,7 +586,16 @@ async function finishOnboarding(skippedDate){
 
   await minDelay;
 
-  window.location.href = 'dashboard_FINAL.html';
+  // NAPRAWIONE (12.09.2026, audyt lejka konwersji): user konczyl WLASNIE
+  // dwa ekrany onboardingu, ladowal sie na dashboard, i 1.2s pozniej
+  // dostawal pelnoekranowy popup "Kup Pro" (patrz trial_promo_modal.js)
+  // - ZANIM sprobowal choc jednego quizu/czatu, czyli przed jakimkolwiek
+  // doswiadczeniem wartosci. Parametr ?onboarding=done pozwala
+  // dashboard_FINAL.html pominac TYLKO to jedno, pierwsze automatyczne
+  // wywolanie - shouldShow() w trial_promo_modal.js i tak pokaze popup
+  // normalnie przy kolejnej wizycie tego samego dnia (nie jest to trwale
+  // wylaczenie, tylko odroczenie o jedna sesje).
+  window.location.href = 'dashboard_FINAL.html?onboarding=done';
 }
 </script>
 

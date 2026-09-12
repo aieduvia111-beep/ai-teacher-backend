@@ -225,7 +225,13 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:26px 44px;display:flex
     <a href="#funkcje">Funkcje</a>
     <a href="#opinie">Opinie</a>
     <a href="#cennik">Cennik</a>
-    <a href="#" class="ncta">Zacznij za darmo</a>
+    <!-- NAPRAWIONE (12.09.2026, audyt lejka konwersji): href="#" byl
+         martwym linkiem (brak jakiegokolwiek JS bindujacego .ncta) -
+         najbardziej widoczny, najwyzej-intencyjny CTA na CALEJ stronie
+         (strona serwowana pod / - patrz GET / w main.py) nic nie robil.
+         login.html dziala dla KAZDEJ platformy (Google/Apple/e-mail,
+         wlasna logika iOS w srodku), wiec to bezpieczny, uniwersalny cel. -->
+    <a href="login.html" class="ncta">Zacznij za darmo</a>
   </div>
 </nav>
 
@@ -324,7 +330,8 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:26px 44px;display:flex
       <ul class="pcl">
         <li>Chat AI — 5 rozmow dziennie</li>
         <li>Quiz AI — 3 quizy dziennie</li>
-        <li>Fiszki AI — 1 zestaw dziennie</li>
+        <li>Vision AI (zdjecia) — 2 analizy dziennie</li>
+        <li>Fiszki AI — 2 zestawy dziennie</li>
         <li>Voice AI — 5 minut dziennie</li>
         <li>Notatki AI — 2 notatki dziennie</li>
         <li>Sprawdziany AI — 1 dziennie</li>
@@ -339,6 +346,7 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:26px 44px;display:flex
       <ul class="pcl">
         <li>Bez limitow dziennych</li>
         <li>Chat AI bez limitu</li>
+        <li>Vision AI bez limitu</li>
         <li>Voice AI bez limitu</li>
         <li>Quiz AI bez limitu</li>
         <li>PDF Export notatek i sprawdzianow</li>
