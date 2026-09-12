@@ -750,16 +750,21 @@ onAuthStateChanged(auth,async(user)=>{
       } catch(e) { console.warn('Plan update error:', e); }
     }, 3000);
   } else if(urlParams.get('blik_setup') === 'success') {
-    // NOWE (wrzesien 2026, BLIK recurring): analog bloku payment=success
-    // wyzej, ale BLIK to mode="setup" (nie "subscription") - Stripe
-    // Checkout Session.payment_status tu NIE bedzie "paid" (nie bylo
-    // zadnej platnosci, tylko zapisanie mandatu), wiec /verify-session
-    // (zrobione pod karte) nie nadaje sie do uzycia. Zamiast tego pytamy
+    // NAPRAWIONE (12.09.2026): odkad checkout jest WSPOLNY dla karty i
+    // BLIK-a (user wybiera metode na stronie Stripe, nie u nas - patrz
+    // BlikService.create_setup_session), ten sam parametr "blik_setup=
+    // success" wraca RÓWNIEŻ dla karty (nazwa parametru zostala,
+    // zeby nie psuc linkow, ale juz nie oznacza wylacznie BLIK-a).
+    // mode="setup" -> Stripe Checkout Session.payment_status tu NIE
+    // bedzie "paid" (przy karcie tez nie, bo prawdziwa subskrypcja
+    // powstaje DOPIERO w webhooku - patrz BlikService.
+    // _activate_card_subscription), wiec /verify-session (zrobione pod
+    // stara, bezposrednia sciezke karty) sie tu nie nadaje. Pytamy
     // wprost /subscription (generyczny, provider-agnostyczny endpoint) -
-    // is_premium zostalo juz ustawione przez webhook
-    // checkout.session.completed (BlikService._handle_setup_completed),
-    // tu tylko czekamy az on doleci i potwierdzamy.
-    const _checkBlikPremium = async (attemptsLeft) => {
+    // zwraca tez "provider" ("stripe" albo "blik"), zeby dobrac
+    // odpowiedni tekst. is_premium zostalo juz ustawione przez webhook
+    // checkout.session.completed, tu tylko czekamy az on doleci.
+    const _checkPremium = async (attemptsLeft) => {
       try {
         const token = await currentUser.getIdToken();
         const sres = await fetch(`${DASH_BASE}/api/v1/payments/subscription`, {
@@ -767,27 +772,30 @@ onAuthStateChanged(auth,async(user)=>{
         });
         const sdata = await sres.json();
         if(sdata.is_premium){
+          const provider = (sdata.subscription && sdata.subscription.provider) || 'stripe';
           // NOWE (11.09.2026, patrz app/api/analytics.py) - fire-and-forget.
           fetch(`${DASH_BASE}/api/v1/analytics/track`, {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({event:'payment_success', user_id: currentUser.uid, meta:{payment_method:'blik'}})
+            body: JSON.stringify({event:'payment_success', user_id: currentUser.uid, meta:{payment_method:provider}})
           }).catch(()=>{});
           localStorage.setItem('eduvia_plan','pro');
           document.querySelectorAll('.plan-badge-slot').forEach(el=>el.innerHTML=getPlanBadgeHTML('pro'));
           window.history.replaceState({}, '', 'dashboard_FINAL.html');
           const toast = document.createElement('div');
           toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7c6aff,#22d3a0);color:white;padding:14px 28px;border-radius:100px;font-weight:700;font-size:.9em;z-index:9999;box-shadow:0 8px 32px rgba(124,106,255,.4);text-align:center;';
-          toast.textContent = '🎉 Konto Pro aktywne! Pierwsza płatność BLIK zostanie pobrana automatycznie po zakończeniu okresu próbnego.';
+          toast.textContent = provider === 'blik'
+            ? '🎉 Konto Pro aktywne! Pierwsza płatność BLIK zostanie pobrana automatycznie po zakończeniu okresu próbnego.'
+            : '🎉 Witaj w Eduvia PRO!';
           document.body.appendChild(toast);
           setTimeout(()=>toast.remove(), 6000);
         } else if(attemptsLeft > 0){
-          setTimeout(()=>_checkBlikPremium(attemptsLeft - 1), 2000);
+          setTimeout(()=>_checkPremium(attemptsLeft - 1), 2000);
         } else {
-          console.warn('[BLIK] webhook jeszcze nie dotarl - odswiez strone za chwile');
+          console.warn('[Payment] webhook jeszcze nie dotarl - odswiez strone za chwile');
         }
-      } catch(e) { console.warn('BLIK plan check error:', e); }
+      } catch(e) { console.warn('Payment plan check error:', e); }
     };
-    setTimeout(()=>_checkBlikPremium(3), 2000);
+    setTimeout(()=>_checkPremium(3), 2000);
   }
 });
 // Backend eduvia (profil ucznia z ankiety onboardingowej) - localhost

@@ -65,17 +65,6 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .plan-cur{font-family:var(--h);font-size:1em;font-weight:700;color:var(--muted2);}
 .plan-period{font-size:0.78em;color:var(--muted);margin-bottom:24px;line-height:1.5;}
 
-/* NOWE (wrzesien 2026, BLIK recurring) - prosty wybor metody platnosci
-   nad glownym przyciskiem, TYLKO Android/Web (patrz JS applyPlatformPrice/
-   startCheckout - na iOS ten blok jest ukrywany, natywny StoreKit nie ma
-   wyboru metody). Domyslnie "Karta" wybrana - zero zmiany zachowania dla
-   kogos, kto nigdy nie kliknie BLIK. */
-.pm-picker{display:flex;gap:8px;margin-bottom:16px;}
-.pm-opt{flex:1;padding:10px 8px;border-radius:11px;border:1px solid var(--border-hi);background:transparent;color:var(--muted2);font-family:var(--h);font-size:0.76em;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
-.pm-opt:hover{border-color:rgba(124,106,255,0.35);color:var(--text);}
-.pm-opt.active{border-color:var(--accent2);background:rgba(124,106,255,0.12);color:var(--accent2);box-shadow:0 0 0 1px rgba(124,106,255,0.25) inset;}
-.pm-opt svg{width:15px;height:15px;flex-shrink:0;}
-
 .plan-btn{width:100%;padding:13px;border-radius:13px;border:none;font-family:var(--h);font-size:0.84em;font-weight:700;cursor:pointer;transition:all 0.25s;letter-spacing:0.04em;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px;}
 .plan-btn.outline{background:transparent;border:1px solid var(--border-hi);color:var(--muted2);}
 .plan-btn.outline:hover{border-color:rgba(124,106,255,0.3);color:var(--text);background:rgba(124,106,255,0.04);}
@@ -318,19 +307,10 @@ window._currentUser=()=>currentUser;
     <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">30</span><span class="plan-cur">zł</span></div>
     <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
     <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;" id="badgeTrialDays">🎁 Pierwsze 7 dni za darmo</div>
-    <!-- NAPRAWIONE (12.09.2026, user: "to hujowo wyglada, nie profesjonalnie,
-         bez emotek") - emoji zastapione SVG w tym samym stylu co reszta
-         strony (stroke-width 2, patrz .stripe-badge svg powyzej). -->
-    <div class="pm-picker" id="pmPicker" style="display:none;">
-      <button type="button" class="pm-opt active" id="pmCardBtn" onclick="selectPaymentMethod('card')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        Karta
-      </button>
-      <button type="button" class="pm-opt" id="pmBlikBtn" onclick="selectPaymentMethod('blik')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
-        BLIK
-      </button>
-    </div>
+    <!-- NAPRAWIONE (12.09.2026, user: "nie chcem miec wyboru pomiedzy
+         blikiem jak i karta [w apce], ma to byc w Stripe") - usunieto
+         wlasny przelacznik Karta/BLIK - Stripe sam pokazuje obie opcje
+         na swojej stronie (patrz BlikService.create_setup_session). -->
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
       <span id="btnText">Wypróbuj 7 dni za darmo →</span>
       <div class="btn-loader" id="btnLoader"></div>
@@ -424,19 +404,6 @@ const PRO_PRICE = isNativeIosApp ? IOS_PRICE : ANDROID_WEB_PRICE;
 // dostanie user po kliknieciu Subskrybuj.
 let TRIAL_DAYS = 7;
 
-// NOWE (wrzesien 2026, BLIK recurring): 'card' domyslnie - zero zmiany
-// zachowania dla kogos, kto nigdy nie dotknie przelacznika. Zmieniane
-// TYLKO przez selectPaymentMethod() ponizej (klik w pm-picker).
-let selectedPaymentMethod = 'card';
-
-function selectPaymentMethod(method){
-  selectedPaymentMethod = method;
-  const cardBtn = document.getElementById('pmCardBtn');
-  const blikBtn = document.getElementById('pmBlikBtn');
-  if(cardBtn) cardBtn.classList.toggle('active', method === 'card');
-  if(blikBtn) blikBtn.classList.toggle('active', method === 'blik');
-}
-
 function trialButtonLabel(){
   return 'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →';
 }
@@ -458,11 +425,6 @@ function applyPlatformPrice(){
   // (StoreKit ma wlasny, stale 7-dniowy trial niezalezny od tego kodu) -
   // elementy ponizej aktualizujemy TYLKO dla Android/Web.
   if(!isNativeIosApp){
-    // NOWE (BLIK recurring): przelacznik metody platnosci widoczny TYLKO
-    // Android/Web - natywny StoreKit (iOS) nie ma wyboru, zawsze idzie
-    // przez Apple.
-    const pmPickerEl = document.getElementById('pmPicker');
-    if(pmPickerEl) pmPickerEl.style.display = 'flex';
     const heroEl = document.getElementById('heroTrialDays');
     if(heroEl) heroEl.textContent = TRIAL_DAYS + ' dni gratis';
     const badgeEl = document.getElementById('badgeTrialDays');
@@ -594,7 +556,7 @@ window.onNativeIAPError=function(message){
 };
 
 async function startCheckout() {
-  trackEvent('click_upgrade', {payment_method: isNativeIosApp ? 'ios_iap' : selectedPaymentMethod});
+  trackEvent('click_upgrade', {payment_method: isNativeIosApp ? 'ios_iap' : 'stripe_unified'});
   // NOWE (12.09.2026, audyt lejka konwersji): cennik jest teraz widoczny
   // BEZ logowania (patrz onAuthStateChanged wyzej) - wiec dopiero TU,
   // przy faktycznej probie zakupu, trzeba sprawdzic czy user ma konto.
@@ -654,8 +616,7 @@ async function startCheckout() {
       body: JSON.stringify({
         user_id: window._currentUser() ? window._currentUser().uid : '',
         email: window._currentUser() ? window._currentUser().email : '',
-        affiliate_code: affCode || '',
-        payment_method: selectedPaymentMethod
+        affiliate_code: affCode || ''
       })
     });
     const checkoutData = await checkoutRes.json();

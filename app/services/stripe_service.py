@@ -56,6 +56,43 @@ from ..models import User, Subscription
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
+
+def _credit_affiliate_commission(affiliate_code: str, buyer_uid: str) -> None:
+    """Nalicza prowizje partnerska (30%) w Firestore - wydzielone
+    (12.09.2026) z _handle_checkout_completed, zeby ta sama, JEDNA
+    implementacja obslugiwala zarowno stara sciezke karty (mode=
+    "subscription") jak i nowa, wspolna sciezke karta+BLIK
+    (app/services/blik_service.py, _activate_card_subscription) - bez
+    tego wydzielenia druga kopia tej logiki mogłaby latwo wypasc z
+    synchronizacji, dokladnie jak stalo sie wczesniej z hardkodowana
+    kwota "26.10" tutaj. Kwota pobierana z REALNEJ ceny Stripe Price,
+    nigdy nie hardkodowana."""
+    if not _fdb:
+        return
+    try:
+        price = stripe.Price.retrieve(settings.STRIPE_PRICE_ID)
+        amount = price.unit_amount / 100
+        commission = round(amount * 0.30, 2)
+        aff_ref = _fdb.collection('affiliates').document(affiliate_code)
+        aff_doc = aff_ref.get()
+        if aff_doc.exists:
+            data = aff_doc.to_dict()
+            aff_ref.update({
+                "sales": data.get("sales", 0) + 1,
+                "earnings": round(data.get("earnings", 0) + commission, 2)
+            })
+            _fdb.collection('affiliate_sales').add({
+                "code": affiliate_code,
+                "amount": amount,
+                "commission": commission,
+                "buyer_uid": buyer_uid,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            print(f"Prowizja {commission} zl naliczona dla kodu {affiliate_code}")
+    except Exception as _e:
+        print(f"Blad naliczania prowizji: {_e}")
+
+
 # ══════════════════════════════════════════════════════════════════════
 # PROMOCJA OGRANICZONA CZASOWO (07.09.2026) - USUNAC LUB ZMIENIC DATE PO
 # JEJ ZAKONCZENIU. Komunikat: "Zapisz sie na Eduvia Pro do piatku - dostaniesz
@@ -261,37 +298,8 @@ class StripeService:
         db.commit()
 
         affiliate_code = session.get('metadata', {}).get('affiliate_code')
-        if affiliate_code and _fdb:
-            try:
-                # NAPRAWIONE (12.09.2026, audyt lejka konwersji): "26.10"
-                # bylo na sztywno wpisana kwota bez zadnego uzasadnienia w
-                # kodzie (nie zgadzala sie ani ze stara cena 29 zl, ani z
-                # obecna 30 zl) - identyczny blad jak rozbieznosc 29-vs-30
-                # zl naprawiona wczesniej na pricing.html, tylko przeoczona
-                # tutaj. Pobierana teraz z TEGO SAMEGO Stripe Price co
-                # realna cena checkout, zeby nie mogla juz nigdy sama
-                # wypasc z synchronizacji.
-                price = stripe.Price.retrieve(settings.STRIPE_PRICE_ID)
-                amount = price.unit_amount / 100
-                commission = round(amount * 0.30, 2)
-                aff_ref = _fdb.collection('affiliates').document(affiliate_code)
-                aff_doc = aff_ref.get()
-                if aff_doc.exists:
-                    data = aff_doc.to_dict()
-                    aff_ref.update({
-                        "sales": data.get("sales", 0) + 1,
-                        "earnings": round(data.get("earnings", 0) + commission, 2)
-                    })
-                    _fdb.collection('affiliate_sales').add({
-                        "code": affiliate_code,
-                        "amount": amount,
-                        "commission": commission,
-                        "buyer_uid": user_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
-                    print(f"Prowizja {commission} zl naliczona dla kodu {affiliate_code}")
-            except Exception as _e:
-                print(f"Blad naliczania prowizji: {_e}")
+        if affiliate_code:
+            _credit_affiliate_commission(affiliate_code, user_id)
 
         return {"success": True, "message": "Subscription created"}
 

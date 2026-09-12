@@ -94,15 +94,27 @@ class _FakeSetupIntent:
     metadata = {"trial_days": "7"}
 
 
+class _FakePaymentMethodBlik:
+    type = "blik"
+
+
 _orig_retrieve = blik_service.stripe.SetupIntent.retrieve
+_orig_pm_retrieve = blik_service.stripe.PaymentMethod.retrieve
 blik_service.stripe.SetupIntent.retrieve = staticmethod(lambda sid: _FakeSetupIntent())
+# NOWE (12.09.2026, checkout wspolny karta+BLIK): _handle_setup_completed
+# teraz NAJPIERW sprawdza PaymentMethod.type zeby rozgalezic na
+# _activate_card_subscription vs _activate_blik_trial - musi byc
+# zamockowane, inaczej realne wywolanie API rzuca "No such PaymentMethod".
+blik_service.stripe.PaymentMethod.retrieve = staticmethod(lambda pmid: _FakePaymentMethodBlik())
 
 fake_event = {"data": {"object": {
     "metadata": {"user_id": "user_B"},
     "setup_intent": "seti_fake_123",
+    "customer": "cus_fake_B",
 }}}
 result = blik_service.BlikService._handle_setup_completed(fake_event, db)
 blik_service.stripe.SetupIntent.retrieve = _orig_retrieve
+blik_service.stripe.PaymentMethod.retrieve = _orig_pm_retrieve
 
 check("_handle_setup_completed zwraca success", result.get("success") is True, result)
 db.refresh(user_b)
@@ -114,6 +126,66 @@ check("Wiersz Subscription utworzony z provider='blik'", blik_row is not None an
 check("status='trialing'", blik_row.status == "trialing", blik_row.status)
 check("blik_payment_method_id zapisane z SetupIntent.payment_method", blik_row.blik_payment_method_id == "pm_BBB", blik_row.blik_payment_method_id)
 check("next_charge_at ustawione ~7 dni w przyszlosc", naive(blik_row.next_charge_at) > NOW_NAIVE + timedelta(days=6), blik_row.next_charge_at)
+db.close()
+
+
+print()
+print("=" * 70)
+print("2b. _handle_setup_completed - user wybral KARTE na wspolnej stronie Stripe")
+print("=" * 70)
+db = TestSession()
+user_card = User(firebase_uid="user_card", email="card@example.com", is_premium=False)
+db.add(user_card)
+db.commit()
+
+
+class _FakePaymentMethodCard:
+    type = "card"
+
+
+class _FakeSubscription:
+    id = "sub_fake_1"
+    status = "trialing"
+    current_period_start = int(NOW_NAIVE.timestamp())
+    current_period_end = int((NOW_NAIVE + timedelta(days=7)).timestamp())
+
+
+_sub_create_calls = []
+
+
+def _fake_subscription_create(**kwargs):
+    _sub_create_calls.append(kwargs)
+    return _FakeSubscription()
+
+
+blik_service.stripe.SetupIntent.retrieve = staticmethod(lambda sid: _FakeSetupIntent())
+blik_service.stripe.PaymentMethod.retrieve = staticmethod(lambda pmid: _FakePaymentMethodCard())
+_orig_sub_create = blik_service.stripe.Subscription.create
+blik_service.stripe.Subscription.create = staticmethod(_fake_subscription_create)
+
+fake_event_card = {"data": {"object": {
+    "metadata": {"user_id": "user_card"},
+    "setup_intent": "seti_fake_card",
+    "customer": "cus_fake_card",
+}}}
+result_card = blik_service.BlikService._handle_setup_completed(fake_event_card, db)
+
+blik_service.stripe.SetupIntent.retrieve = _orig_retrieve
+blik_service.stripe.PaymentMethod.retrieve = _orig_pm_retrieve
+blik_service.stripe.Subscription.create = _orig_sub_create
+
+check("_handle_setup_completed (karta) zwraca success", result_card.get("success") is True, result_card)
+check("Routing poprawny: PaymentMethod.type='card' -> stripe.Subscription.create wywolane dokladnie raz", len(_sub_create_calls) == 1, len(_sub_create_calls))
+check("Subscription.create dostal default_payment_method z SetupIntent.payment_method", _sub_create_calls[0].get("default_payment_method") == "pm_BBB", _sub_create_calls)
+check("Subscription.create dostal trial_period_days z metadata SetupIntentu", _sub_create_calls[0].get("trial_period_days") == 7, _sub_create_calls)
+
+db.refresh(user_card)
+check("user.is_premium=True (karta, przez wspolny setup)", user_card.is_premium is True, user_card.is_premium)
+
+card_row = db.query(Subscription).filter(Subscription.user_id == "user_card").first()
+check("Wiersz Subscription ma provider='stripe' (NIE 'blik') - jedzie normalnym mechanizmem karty", card_row is not None and card_row.provider == "stripe", card_row)
+check("stripe_subscription_id zapisane z prawdziwej (zamockowanej) Subscription", card_row.stripe_subscription_id == "sub_fake_1", card_row.stripe_subscription_id if card_row else None)
+check("status skopiowany z Subscription.status ('trialing')", card_row.status == "trialing", card_row.status if card_row else None)
 db.close()
 
 

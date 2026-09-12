@@ -40,10 +40,6 @@ class CreateCheckoutRequest(BaseModel):
     user_id: str
     email: str
     affiliate_code: str = ""
-    # NOWE (wrzesien 2026, BLIK recurring): "card" (domyslnie, dotychczasowe
-    # zachowanie) albo "blik" - patrz BlikService.create_setup_session,
-    # kompletnie inny mechanizm (mode="setup", bez Stripe Subscription).
-    payment_method: str = "card"
 
 class CheckoutResponse(BaseModel):
     """Response z checkout URL"""
@@ -100,22 +96,25 @@ def create_checkout(
     try:
         verified_uid = firebase_user["uid"]
         verified_email = firebase_user.get("email") or request.email
-        print(f"💳 Request checkout dla user {verified_uid} (metoda: {request.payment_method})")
+        print(f"💳 Request checkout dla user {verified_uid}")
 
-        if request.payment_method == "blik":
-            result = BlikService.create_setup_session(
-                user_id=verified_uid,
-                email=verified_email,
-                db=db,
-                affiliate_code=request.affiliate_code
-            )
-        else:
-            result = StripeService.create_checkout_session(
-                user_id=verified_uid,
-                email=verified_email,
-                db=db,
-                affiliate_code=request.affiliate_code
-            )
+        # NAPRAWIONE (12.09.2026, user: "nie chcem miec wyboru pomiedzy
+        # blikiem jak i karta [w apce], ma to byc w Stripe") - juz nie
+        # rozgalezia sie tutaj po request.payment_method (pole zostaje w
+        # modelu dla wstecznej zgodnosci, ale jest ignorowane) - ZAWSZE
+        # jeden, wspolny checkout (BlikService.create_setup_session,
+        # mode="setup", payment_method_types=["card","blik"]), Stripe sam
+        # pokazuje obie opcje na jednej stronie. StripeService.
+        # create_checkout_session (stary, karta-only mode="subscription")
+        # zostaje w kodzie nietkniety - obsluguje TYLKO juz istniejace
+        # subskrypcje zalozone przed ta zmiana, nie jest juz wolany dla
+        # nowych checkoutow.
+        result = BlikService.create_setup_session(
+            user_id=verified_uid,
+            email=verified_email,
+            db=db,
+            affiliate_code=request.affiliate_code
+        )
 
         return result
         

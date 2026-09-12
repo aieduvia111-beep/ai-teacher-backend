@@ -14,19 +14,43 @@ recznie zlecamy PaymentIntent. Pelny plan (w tym "jak dokladnie
 pobierane sa pieniadze") - patrz plan zapisany podczas implementacji tej
 funkcji, sekcja 0.
 
-DWIE SCIEZKI (mirror architektury Apple IAP - patrz apple_iap_service.py):
-1. create_setup_session() - Checkout Session w mode="setup" (NIE
-   "subscription"!) - user zatwierdza mandat BLIK w banku, BEZ zadnej
-   platnosci w tym momencie. Wywolane z POST /api/v1/payments/create-checkout
-   (payment_method="blik").
-2. Webhooki (_handle_setup_completed/_handle_charge_succeeded/
-   _handle_charge_failed/_handle_mandate_revoked) - zrodlo prawdy dla
-   stanu w czasie, wpiete w StripeService.handle_webhook (jeden wspolny
-   endpoint webhooka dla karty i BLIK-a).
+NAPRAWIONE (12.09.2026, user: "nie chcem mieć wyboru pomiedzy blikiem
+jak i karta [w apce], ma to byc w Stripe" - nie chcial osobnego
+przelacznika Karta/BLIK na pricing.html, tylko JEDNEJ strony Stripe,
+gdzie user wybiera metode): create_setup_session() tworzy teraz
+mode="setup" z payment_method_types=["card","blik"] - Stripe sam
+pokazuje obie opcje na jednej stronie. Rozgalezienie nastepuje DOPIERO
+w webhooku (_handle_setup_completed), na podstawie tego, JAKĄ metode
+user faktycznie wybral:
+- karta -> _activate_card_subscription(): tworzymy PRAWDZIWA Stripe
+  Subscription (default_payment_method=zapisana karta,
+  trial_period_days=...) - od tego momentu ta subskrypcja jest
+  NIECZYM NIE RÓZNI SIE od starej sciezki (provider="stripe") i jest
+  zarzadzana przez ISTNIEJACE juz webhooki
+  (_handle_subscription_updated/_handle_subscription_deleted/
+  _handle_payment_failed w stripe_service.py) - Stripe nadal sam
+  prowadzi caly cykl zycia (odnowienia, retry).
+- BLIK -> _activate_blik_trial(): jak opisano nizej, MY jestesmy
+  "robotem" recznie zlecajacym kazde obciazenie.
+
+(Stara StripeService.create_checkout_session, mode="subscription",
+zostaje w kodzie nietkniety, ale NIE jest juz wolany dla nowych
+checkoutow - patrz app/api/payments.py - zeby nie zerwac obslugi
+JUZ ISTNIEJACYCH subskrypcji zalozonych ta sciezka przed ta zmiana.)
+
+KLUCZOWA ROZNICA BLIK vs karta: BLIK recurring NIE MA odpowiednika
+Stripe Subscription. Karta -> Stripe sam prowadzi caly cykl zycia
+(trial, pierwsze obciazenie, odnowienia, retry). BLIK -> MY jestesmy
+tym "robotem": raz dziennie (patrz scheduler w app/api/notifications.py,
+job 'blik_charge_sweep') sprawdzamy komu nalezy sie dzis obciazenie i
+recznie zlecamy PaymentIntent. Pelny plan (w tym "jak dokladnie
+pobierane sa pieniadze") - patrz plan zapisany podczas implementacji tej
+funkcji, sekcja 0.
 
 charge_due_subscription() - wywolywane WYLACZNIE przez codzienny
 scheduler, NIGDY synchronicznie z requestu HTTP usera - to jest to
-miejsce, gdzie faktycznie "pobieramy pieniadze"."""
+miejsce, gdzie faktycznie "pobieramy pieniadze" (dla BLIK - karta idzie
+przez normalny mechanizm Stripe Subscription, patrz wyzej)."""
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
@@ -35,7 +59,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import User, Subscription
-from .stripe_service import _update_firebase_plan, get_trial_days
+from .stripe_service import _update_firebase_plan, get_trial_days, _fdb, _credit_affiliate_commission
 
 # Ile dni odnawia sie okres BLIK po udanym obciazeniu - identyczne z
 # miesiecznym cyklem karty (Stripe Price ma interval="month", tutaj
@@ -86,11 +110,13 @@ class BlikService:
 
     @staticmethod
     def create_setup_session(user_id: str, email: str, db: Session, affiliate_code: str = "") -> Dict:
-        """Analog StripeService.create_checkout_session, ale mode="setup"
-        - zero platnosci w tym kroku, tylko zapisanie mandatu BLIK do
-        pozniejszego, recznego obciazania (patrz charge_due_subscription)."""
+        """Jedyny checkout dla Android/Web (patrz komentarz na gorze pliku,
+        12.09.2026) - mode="setup", payment_method_types=["card","blik"],
+        Stripe pokazuje OBIE opcje na jednej swojej stronie. Zero platnosci
+        w tym kroku - dopiero webhook (_handle_setup_completed) rozstrzyga
+        co dalej, w zaleznosci od wybranej metody."""
         try:
-            print(f"Tworze BLIK setup session dla user {user_id} ({email})")
+            print(f"Tworze setup session (karta+BLIK) dla user {user_id} ({email})")
 
             user = db.query(User).filter(User.firebase_uid == user_id).first()
             if not user:
@@ -114,37 +140,79 @@ class BlikService:
             # ktory moglby juz wypasc po deadline promocji.
             trial_days = get_trial_days()
 
+            # Walidacja kodu afiliacyjnego (przeniesione z
+            # StripeService.create_checkout_session - to jest teraz JEDYNE
+            # miejsce tworzace checkout dla Android/Web). Rabat (coupon)
+            # NIE MOZE byc zastosowany tu (mode="setup" nie ma linii
+            # produktu do rabatowania) - zamiast tego zapisujemy sam,
+            # zwalidowany kod w metadata, a rabat aplikuje sie dopiero
+            # przy stripe.Subscription.create() w _activate_card_subscription
+            # (dla BLIK-a rabat na razie NIE jest wspierany, tak jak
+            # prowizja - patrz komentarz w _handle_setup_completed).
+            metadata = {"user_id": user_id}
+            if affiliate_code:
+                code_clean = affiliate_code.upper().strip()
+                if _fdb:
+                    try:
+                        aff_doc = _fdb.collection('affiliates').document(code_clean).get()
+                        if aff_doc.exists and aff_doc.to_dict().get('active'):
+                            metadata["affiliate_code"] = code_clean
+                            print(f"Kod polecajacy {code_clean} zwalidowany")
+                        else:
+                            print(f"Kod polecajacy {code_clean} nieprawidlowy lub nieaktywny")
+                    except Exception as _e:
+                        print(f"Blad walidacji kodu polecajacego: {_e}")
+
+            # UWAGA (12.09.2026, zweryfikowane bezposrednio przez API, nie
+            # zgadywane): "blik" w payment_method_types TU rzuca twardy
+            # blad Stripe ("payment method blik cannot be used in setup
+            # mode" / "type blik is invalid... ensure account is enabled
+            # for this feature") - to samo dzieje sie w surowym SetupIntent
+            # (Direct API), nie tylko w Checkout. Wlaczenie "BLIK" w Stripe
+            # Dashboard -> Payment methods wlacza je TYLKO dla platnosci
+            # JEDNORAZOWYCH - "BLIK recurring" (cykliczne, off-session) to
+            # OSOBNA, bardziej ograniczona funkcja Stripe, ktorej to konto
+            # jeszcze NIE MA aktywowanej (prawdopodobnie trzeba o to
+            # poprosic Stripe Support, nie da sie tego wlaczyc samemu w
+            # Dashboardzie). Dopoki to nie zostanie przyznane, "blik" NIE
+            # MOZE byc na tej liscie - dodanie go z powrotem wywali caly
+            # checkout (rowniez dla karty, bo caly Session.create rzuca
+            # wyjatek). Cala logika ponizej (_activate_blik_trial,
+            # scheduler, webhooki) jest gotowa i czeka - wystarczy dopisac
+            # "blik" tutaj, gdy Stripe przyzna dostep.
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
-                payment_method_types=["blik"],
+                payment_method_types=["card"],
                 mode="setup",
                 setup_intent_data={
                     "metadata": {"user_id": user_id, "trial_days": str(trial_days)},
                 },
-                # Osobne success/cancel URL od karty ("blik_setup=..." nie
-                # "payment=...") - frontend MUSI odroznic "mandat zapisany"
-                # od "subskrypcja karty wystartowala", bo tu nie ma
-                # session['subscription'] i nie ma jeszcze zadnej platnosci.
+                # Wspolne success/cancel URL dla obu metod - webhook i tak
+                # rozstrzyga po typie zapisanej metody platnosci, wiec
+                # frontend (dashboard_FINAL.html) nie musi juz wiedziec
+                # ktora metoda zostala wybrana.
                 success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?blik_setup=success&session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{settings.FRONTEND_URL}/pricing.html?blik_setup=cancelled",
-                metadata={"user_id": user_id, "affiliate_code": affiliate_code} if affiliate_code else {"user_id": user_id},
+                metadata=metadata,
             )
 
             return {"success": True, "checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
         except stripe.error.StripeError as e:
-            print(f"Blad Stripe (BLIK setup): {e}")
+            print(f"Blad Stripe (setup session): {e}")
             return {"success": False, "error": str(e)}
         except Exception as e:
-            print(f"Blad (BLIK setup): {e}")
+            print(f"Blad (setup session): {e}")
             return {"success": False, "error": str(e)}
 
     @staticmethod
     def _handle_setup_completed(event: Dict, db: Session) -> Dict:
-        """checkout.session.completed z mode="setup" - mandat BLIK
-        zapisany. Nadajemy Pro NATYCHMIAST (jak przy karcie) - zgodnie z
-        istniejaca obietnica "trial = pelny dostep od razu"; pierwsze
-        realne obciazenie nastapi cicho w dniu konca triala (scheduler)."""
+        """checkout.session.completed z mode="setup" - metoda platnosci
+        zapisana (karta LUB BLIK, user wybral na stronie Stripe - patrz
+        create_setup_session). Rozgalezienie na podstawie
+        PaymentMethod.type: karta dostaje PRAWDZIWA Stripe Subscription
+        (Stripe dalej sam prowadzi cykl zycia), BLIK dostaje nasz wlasny,
+        recznie zarzadzany mechanizm (patrz komentarz na gorze pliku)."""
         session = event['data']['object']
         user_id = session['metadata']['user_id']
         setup_intent_id = session['setup_intent']
@@ -152,22 +220,80 @@ class BlikService:
         setup_intent = stripe.SetupIntent.retrieve(setup_intent_id)
         payment_method_id = setup_intent.payment_method
         trial_days = int(setup_intent.metadata.get("trial_days", get_trial_days()))
+        affiliate_code = session.get('metadata', {}).get('affiliate_code')
 
         user = db.query(User).filter(User.firebase_uid == user_id).first()
         if not user:
-            print(f"BLIK setup: nie znaleziono usera {user_id}")
+            print(f"Setup: nie znaleziono usera {user_id}")
             return {"success": False, "error": "Nie znaleziono uzytkownika"}
 
+        payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+        if payment_method.type == "card":
+            return BlikService._activate_card_subscription(
+                user, session['customer'], payment_method_id, trial_days, affiliate_code, db
+            )
+        return BlikService._activate_blik_trial(user, payment_method_id, trial_days, affiliate_code, db)
+
+    @staticmethod
+    def _activate_card_subscription(user: User, customer_id: str, payment_method_id: str, trial_days: int, affiliate_code: Optional[str], db: Session) -> Dict:
+        """User wybral KARTE na wspolnej stronie Stripe (setup mode).
+        Tworzymy tutaj PRAWDZIWA stripe.Subscription (czego mode="setup"
+        samo z siebie nie robi) - od tego momentu ta subskrypcja jest
+        NIEODROZNIALNA od starej sciezki (provider="stripe") i przejmuja
+        ja ISTNIEJACE juz webhooki w stripe_service.py
+        (_handle_subscription_updated/_handle_subscription_deleted/
+        _handle_payment_failed) - Stripe nadal sam pilnuje odnowien/retry."""
+        subscription = stripe.Subscription.create(
+            customer=customer_id,
+            items=[{"price": settings.STRIPE_PRICE_ID}],
+            default_payment_method=payment_method_id,
+            trial_period_days=trial_days,
+            metadata={"user_id": user.firebase_uid},
+            # Rabat afiliacyjny - identyczny coupon co stara sciezka
+            # (StripeService.create_checkout_session), tylko aplikowany
+            # tutaj zamiast na Checkout Session (setup mode go nie wspiera).
+            discounts=[{"coupon": "AFFILIATE10"}] if affiliate_code else None,
+        )
+
+        user.is_premium = True
+        user.premium_until = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+        db.commit()
+        _update_firebase_plan(user.firebase_uid, True)
+
+        db.add(Subscription(
+            user_id=user.firebase_uid,
+            provider="stripe",
+            stripe_subscription_id=subscription.id,
+            stripe_customer_id=customer_id,
+            stripe_price_id=settings.STRIPE_PRICE_ID,
+            status=subscription.status,
+            current_period_start=datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc),
+            current_period_end=datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc),
+        ))
+        db.commit()
+        print(f"User {user.firebase_uid} ustawiony jako PREMIUM (karta, przez wspolny setup) do {user.premium_until}")
+
+        if affiliate_code:
+            _credit_affiliate_commission(affiliate_code, user.firebase_uid)
+
+        return {"success": True, "message": "Card subscription created via unified setup"}
+
+    @staticmethod
+    def _activate_blik_trial(user: User, payment_method_id: str, trial_days: int, affiliate_code: Optional[str], db: Session) -> Dict:
+        """User wybral BLIK na wspolnej stronie Stripe. Nadajemy Pro
+        NATYCHMIAST (jak przy karcie) - zgodnie z istniejaca obietnica
+        "trial = pelny dostep od razu"; pierwsze realne obciazenie
+        nastapi cicho w dniu konca triala (scheduler)."""
         now = datetime.now(timezone.utc)
         next_charge = now + timedelta(days=trial_days)
 
         user.is_premium = True
         user.premium_until = next_charge
         db.commit()
-        _update_firebase_plan(user_id, True)
+        _update_firebase_plan(user.firebase_uid, True)
 
         _upsert_blik_subscription_row(
-            db, user_id,
+            db, user.firebase_uid,
             blik_payment_method_id=payment_method_id,
             status="trialing",
             current_period_start=now,
@@ -175,15 +301,19 @@ class BlikService:
             next_charge_at=next_charge,
             blik_charge_in_progress=False,
         )
-        print(f"User {user_id} ustawiony jako PREMIUM (BLIK trial) do {next_charge}")
+        print(f"User {user.firebase_uid} ustawiony jako PREMIUM (BLIK trial) do {next_charge}")
 
-        affiliate_code = session.get('metadata', {}).get('affiliate_code')
         if affiliate_code:
-            # Ta sama logika prowizji co karta - patrz
-            # StripeService._handle_checkout_completed. Wydzielenie do
-            # wspolnej funkcji to osobna, niezalezna poprawka - tutaj
-            # celowo pominiete, zeby nie poszerzac zakresu tej zmiany.
-            print(f"BLIK: kod polecajacy {affiliate_code} obecny, prowizja NIE naliczona (v1 - patrz TODO w kodzie)")
+            # NAPRAWIONE: rabat afiliacyjny (AFFILIATE10) dziala tylko dla
+            # karty (stripe.Subscription.create powyzej wspiera "discounts"
+            # wprost) - dla BLIK-a nie ma dziś odpowiednika (recznie
+            # tworzone PaymentIntent nie ma pojecia "coupon"), a prowizja
+            # dla partnera i tak liczy sie dopiero przy PIERWSZEJ udanej
+            # platnosci (patrz _credit_affiliate_commission), nie przy
+            # starcie triala - dla BLIK-a to nastapiloby w
+            # _handle_charge_succeeded, ale to jest swiadomie odlozone do
+            # v2 (afiliacja + BLIK to rzadka kombinacja, nie priorytet).
+            print(f"BLIK: kod polecajacy {affiliate_code} obecny, rabat i prowizja NIE obslugiwane dla tej metody (v1)")
 
         return {"success": True, "message": "BLIK mandate saved, trial started"}
 
