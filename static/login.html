@@ -305,7 +305,10 @@ button:active{transform:scale(.95)!important;}
           </div>
           <div class="forgot"><a href="#" onclick="doReset();return false;">Zapomniałem hasła</a></div>
           <button class="submit" onclick="doLogin()">Zaloguj się</button>
-          <div class="legal">Logując się akceptujesz regulamin Eduvia.</div>
+          <!-- NAPRAWIONE (12.09.2026, audyt zaufania rodzica): "regulamin"
+               byl samym tekstem, bez linku - nie dalo sie go stad w ogole
+               przeczytac. -->
+          <div class="legal">Logując się akceptujesz <a href="terms.html" style="color:inherit;text-decoration:underline;">regulamin</a> Eduvia.</div>
         </div>
         <!-- REGISTER -->
         <div id="pR" style="display:none">
@@ -332,7 +335,7 @@ button:active{transform:scale(.95)!important;}
             <input type="password" id="rP" placeholder="Hasło (min. 6 znaków)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReg()"><button type="button" onclick="togglePass('rP',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <button class="submit" onclick="doReg()">Utwórz konto</button>
-          <div class="legal">Rejestrując się akceptujesz regulamin Eduvia. Bez karty kredytowej.</div>
+          <div class="legal">Rejestrując się akceptujesz <a href="terms.html" style="color:inherit;text-decoration:underline;">regulamin</a> Eduvia. Bez karty kredytowej.</div>
         </div>
       </div>
     </div>
