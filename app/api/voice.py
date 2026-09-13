@@ -38,6 +38,26 @@ if ELEVEN_KEY and len(ELEVEN_KEY) > 20:
         print(f"[TTS] ElevenLabs error: {ee}")
 else:
     print("[TTS] Brak klucza ElevenLabs - OpenAI TTS")
+
+# NAPRAWIONE (13.09.2026, user zglosil: "te glosy sa takie same, dlaczego" -
+# wybieral rozne "nauczycieli" (patrz VOICE_LIST w settings.html), ale
+# podglad/rozmowa brzmialy identycznie): kazdy fallback do OpenAI TTS mial
+# na sztywno wpisane voice="nova", NIEZALEZNIE od tego, ktorego nauczyciela
+# user wybral - jesli ElevenLabs nie dziala (brak/zly klucz na produkcji,
+# limit, blad sieci), WSZYSCY nauczyciele zlewali sie w jeden, ten sam
+# glos OpenAI. Mapowanie 1:1 na rozne glosy OpenAI (alloy/echo/fable/onyx/
+# nova/shimmer - jedyne dostepne w tts-1), zeby fallback tez brzmial
+# rozlacznie dla kazdego wyboru, zamiast maskowac problem cisza identycznosci.
+VOICE_ID_TO_OPENAI_FALLBACK = {
+    "Xb7hH8MSUJpSbSDYk0k2": "nova",    # Alice
+    "EXAVITQu4vr4xnSDxMaL": "shimmer",  # Sarah
+    "IKne3meq5aSn9XLyUdCD": "onyx",     # Charlie
+    "JBFqnCBsd6RMkjVDRZzb": "echo",     # George
+    "TX3LPaxmHKxFdv7VOQHJ": "fable",    # Liam
+    "SAz9YHcvj6GT2YYXdXww": "alloy",    # River
+}
+def _openai_fallback_voice(voice_id: str) -> str:
+    return VOICE_ID_TO_OPENAI_FALLBACK.get(voice_id, "nova")
 try:
     from groq import Groq
     groq_client = Groq(api_key=settings.GROQ_API_KEY)
@@ -225,7 +245,7 @@ async def get_ai_response(data: dict, current_user: User = Depends(get_current_u
                     import traceback
                     print(f"[TTS] ElevenLabs failed: {e}")
                     print(traceback.format_exc())
-            speech=openai_client.audio.speech.create(model="tts-1",voice="nova",input=clean_text,speed=1.1)
+            speech=openai_client.audio.speech.create(model="tts-1",voice=_openai_fallback_voice(data.get("voice_id","Xb7hH8MSUJpSbSDYk0k2")),input=clean_text,speed=1.1)
             return speech.content
         speech = await loop.run_in_executor(executor, call_tts)
         audio_bytes = speech
@@ -265,7 +285,7 @@ async def voice_preview(data: dict):
                 return base64.b64encode(result).decode()
             except Exception as e:
                 print(f"[PREVIEW] ElevenLabs failed: {e}")
-        speech = openai_client.audio.speech.create(model="tts-1", voice="nova", input=text[:200], speed=1.0)
+        speech = openai_client.audio.speech.create(model="tts-1", voice=_openai_fallback_voice(voice_id), input=text[:200], speed=1.0)
         return base64.b64encode(speech.content).decode()
     audio_b64 = await loop.run_in_executor(_ex, make)
     return {"audio": audio_b64}
@@ -398,7 +418,7 @@ async def respond_stream(data: dict, current_user: User = Depends(get_current_ap
                         return result
                     except Exception as e:
                         print(f"[TTS] ElevenLabs stream failed: {e}")
-                return openai_client.audio.speech.create(model="tts-1",voice="nova",input=sx[:500],speed=spd).content
+                return openai_client.audio.speech.create(model="tts-1",voice=_openai_fallback_voice(selected_voice),input=sx[:500],speed=spd).content
             aud = await loop.run_in_executor(ex,tts_t)
             print(f"[TTS] OK {idx2}: {s2[:25]}")
             return base64.b64encode(aud).decode()
