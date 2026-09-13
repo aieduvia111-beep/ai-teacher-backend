@@ -1044,7 +1044,15 @@ function initAvatar(){
   const l2=new THREE.PointLight(0x00ffcc,3.5,12);l2.position.set(3,1,2);scene.add(l2);
   const l3=new THREE.PointLight(0x6600ff,2.5,10);l3.position.set(0,4,1);scene.add(l3);
   const l4=new THREE.PointLight(0x00ddff,2,8);l4.position.set(0,-1,4);scene.add(l4);
-  const headGeo=new THREE.SphereGeometry(1,256,256);
+  // NAPRAWIONE (13.09.2026, audyt "Voice AI wywala z aplikacji"): 256x256
+  // segmentow to ok. 65 tys. wierzcholkow na JEDNA sfere (dla porownania:
+  // gladka sfera "hero quality" w grach zwykle uzywa 32-48 segmentow) -
+  // razem z reszta sceny (wiele swiatel, czastki, materialy PBR z
+  // clearcoat) to niepotrzebnie ciezkie dla mobilnego GPU/pamieci,
+  // zwlaszcza rownolegle z zywym przechwytywaniem mikrofonu. 64x64 daje
+  // ~16x mniej wierzcholkow, wizualnie nadal gladkie przy tej odleglosci
+  // kamery i deformacji szumem ponizej.
+  const headGeo=new THREE.SphereGeometry(1,64,64);
   const pos=headGeo.attributes.position;
   for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);const n=Math.sin(x*2.5)*0.04+Math.cos(y*3.8)*0.03+Math.sin(z*1.8)*0.025+Math.sin(x*y*2)*0.015;pos.setXYZ(i,x*(1+n)*0.98,y*1.22+n*0.4,z*0.80);}
   headGeo.computeVertexNormals();
@@ -1340,8 +1348,19 @@ async function startSession(){
   if(btn){ btn.disabled=true; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg> Laczenie...'; }
 
   g('voSes').classList.add('on');
+  // NAPRAWIONE (13.09.2026, audyt "Voice AI wywala z aplikacji" na
+  // prawdziwym iPhonie): initAvatar() bylo wolane DWA RAZY pod rzad (raz
+  // od razu, raz po 100ms) - tworzylo to DWA pelne konteksty WebGL/sceny
+  // Three.js na tym samym canvasie w krotkim odstepie, bez zwolnienia
+  // pierwszego (brak .dispose() gdziekolwiek w tym pliku). Mobilne
+  // WKWebView ma TWARDY limit rownoczesnych kontekstow WebGL (przekroczenie
+  // powoduje utrate najstarszego kontekstu albo, w polaczeniu z zywym
+  // przechwytywaniem mikrofonu tuz obok, moze zabic caly proces tresci
+  // WKWebView = "wywala z aplikacji"). Zostaje TYLKO opozniony wariant -
+  // container potrzebuje chwili, zeby dostac ostateczne wymiary po
+  // classList.add('on') (stad opoznienie bylo tam od poczatku), a
+  // natychmiastowe wywolanie bylo zbedna, ryzykowna duplikacja.
   setTimeout(initAvatar, 100);
-  initAvatar();
   setAvatarState('idle');
 
   try{
