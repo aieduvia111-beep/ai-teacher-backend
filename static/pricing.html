@@ -188,7 +188,23 @@ import{getFirestore,doc,getDoc,updateDoc}from"https://www.gstatic.com/firebasejs
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
 let currentUser=null;
+let _authReadyResolve;
+window._authReady = new Promise(r => { _authReadyResolve = r; });
+// NAPRAWIONE (wrzesien 2026, "brak tokenow autoryzacji"/401 zgloszone przez
+// userow na wielu funkcjach naraz): window._currentUser() bylo null jeszcze
+// PRZEZ CHWILE po zaladowaniu strony, dopoki Firebase asynchronicznie nie
+// przywroci sesji (onAuthStateChanged) - klikniecie "Kup Pro" od razu po
+// otwarciu strony moglo dostac PUSTY token (fallback '' w kodzie nizej) i
+// 401 z backendu, mimo ze user byl faktycznie zalogowany. _getAuthToken()
+// czeka na pierwszy odczyt stanu logowania (max 4s), zanim zwroci pusty token.
+window._getAuthToken = async function() {
+  try { await Promise.race([window._authReady, new Promise(r => setTimeout(r, 4000))]); } catch(e) {}
+  const u = window._currentUser ? window._currentUser() : null;
+  if (!u) return '';
+  try { return await u.getIdToken(); } catch(e) { return ''; }
+};
 onAuthStateChanged(auth,async(user)=>{
+  _authReadyResolve();
   // NAPRAWIONE (12.09.2026, audyt lejka konwersji): przekierowywalo
   // KAZDEGO niezalogowanego prosto na login.html - ale login.html ma
   // link "Zobacz plany" WLASNIE tutaj, wiec ktos kto chcial zobaczyc
@@ -532,7 +548,7 @@ window.onNativeIAPSuccess=async function(transactionId){
   const btnText = document.getElementById('btnText');
   const loader = document.getElementById('btnLoader');
   try{
-    const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+    const idToken = await window._getAuthToken();
     const res = await fetch(`${API_BASE}/api/v1/payments/verify-ios-purchase`, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},
@@ -617,7 +633,7 @@ async function startCheckout() {
   loader.style.display = 'block';
 
   try {
-    const idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+    const idToken = await window._getAuthToken();
     const checkoutRes = await fetch(`${API_BASE}/api/v1/payments/create-checkout`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken},

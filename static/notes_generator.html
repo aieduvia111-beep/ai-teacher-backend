@@ -386,6 +386,21 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 window._currentUser = () => currentUser;
+let _authReadyResolve;
+window._authReady = new Promise(r => { _authReadyResolve = r; });
+// NAPRAWIONE (wrzesien 2026, "brak tokenow autoryzacji"/401 zgloszone przez
+// userow na wielu funkcjach naraz): window._currentUser() bylo null jeszcze
+// PRZEZ CHWILE po zaladowaniu strony, dopoki Firebase asynchronicznie nie
+// przywroci sesji (onAuthStateChanged) - user klikajacy "Generuj" od razu po
+// otwarciu strony dostawal PUSTY token (fallback '' w kodzie nizej) i 401 z
+// backendu, mimo ze byl faktycznie zalogowany. _getAuthToken() czeka na
+// pierwszy odczyt stanu logowania (max 4s), zanim zwroci pusty token.
+window._getAuthToken = async function() {
+  try { await Promise.race([window._authReady, new Promise(r => setTimeout(r, 4000))]); } catch(e) {}
+  const u = window._currentUser ? window._currentUser() : null;
+  if (!u) return '';
+  try { return await u.getIdToken(); } catch(e) { return ''; }
+};
 // WebView (natywna apka Android) nie obsluguje pobierania z blob: URL - most JS<->natywny
 // zapisuje plik przez FileProvider zamiast link.click() na blob URL.
 window.downloadViaNative = (window.AndroidNative && window.AndroidNative.downloadBlob) ? function(blob, filename, mimeType){
@@ -397,6 +412,7 @@ window.downloadViaNative = (window.AndroidNative && window.AndroidNative.downloa
   reader.readAsDataURL(blob);
 } : null;
 onAuthStateChanged(auth, async (user) => {
+  _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
@@ -945,7 +961,7 @@ async function generate(){
   const notesController = new AbortController();
   const notesTimeoutId = setTimeout(()=>notesController.abort(), 120000);
   try{
-    const _idToken=window._currentUser()?await window._currentUser().getIdToken():'';
+    const _idToken=await window._getAuthToken();
     // NAPRAWIONE (user: "ale ja testuje lokalnie" - identyczny bug jak w
     // chat.html): URL byl zaszyty na stale na produkcje, bez wykrywania
     // localhost/LAN.

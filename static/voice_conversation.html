@@ -459,7 +459,23 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let currentUser = null;
 window._currentUser = () => currentUser;
+let _authReadyResolve;
+window._authReady = new Promise(r => { _authReadyResolve = r; });
+// NAPRAWIONE (wrzesien 2026, "brak tokenow autoryzacji"/401 zgloszone przez
+// userow na wielu funkcjach naraz): window._currentUser() bylo null jeszcze
+// PRZEZ CHWILE po zaladowaniu strony, dopoki Firebase asynchronicznie nie
+// przywroci sesji (onAuthStateChanged) - rozpoczecie rozmowy od razu po
+// otwarciu strony moglo dostac PUSTY token (fallback '' w kodzie nizej) i
+// 401 z backendu, mimo ze user byl faktycznie zalogowany. _getAuthToken()
+// czeka na pierwszy odczyt stanu logowania (max 4s), zanim zwroci pusty token.
+window._getAuthToken = async function() {
+  try { await Promise.race([window._authReady, new Promise(r => setTimeout(r, 4000))]); } catch(e) {}
+  const u = window._currentUser ? window._currentUser() : null;
+  if (!u) return '';
+  try { return await u.getIdToken(); } catch(e) { return ''; }
+};
 onAuthStateChanged(auth, async (user) => {
+  _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
@@ -1389,7 +1405,7 @@ async function startSession(){
     boardWrite('Temat: '+_topic+'. Przytrzymaj mikrofon i mow.');
     // AI sam zaczyna gdy jest temat
     setTimeout(async()=>{
-      const _idToken0=window._currentUser()?await window._currentUser().getIdToken():'';
+      const _idToken0=await window._getAuthToken();
       const cr = await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
         method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken0},
         body:JSON.stringify({text:'Przywitaj ucznia i zacznij lekcje na temat: '+_topic, history:[], level:selLevel, subject:selSubject, topic:_topic, voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})
@@ -1505,7 +1521,7 @@ async function process(){
       r.readAsDataURL(blob);
     });
 
-    const _idToken1=window._currentUser()?await window._currentUser().getIdToken():'';
+    const _idToken1=await window._getAuthToken();
     const sr = await fetch(BACKEND_URL+'/api/v1/voice/transcribe', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken1},
       body: JSON.stringify({audio: audioB64})
@@ -1666,7 +1682,7 @@ function openCamera(){
         boardClear();
         boardClear(); boardWriteSection('⏳ Analizuję zdjęcie...', null);
         try{
-          const _idToken2=window._currentUser()?await window._currentUser().getIdToken():'';
+          const _idToken2=await window._getAuthToken();
           const r=await fetch(BACKEND_URL+'/api/v1/voice/respond/stream',{
             method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken2},
             body:JSON.stringify({text:'Spojrz na zdjecie. Krotko (1-2 zdania) powiedz co widzisz (np. sprawdzian z biologii, 5 pytan o grzyby) i zapytaj uczennia z ktorym konkretnie pytaniem lub zagadnieniem potrzebuje pomocy. Zapamietaj DOKLADNIE tresc wszystkich pytan zebys mogl do nich wracac. Napisz TABLICE z trescia wszystkich zadan/pytan z zdjecia (min 3 punkty). [TABLICA: punkt1 | punkt2 | punkt3]',image:b64,history:hist.slice(-8),voice_id:localStorage.getItem('eduvia_voice_id')||'Xb7hH8MSUJpSbSDYk0k2'})

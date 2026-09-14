@@ -592,7 +592,23 @@ window.dispatchEvent(new Event('fbReady'));
 // Auth
 let currentUser = null;
 window._currentUser = () => currentUser;
+let _authReadyResolve;
+window._authReady = new Promise(r => { _authReadyResolve = r; });
+// NAPRAWIONE (wrzesien 2026, "brak tokenow autoryzacji"/401 zgloszone przez
+// userow na wielu funkcjach naraz): window._currentUser() bylo null jeszcze
+// PRZEZ CHWILE po zaladowaniu strony, dopoki Firebase asynchronicznie nie
+// przywroci sesji (onAuthStateChanged) - user klikajacy "Wyslij"/"Generuj"
+// od razu po otwarciu strony dostawal PUSTY token (fallback '' w kodzie
+// nizej) i 401 z backendu, mimo ze byl faktycznie zalogowany. _getAuthToken()
+// czeka na pierwszy odczyt stanu logowania (max 4s), zanim zwroci pusty token.
+window._getAuthToken = async function() {
+  try { await Promise.race([window._authReady, new Promise(r => setTimeout(r, 4000))]); } catch(e) {}
+  const u = window._currentUser ? window._currentUser() : null;
+  if (!u) return '';
+  try { return await u.getIdToken(); } catch(e) { return ''; }
+};
 onAuthStateChanged(auth, async(user) => {
+  _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
@@ -1131,7 +1147,7 @@ async function callAIhttp(text, hist, imgs=[]) {
     payload.document_name = docAtt.file.name;
   }
 
-  const _idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+  const _idToken = await window._getAuthToken();
   const res = await fetch(BACKEND_URL + '/api/v1/chat/message', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _idToken },
@@ -1380,7 +1396,7 @@ function startFcGen(cardId, topicEnc, level){
   // identyczna naprawa jak w flashcards.html); (2) NIGDY nie wysylalo
   // tokenu Authorization, mimo ze oba endpointy tego wymagaja - kazde
   // wywolanie konczylo sie 401.
-  (window._currentUser() ? window._currentUser().getIdToken() : Promise.resolve('')).then(_idToken =>
+  window._getAuthToken().then(_idToken =>
     fetch(BACKEND_URL+'/api/v1/flashcards/generate',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+_idToken},
@@ -2258,7 +2274,7 @@ async function toggleIosDictation() {
     if (blob.size < 2500) return;
     try {
       const audioB64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
-      const _idToken = window._currentUser() ? await window._currentUser().getIdToken() : '';
+      const _idToken = await window._getAuthToken();
       const sr = await fetch(BACKEND_URL + '/api/v1/voice/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _idToken }, body: JSON.stringify({ audio: audioB64 }) });
       const srData = await sr.json();
       const txt = (srData.text || '').trim();

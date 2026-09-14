@@ -428,8 +428,24 @@ const db = getFirestore(app);
 
 let currentUser = null;
 window._currentUser = () => currentUser;
+let _authReadyResolve;
+window._authReady = new Promise(r => { _authReadyResolve = r; });
+// NAPRAWIONE (wrzesien 2026, "brak tokenow autoryzacji"/401 zgloszone przez
+// userow na wielu funkcjach naraz): window._currentUser() bylo null jeszcze
+// PRZEZ CHWILE po zaladowaniu strony, dopoki Firebase asynchronicznie nie
+// przywroci sesji (onAuthStateChanged) - user klikajacy "Generuj" od razu po
+// otwarciu strony dostawal PUSTY token (fallback '' w kodzie nizej) i 401 z
+// backendu, mimo ze byl faktycznie zalogowany. _getAuthToken() czeka na
+// pierwszy odczyt stanu logowania (max 4s), zanim zwroci pusty token.
+window._getAuthToken = async function() {
+  try { await Promise.race([window._authReady, new Promise(r => setTimeout(r, 4000))]); } catch(e) {}
+  const u = window._currentUser ? window._currentUser() : null;
+  if (!u) return '';
+  try { return await u.getIdToken(); } catch(e) { return ''; }
+};
 
 onAuthStateChanged(auth, async (user) => {
+  _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
@@ -1081,7 +1097,7 @@ async function startQuiz(){
   if(photos.length>0){
     showPage('pageLoading');
     window._lastTopic=topic||'Quiz ze zdjęcia';window._lastLevel=VALS.level||'liceum_2';window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
-    (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+    window._getAuthToken().then(function(_t){
     return _quizStartAndPoll(_t,'/api/v1/quiz/generate/start','/api/v1/quiz/generate/status/',{image:photos[0],images:photos,topic:topic||null,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr});
     })
     .then(function(d){
@@ -1121,7 +1137,7 @@ async function startQuiz(){
   if(window._pdfB64 && !topic){
     err.textContent='';err.style.display='none';
     showPage('pageLoading');
-    (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+    window._getAuthToken().then(function(_t){
     return fetch(BASE+'/api/v1/pdf/quiz',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({pdf_base64:window._pdfB64})});
     })
     .then(r=>r.json()).then(d=>{
@@ -1138,7 +1154,7 @@ async function startQuiz(){
   window._lastLevel=VALS.level||'liceum_2';
   window._lastSubject=document.getElementById('subject')?document.getElementById('subject').value:'matematyka';
   showPage('pageLoading');
-  (window._currentUser()?window._currentUser().getIdToken():Promise.resolve('')).then(function(_t){
+  window._getAuthToken().then(function(_t){
   return _quizStartAndPoll(_t,'/api/v1/quiz/generate-topic/start','/api/v1/quiz/generate-topic/status/',{topic:topic,subject:document.getElementById('subject').value,level:VALS.level,num_questions:num,difficulty:VALS.diff,wlasne_instrukcje:wlasneInstr});
   })
   .then(function(d){
