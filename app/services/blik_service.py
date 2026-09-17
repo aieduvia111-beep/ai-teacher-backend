@@ -163,26 +163,22 @@ class BlikService:
                     except Exception as _e:
                         print(f"Blad walidacji kodu polecajacego: {_e}")
 
-            # UWAGA (12.09.2026, zweryfikowane bezposrednio przez API, nie
-            # zgadywane): "blik" w payment_method_types TU rzuca twardy
-            # blad Stripe ("payment method blik cannot be used in setup
-            # mode" / "type blik is invalid... ensure account is enabled
-            # for this feature") - to samo dzieje sie w surowym SetupIntent
-            # (Direct API), nie tylko w Checkout. Wlaczenie "BLIK" w Stripe
-            # Dashboard -> Payment methods wlacza je TYLKO dla platnosci
-            # JEDNORAZOWYCH - "BLIK recurring" (cykliczne, off-session) to
-            # OSOBNA, bardziej ograniczona funkcja Stripe, ktorej to konto
-            # jeszcze NIE MA aktywowanej (prawdopodobnie trzeba o to
-            # poprosic Stripe Support, nie da sie tego wlaczyc samemu w
-            # Dashboardzie). Dopoki to nie zostanie przyznane, "blik" NIE
-            # MOZE byc na tej liscie - dodanie go z powrotem wywali caly
-            # checkout (rowniez dla karty, bo caly Session.create rzuca
-            # wyjatek). Cala logika ponizej (_activate_blik_trial,
-            # scheduler, webhooki) jest gotowa i czeka - wystarczy dopisac
-            # "blik" tutaj, gdy Stripe przyzna dostep.
+            # NAPRAWIONE (17.09.2026): "blik" bylo celowo usuniete z tej
+            # listy (patrz historia w git blame) - Stripe wczesniej rzucal
+            # twardy blad ("payment method blik cannot be used in setup
+            # mode" / "ensure account is enabled for this feature"), bo
+            # "BLIK recurring" (cykliczne, off-session) to OSOBNA,
+            # ograniczona funkcja Stripe wymagajaca recznego przyznania
+            # przez Stripe Support. User dostal maila od Stripe Support
+            # ("BLIK recurring payments are now available for your
+            # account") i wlaczyl przelacznik w Dashboard -> Payment
+            # methods -> BLIK -> Recurring payments - odblokowuje to
+            # dokladnie ten checkout. Cala logika ponizej
+            # (_activate_blik_trial, scheduler, webhooki) byla juz gotowa
+            # i czekala tylko na to dopisanie.
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
-                payment_method_types=["card"],
+                payment_method_types=["card", "blik"],
                 mode="setup",
                 setup_intent_data={
                     "metadata": {"user_id": user_id, "trial_days": str(trial_days)},
