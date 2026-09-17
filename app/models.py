@@ -113,6 +113,13 @@ class User(Base):
     suggested_topic = Column(String(255), nullable=True)
     suggested_topic_date = Column(String(10), nullable=True)
 
+    # Link "Poproś rodzica o Pro" (patrz app/api/parent_share.py) - token
+    # losowy (secrets.token_urlsafe), wygasajacy po 48h. Jeden aktywny
+    # token na uzytkownika - nowe wywolanie /create nadpisuje poprzedni
+    # (stary link przestaje dzialac, co jest pozadane jesli link wyciekl).
+    parent_share_token = Column(String(64), unique=True, nullable=True, index=True)
+    parent_share_token_expires = Column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

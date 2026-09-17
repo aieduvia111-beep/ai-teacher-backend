@@ -76,6 +76,52 @@
     document.body.style.overflow = '';
   }
 
+  // NOWE (wrzesien 2026, user: "musza poczuc wartosc ze Pro jest o wiele
+  // lepsze zeby podali karte") - popup pokazywal SUCHA liste funkcji Pro,
+  // identyczna dla kazdego, niezaleznie co user realnie dzis osiagnal.
+  // Ponizej: prawdziwe (nie zmyslone) dane z localStorage - XP i seria dni
+  // sa NAPRAWDE zapisywane (patrz dashboard_FINAL.html), a liczba dzisiaj
+  // wykorzystanych uzyc danej funkcji to dokladnie parametr "limit" (skoro
+  // popup pokazuje sie WLASNIE dlatego, ze user dobil do tego limitu).
+  //
+  // Stylistycznie: NIE nowy "AI-dashboard" wyglad (pigulki/ikony/glow) -
+  // user to odrzucil ("wyglada jakby AI zrobil"). Uzyty ponizej box to
+  // DOKLADNIE ten sam wzorzec co juz istnieje w tym kodzie (patrz
+  // .stat-box/.stat-val/.stat-lbl w quiz_app.html, ekran wynikow quizu) -
+  // plaski box #161622, cienki border, duza liczba (Syne 800), maly szary
+  // podpis pod spodem. Zero ikon/gradientow/swiecenia - to nie jest
+  // spojne z reszta apki.
+  function statBoxHtml(value, label, color) {
+    return '<div style="flex:1;background:#161622;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 8px;text-align:center;">' +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:1.3em;font-weight:800;color:' + color + ';">' + value + '</div>' +
+      '<div style="font-size:.66em;color:#8888a0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em;">' + label + '</div>' +
+      '</div>';
+  }
+
+  function valueRecapHtml() {
+    var xp = parseInt(localStorage.getItem('eduvia_xp') || '0', 10) || 0;
+    var streak = parseInt(localStorage.getItem('eduvia_streak') || '0', 10) || 0;
+    var boxes = '';
+    if (streak > 1) boxes += statBoxHtml(streak, 'dni serii', '#f5a623');
+    if (xp > 0) boxes += statBoxHtml(xp, 'XP zdobyte', '#f5a623');
+    var boxesHtml = boxes ? '<div style="display:flex;gap:8px;margin-bottom:14px;">' + boxes + '</div>' : '';
+
+    // Reszta ("wykorzystales X dzisiaj") jest juz w bodyText ponizej - tu
+    // tylko dokonczenie mysli, zeby nie powtarzac tej samej liczby dwa razy.
+    // NAPRAWIONE: user "komunikat malo namawia" - plaskie "bez limitu,
+    // zawsze" nie odwolywalo sie do niczego konkretnego. Gdy user ma serie
+    // dni, awersja do jej utraty jest silniejszym argumentem niz sama
+    // lista funkcji - odwoluje sie WPROST do liczby pokazanej wyzej.
+    var line = streak > 1
+      ? 'Nie przerywaj <strong style="color:#a78bfa">' + streak + '-dniowej serii</strong> — z Pro uczysz się bez limitu, kiedy chcesz.'
+      : 'Z <strong style="color:#a78bfa">Pro</strong> — bez limitu, kiedy tylko chcesz się uczyć.';
+    var contrastHtml =
+      '<p style="color:#8888a0;font-size:.82em;line-height:1.6;margin-bottom:16px;">' +
+      line +
+      '</p>';
+    return boxesHtml + contrastHtml;
+  }
+
   function showLimitPopup(feature, limit) {
     var old = document.getElementById('limitPopup');
     if (old) old.remove();
@@ -96,9 +142,18 @@
     // byl ten sam" w 6 innych plikach). Dodano jawna informacje o
     // resecie o polnocy - uczciwiej pokazuje, ze to NIE jest "nigdy
     // wiecej", tylko "poczekaj albo zaplac za dostep od razu".
-    var bodyText = feature === 'voice'
+    //
+    // NOWE (user: "ten komunikat jak sie skonczy limit tez ma malo
+    // namawiac") - sam fakt "wykorzystales limit" to zawsze zla wiadomosc
+    // podana na plasko. Jesli user ma realna serie dni (wiec limit trafil
+    // kogos kto NAPRAWDE uzywa apki, nie kogos kto raz kliknal), zdanie
+    // zaczyna sie od uznania tego, zanim poda fakt o limicie - kolejnosc
+    // "pochwala -> fakt" zamiast "fakt -> pochwala nizej w boxach".
+    var _streakForPraise = parseInt(localStorage.getItem('eduvia_streak') || '0', 10) || 0;
+    var praise = _streakForPraise > 1 ? 'Świetna robota — jesteś na fali! ' : '';
+    var bodyText = praise + (feature === 'voice'
       ? 'Wykorzystałeś dzisiejszy darmowy limit rozmów (5 minut). Odnawia się o północy.'
-      : 'Wykorzystałeś ' + limit + ' ' + freeUsesPhrase(limit) + ' dzisiaj. Odnawia się o północy.';
+      : 'Wykorzystałeś ' + limit + ' ' + freeUsesPhrase(limit) + ' dzisiaj. Odnawia się o północy.');
 
     popup.innerHTML =
       '<div style="' +
@@ -114,9 +169,10 @@
       '<div style="font-family:\'Syne\',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">' +
       'Limit ' + name + ' wyczerpany' +
       '</div>' +
-      '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">' +
-      bodyText + '<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!' +
+      '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:16px;">' +
+      bodyText +
       '</p>' +
+      valueRecapHtml() +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:left;">' +
       '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies</div>' +
       '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
@@ -139,6 +195,19 @@
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
       'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →' +
+      '</button>' +
+      // NOWE (wrzesien 2026, user: "musza namowic rodzica, zeby podal
+      // karte") - dziecko czesto nie ma wlasnej karty platniczej. Przycisk
+      // generuje bezpieczny, wygasajacy (48h) link do publicznej strony
+      // rodzic.html (bez logowania) z prawdziwymi statystykami dziecka i
+      // przyciskiem zakupu Pro - patrz app/api/parent_share.py.
+      '<button id="askParentBtn" style="' +
+      'display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:11px;' +
+      'background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.35);border-radius:12px;' +
+      'color:#a78bfa;font-family:\'Syne\',sans-serif;font-size:.82em;font-weight:700;cursor:pointer;margin-bottom:10px;transition:all .2s;' +
+      '">' +
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>' +
+      'Poproś rodzica o Pro' +
       '</button>' +
       '<button onclick="window.EduviaLimitModal.close()" style="' +
       'width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);' +
@@ -169,6 +238,51 @@
     document.body.style.overflow = 'hidden';
     popup.addEventListener('click', function (e) {
       if (e.target === popup) closeLimitPopup();
+    });
+
+    var askBtn = document.getElementById('askParentBtn');
+    if (askBtn) askBtn.addEventListener('click', function () { askParent(askBtn, name); });
+  }
+
+  // NOWE: generuje link (POST /api/v1/parent-share/create, autoryzowany
+  // tokenem dziecka), potem probuje natywny system share (WhatsApp/SMS/
+  // Messenger - dziecko samo wybiera odbiorce, apka NIGDZIE nie zapisuje
+  // numeru/maila rodzica). Bez navigator.share (desktop/stare przegladarki)
+  // - link trafia do schowka, zeby dziecko mogl wkleic go recznie.
+  function askParent(btn, featureName) {
+    if (typeof window._getAuthToken !== 'function') {
+      btn.textContent = 'Zaloguj się ponownie, aby wysłać';
+      return;
+    }
+    var originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Tworzę link…';
+
+    window._getAuthToken().then(function (token) {
+      if (!token) throw new Error('brak sesji');
+      return fetch(BASE + '/api/v1/parent-share/create', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error('blad serwera');
+      return r.json();
+    }).then(function (data) {
+      if (!data.success || !data.url) throw new Error('brak linku');
+      var text = 'Cześć! Uczę się w Eduvia AI i właśnie wykorzystałem dzisiejszy darmowy limit ' + featureName + '. Włączysz mi Pro? ' + data.url;
+      if (navigator.share) {
+        navigator.share({ title: 'Eduvia AI', text: text }).catch(function () {});
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      } else {
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = 'Nie udało się — spróbuj ponownie';
+      setTimeout(function () { btn.innerHTML = originalHtml; }, 2500);
     });
   }
 

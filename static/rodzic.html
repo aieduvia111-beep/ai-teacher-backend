@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Eduvia AI — Dziennik nauki</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d;--s1:#0f0f18;--s2:#161622;
+  --border:rgba(255,255,255,.07);
+  --accent:#7c6aff;--accent2:#a78bfa;
+  --green:#22d3a0;--gold:#f5a623;--red:#f87171;
+  --text:#eeeef5;--muted:#8888a0;--muted2:#55556a;
+  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;}
+body{background:var(--s2);color:var(--text);font-family:var(--b);margin:0;min-height:100vh;padding-block:24px;}
+.wrap{max-width:420px;margin:0 auto;padding-inline:16px;}
+.card{background:var(--bg);border-radius:20px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+
+.dz-head{padding:22px 22px 16px;border-bottom:1px solid var(--border);}
+.dz-logo{font-family:var(--h);font-size:.8em;font-weight:800;letter-spacing:.04em;color:var(--text);display:flex;align-items:center;gap:7px;margin-bottom:2px;}
+.dz-logo .dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);}
+.dz-logo-sub{font-family:var(--b);font-size:.62em;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;}
+.dz-row{display:flex;justify-content:space-between;font-family:var(--b);font-size:.76em;padding:6px 0;border-top:1px dashed var(--border);}
+.dz-row:first-of-type{border-top:none;}
+.dz-row span:first-child{color:var(--muted2);}
+.dz-row span:last-child{color:var(--text);font-weight:500;}
+
+.dz-week{padding:18px 22px 6px;}
+.dz-week-label{font-family:var(--b);font-size:.64em;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.dz-days{display:flex;justify-content:space-between;gap:4px;}
+.dz-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.dz-day .dlabel{font-family:var(--b);font-size:.62em;color:var(--muted2);}
+.dz-day .dmark{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--s1);border:1px solid var(--border);}
+.dz-day.on .dmark{background:rgba(34,211,160,.14);border-color:rgba(34,211,160,.4);}
+.dz-caption{font-family:var(--b);text-align:left;font-size:.72em;color:var(--muted);padding:12px 22px 0;}
+.dz-caption b{color:var(--green);}
+
+.dz-note{margin:18px 22px 0;background:var(--s1);border-left:3px solid var(--accent2);border-radius:0 10px 10px 0;padding:13px 15px;}
+.dz-note-label{font-family:var(--b);font-size:.62em;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.dz-note-text{font-family:var(--b);font-size:.82em;color:var(--text);line-height:1.65;font-style:italic;}
+.dz-note-sign{font-family:var(--b);font-size:.68em;color:var(--muted2);margin-top:8px;text-align:right;}
+
+.dz-consent{margin:22px 22px 0;background:var(--s1);border:1.5px dashed rgba(124,106,255,.4);border-radius:14px;padding:18px;position:relative;}
+.dz-consent-tag{position:absolute;top:-9px;left:16px;background:var(--bg);padding:0 8px;font-family:var(--b);font-size:.62em;color:var(--accent2);letter-spacing:.06em;text-transform:uppercase;}
+.dz-consent-row{display:flex;gap:11px;align-items:flex-start;margin-bottom:14px;}
+.dz-consent-box{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--accent2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;background:rgba(124,106,255,.1);}
+.dz-consent-text{font-family:var(--b);font-size:.8em;color:var(--text);line-height:1.55;}
+.dz-consent-text b{color:var(--accent2);}
+.dz-consent-price{font-family:var(--b);font-size:.7em;color:var(--muted);margin:0 0 14px 30px;}
+.dz-consent-price b{color:var(--text);font-size:1.3em;font-family:var(--h);font-weight:800;}
+.dz-sign{display:block;width:100%;padding:14px;border-radius:9px;font-family:var(--h);font-size:.85em;font-weight:700;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#4f3fcf);color:#fff;box-shadow:0 4px 14px rgba(124,106,255,.28);text-align:center;}
+.dz-sign:disabled{opacity:.6;cursor:default;}
+.dz-sign-err{font-family:var(--b);font-size:.72em;color:var(--red);text-align:center;margin-top:10px;display:none;}
+.dz-foot{font-family:var(--b);text-align:center;font-size:.64em;color:var(--muted2);padding:16px 22px 26px;}
+
+.state{padding:60px 26px;text-align:center;}
+.state svg{margin-bottom:16px;opacity:.6;}
+.state h2{font-family:var(--h);font-size:1.1em;font-weight:800;margin:0 0 8px;}
+.state p{font-family:var(--b);color:var(--muted);font-size:.85em;line-height:1.6;margin:0;}
+[hidden]{display:none!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+
+    <div id="loadingState" class="state">
+      <p>Wczytuję…</p>
+    </div>
+
+    <div id="errorState" class="state" hidden>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8888a0" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h2>Link nie działa</h2>
+      <p id="errorText">Ten link wygasł lub jest nieprawidłowy. Poproś dziecko o nowy link z aplikacji Eduvia AI.</p>
+    </div>
+
+    <div id="content" hidden>
+      <div class="dz-head">
+        <div class="dz-logo"><span class="dot"></span>Eduvia AI</div>
+        <div class="dz-logo-sub">Wyciąg z dziennika nauki</div>
+        <div class="dz-row"><span>Uczeń</span><span id="fName">—</span></div>
+        <div class="dz-row"><span>Okres</span><span id="fPeriod">—</span></div>
+      </div>
+
+      <div class="dz-week">
+        <div class="dz-week-label">Aktywność w tym tygodniu</div>
+        <div class="dz-days" id="daysRow"></div>
+        <div class="dz-caption" id="weekCaption"></div>
+      </div>
+
+      <div class="dz-note" id="noteBox" hidden>
+        <div class="dz-note-label">Notatka</div>
+        <div class="dz-note-text" id="noteText"></div>
+        <div class="dz-note-sign">— Eduvia AI</div>
+      </div>
+
+      <div class="dz-consent">
+        <div class="dz-consent-tag">Zgoda rodzica</div>
+        <div class="dz-consent-row">
+          <div class="dz-consent-box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="dz-consent-text">Wyrażam zgodę na <b>Plan Pro</b> dla <span id="fName2">dziecka</span> — nauka bez dziennych limitów, na dowolnym przedmiocie.</div>
+        </div>
+        <div class="dz-consent-price"><b id="fPrice">30 zł</b> / mies. · pierwsze <span id="fTrialDays">7</span> dni za darmo, anulujesz kiedy chcesz</div>
+        <button class="dz-sign" id="signBtn">Podpisz i aktywuj →</button>
+        <div class="dz-sign-err" id="signErr"></div>
+      </div>
+      <div class="dz-foot">Płatność przez Stripe (PCI DSS Level 1) · Bez ukrytych opłat</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const _isPrivateLAN=/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(location.hostname);
+const BACKEND_URL=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://'+location.hostname+':8000':_isPrivateLAN?location.origin:'https://eduvia-backend-2.onrender.com';
+
+const DAY_LABELS=['Pn','Wt','Śr','Cz','Pt','So','Nd'];
+const CHECK_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function show(id){
+  ['loadingState','errorState','content'].forEach(function(x){
+    document.getElementById(x).hidden = (x!==id);
+  });
+}
+
+function fmtPeriod(){
+  const end=new Date(), start=new Date(); start.setDate(end.getDate()-6);
+  const f=function(d){return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0');};
+  return f(start)+'–'+f(end);
+}
+
+async function main(){
+  const params=new URLSearchParams(location.search);
+  const token=params.get('t');
+  if(!token){ show('errorState'); return; }
+
+  let data;
+  try{
+    const r=await fetch(BACKEND_URL+'/api/v1/parent-share/'+encodeURIComponent(token));
+    if(!r.ok){
+      const body=await r.json().catch(function(){return {};});
+      document.getElementById('errorText').textContent = body.detail || 'Ten link wygasł lub jest nieprawidłowy. Poproś dziecko o nowy link z aplikacji Eduvia AI.';
+      show('errorState');
+      return;
+    }
+    data=await r.json();
+  }catch(e){
+    document.getElementById('errorText').textContent='Nie udało się połączyć z serwerem. Sprawdź internet i spróbuj ponownie.';
+    show('errorState');
+    return;
+  }
+
+  // Dlugosc darmowego triala jest zmienna (promocje - patrz get_trial_days()
+  // w app/services/stripe_service.py) - to samo zrodlo prawdy, co juz czyta
+  // limit_modal.js, zeby ta strona nigdy nie obiecala rodzicowi innej
+  // liczby dni niz faktycznie dostanie po kliknieciu.
+  try{
+    const tr=await fetch(BACKEND_URL+'/api/v1/payments/trial-info').then(function(r){return r.json();});
+    if(tr && tr.trial_days) document.getElementById('fTrialDays').textContent=tr.trial_days;
+  }catch(e){}
+
+  const name = data.name || 'Twoje dziecko';
+  document.getElementById('fName').textContent = name;
+  document.getElementById('fName2').textContent = name;
+  document.getElementById('fPeriod').textContent = fmtPeriod();
+
+  const daysRow=document.getElementById('daysRow');
+  (data.week_activity||[]).forEach(function(active,i){
+    const el=document.createElement('div');
+    el.className='dz-day'+(active?' on':'');
+    el.innerHTML='<div class="dmark">'+(active?CHECK_SVG:'')+'</div><div class="dlabel">'+DAY_LABELS[i]+'</div>';
+    daysRow.appendChild(el);
+  });
+  const activeDays=(data.week_activity||[]).filter(Boolean).length;
+  document.getElementById('weekCaption').innerHTML =
+    '<b>'+activeDays+' z 7 dni</b> z nauką'+(data.actions_this_week?' · '+data.actions_this_week+' aktywności w tym tygodniu':'');
+
+  // NAPRAWIONE: notatka jest pokazywana TYLKO gdy jest cokolwiek realnego
+  // do powiedzenia (streak lub XP > 0) - dla konta bez zadnej historii
+  // (np. link wygenerowany od razu po zalozeniu konta) wymyslanie tresci
+  // notatki byloby zmyslaniem danych, wiec sekcja po prostu sie nie
+  // pokazuje zamiast pokazywac pusta/falszywa "pochwale".
+  if(data.streak_days>0 || data.xp>0){
+    const bits=[];
+    if(data.streak_days>1) bits.push(data.streak_days+'-dniową serię nauki bez przerwy');
+    else if(data.actions_this_week>0) bits.push('regularną aktywność w tym tygodniu');
+    if(data.xp>0) bits.push(data.xp+' zdobytych punktów XP');
+    document.getElementById('noteText').textContent =
+      '„'+name+' ma '+bits.join(' i ')+'. Przy Planie Pro może kontynuować naukę bez dziennych limitów."';
+    document.getElementById('noteBox').hidden=false;
+  }
+
+  show('content');
+
+  document.getElementById('signBtn').addEventListener('click', async function(){
+    const btn=this, err=document.getElementById('signErr');
+    err.style.display='none';
+    btn.disabled=true; btn.textContent='Łączenie z płatnością…';
+    try{
+      const r=await fetch(BACKEND_URL+'/api/v1/parent-share/'+encodeURIComponent(token)+'/checkout',{method:'POST'});
+      const body=await r.json();
+      if(!r.ok || !body.success || !body.checkout_url) throw new Error(body.detail||body.error||'Błąd płatności');
+      window.location.href=body.checkout_url;
+    }catch(e){
+      btn.disabled=false; btn.textContent='Podpisz i aktywuj →';
+      err.textContent='Nie udało się rozpocząć płatności. Spróbuj ponownie za chwilę.';
+      err.style.display='block';
+    }
+  });
+}
+main();
+</script>
+</body>
+</html>

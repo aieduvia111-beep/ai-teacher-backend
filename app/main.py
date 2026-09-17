@@ -143,6 +143,13 @@ except Exception as e:
     print(f"❌ users: {e}")
 
 try:
+    from .api.parent_share import router as parent_share_router
+    app.include_router(parent_share_router)
+    print("✅ parent_share OK")
+except Exception as e:
+    print(f"❌ parent_share: {e}")
+
+try:
     from .api.brain import router as brain_router
     app.include_router(brain_router)
     print("✅ brain OK")
@@ -393,6 +400,8 @@ async def startup():
                 "suggested_topic": "VARCHAR(255)",
                 "suggested_topic_date": "VARCHAR(10)",
                 "last_login": "TIMESTAMP",
+                "parent_share_token": "VARCHAR(64)",
+                "parent_share_token_expires": "TIMESTAMP",
             }
             with engine.connect() as _conn:
                 for _col, _sqltype in _new_cols.items():
