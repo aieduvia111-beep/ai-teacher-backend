@@ -1550,6 +1550,7 @@ async function process(){
     const reader = cr.body.getReader();
     const decoder = new TextDecoder();
     let _buf = '';
+    let _streamErr = null;
     while(true){
       const {done, value} = await reader.read();
       if(done) break;
@@ -1561,12 +1562,19 @@ async function process(){
         try{
           const msg = JSON.parse(_ln);
           console.log('[MSG]', msg.type, msg.index);
+          if(msg.type==='error'){ _streamErr = msg.detail || 'Blad generowania odpowiedzi.'; }
           if(msg.type==='meta'){
-            const aiTxt=msg.text||'';
-            hist.push({role:'assistant',content:aiTxt});
             if(msg.emocja) setAvatarEmotion(msg.emocja);
             window._boardTabl = msg.tablica||null;
             window._boardCorrections = (msg.corrections&&msg.corrections.length>0) ? msg.corrections : null;
+          }
+          // NAPRAWIONE: "text" teraz przychodzi w OSOBNEJ wiadomosci
+          // final_text (dopiero gdy model naprawde skonczy generowac) -
+          // meta leci wczesniej (od razu jak wykryta zostanie tablica), zeby
+          // pierwsze zdanie dalo sie odtworzyc bez czekania na cala reszte
+          // odpowiedzi. Patrz identyczna zmiana w app/api/voice.py.
+          if(msg.type==='final_text'){
+            hist.push({role:'assistant',content:msg.text||''});
           }
           if(msg.type==='audio'&&msg.audio){
             if(msg.index===0&&(window._boardTabl||window._boardCorrections)){
@@ -1595,6 +1603,7 @@ async function process(){
         }catch(e){}
       }
     }
+    if(_streamErr) throw new Error(_streamErr);
 
 
   } catch(err){
@@ -1695,6 +1704,8 @@ function openCamera(){
           const reader2=r.body.getReader();
           const dec2=new TextDecoder();
           let buf2='';
+          let _streamErr2 = null;
+          let _tablForHist = null;
           while(true){
             const {done,value}=await reader2.read();
             if(done) break;
@@ -1704,15 +1715,20 @@ function openCamera(){
               if(!ln.trim()) continue;
               try{
                 const msg=JSON.parse(ln);
+                if(msg.type==='error'){ _streamErr2 = msg.detail || 'Blad generowania odpowiedzi.'; }
                 if(msg.type==='meta'){
                   if(msg.emocja) setAvatarEmotion(msg.emocja);
                   boardTyping=false;boardQueue=[];
                   window._camTabl = msg.tablica||null;
-                  // Zapisz do historii zeby AI pamietalo tresc zdjecia w kolejnych pytaniach
-                  if(msg.text){
-                    hist.push({role:'user', content:'[Wyslalem zdjecie zadania/sprawdzianu]'});
-                    hist.push({role:'assistant', content: msg.text + (msg.tablica ? ' Tresc zadan: '+msg.tablica : '')});
-                  }
+                  _tablForHist = msg.tablica||null;
+                }
+                // NAPRAWIONE: "text" przychodzi teraz w final_text, po tym jak
+                // model naprawde skonczy - meta (z tablica) leci wczesniej,
+                // zeby pierwsze zdanie mozna bylo odtworzyc bez czekania na
+                // cala reszte. Patrz identyczna zmiana w app/api/voice.py.
+                if(msg.type==='final_text' && msg.text){
+                  hist.push({role:'user', content:'[Wyslalem zdjecie zadania/sprawdzianu]'});
+                  hist.push({role:'assistant', content: msg.text + (_tablForHist ? ' Tresc zadan: '+_tablForHist : '')});
                 }
                 if(msg.type==='audio'&&msg.audio){
                   if(msg.index===0&&window._camTabl){
@@ -1729,6 +1745,7 @@ function openCamera(){
               }catch(e2){}
             }
           }
+          if(_streamErr2) throw new Error(_streamErr2);
         }catch(e){
           // NAPRAWIONE: patrz identyczny fix przy glownej sciezce rozmowy
           // (process()) - limit powinien pokazac popup, nie wpis na tablicy.

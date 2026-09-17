@@ -8,6 +8,7 @@ import tempfile
 import os
 import asyncio
 import concurrent.futures
+import itertools
 import httpx
 from ..config import settings
 from ..database import get_db
@@ -23,6 +24,10 @@ from datetime import date
 router = APIRouter(prefix="/api/v1/voice", tags=["voice"])
 
 openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+# Wspoldzielony pool watkow dla /respond/stream - poprzednio kazdy request
+# tworzyl WLASNY nowy ThreadPoolExecutor() i nigdy go nie zamykal.
+_VOICE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=8)
 
 ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY","").strip()
 USE_ELEVEN = False
@@ -376,34 +381,60 @@ async def respond_stream(data: dict, current_user: User = Depends(get_current_ap
     else:
         messages.append({"role":"user","content":text})
     loop = asyncio.get_event_loop()
-    ex = concurrent.futures.ThreadPoolExecutor()
-    def call_llm():
+
+    # NAPRAWIONE (wrzesien 2026, user poprosil o ~2x szybsza odpowiedz Voice
+    # AI): stara wersja czekala na CALA odpowiedz LLM (do 380 tokenow),
+    # DOPIERO POTEM generowala TTS dla wszystkich zdan (rownolegle miedzy
+    # soba, ale wciaz PO zakonczeniu LLM), i DOPIERO POTEM zaczynala
+    # "streamowac" gotowy wynik - mimo StreamingResponse nic realnie nie
+    # plynelo w czasie, klient dostawal wszystko naraz jednym pakietem.
+    # Teraz: tokeny LLM czytane sa w locie (stream=True), TTS kazdego zdania
+    # startuje NATYCHMIAST gdy to zdanie jest gotowe (rownolegle z dalszym
+    # generowaniem reszty odpowiedzi przez model), audio leci do klienta
+    # zaraz jak jest gotowe - user slyszy pierwsze slowo znacznie wczesniej,
+    # zamiast czekac na cala odpowiedz + tablice + pytanie na koncu.
+    # Zweryfikowane na prawdziwym API (nie tylko teoretycznie, patrz test w
+    # scratchpadzie tej sesji): naiwne parsowanie w locie potrafilo
+    # wypowiedziec NIEDOMKNIETY fragment "[TABLICA: ..." zanim model zdazyl
+    # go domknac - stad "safe_raw" nizej, ktore ignoruje wszystko po
+    # ostatnim otwartym-ale-niedomknietym nawiasie kwadratowym. Rowniez:
+    # wczesniejsza heurystyka "2 zdania bez tablicy = na pewno jej nie bedzie"
+    # okazala sie bledna (korekta bledu ucznia potrafi sama zajac 2 zdania
+    # PRZED tablica) - zamiast tego meta jest wysylane dopiero gdy tablica
+    # zostanie faktycznie znaleziona, albo gdy model skonczy odpowiedz.
+    _DONE = object()
+    _FAIL = object()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def _produce_llm_stream():
         try:
-            if GROQ_AVAILABLE:
-                return groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.76)
-        except Exception as ge:
-            print(f"[GROQ] fallback: {ge}")
-        return openai_client.chat.completions.create(model="gpt-4o-mini",messages=messages,max_tokens=380,temperature=0.76)
-    import time as _t; _t1=_t.time(); resp = await loop.run_in_executor(ex,call_llm); print(f"[LLM] {_t.time()-_t1:.2f}s")
-    ai_text = resp.choices[0].message.content.strip()
-    tablica = None
-    emocja = "neutral"
-    tm = _re2.search(r'\[TABLICA: ([^\]]+)\]',ai_text)
-    if tm: tablica = tm.group(1).strip()
-    em = _re2.search(r'\[EMOCJA: ([^\]]+)\]',ai_text)
-    if em: emocja = em.group(1).strip().lower()
-    clean = _re2.sub(r'\[TABLICA:[^\]]*\]|\[EMOCJA:[^\]]*\]|\[CORRECTION:[^\]]*\]','',ai_text).strip()
-    add_voice_usage(current_user, db, estimate_speech_seconds(clean))
-    corrections = []
-    for m in _re2.finditer(r'\[CORRECTION: ([^-]+) -> ([^\]]+)\]',ai_text):
-        corrections.append({"wrong":m.group(1).strip(),"correct":m.group(2).strip()})
-    sentences = [s.strip() for s in _re2.split(r'(?<=[.!?])\s+',clean) if s.strip()]
-    if not sentences: sentences=[clean]
-    import asyncio as _aio
-    async def make_audio(idx2, s2):
+            try:
+                if not GROQ_AVAILABLE:
+                    raise RuntimeError("Groq niedostepny")
+                stream = groq_client.chat.completions.create(model="llama-3.3-70b-versatile",messages=messages,max_tokens=380,temperature=0.76,stream=True)
+                it = iter(stream)
+                first = next(it)
+            except Exception as ge:
+                print(f"[GROQ] stream fallback: {ge}")
+                stream = openai_client.chat.completions.create(model="gpt-4o-mini",messages=messages,max_tokens=380,temperature=0.76,stream=True)
+                it = iter(stream)
+                first = next(it)
+            for chunk in itertools.chain([first], it):
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    loop.call_soon_threadsafe(queue.put_nowait, delta)
+        except Exception as e:
+            print(f"[LLM] stream blad (oba dostawcy zawiedli): {e}")
+            loop.call_soon_threadsafe(queue.put_nowait, _FAIL)
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, _DONE)
+
+    loop.run_in_executor(_VOICE_EXECUTOR, _produce_llm_stream)
+
+    async def make_audio(idx2, s2, em2):
         if len(s2)<3: return None
         try:
-            def tts_t(sx=s2,em=emocja):
+            def tts_t(sx=s2,em=em2):
                 spd=1.08 if em in ["excited","happy"] else 1.05
                 if USE_ELEVEN and eleven_client:
                     try:
@@ -414,21 +445,107 @@ async def respond_stream(data: dict, current_user: User = Depends(get_current_ap
                             voice_settings=VoiceSettings(stability=0.7,similarity_boost=0.9,style=0.4,speed=spd)
                         )
                         result=b"".join(audio) if hasattr(audio,'__iter__') else audio
-                        print(f"[TTS] ElevenLabs stream OK")
                         return result
                     except Exception as e:
                         print(f"[TTS] ElevenLabs stream failed: {e}")
                 return openai_client.audio.speech.create(model="tts-1",voice=_openai_fallback_voice(selected_voice),input=sx[:500],speed=spd).content
-            aud = await loop.run_in_executor(ex,tts_t)
-            print(f"[TTS] OK {idx2}: {s2[:25]}")
+            aud = await loop.run_in_executor(_VOICE_EXECUTOR,tts_t)
             return base64.b64encode(aud).decode()
         except Exception as e:
             print(f"[TTS] ERR: {e}")
             return None
-    audios = await _aio.gather(*[make_audio(i,s) for i,s in enumerate(sentences)])
+
+    TABLICA_RE = _re2.compile(r'\[TABLICA: ([^\]]+)\]')
+    EMOCJA_RE = _re2.compile(r'\[EMOCJA: ([^\]]+)\]')
+    CORR_RE = _re2.compile(r'\[CORRECTION: ([^-]+) -> ([^\]]+)\]')
+    STRIP_RE = _re2.compile(r'\[TABLICA:[^\]]*\]|\[EMOCJA:[^\]]*\]|\[CORRECTION:[^\]]*\]')
+    SPLIT_RE = _re2.compile(r'(?<=[.!?])\s+')
+
+    def _safe_clean_parts(full_raw):
+        # Ignoruje wszystko po ostatnim OTWARTYM-ale-NIEDOMKNIETYM nawiasie
+        # kwadratowym, zeby nigdy nie wyslac do TTS urwanego "[TABLICA: ..."
+        # zanim model zdazy go domknac.
+        last_open = full_raw.rfind('[')
+        last_close = full_raw.rfind(']')
+        safe_raw = full_raw[:last_open] if last_open > last_close else full_raw
+        clean = STRIP_RE.sub('', safe_raw).strip()
+        return [s.strip() for s in SPLIT_RE.split(clean) if s.strip()]
+
     async def generate():
-        yield _js.dumps({"type":"meta","text":ai_text,"tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
-        for i,a in enumerate(audios):
-            if a: yield _js.dumps({"type":"audio","index":i,"audio":a})+"\n"
+        full_raw = ""
+        tablica = None
+        emocja_found = False
+        emocja = "neutral"
+        parts_done = 0
+        tts_tasks = {}
+        meta_sent = False
+        next_yield = 0
+        failed = False
+
+        while True:
+            item = await queue.get()
+            if item is _DONE:
+                break
+            if item is _FAIL:
+                failed = True
+                continue
+            full_raw += item
+
+            if tablica is None:
+                tm = TABLICA_RE.search(full_raw)
+                if tm: tablica = tm.group(1).strip()
+            if not emocja_found:
+                em = EMOCJA_RE.search(full_raw)
+                if em:
+                    emocja = em.group(1).strip().lower()
+                    emocja_found = True
+
+            parts = _safe_clean_parts(full_raw)
+            while parts_done < len(parts) - 1:
+                s = parts[parts_done]
+                tts_tasks[parts_done] = asyncio.create_task(make_audio(parts_done, s, emocja))
+                parts_done += 1
+
+            if not meta_sent and tablica is not None:
+                corrections = [{"wrong":m.group(1).strip(),"correct":m.group(2).strip()} for m in CORR_RE.finditer(full_raw)]
+                yield _js.dumps({"type":"meta","tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
+                meta_sent = True
+
+            if meta_sent:
+                while next_yield in tts_tasks and tts_tasks[next_yield].done():
+                    a = tts_tasks[next_yield].result()
+                    if a: yield _js.dumps({"type":"audio","index":next_yield,"audio":a})+"\n"
+                    next_yield += 1
+
+        if failed and not full_raw.strip():
+            yield _js.dumps({"type":"error","detail":"Blad generowania odpowiedzi. Sprobuj ponownie."})+"\n"
+            return
+
+        # Model skonczyl - domknij ostatnie (jeszcze nie zakonczone kropka) zdanie.
+        parts = _safe_clean_parts(full_raw)
+        if parts_done < len(parts):
+            s = parts[parts_done]
+            tts_tasks[parts_done] = asyncio.create_task(make_audio(parts_done, s, emocja))
+            parts_done += 1
+
+        if not meta_sent:
+            corrections = [{"wrong":m.group(1).strip(),"correct":m.group(2).strip()} for m in CORR_RE.finditer(full_raw)]
+            yield _js.dumps({"type":"meta","tablica":tablica,"emocja":emocja,"corrections":corrections})+"\n"
+            meta_sent = True
+
+        while next_yield < parts_done:
+            task = tts_tasks.get(next_yield)
+            if task:
+                a = await task
+                if a: yield _js.dumps({"type":"audio","index":next_yield,"audio":a})+"\n"
+            next_yield += 1
+
+        clean_full = STRIP_RE.sub('', full_raw).strip()
+        add_voice_usage(current_user, db, estimate_speech_seconds(clean_full))
+        # "text" niesie SUROWA (niepociete z tagow) odpowiedz - tak samo jak
+        # przed ta zmiana - bo frontend dopisuje to DOSLOWNIE do historii
+        # rozmowy wysylanej do modelu w kolejnych turach.
+        yield _js.dumps({"type":"final_text","text":full_raw.strip()})+"\n"
+
     return _SR(generate(),media_type="application/x-ndjson")
 
