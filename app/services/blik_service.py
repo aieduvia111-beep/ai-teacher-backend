@@ -163,22 +163,28 @@ class BlikService:
                     except Exception as _e:
                         print(f"Blad walidacji kodu polecajacego: {_e}")
 
-            # NAPRAWIONE (17.09.2026): "blik" bylo celowo usuniete z tej
-            # listy (patrz historia w git blame) - Stripe wczesniej rzucal
-            # twardy blad ("payment method blik cannot be used in setup
-            # mode" / "ensure account is enabled for this feature"), bo
-            # "BLIK recurring" (cykliczne, off-session) to OSOBNA,
-            # ograniczona funkcja Stripe wymagajaca recznego przyznania
-            # przez Stripe Support. User dostal maila od Stripe Support
-            # ("BLIK recurring payments are now available for your
-            # account") i wlaczyl przelacznik w Dashboard -> Payment
-            # methods -> BLIK -> Recurring payments - odblokowuje to
-            # dokladnie ten checkout. Cala logika ponizej
-            # (_activate_blik_trial, scheduler, webhooki) byla juz gotowa
-            # i czekala tylko na to dopisanie.
+            # COFNIETE (17.09.2026): proba dopisania "blik" tutaj po tym, jak
+            # Stripe Support wlaczyl "BLIK recurring payments" w Dashboardzie,
+            # ZLAMALA checkout - zweryfikowane bezposrednio (nie zgadywane):
+            # sesja SIE TWORZY i BLIK pokazuje sie jako opcja, ale klikniecie
+            # go rzuca "Something went wrong / unexpected error communicating
+            # with our servers" - reprodukowane na zywo. Przyczyna: Stripe
+            # Checkout NIE wspiera BLIK w mode="setup" (dokumentacja Stripe
+            # wprost: "Setup mode: Not yet" dla BLIK) - przelacznik "recurring
+            # payments" odblokowuje TYLKO pozniejsze, oddzielne off-session
+            # PaymentIntent.create() (to, czego uzywa charge_due_subscription
+            # w codziennym sweep), NIE tryb "zapisz metode plaltnosci bez
+            # oplaty" w Checkout. Zeby poprawnie dodac BLIK, trzeba
+            # PRZEPROJEKTOWAC ten checkout na mode="payment" (rzeczywista,
+            # pierwsza oplata teraz) z payment_intent_data.setup_future_usage=
+            # "off_session", co ZMIENIA obietnice "7 dni za darmo" dla BLIK-a
+            # (nie da sie samym Stripe Checkout "tylko zapisac" BLIK bez
+            # realnej pierwszej platnosci) - to osobna, przemyslana zmiana,
+            # nie szybka lista, zeby znowu nie zepsuc dzialajacego karta-only
+            # checkoutu.
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
-                payment_method_types=["card", "blik"],
+                payment_method_types=["card"],
                 mode="setup",
                 setup_intent_data={
                     "metadata": {"user_id": user_id, "trial_days": str(trial_days)},
