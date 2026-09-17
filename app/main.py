@@ -39,7 +39,14 @@ app.middleware("http")(usage_limit_middleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://eduvia-backend-2\.onrender\.com|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
+    # NAPRAWIONE (user: strona "rodzic.html" na eduviaai.pl wygladala jakby
+    # "nie dzialala" - w konsoli przegladarki to byl "TypeError: Failed to
+    # fetch", zweryfikowane bezposrednio z origin https://eduviaai.pl -
+    # eduviaai.pl (i jego www. wariant) NIE bylo na liscie dozwolonych CORS
+    # originow, wiec KAZDE zapytanie fetch() z rodzic.html do backendu bylo
+    # cicho blokowane przez przegladarke (strona sama w sobie sie ladowala,
+    # 200 OK, ale nigdy nie mogla pobrac danych ucznia ani zrobic checkoutu).
+    allow_origin_regex=r"https://.*\.vercel\.app|https://eduvia-backend-2\.onrender\.com|https://(www\.)?eduviaai\.pl|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
