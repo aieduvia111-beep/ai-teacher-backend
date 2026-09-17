@@ -51,17 +51,26 @@ HISTORY_KEYS = [
 
 
 def _get_student_stats(firebase_uid: str) -> dict:
-    defaults = {"name": None, "xp": 0, "streak_days": 0, "week_activity": [False] * 7, "actions_this_week": 0}
+    # TYMCZASOWA DIAGNOSTYKA (17.09.2026, user zglosil ze Dashboard widzi
+    # dane a ta strona nie) - "_debug" ma zniknac jak tylko przyczyna
+    # zostanie ustalona, celowo NIE zwraca surowych wartosci danych
+    # (tylko fakt polaczenia/istnienia dokumentu/obecnosci kluczy), zeby
+    # nie wyciekac danych ucznia przez ten publiczny endpoint.
+    defaults = {"name": None, "xp": 0, "streak_days": 0, "week_activity": [False] * 7, "actions_this_week": 0,
+                "_debug": {"fdb_connected": bool(_fdb), "doc_exists": None, "doc_keys": None, "error": None}}
     if not _fdb:
         return defaults
     try:
         doc = _fdb.collection("users").document(firebase_uid).get()
     except Exception as e:
         print(f"[parent-share] Firestore read blad: {e}")
+        defaults["_debug"]["error"] = str(e)
         return defaults
+    defaults["_debug"]["doc_exists"] = doc.exists
     if not doc.exists:
         return defaults
     data = doc.to_dict() or {}
+    defaults["_debug"]["doc_keys"] = list(data.keys())
 
     all_days = set()
     actions_this_week = 0
@@ -98,6 +107,7 @@ def _get_student_stats(firebase_uid: str) -> dict:
         "streak_days": streak,
         "week_activity": week_activity,
         "actions_this_week": actions_this_week,
+        "_debug": defaults["_debug"],
     }
 
 
