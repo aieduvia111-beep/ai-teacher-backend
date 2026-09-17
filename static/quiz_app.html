@@ -444,19 +444,28 @@ window._getAuthToken = async function() {
   try { return await u.getIdToken(); } catch(e) { return ''; }
 };
 
+// NOWE (wrzesien 2026, user: "nie stac nas na Firebase Blaze, zejdz z
+// odczytow") - patrz identyczny fix w flashcards.html.
+function _fsShouldSync(uid){
+  const _k='eduvia_fsSync_'+uid,_last=parseInt(localStorage.getItem(_k)||'0',10);
+  if(Date.now()-_last<300000)return false;
+  localStorage.setItem(_k,String(Date.now()));return true;
+}
 onAuthStateChanged(auth, async (user) => {
   _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
   currentUser = user;
   localStorage.setItem('eduvia_uid', user.uid);
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  if (snap.exists()) {
-    const d = snap.data();
-    localStorage.setItem('eduvia_xp', d.xp || 0);
-    // Zaktualizuj XP bar jesli istnieje
-    const xpEl = document.querySelector('.xp-pts');
-    if (xpEl) xpEl.textContent = (d.xp||0) + ' XP';
+  if (_fsShouldSync(user.uid)) {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (snap.exists()) {
+      const d = snap.data();
+      localStorage.setItem('eduvia_xp', d.xp || 0);
+    }
   }
+  // Zaktualizuj XP bar jesli istnieje (z cache lub swiezych danych powyzej)
+  const xpEl = document.querySelector('.xp-pts');
+  if (xpEl) xpEl.textContent = (parseInt(localStorage.getItem('eduvia_xp')||'0',10)) + ' XP';
   // Poziom zapisany w ankiecie onboardingowej - stosujemy go automatycznie,
   // chyba ze user przyszedl z konkretnym linkiem (?level=...) z Dashboardu,
   // ktory ma pierwszenstwo.

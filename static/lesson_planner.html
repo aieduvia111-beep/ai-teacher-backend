@@ -385,23 +385,30 @@ window._getAuthToken = async function() {
   if (!u) return '';
   try { return await u.getIdToken(); } catch(e) { return ''; }
 };
+// NOWE (wrzesien 2026, user: "nie stac nas na Firebase Blaze, zejdz z
+// odczytow") - patrz identyczny fix w flashcards.html.
+function _fsShouldSync(uid){
+  const _k='eduvia_fsSync_'+uid,_last=parseInt(localStorage.getItem(_k)||'0',10);
+  if(Date.now()-_last<300000)return false;
+  localStorage.setItem(_k,String(Date.now()));return true;
+}
 onAuthStateChanged(auth,async(user)=>{
   _authReadyResolve();
   if(!user){window.location.href='login.html';return;}
   currentUser=user;
   localStorage.setItem('eduvia_uid',user.uid);
-  const snap=await getDoc(doc(db,'users',user.uid));
-  if(snap.exists()){
+  const snap=_fsShouldSync(user.uid)?await getDoc(doc(db,'users',user.uid)):null;
+  if(snap&&snap.exists()){
     const d=snap.data();
     localStorage.setItem('eduvia_xp',d.xp||0);
     localStorage.setItem('eduvia_plan',d.plan||'free');
-    // Dodaj badge planu do hamburgera
-    const plan=d.plan||'free';
-    setTimeout(()=>{
-      const badges=document.querySelectorAll('.plan-badge-slot');
-      badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
-    },100);
   }
+  // Dodaj badge planu do hamburgera (z cache lub swiezych danych powyzej)
+  const plan=localStorage.getItem('eduvia_plan')||'free';
+  setTimeout(()=>{
+    const badges=document.querySelectorAll('.plan-badge-slot');
+    badges.forEach(el=>el.innerHTML=getPlanBadgeHTML(plan));
+  },100);
   if(window.EduviaLevelPicker && window.applyAutoLevel){
     window.EduviaLevelPicker.applyUserProfileLevel({ user: user, onLevel: window.applyAutoLevel });
   }

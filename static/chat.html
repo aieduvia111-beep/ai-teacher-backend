@@ -607,6 +607,15 @@ window._getAuthToken = async function() {
   if (!u) return '';
   try { return await u.getIdToken(); } catch(e) { return ''; }
 };
+// NOWE (wrzesien 2026, user: "nie stac nas na Firebase Blaze, zejdz z
+// odczytow") - patrz identyczny fix w flashcards.html. Ogranicza getDoc()
+// do najwyzej raz na 5 minut na urzadzenie, zamiast przy kazdym wejsciu
+// na strone.
+function _fsShouldSync(uid){
+  const _k='eduvia_fsSync_'+uid,_last=parseInt(localStorage.getItem(_k)||'0',10);
+  if(Date.now()-_last<300000)return false;
+  localStorage.setItem(_k,String(Date.now()));return true;
+}
 onAuthStateChanged(auth, async(user) => {
   _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
@@ -615,16 +624,16 @@ onAuthStateChanged(auth, async(user) => {
   // Zaktualizuj _fb z uid
   window._fb.uid = user.uid;
 
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  if (snap.exists()) {
+  const snap = _fsShouldSync(user.uid) ? await getDoc(doc(db, 'users', user.uid)) : null;
+  const plan = snap && snap.exists() ? (snap.data().plan || 'free') : (localStorage.getItem('eduvia_plan') || 'free');
+  if (snap && snap.exists()) {
     const d = snap.data();
     localStorage.setItem('eduvia_xp', d.xp || 0);
     localStorage.setItem('eduvia_plan', d.plan || 'free');
-    const plan = d.plan || 'free';
-    setTimeout(() => {
-      document.querySelectorAll('.plan-badge-slot').forEach(el => el.innerHTML = getPlanBadgeHTML(plan));
-    }, 100);
   }
+  setTimeout(() => {
+    document.querySelectorAll('.plan-badge-slot').forEach(el => el.innerHTML = getPlanBadgeHTML(plan));
+  }, 100);
 
   // Sprawdź payment=success
   const urlParams = new URLSearchParams(window.location.search);

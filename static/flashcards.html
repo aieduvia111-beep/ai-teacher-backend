@@ -48,6 +48,19 @@ window._getAuthToken = async function() {
   if (!u) return '';
   try { return await u.getIdToken(); } catch(e) { return ''; }
 };
+// NOWE (wrzesien 2026, user: "nie stac nas na Firebase Blaze, zejdz z
+// odczytow") - Firestore na darmowym planie Spark ma twardy dzienny limit
+// odczytow, a KAZDA strona apki robila wlasny getDoc() przy KAZDYM wejsciu -
+// user odwiedzajacy w ciagu minuty 4 rozne strony generowal 4 identyczne
+// odczyty tego samego dokumentu. _fsShouldSync ogranicza to do najwyzej
+// jednego odczytu na 5 minut na urzadzenie (localStorage) - w tym oknie
+// kolejne strony po prostu uzywaja juz zapisanej wartosci (eduvia_plan/xp),
+// zamiast pytac Firestore ponownie.
+function _fsShouldSync(uid){
+  const _k='eduvia_fsSync_'+uid,_last=parseInt(localStorage.getItem(_k)||'0',10);
+  if(Date.now()-_last<300000)return false;
+  localStorage.setItem(_k,String(Date.now()));return true;
+}
 onAuthStateChanged(auth, async (user) => {
   _authReadyResolve();
   if (!user) { window.location.href = 'login.html'; return; }
@@ -60,8 +73,10 @@ onAuthStateChanged(auth, async (user) => {
   // Pro moglby dostac falszywy popup limitu, gdyby ta strona byla
   // pierwsza/jedyna odwiedzona w danej przegladarce.
   try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    if (snap.exists()) localStorage.setItem('eduvia_plan', snap.data().plan || 'free');
+    if (_fsShouldSync(user.uid)) {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) localStorage.setItem('eduvia_plan', snap.data().plan || 'free');
+    }
   } catch (e) { console.warn('[Fiszki] nie udalo sie zsynchronizowac planu:', e); }
   if (typeof window._startFlashcards === 'function') window._startFlashcards();
 });
