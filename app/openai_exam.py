@@ -606,15 +606,17 @@ async def generate_quiz_from_image(
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
 
-        async def _raw_call(n: int) -> dict:
-            return await _raw_generate_quiz_from_image_call(image_data, n, difficulty, level=level, subject=subject, topic=topic)
+        async def _raw_call(n: int, force_model: str = None) -> dict:
+            return await _raw_generate_quiz_from_image_call(image_data, n, difficulty, level=level, subject=subject, topic=topic, force_model=force_model)
 
         t_start = time.monotonic()
         quiz_data = await _raw_call(_buffered_count(num_questions))
         print(f"âœ… Quiz: {quiz_data.get('title', 'Quiz')}")
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
-            quiz_data, num_questions, lambda n, avoid_block="": _raw_call(_adaptive_fill_batch(n)), t_start=t_start, difficulty=difficulty, level=level, topic=topic
+            quiz_data, num_questions,
+            lambda n, avoid_block="", escalate=False: _raw_call(_adaptive_fill_batch(n), force_model=("gpt-4o" if escalate else None)),
+            t_start=t_start, difficulty=difficulty, level=level, topic=topic,
         )
         quiz_data = _require_exact_question_count(quiz_data, num_questions, "Quiz z obrazka")
         return {"success": True, "quiz": quiz_data}
@@ -624,7 +626,7 @@ async def generate_quiz_from_image(
         return {"success": False, "error": str(e)}
 
 
-async def _raw_generate_quiz_from_image_call(image_data: str, num_questions: int, difficulty: str, level: str = None, subject: str = None, topic: str = None) -> dict:
+async def _raw_generate_quiz_from_image_call(image_data: str, num_questions: int, difficulty: str, level: str = None, subject: str = None, topic: str = None, force_model: str = None) -> dict:
     """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
     generate_quiz_from_image - wydzielone, zeby dogenerowywanie
     brakujacych pytan moglo to wywolywac wielokrotnie."""
@@ -685,8 +687,19 @@ WAŻNE:
     # Szybsze pojedyncze wywolanie = mniej ryzyka trafienia w budzet
     # czasowy _verify_and_fill_quiz_math przy wiekszym n, co bylo realnym
     # zrodlem zgloszonych "2-3 na 5"/timeoutow.
+    #
+    # NAPRAWIONE (18.09.2026): `force_model` - ten sam mechanizm eskalacji
+    # co w _raw_generate_quiz_topic_once (patrz uzasadnienie tam) - grace/
+    # rescue rundy w _verify_and_fill_quiz_math przelaczaja sie na
+    # mocniejszy model TYLKO gdy tani juz wiadomo ze zawodzi. PRZY OKAZJI
+    # naprawia realny bug: regenerate lambda w generate_quiz_from_image
+    # (nizej) wczesniej NIE przyjmowala kwarg "escalate" wcale - kazda
+    # runda dogenerowania (grace/rescue) konczyla sie TypeError (lapanym
+    # przez caller jako "json_crash", nie crashowal calego requestu, ale
+    # cicho psul kazda probe dogenerowania obrazkowego quizu, gdy pierwsza
+    # partia nie wystarczyla).
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=force_model or "gpt-4o-mini",
         messages=[
             {
                 "role": "user",

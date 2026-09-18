@@ -293,7 +293,7 @@ oai.time.monotonic = qclock.monotonic
 qcall_count = {"n": 0}
 
 
-async def _mock_regen_succeeds(n, avoid_block=""):
+async def _mock_regen_succeeds(n, avoid_block="", escalate=False):
     qcall_count["n"] += 1
     qclock.advance(5)
     # offset=13: partia startowa (ponizej) uzywa indeksow puli 0-12 -
@@ -328,7 +328,7 @@ oai.time.monotonic = qclock2.monotonic
 qcall_count2 = {"n": 0}
 
 
-async def _mock_regen_should_not_be_called(n, avoid_block=""):
+async def _mock_regen_should_not_be_called(n, avoid_block="", escalate=False):
     qcall_count2["n"] += 1
     return {"title": "Test", "questions": _make_quiz_questions(n)}
 
@@ -360,7 +360,7 @@ oai.time.monotonic = qclock3.monotonic
 qcall_count3 = {"n": 0}
 
 
-async def _mock_regen_always_empty(n, avoid_block=""):
+async def _mock_regen_always_empty(n, avoid_block="", escalate=False):
     qcall_count3["n"] += 1
     qclock3.advance(5)
     return {"title": "Test", "questions": []}

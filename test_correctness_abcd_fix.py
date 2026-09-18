@@ -169,7 +169,7 @@ def _make_valid_question(n):
     }
 
 
-async def _mock_regenerate_always_valid(n):
+async def _mock_regenerate_always_valid(n, avoid_block="", escalate=False):
     return {"questions": [_make_valid_question(1000 + i) for i in range(n)]}
 
 
@@ -221,7 +221,7 @@ print("14. Duplikat -> dogenerowanie (N==N mimo duplikatow)")
 print("=" * 70)
 
 
-async def _mock_regenerate_with_duplicate_first_round(n, avoid_block=""):
+async def _mock_regenerate_with_duplicate_first_round(n, avoid_block="", escalate=False):
     """Za PIERWSZYM wywolaniem zwraca duplikat (ten sam tekst 2x) -
     dedup MUSI go odrzucic i wymusic runde dogenerowania."""
     if not hasattr(_mock_regenerate_with_duplicate_first_round, "_calls"):
