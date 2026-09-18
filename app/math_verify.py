@@ -77,6 +77,48 @@ _UNICODE_OPERATOR_MAP = str.maketrans({
 })
 
 
+def _find_balanced_brace_end(s: str, open_idx: int):
+    """s[open_idx] MUSI byc '{'. Zwraca indeks ODPOWIADAJACEGO '}'
+    (obslugujac zagniezdzone klamry) albo None, jesli sie nie zamyka."""
+    depth = 0
+    for i in range(open_idx, len(s)):
+        if s[i] == '{':
+            depth += 1
+        elif s[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return i
+    return None
+
+
+def _convert_frac_balanced(s: str) -> str:
+    """Jak regex "\\frac{X}{Y}" -> "((X)/(Y))", ale z PRAWIDLOWA obsluga
+    ZAGNIEZDZONYCH klamr w X/Y (np. "e^{3}" czy inny "^{...}" wewnatrz
+    licznika/mianownika) - naiwny regex "[^{}]*" (uzywany wczesniej)
+    nie potrafi dopasowac zawartosci, ktora sama zawiera klamry, wiec
+    "\\frac{e^{3}}{3}" nigdy sie nie konwertowalo (zostawalo polamane
+    "\\frac" w wyniku, SyntaxError przy parsowaniu). Rekurencyjna -
+    zagniezdzone "\\frac" wewnatrz licznika/mianownika tez sie konwertuje."""
+    out = []
+    i, n = 0, len(s)
+    while i < n:
+        if s.startswith('\\frac{', i):
+            num_open = i + 5  # indeks '{' zaraz po "\frac"
+            num_close = _find_balanced_brace_end(s, num_open)
+            if num_close is not None and num_close + 1 < n and s[num_close + 1] == '{':
+                den_open = num_close + 1
+                den_close = _find_balanced_brace_end(s, den_open)
+                if den_close is not None:
+                    numerator = _convert_frac_balanced(s[num_open + 1:num_close])
+                    denominator = _convert_frac_balanced(s[den_open + 1:den_close])
+                    out.append(f'(({numerator})/({denominator}))')
+                    i = den_close + 1
+                    continue
+        out.append(s[i])
+        i += 1
+    return ''.join(out)
+
+
 def _clean_latex(s: str) -> str:
     """Zamienia najczestsze konstrukcje LaTeX na skladnie parsowalna przez sympy."""
     s = s.strip().strip('$').strip()
@@ -87,6 +129,25 @@ def _clean_latex(s: str) -> str:
     # calkowicie (SyntaxError). Bez tego kazdy argument w radianach
     # (np. "\frac{\pi}{6}") byl nieparsowalny.
     s = s.replace('\\pi', 'pi')
+    # NAPRAWIONE (18.09.2026, znalezione przy budowie weryfikatora calek
+    # oznaczonych): "\ln"/"\log"/"\sin"/"\cos"/"\tan"/"\tg" (backslash +
+    # nazwa funkcji) NIE bylo tu normalizowane - sympy rozpoznaje bare
+    # "log(...)"/"sin(...)" natywnie, ale zostawiony backslash psul
+    # parsowanie CALKOWICIE (SyntaxError), dokladnie jak wczesniej "\pi"/
+    # "\sqrt" powyzej. Dotyczylo KAZDEJ opcji z tymi funkcjami w calym
+    # module (nie tylko calek) - np. "$\ln(4)$" nigdy sie nie parsowalo.
+    s = re.sub(r'\\(ln|log|sin|cos|tan|tg)\b', lambda m: {'tg': 'tan', 'ln': 'log'}.get(m.group(1), m.group(1)), s)
+    # UWAGA: CELOWO NIE normalizujemy tu samotnego "e" -> "E" (stala
+    # Eulera) globalnie - proba tej naprawy (18.09.2026) zlapala
+    # REGRESJE w test_quadratic_unicode_fix.py, gdzie "e" jest NAZWA
+    # ZMIENNEJ w rowaniu (np. "e^2>1"), nie stala Eulera - w
+    # odroznieniu od \ln/\sin/\cos/\tan wyzej (ktore ZAWSZE oznaczaja
+    # funkcje, nigdy zmienna), samo "e" jest w tym module UZYWANE jako
+    # zwykla nazwa zmiennej gdzie indziej, wiec globalna zamiana jest
+    # niebezpieczna. Analogiczna naprawa ISTNIEJE, ale wazona TYLKO tam,
+    # gdzie kontekst jednoznacznie wskazuje na calke (patrz _BARE_E_RE w
+    # _prep_integral_latex ponizej, i lokalne uzycie w
+    # verify_definite_integral_question).
     s = s.replace('\\cdot', '*').replace('\\times', '*').replace('·', '*')
     # NAPRAWIONE (audyt realnej generacji, sierpien 2026): "\sqrt{...}"
     # NIGDZIE nie bylo normalizowane w calym module - sympy rozpoznaje
@@ -103,8 +164,12 @@ def _clean_latex(s: str) -> str:
     # (klamry \sqrt psuja parowanie [^{}]*).
     for _ in range(3):
         s = re.sub(r'\\sqrt\{([^{}]*)\}', r'sqrt(\1)', s)
-    for _ in range(3):
-        s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'((\1)/(\2))', s)
+    # NAPRAWIONE (18.09.2026, self-check nowego generatora calek
+    # oznaczonych - patrz _convert_frac_balanced powyzej): zwykly regex
+    # "\frac{[^{}]*}{[^{}]*}" nie radzil sobie z zagniezdzonymi klamrami
+    # w liczniku/mianowniku (np. "\frac{e^{3}}{3}" z klamrami wykladnika) -
+    # zamieniony na wersje z prawdziwa obsluga zagniezdzen.
+    s = _convert_frac_balanced(s)
     s = s.replace('\\leq', '<=').replace('\\geq', '>=').replace('\\neq', '!=')
     # NAPRAWIONE (zgloszony realny bug): unicode "≠" (U+2260) nie byl
     # rownowazny "!=" - AI czesto pisze warunki jak "c≠0" (unicode znak),
@@ -3681,6 +3746,145 @@ def _prep_integral_latex(s: str) -> str:
     return s
 
 
+# =================================================================
+# CALKI OZNACZONE (18.09.2026, root-cause znaleziony przy okazji
+# "zamawiasz 20 dostajesz 20" - user): w ODROZNIENIU od calek
+# NIEOZNACZONYCH (ktore maja Safe Parameter Generation - archetyp,
+# gdzie kod, nie AI, liczy antypochodna z gory), calki OZNACZONE nie
+# mialy ZADNEJ niezaleznej weryfikacji Warstwy 2 - kazde pytanie
+# trafialo jako "unverifiable" i polegalo WYLACZNIE na "slepym" AI-2
+# (Warstwa 2.5), ktore samo dla nietrywialnych calek (podstawienie,
+# przez czesci) czesto sie myli. Real-test (test_universal.py) na 20
+# pytaniach "Calki oznaczone" pokazal wiekszosc odrzucen jako
+# "blind_ai_mismatch" - bezposredni skutek braku deterministycznej
+# siatki bezpieczenstwa, ktora inne juz dzialajace archetypy MAJA.
+# Ten blok dodaje TAKA SAMA siatke jak dla funkcji liniowej/
+# wykladniczej (verify_linear_function_evaluate/
+# verify_exponential_function_evaluate) - liczy prawdziwa wartosc
+# calki oznaczonej przez sympy (calkowanie symboliczne + podstawienie
+# granic) i dopasowuje do opcji przez _match_single_value_option,
+# DOKLADNIE tym samym kontraktem/bezpiecznym-abstain co reszta modulu.
+# =================================================================
+def _extract_balanced_brace(s: str, start: int):
+    """s[start] MUSI byc '{'. Zwraca (zawartosc, indeks_po_zamknieciu)
+    obslugujac ZAGNIEZDZONE klamry (np. "\\frac{\\pi}{2}" jako granica
+    calki) - albo (None, start) jesli klamry sie nie zamykaja."""
+    if start >= len(s) or s[start] != '{':
+        return None, start
+    depth = 0
+    for i in range(start, len(s)):
+        if s[i] == '{':
+            depth += 1
+        elif s[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return s[start + 1:i], i + 1
+    return None, start
+
+
+_DEFINITE_INTEGRAL_START_RE = re.compile(r'\\int(?![a-zA-Z])')
+_INTEGRAND_TAIL_RE = re.compile(r'\s*(.+?)\s*\\?,?\s*d\s*([a-z])\b', re.IGNORECASE)
+_BOUND_TOKEN_RE = re.compile(r'[^\s^{}]+')
+
+
+def _extract_definite_integral(question_text: str):
+    """Wyciaga (dolna_granica, gorna_granica, integrand, zmienna) z
+    pierwszego "\\int_{a}^{b} ... d<var>" (granice z klamrami LUB bez,
+    np. "\\int_0^1") w tekscie. (None, None, None, None) jesli nie
+    znaleziono ALBO calka nie ma jawnych granic (czyli jest
+    NIEOZNACZONA - obslugiwana gdzie indziej, celowy abstain, zeby te
+    dwa wzorce sie nie mieszaly)."""
+    if not question_text or '\\int' not in question_text:
+        return None, None, None, None
+    m = _DEFINITE_INTEGRAL_START_RE.search(question_text)
+    if not m:
+        return None, None, None, None
+    s = question_text
+    i = m.end()
+    if i >= len(s) or s[i] != '_':
+        return None, None, None, None
+    i += 1
+    if i < len(s) and s[i] == '{':
+        lower, i = _extract_balanced_brace(s, i)
+        if lower is None:
+            return None, None, None, None
+    else:
+        mm = _BOUND_TOKEN_RE.match(s[i:])
+        if not mm:
+            return None, None, None, None
+        lower = mm.group(0)
+        i += mm.end()
+    if i >= len(s) or s[i] != '^':
+        return None, None, None, None
+    i += 1
+    if i < len(s) and s[i] == '{':
+        upper, i = _extract_balanced_brace(s, i)
+        if upper is None:
+            return None, None, None, None
+    else:
+        mm = _BOUND_TOKEN_RE.match(s[i:])
+        if not mm:
+            return None, None, None, None
+        upper = mm.group(0)
+        i += mm.end()
+    m2 = _INTEGRAND_TAIL_RE.search(s[i:])
+    if not m2:
+        return None, None, None, None
+    return lower, upper, m2.group(1).strip(), m2.group(2).lower()
+
+
+def verify_definite_integral_question(question_text: str, options: list):
+    """Warstwa 2: calka OZNACZONA \\int_{a}^{b} f(x) dx - liczy
+    prawdziwa wartosc symbolicznie (sympy) i dopasowuje do opcji
+    identycznym mechanizmem co verify_exponential_function_evaluate.
+    Bezpieczny abstain ("unverifiable") dla kazdego przypadku, ktorego
+    nie da sie jednoznacznie sparsowac/scalkowac - NIGDY nie zgaduje."""
+    lower_s, upper_s, integrand_s, var = _extract_definite_integral(question_text or "")
+    if integrand_s is None:
+        return {"status": "unverifiable"}
+    try:
+        x = sp.Symbol(var)
+        expr = sp.sympify(_parse_expr(_prep_integral_latex(integrand_s)))
+        lower = sp.sympify(_parse_expr(_prep_integral_latex(lower_s)))
+        upper = sp.sympify(_parse_expr(_prep_integral_latex(upper_s)))
+        true_value = sp.integrate(expr, (x, lower, upper))
+        if true_value is None or true_value.has(sp.Integral):
+            # sympy nie potrafilo scalkowac (zwraca nierozwiazana
+            # Integral) - bezpieczny abstain, NIE falszywe odrzucenie.
+            return {"status": "unverifiable"}
+        true_value = sp.nsimplify(true_value)
+    except Exception:
+        return {"status": "unverifiable"}
+    # NIE uzywamy tu wspoldzielonego _match_single_value_option (jak inne
+    # proste "policz i dopasuj" weryfikatory) - opcje odpowiedzi calek
+    # CZESTO zawieraja "e" jako stala Eulera (np. "$\frac{e^3}{3}$"), a
+    # _clean_latex CELOWO nie normalizuje samotnego "e" globalnie (patrz
+    # komentarz tam - "e" bywa zwykla zmienna w innych tematach). Tu,
+    # w kontekscie calki, "e" niemal zawsze oznacza stala Eulera - wiec
+    # LOKALNIE stosujemy _prep_integral_latex (ktory to bezpiecznie
+    # normalizuje) na kazdej opcji przed sparsowaniem, zanim porownamy.
+    matches = []
+    any_parsed = False
+    for idx, opt in enumerate(options or []):
+        try:
+            opt_val = sp.nsimplify(_parse_expr(_prep_integral_latex(_option_text(opt))))
+        except Exception:
+            continue
+        any_parsed = True
+        try:
+            if bool(sp.simplify(opt_val - true_value) == 0):
+                matches.append(idx)
+        except Exception:
+            pass
+    if not any_parsed:
+        return {"status": "no_option_matches"}
+    if len(matches) == 1:
+        return {"status": "match_index", "true_index": matches[0]}
+    if len(matches) > 1:
+        return {"status": "unverifiable"}
+    return {"status": "no_option_matches"}
+
+
 def _is_linear_in(expr, x) -> bool:
     try:
         return expr.is_polynomial(x) and sp.degree(sp.Poly(expr, x)) == 1
@@ -4229,6 +4433,15 @@ def verify_and_fix_math_question(question_text: str, options: list):
     result10 = verify_exponential_same_base_equation(question_text, options)
     if result10["status"] in ("match_index", "no_option_matches"):
         return {**result10, "explanation": None}
+
+    # NOWE (18.09.2026) - patrz komentarz nad verify_definite_integral_question:
+    # calki OZNACZONE (w odroznieniu od nieoznaczonych) nie mialy ZADNEJ
+    # niezaleznej weryfikacji Warstwy 2 (zawsze "unverifiable", polegaly
+    # tylko na slepym AI-2) - to byl root-cause niskiej skutecznosci tego
+    # tematu zgloszonej przez usera.
+    result11 = verify_definite_integral_question(question_text, options)
+    if result11["status"] in ("match_index", "no_option_matches"):
+        return {**result11, "explanation": None}
 
     return {"status": "unverifiable", "explanation": None}
 
@@ -4817,3 +5030,163 @@ def build_safe_indefinite_integral_initial_condition() -> dict:
             f"Zadanie dotyczy wyznaczenia funkcji pierwotnej spełniającej ten warunek."
         ),
     }
+
+
+# SAFE PARAMETER GENERATION - CALKA OZNACZONA, PYTANIE W CALOSCI Z KODU
+# (18.09.2026, user: "po co ci api, mozesz to zrobic bez api" - w
+# odroznieniu od WSZYSTKICH innych builderow "Safe Parameter Generation"
+# powyzej, ktore zwracaja tylko "szkielet" (poprawna odpowiedz +
+# dystraktory policzone kodem), a AI jest PROSZONE WYLACZNIE o ubranie
+# tego w polskie zdanie + wyjasnienie + diversity_tag (male, ale
+# niezerowe wywolanie AI za kazdym razem) - ta funkcja buduje CALE
+# pytanie (tresc PO POLSKU, opcje, wyjasnienie) SAMYM KODEM, zero
+# wywolan AI. Przeznaczona do zasilania magazynu (app/bank_seeder.py
+# wywoluje ja zamiast prawdziwego OpenAI) - nie do zywej generacji
+# (tam AI nadal daje swiezosc/roznorodnosc sformulowan, co user chcial
+# zachowac jako sciezke GLOWNA). Calka OZNACZONA (w odroznieniu od
+# nieoznaczonej wyzej) - prawdziwa wartosc liczona przez sp.integrate
+# na przedziale [a,b], zero ryzyka bledu arytmetycznego. Dystraktory (3,
+# code-generated): typowe bledy - F(b) bez odjecia F(a), zamieniony znak
+# (F(a)-F(b)), dodanie zamiast odjecia (F(b)+F(a))."""
+_DEFINITE_INTEGRAL_SHAPES = ("poly2", "poly3", "exp_linear", "sin_linear", "cos_linear", "one_over_x")
+_DEFINITE_INTEGRAL_QUESTION_TEMPLATES = (
+    "Oblicz całkę oznaczoną $\\int_{{{a}}}^{{{b}}} {integrand} \\, dx$.",
+    "Wyznacz wartość całki oznaczonej $\\int_{{{a}}}^{{{b}}} {integrand} \\, dx$.",
+    "Znajdź wartość całki oznaczonej $\\int_{{{a}}}^{{{b}}} {integrand} \\, dx$.",
+)
+
+
+def _random_definite_integral_expr(x):
+    """Losuje (ksztalt, integrand, a, b) - jeden z kilku 'trudnych'
+    (wymagajacych techniki/podstawienia granic, nie tylko szukania w
+    tablicy wzorow) ksztaltow widzianych w realnej generacji AI dla
+    tego tematu."""
+    shape = random.choice(_DEFINITE_INTEGRAL_SHAPES)
+    if shape == "poly2":
+        p = random.choice([1, 2, 3, -1, -2, -3])
+        q = random.randint(-6, 6)
+        expr = p * x ** 2 + q
+        a = random.randint(-2, 2)
+        b = a + random.randint(1, 4)
+    elif shape == "poly3":
+        p = random.choice([1, -1, 2, -2])
+        q = random.choice([-3, -2, -1, 1, 2, 3])
+        r = random.randint(-4, 4)
+        expr = p * x ** 3 + q * x + r
+        a = random.randint(-2, 1)
+        b = a + random.randint(1, 3)
+    elif shape == "exp_linear":
+        k = random.choice([1, 2, 3])
+        expr = sp.exp(k * x)
+        a = random.randint(0, 1)
+        b = a + random.randint(1, 2)
+    elif shape == "sin_linear":
+        k = random.choice([1, 2, 3])
+        expr = sp.sin(k * x)
+        a = 0
+        b = random.choice([1, 2]) * sp.pi
+    elif shape == "cos_linear":
+        k = random.choice([1, 2, 3])
+        expr = sp.cos(k * x)
+        a = 0
+        b = sp.pi / random.choice([2, 3, 4])
+    else:  # one_over_x
+        expr = 1 / x
+        a = random.randint(1, 3)
+        b = a + random.randint(1, 5)
+    return shape, expr, sp.sympify(a), sp.sympify(b)
+
+
+def build_safe_definite_integral_question() -> dict:
+    """Buduje JEDNO pelne, gotowe pytanie o calke OZNACZONA - tresc PO
+    POLSKU, 4 opcje (przetasowane), 'correct', 'final_answer',
+    wyjasnienie, diversity_tag. Zero wywolan AI - cala matematyka I
+    tresc PO POLSKU pochodzi z kodu. Zwraca None (bezpieczny abstain),
+    jesli losowe parametry dadza sie zdegenerowac (np. calka rowna 0 z
+    wszystkimi dystraktorami kolidujacymi) - caller (batch-generator)
+    po prostu probuje ponownie z innymi parametrami."""
+    x = sp.Symbol('x')
+    for _attempt in range(5):
+        shape, expr, a, b = _random_definite_integral_expr(x)
+        try:
+            F = sp.integrate(expr, x)
+            Fa = sp.nsimplify(F.subs(x, a))
+            Fb = sp.nsimplify(F.subs(x, b))
+            true_value = sp.nsimplify(Fb - Fa)
+        except Exception:
+            continue
+        if true_value.has(sp.Integral) or true_value.has(sp.zoo, sp.nan):
+            continue
+        candidates_raw = [Fb, Fa - Fb, Fb + Fa]
+        seen = {true_value}
+        distractors = []
+        for d in candidates_raw:
+            try:
+                d = sp.nsimplify(d)
+            except Exception:
+                continue
+            if d.has(sp.zoo, sp.nan):
+                continue
+            if d not in seen:
+                seen.add(d)
+                distractors.append(d)
+        offset = sp.Integer(2)
+        tries = 0
+        while len(distractors) < 3 and tries < 10:
+            candidate = true_value + offset
+            if candidate not in seen:
+                seen.add(candidate)
+                distractors.append(candidate)
+            offset += 2
+            tries += 1
+        if len(distractors) < 3:
+            continue  # zdegenerowany przypadek - kolejna proba z innymi parametrami
+
+        integrand_latex = sp.latex(expr)
+        question_text = random.choice(_DEFINITE_INTEGRAL_QUESTION_TEMPLATES).format(
+            a=sp.latex(a), b=sp.latex(b), integrand=integrand_latex,
+        )
+        option_values = distractors[:3] + [true_value]
+        random.shuffle(option_values)
+        options = [f"${sp.latex(v)}$" for v in option_values]
+        correct_index = option_values.index(true_value)
+        final_answer = options[correct_index]
+        explanation = (
+            f"Funkcja pierwotna: $F(x) = {sp.latex(F)} + C$. Podstawiając granice: "
+            f"$F({sp.latex(b)}) - F({sp.latex(a)}) = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(true_value)}$."
+        )
+        return {
+            "question": question_text,
+            "options": options,
+            "correct": correct_index,
+            "final_answer": final_answer,
+            "explanation": explanation,
+            "diversity_tag": {
+                "skill": "obliczanie calek oznaczonych",
+                "concept": "wzory na calki",
+                "task_type": "oblicz calke oznaczona",
+                "reasoning": f"calkuj, podstaw granice ({shape})",
+            },
+        }
+    return None
+
+
+def generate_safe_definite_integral_batch(n: int) -> list:
+    """Batch-wrapper - `n` UNIKALNYCH (po fingerprint tresci) pytan o
+    calke oznaczona, zero wywolan AI. Uzywane przez app/bank_seeder.py
+    do zasilania magazynu. Bezpiecznik: do 5*n prob calkowitych (losowe
+    parametry czasem kolizyjnie powtarzaja identyczna tresc), zeby nie
+    zapetlic sie w nieskonczonosc jesli przestrzen parametrow akurat
+    sie wyczerpie."""
+    results = []
+    seen_questions = set()
+    max_attempts = max(20, n * 5)
+    for _ in range(max_attempts):
+        if len(results) >= n:
+            break
+        q = build_safe_definite_integral_question()
+        if q is None or q["question"] in seen_questions:
+            continue
+        seen_questions.add(q["question"])
+        results.append(q)
+    return results

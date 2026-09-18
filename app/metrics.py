@@ -38,6 +38,11 @@ class GenerationMetrics:
     difficulty_time: float = 0.0
     total_time: float = 0.0
     rejection_reasons: Dict[str, int] = field(default_factory=dict)
+    # NOWE (18.09.2026, magazyn-jako-backup - patrz question_bank.py):
+    # ile pytan tej partii pochodzi z JUZ zweryfikowanego magazynu, nie
+    # ze swiezej generacji AI - widoczne osobno w logu, zeby dalo sie
+    # odroznic "AI dowiozlo samo" od "dobite magazynem".
+    filled_from_bank_count: int = 0
 
     def record_rejection(self, reason: str) -> None:
         """Wywolywane w KAZDYM miejscu, gdzie pytanie/zadanie zostaje
@@ -60,6 +65,7 @@ class GenerationMetrics:
             "difficulty_time": round(self.difficulty_time, 2),
             "total_time": round(self.total_time, 2),
             "rejection_reasons": self.rejection_reasons,
+            "filled_from_bank_count": self.filled_from_bank_count,
         }, ensure_ascii=False)
 
     def log(self, prefix: str) -> None:

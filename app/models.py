@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, Float, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -252,6 +252,51 @@ class FunnelEvent(Base):
     user_id = Column(String(128), nullable=True, index=True)  # Firebase UID, None dla niezalogowanych
     meta = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class QuestionBankItem(Base):
+    """Magazyn GOTOWYCH, JUZ ZWERYFIKOWANYCH pytan (18.09.2026, user:
+    "AI probuje generowac ZAWSZE (swiezosc/roznorodnosc) - ALE jesli po
+    X probach/sekundach NIE udaje sie osiagnac N=N, system SIEGA do
+    gotowej, juz zweryfikowanej bazy pytan jako backup" - decyzja
+    architektoniczna usera po calodziennym debugowaniu niezawodnosci
+    Quizu). Zywa generacja (openai_exam.py) zostaje GLOWNA sciezka
+    (swiezosc/roznorodnosc kazdego zamowienia) - ten magazyn jest
+    WYLACZNIE uzupelnieniem, gdy standardowe+grace+rescue rundy nie
+    dobija do requested_count na czas (patrz uzycie w
+    _verify_and_fill_quiz_math). KAZDY wiersz tutaj przeszedl DOKLADNIE
+    te sama trzywarstwowa weryfikacje (final_answer/sympy/AI-2 blind-
+    check) co pytanie z zywej generacji, TYLKO bez presji czasu 60-90s
+    (patrz app/bank_seeder.py) - wiec jest rownie pewny jak swiezo
+    wygenerowane, zaakceptowane pytanie, nigdy mniej.
+
+    `question_data` to caly slownik pytania (question/options/correct/
+    explanation/final_answer/diversity_tag...) - DOKLADNIE ten sam
+    ksztalt co element listy quiz_data["questions"], wiec mozna go
+    dolaczyc do wyniku bez zadnej transformacji. `fingerprint` (patrz
+    _question_fingerprint w openai_exam.py) pozwala pominac pozycje,
+    ktore juz wystapily W TEJ SAMEJ partii zywej generacji (unikanie
+    duplikatow miedzy AI a magazynem)."""
+    __tablename__ = "question_bank"
+
+    id = Column(Integer, primary_key=True, index=True)
+    feature = Column(String(20), nullable=False)  # "quiz" albo "exam"
+    subject = Column(String(100), nullable=True)
+    topic = Column(String(300), nullable=False)
+    difficulty = Column(String(30), nullable=True)
+    level = Column(String(30), nullable=True)
+    question_data = Column(JSON, nullable=False)
+    fingerprint = Column(String(64), nullable=True, index=True)
+    # Ile razy ta pozycja zostala juz uzyta jako backup - preferujemy
+    # najmniej-uzywane (patrz get_bank_questions w app/question_bank.py),
+    # zeby przy malej puli dla danego tematu nie serwowac WCIAZ tego
+    # samego jednego pytania kazdemu kolejnemu userowi.
+    used_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_question_bank_lookup", "feature", "topic", "difficulty", "level"),
+    )
 
 
 class UsageStats(Base):

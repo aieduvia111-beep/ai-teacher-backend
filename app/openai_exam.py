@@ -23,6 +23,7 @@ from .math_verify import (
     build_safe_quadratic_function_range,
     build_safe_indefinite_integral_initial_condition,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
+    generate_safe_definite_integral_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -826,21 +827,26 @@ def fix_latex_string(t):
     naprawiany TU, PRZED walidacja/odrzuceniem (patrz wywolanie
     fix_latex_in_quiz PRZED _verify_and_fill_quiz_math)."""
     if not t: return t
-    # Napraw $1 jako pm/plus-minus - TYLKO gdy "1" jest CALA
-    # zawartoscia wyrazenia (np. "$1$", "$1 $", "=$1$") - NIGDY gdy
-    # jest czescia dluzszego, prawdziwego wyrazenia liczbowego.
-    # NAPRAWIONE (zgloszony realny bug, potwierdzony realnym testem
-    # generacji trygonometrii, sierpien 2026): poprzednia wersja
-    # robila BEZWARUNKOWY string-replace kazdego "$1 " GDZIEKOLWIEK
-    # w tekscie - psulo to KAZDE rownanie zaczynajace sie od cyfry 1
-    # (np. prawdziwa tozsamosc "$1 - 2\\sin^2(x) = \\cos(2x)$")
-    # zamieniajac na uszkodzone "$\\pm$- 2\\sin^2(x)...", z dodatkowym
-    # rozjechaniem parzystosci dolarow w reszcie tekstu (dokladnie
-    # zgloszony objaw "±±..." + polamane "$"). Regex z kotwicami do
-    # konca wyrazenia ($) eliminuje ten falszywy alarm, zachowujac
-    # oryginalny, historyczny przypadek (samotne "$1$" zamiast "±").
-    t = re_module.sub(r'\$\s*1\s*\$', '$\\\\pm$', t)
-    t = re_module.sub(r'=\s*\$\s*1\s*\$', '=$\\\\pm$', t)
+    # USUNIETE (18.09.2026, root-cause znaleziony przy okazji "zamawiasz
+    # 20 dostajesz 20" - user): ta "naprawa" (od 04.06.2026, "fix: pm z
+    # dolarami") zamieniala KAZDA odpowiedz, ktorej CALA trescia byla
+    # liczba "1" (np. "$1$") na uszkodzone "$\\pm$" (plus-minus bez
+    # wartosci) - zalozenie bylo, ze AI czasem "psuje" prawdziwe "±" na
+    # "1". Problem: nie da sie tekstowo odroznic prawdziwego, POPRAWNEGO
+    # wyniku "1" od rzekomo uszkodzonego "±" - a wynik CALKI OZNACZONEJ
+    # lub TOZSAMOSCI TRYGONOMETRYCZNEJ rowny dokladnie 1 jest bardzo
+    # czesty. Realny test (test_universal.py, "Calki oznaczone" n=20)
+    # pokazal 57/65 kandydatow odrzuconych, WIEKSZOSC (43) przez
+    # BlindVerify "AI-2 zwrocilo nieprawidlowy/brakujacy wybor" -
+    # bezposredni skutek jednej z 4 opcji odpowiedzi bedacej bezsensownym
+    # "$\\pm$" zamiast liczby. To (nie czas/rownoleglosc) byl prawdziwy
+    # powod niskiej skutecznosci obu problematycznych tematow (calki
+    # oznaczone I funkcje trygonometryczne - w obu "1" jest czestym,
+    # poprawnym wynikiem). Usuniete calkowicie zamiast zawezone dalej -
+    # nie ma bezpiecznego sposobu odroznienia tych dwoch przypadkow z
+    # samego tekstu, a szkoda z niszczenia poprawnych odpowiedzi jest
+    # dziesiatki razy wieksza niz rzadki, kosmetyczny przypadek
+    # faktycznie uszkodzonego "±".
     # Napraw spacje w frac
     import re as _r3
     t = _r3.sub(r'\\frac\{\s*-\s*', r'\\frac{-', t)
@@ -983,7 +989,7 @@ WAŻNE:
 async def _raw_generate_quiz_topic_once(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
     num_questions: int, difficulty: str, wlasne_instrukcje: str, diversity_hint: str = "",
-    avoid_block: str = ""
+    avoid_block: str = "", force_model: str = None
 ) -> Dict:
     """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) dla
     generate_quiz_from_topic - zbudowanie prompta, wywolanie modelu i
@@ -1322,8 +1328,21 @@ ZASADY:
     # test_real_mini_vs_4o_ab.py. Ta funkcja zasila zarowno Quiz jak i
     # Fiszki (dziela ten sam kod). Sprawdzian (exam_pdf_generator.py)
     # NIE jest tu wliczony - zostaje na gpt-4o, osobny temat.
+    #
+    # POPRAWIONE (18.09.2026, wiekszy real-test A/B na n=12/trudny, dwa
+    # tematy BEZ archetypu - "Funkcje trygonometryczne" i "Ciagi
+    # arytmetyczne i geometryczne", patrz transkrypt sesji): ten
+    # wczesniejszy test byl za maly (n=3), zeby zlapac roznice - real-test
+    # na trudniejszych partiach pokazal WYRAZNA przewage gpt-4o (8/12->12/12
+    # dla trygonometrii, 6/12->9/12 dla ciagow). Zamiast cofac CALA
+    # generacje na drozszy model (koszt dla WSZYSTKICH tematow, w tym
+    # tych ktore juz dzialaja dobrze na mini), `force_model` pozwala
+    # callerowi (patrz regenerate w _generate_quiz_topic_once) przelaczyc
+    # TYLKO rundy, ktore juz wiadomo ze sa w klopotach (grace/rescue) na
+    # mocniejszy model - plati sie premium TYLKO tam, gdzie dane pokazuja
+    # realna potrzebe.
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=force_model or "gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
@@ -1435,7 +1454,7 @@ def _chunk_diversity_hint(chunk_index: int, n_chunks: int) -> str:
 
 async def _raw_generate_quiz_topic_batch(
     topic: str, effective_topic_is_forced: bool, subject: str, level: str,
-    total_n: int, difficulty: str, wlasne_instrukcje: str, avoid_block: str = ""
+    total_n: int, difficulty: str, wlasne_instrukcje: str, avoid_block: str = "", force_model: str = None
 ) -> Dict:
     """Jak _raw_generate_quiz_topic_once, ale dla wiekszych `total_n`
     dzieli zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (patrz
@@ -1444,18 +1463,23 @@ async def _raw_generate_quiz_topic_batch(
     identyczne jak bezposrednie wywolanie _raw_generate_quiz_topic_once
     (jeden request, bez zadnej zmiany). Zwraca dodatkowy, prywatny klucz
     "_api_request_count" (ile faktycznych wywolan AI wykonano) - czytany
-    przez callerow do dokladnych metryk (patrz uzycie nizej)."""
+    przez callerow do dokladnych metryk (patrz uzycie nizej).
+
+    `force_model` (18.09.2026, patrz uzycie/uzasadnienie w
+    _generate_quiz_topic_once - regenerate lambda) - None = domyslny
+    tani model (gpt-4o-mini), przekazany dalej BEZ zmian do kazdego
+    z rownoleglych wywolan _raw_generate_quiz_topic_once."""
     sizes = _parallel_batch_sizes(total_n)
     if len(sizes) == 1:
         return await _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, sizes[0], difficulty, wlasne_instrukcje,
-            avoid_block=avoid_block,
+            avoid_block=avoid_block, force_model=force_model,
         )
     print(f"[MathVerify] rownolegle generowanie: {total_n} pytan podzielone na {len(sizes)} wywolan {sizes}")
     results = await asyncio.gather(*[
         _raw_generate_quiz_topic_once(
             topic, effective_topic_is_forced, subject, level, size, difficulty, wlasne_instrukcje,
-            diversity_hint=_chunk_diversity_hint(i, len(sizes)), avoid_block=avoid_block,
+            diversity_hint=_chunk_diversity_hint(i, len(sizes)), avoid_block=avoid_block, force_model=force_model,
         )
         for i, size in enumerate(sizes)
     ])
@@ -1960,6 +1984,31 @@ ZASADY:
             "_safe_generated": True,
         })
     quiz_data = {"title": ai_data.get("title", "Całki nieoznaczone - Quiz"), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
+# SAFE PARAMETER GENERATION - CALKA OZNACZONA, ZERO WYWOLAN AI (18.09.2026,
+# user: "po co ci api, mozesz to zrobic bez api" + real-test pokazal AI
+# poprawnie liczy wartosc calki oznaczonej tylko w ~10-15% przypadkow,
+# NIEZALEZNIE od trudnosci - patrz _is_definite_integral wyzej). W
+# ODROZNIENIU od WSZYSTKICH innych archetypow w tym pliku (ktore nadal
+# robia JEDNO tanie wywolanie AI do samego JEZYKA), ta metoda NIE dotyka
+# AI wcale - build_safe_definite_integral_question (math_verify.py)
+# generuje PELNE pytanie (tresc PO POLSKU + opcje + wyjasnienie) samym
+# kodem/sympy. Szybsze, tansze (zero kosztu) i bardziej niezawodne niz
+# reszta archetypow.
+async def _raw_generate_safe_definite_integral_batch(n: int) -> Dict:
+    """Generuje `n` pytan o calke oznaczona - zero wywolan AI, patrz
+    komentarz wyzej i generate_safe_definite_integral_batch w
+    math_verify.py."""
+    questions = generate_safe_definite_integral_batch(n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Całki oznaczone - Quiz", "questions": questions}
     quiz_data = fix_latex_in_quiz(quiz_data)
     for q in quiz_data.get("questions", []):
         q["_safe_generated"] = True
@@ -2733,10 +2782,53 @@ def _is_hard_indefinite_integral(topic: str, difficulty: str) -> bool:
     zglosil): temat "Calki nieoznaczone"/hard tez konsekwentnie nie
     zbieral pelnej liczby pytan - ten sam wzorzec (AI zle liczy stala
     calkowania C z warunku poczatkowego). Jak wyzej: UZYWANE TYLKO w
-    rundach dogenerowania."""
+    rundach dogenerowania.
+
+    NAPRAWIONE (18.09.2026, znalezione PRZED wdrozeniem przy audycie "czy
+    wszystkie tematy dzialaja poprawnie", nie zgloszone przez usera):
+    is_integral_topic dopasowuje KAZDY temat zawierajacy "całk"/"calk" -
+    bez tego wykluczenia "Calki OZNACZONE" (zupelnie inny dzial - wartosc
+    liczbowa calki miedzy granicami, BEZ stalej C) trafialoby w TEN SAM
+    archetyp co "Calki nieoznaczone", a generator ponizej
+    (_raw_generate_safe_indefinite_integral_batch) ZAWSZE tworzy zadania
+    o funkcji pierwotnej z warunkiem poczatkowym (tytul na sztywno "Calki
+    nieoznaczone") - user proszacy o oznaczone dostalby poprawna liczbe
+    pytan, ale NIEWLASCIWY dzial matematyki. Wykluczamy topic z "oznaczon"
+    bez poprzedzajacego "nie" (czyli faktycznie "oznaczone", nie
+    "NIEoznaczone") - takie tematy spadaja do zwyklej (wolnej) sciezki,
+    zamiast dostawac zle dopasowany bezpieczny generator."""
     is_integral = topic is not None and is_integral_topic(topic)
+    if is_integral:
+        t = topic.lower()
+        if "oznaczon" in t and "nieoznaczon" not in t:
+            is_integral = False  # explicite "calki OZNACZONE" - inny dzial, brak dedykowanego generatora
     diff_word = (difficulty or "").strip().lower()
     return is_integral and diff_word in _HARD_DIFFICULTY_WORDS
+
+
+def _is_definite_integral(topic: str, difficulty: str = None) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla CALEK OZNACZONYCH
+    - w ODROZNIENIU od WSZYSTKICH innych warunkow w tym pliku, CELOWO BEZ
+    filtra trudnosci (dziala dla latwy/sredni/trudny jednakowo).
+
+    Real-test (18.09.2026, user: "a jak sa latwe albo srednie to sie
+    generuje normalnie calki czy tylko trudne" - test_integral_easy_medium.py):
+    latwy dal 7/15, sredni 8/15 - DOKLADNIE tak samo zle jak trudny
+    (wczesniej naprawiony przez dodanie weryfikatora sympy - patrz
+    verify_definite_integral_question w math_verify.py). Dominujacy powod
+    odrzucenia to "sympy_mismatch" (56/60 i 47/55 odrzucen) - AI regularnie
+    zle liczy WARTOSC calki oznaczonej, NIEZALEZNIE od trudnosci, bo to
+    fundamentalnie zadanie arytmetyczne (podstawienie granic), nie
+    kwestia trudniejszej techniki calkowania. Skoro weryfikator TERAZ
+    poprawnie wylapuje kazdy taki blad (zamiast przepuszczac go dalej do
+    hukowego blind-check AI-2), efektywny wskaznik akceptacji AI spadl do
+    ~10-15% na KAZDYM poziomie trudnosci - zbyt nisko, zeby zywa generacja
+    kiedykolwiek byla szybka/niezawodna. build_safe_definite_integral_question
+    (math_verify.py) liczy WSZYSTKO kodem (sympy) - zero ryzyka arytmetyki
+    AI, wiec ten temat jest bezpieczny do pelnego przelaczenia na safe-
+    generation, tak jak pozostale 11 archetypow, ALE bez ograniczenia do
+    jednej trudnosci (bo problem nie jest zwiazany z trudnoscia)."""
+    return topic is not None and is_integral_topic(topic) and "oznaczon" in topic.lower() and "nieoznaczon" not in topic.lower()
 
 
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
@@ -2882,12 +2974,94 @@ async def _generate_quiz_topic_once(
     t_start = time.monotonic()
     batch_size = _buffered_count(num_questions, topic=topic, difficulty=difficulty)
     metrics = GenerationMetrics(requested_count=num_questions, batch_size=batch_size)
+    # NAPRAWIONE (18.09.2026, user: "world class, jak zamawia 20 to ma
+    # dostac 20, max 1 minuta"): dispatch na archetyp przeniesiony PRZED
+    # pierwsza (surowa) generacje - wczesniej byl liczony DOPIERO PO niej
+    # (patrz nizej, gdzie kiedys stal), wiec dla tematow z JUZ ISTNIEJACYM,
+    # niezawodnym generatorem (safe parameter generation) pierwsza proba
+    # I TAK szla przez wolna, zawodna AI, marnujac wiekszosc budzetu
+    # czasu na cos, co bezpieczny generator ponizej i tak by zastapil w
+    # rundzie dogenerowania. Teraz: dla rozpoznanego archetypu PIERWSZA
+    # partia TEZ idzie przez regenerate() (patrz uzycie ponizej) -
+    # tematy BEZ dedykowanego archetypu dzialaja identycznie jak wczesniej
+    # (wolna generacja, naturalna roznorodnosc podwzorcow).
+    used_safe_letters = set()
+    used_safe_constants = set()
+    # NAPRAWIONE (18.09.2026, zweryfikowane REALNYM testem n=20/hard
+    # PRZED wdrozeniem - patrz transkrypt sesji): pierwsza wersja tej
+    # zmiany wolala safe_batch_fn RAZ z pelna (buforowana, np. 32) liczba
+    # pytan, omijajac _adaptive_fill_batch - realny test pokazal, ze to
+    # WYCZERPUJE ograniczona pule liter/stalych (letters_pool ma tylko 10
+    # elementow) w JEDNYM wywolaniu, dajac WIECEJ duplikatow niz stara,
+    # wolna sciezka (19/20 zamiast lepszego wyniku). Bezpieczne generatory
+    # sa zaprojektowane do MALYCH, POWTARZANYCH wywolan (stad sztywny
+    # sufit 10 w _adaptive_fill_batch) - `regenerate` PONIZEJ poprawnie
+    # zachowuje ten sufit dla KAZDEGO wywolania (pierwszego i rund
+    # dogenerowania), a normalna petla w _verify_and_fill_quiz_math sama
+    # dobija do pelnej liczby przez wiele malych, poprawnie odseparowanych
+    # (used_safe_letters/used_safe_constants dzielone MIEDZY wywolaniami)
+    # partii - dokladnie ten sam, juz sprawdzony wzorzec co dotychczasowe
+    # rundy dogenerowania, tylko uzywany od PIERWSZEJ partii zamiast
+    # dopiero drugiej.
+    if _is_medium_linear_param_quadratic(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_linear_param_quadratic_batch(n, level, used_letters=used_safe_letters, used_constants=used_safe_constants)
+    elif _is_medium_quadratic_function(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_quadratic_function_range_batch(n)
+    elif _is_hard_indefinite_integral(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_indefinite_integral_batch(n)
+    elif _is_definite_integral(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_definite_integral_batch(n)
+    elif _is_hard_trig_quadratic(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_trig_quadratic_batch(n)
+    elif _is_hard_arithmetic_sequence(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_sequence_batch(n)
+    elif _is_medium_arithmetic_sequence(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_sequence_sum_batch(n)
+    elif _is_hard_law_of_cosines(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_law_of_cosines_batch(n)
+    elif _is_hard_geometric_sequence(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_geometric_sequence_batch(n)
+    elif _is_hard_abs_value(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_abs_value_batch(n)
+    elif _is_hard_law_of_sines(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_law_of_sines_batch(n)
+    elif _is_hard_quadratic_two_positive_roots(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_quadratic_two_positive_roots_batch(n, used_letters=used_safe_letters, used_constants=used_safe_constants)
+    else:
+        safe_batch_fn = None
+    is_safe_archetype = safe_batch_fn is not None
+    if is_safe_archetype:
+        regenerate = lambda n, avoid_block="", escalate=False: safe_batch_fn(_adaptive_fill_batch(n))
+    else:
+        # max_batch=30: bez limitu ograniczonej puli (to nie safe
+        # generator) - dosc duzo, zeby _raw_generate_quiz_topic_batch
+        # samo uruchomilo rownolegle wywolania (_parallel_batch_sizes,
+        # target_chunk=13) zamiast jednego wolnego, sekwencyjnego.
+        # NOWE (18.09.2026, real A/B test: gpt-4o-mini vs gpt-4o na
+        # tematach BEZ archetypu - "Funkcje trygonometryczne" 8/12->12/12,
+        # "Ciagi arytmetyczne i geometryczne" (temat MIESZANY, nie
+        # dopasowuje zadnego z dwoch osobnych archetypow ciagow) 6/12->9/12.
+        # gpt-4o-mini zostaje TANIM domyslnym wyborem dla PIERWSZYCH
+        # (standardowych) rund - wiekszosc tematow (latwe, niematematyczne,
+        # juz dzialajace archetypy) nigdy nie placi za mocniejszy model.
+        # `escalate=True` (patrz uzycie w _verify_and_fill_quiz_math -
+        # grace/rescue rundy, WLASNIE dlatego, ze standardowy budzet juz
+        # nie wystarczyl) przelacza TYLKO TA JEDNA regenerujaca partie na
+        # gpt-4o - koszt premium placony WYLACZNIE tam, gdzie dane pokazuja,
+        # ze jest faktycznie potrzebny.
+        regenerate = lambda n, avoid_block="", escalate=False: _raw_generate_quiz_topic_batch(
+            topic, effective_topic_is_forced, subject, level, _adaptive_fill_batch(n, max_batch=30), difficulty, wlasne_instrukcje,
+            avoid_block=avoid_block, force_model=("gpt-4o" if escalate else None),
+        )
     try:
         with _Timer(metrics, "generation_time"):
             try:
-                quiz_data = await _raw_generate_quiz_topic_batch(
-                    topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
-                )
+                if is_safe_archetype:
+                    quiz_data = await regenerate(batch_size)
+                else:
+                    quiz_data = await _raw_generate_quiz_topic_batch(
+                        topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
+                    )
             except Exception as e:
                 # NAPRAWIONE (07.09.2026, user zglosil IDENTYCZNY blad na
                 # prawdziwym iPhonie i na Androidzie - "Quiz sie nie generuje,
@@ -2908,9 +3082,12 @@ async def _generate_quiz_topic_once(
                 # kompletna odpowiedz za drugim razem.
                 print(f"⚠️ Quiz: surowa generacja padla ({e}), probuje ponownie...")
                 metrics.retry_count += 1
-                quiz_data = await _raw_generate_quiz_topic_batch(
-                    topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
-                )
+                if is_safe_archetype:
+                    quiz_data = await regenerate(batch_size)
+                else:
+                    quiz_data = await _raw_generate_quiz_topic_batch(
+                        topic, effective_topic_is_forced, subject, level, batch_size, difficulty, wlasne_instrukcje
+                    )
         metrics.api_request_count += quiz_data.pop("_api_request_count", 1)
         metrics.generated_count += len(quiz_data.get("questions", []))
     except Exception:
@@ -2920,82 +3097,10 @@ async def _generate_quiz_topic_once(
         from .metrics import persist_generation_metrics
         persist_generation_metrics(metrics, feature="quiz", temat=topic, trudnosc=difficulty, poziom=level)
         raise
-    # SAFE PARAMETER GENERATION (patrz komentarz przy
-    # _raw_generate_safe_linear_param_quadratic_batch): dla rund
-    # dogenerowania TEGO JEDNEGO, potwierdzonego trudnego tematu/
-    # trudnosci, uzywamy metody z gotowym, poprawnym wynikiem zamiast
-    # kolejnej proby wolnej generacji, ktora regularnie zawodzi wlasnie
-    # dla tego przypadku (stad w ogole rundy dogenerowania sa
-    # potrzebne). Pierwsza partia (wyzej) zostaje WOLNA generacja -
-    # naturalny mix podwzorcow, dobry dla roznorodnosci; TYLKO
-    # uzupelnianie brakujacych przelacza sie na bezpieczna metode.
-    # NAPRAWIONE (30.08.2026, live-test ujawnil "cannot access free
-    # variable 'used_safe_letters'"): te dwa sety MUSZA byc zdefiniowane
-    # PRZED calym if/elif lancuchem, nie wewnatrz jednej z gałęzi - byly
-    # tworzone TYLKO w gałęzi _is_medium_linear_param_quadratic, wiec gdy
-    # PORT tej samej ochrony przed duplikatami zostal dodany do gałęzi
-    # _is_hard_quadratic_two_positive_roots (siostrzana, wzajemnie
-    # wykluczajaca sie gałąź elif) - zmienne nigdy tam nie istnialy.
-    # Zyja przez CALY quiz (closure nad `regenerate`, wywolywanym raz per
-    # runda dogenerowania) - dokladnie jak w exam_pdf_generator.py, gdzie
-    # sa tworzone RAZ w _get_exam_data, przed dispatchem do archetypow.
-    used_safe_letters = set()
-    used_safe_constants = set()
-    if _is_medium_linear_param_quadratic(topic, difficulty):
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_linear_param_quadratic_batch(_adaptive_fill_batch(n), level, used_letters=used_safe_letters, used_constants=used_safe_constants)
-    elif _is_medium_quadratic_function(topic, difficulty):
-        # Port tego samego wzorca na zbior wartosci funkcji kwadratowej -
-        # patrz _is_medium_quadratic_function i
-        # _raw_generate_safe_quadratic_function_range_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_function_range_batch(_adaptive_fill_batch(n))
-    elif _is_hard_indefinite_integral(topic, difficulty):
-        # Port tego samego wzorca na calki nieoznaczone - patrz
-        # _is_hard_indefinite_integral i
-        # _raw_generate_safe_indefinite_integral_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_indefinite_integral_batch(_adaptive_fill_batch(n))
-    elif _is_hard_trig_quadratic(topic, difficulty):
-        # Port tego samego wzorca na trygonometrie - patrz
-        # _is_hard_trig_quadratic i _raw_generate_safe_trig_quadratic_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_trig_quadratic_batch(_adaptive_fill_batch(n))
-    elif _is_hard_arithmetic_sequence(topic, difficulty):
-        # Port tego samego wzorca na ciagi arytmetyczne - patrz
-        # _is_hard_arithmetic_sequence i _raw_generate_safe_sequence_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_batch(_adaptive_fill_batch(n))
-    elif _is_medium_arithmetic_sequence(topic, difficulty):
-        # NOWE (04.09.2026): analogicznie, ale dla SREDNIEJ trudnosci -
-        # patrz _is_medium_arithmetic_sequence i
-        # _raw_generate_safe_sequence_sum_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_sequence_sum_batch(_adaptive_fill_batch(n))
-    elif _is_hard_law_of_cosines(topic, difficulty):
-        # Port tego samego wzorca na twierdzenie cosinusow - patrz
-        # _is_hard_law_of_cosines i _raw_generate_safe_law_of_cosines_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_cosines_batch(_adaptive_fill_batch(n))
-    elif _is_hard_geometric_sequence(topic, difficulty):
-        # Port tego samego wzorca na ciagi geometryczne - patrz
-        # _is_hard_geometric_sequence i _raw_generate_safe_geometric_sequence_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_geometric_sequence_batch(_adaptive_fill_batch(n))
-    elif _is_hard_abs_value(topic, difficulty):
-        # Port tego samego wzorca na wartosc bezwzgledna - patrz
-        # _is_hard_abs_value i _raw_generate_safe_abs_value_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_abs_value_batch(_adaptive_fill_batch(n))
-    elif _is_hard_law_of_sines(topic, difficulty):
-        # Port tego samego wzorca na twierdzenie sinusow - patrz
-        # _is_hard_law_of_sines i _raw_generate_safe_law_of_sines_batch.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_law_of_sines_batch(_adaptive_fill_batch(n))
-    elif _is_hard_quadratic_two_positive_roots(topic, difficulty):
-        # Port tego samego wzorca na trudne rownania kwadratowe z
-        # parametrem - patrz _is_hard_quadratic_two_positive_roots i
-        # _raw_generate_safe_quadratic_two_positive_roots_batch.
-        # used_letters/used_constants: patrz naprawa 30.08.2026 w docstringu.
-        regenerate = lambda n, avoid_block="": _raw_generate_safe_quadratic_two_positive_roots_batch(_adaptive_fill_batch(n), used_letters=used_safe_letters, used_constants=used_safe_constants)
-    else:
-        regenerate = lambda n, avoid_block="": _raw_generate_quiz_topic_batch(
-            topic, effective_topic_is_forced, subject, level, _adaptive_fill_batch(n), difficulty, wlasne_instrukcje,
-            avoid_block=avoid_block,
-        )
     quiz_data = await _verify_and_fill_quiz_math(
         quiz_data, num_questions, regenerate,
         t_start=t_start, difficulty=difficulty, metrics=metrics, level=level, topic=topic,
+        is_safe_archetype=is_safe_archetype,
     )
     # BRAK CICHEGO DOWNGRADE: jesli zamowiono np. hard, wszystkie pytania
     # musza byc hard. Nie uzupelniamy brakow pytaniami medium/easy.
@@ -3149,14 +3254,28 @@ _MIN_FILL_BATCH = 6
 # Dla wiekszych quizow nie robimy pojedynczych retry. Jedna mala partia
 # jest znacznie drozsza czasowo niz jeden sensowny batch, bo kazda runda
 # ma koszt requestu + walidacji. Nadal przycinamy wynik do requested_count.
-def _adaptive_fill_batch(missing: int) -> int:
+#
+# NAPRAWIONE (18.09.2026, user: "musi byc uniwersalna metoda, mam 2000
+# uzytkownikow"): sufit 10 byl POTRZEBNY dla bezpiecznych generatorow
+# (ograniczona pula liter/stalych - patrz historia tej samej sesji), ale
+# dla ZWYKLEJ (wolnej AI) sciezki NIE ma tego ograniczenia, a sufit 10
+# oznaczal, ze runda dogenerowania NIGDY nie byla dosc duza, zeby
+# uruchomic JUZ ISTNIEJACY mechanizm rownoleglego generowania
+# (_parallel_batch_sizes w _raw_generate_quiz_topic_batch, target_chunk=13
+# - dzieli duze zamowienie na az 3 rownolegle wywolania AI). `max_batch`
+# pozwala kazdemu calleroWI wybrac wlasciwy sufit: bezpieczne generatory
+# (regenerate w _generate_quiz_topic_once, is_safe_archetype=True)
+# zostawiaja domyslne 10, zwykla sciezka dostaje wyzszy sufit (patrz
+# uzycie ponizej) - jedna zmiana, dziala dla KAZDEGO tematu bez
+# dedykowanego generatora, nie tylko tych juz obsluzonych archetypow.
+def _adaptive_fill_batch(missing: int, max_batch: int = 10) -> int:
     try:
         missing = max(1, int(missing))
     except (TypeError, ValueError):
         missing = 1
     if missing <= 4:
         return 4
-    return min(10, max(5, int(missing * 1.25 + 0.999)))
+    return min(max_batch, max(5, int(missing * 1.25 + 0.999)))
 
 
 # NAPRAWIONE (audyt realnej generacji V1, sierpien 2026 - swiadoma,
@@ -3262,6 +3381,39 @@ _GRACE_MAX_SECONDS = 60.0
 # wynik zamiast ryzykowac calkowity timeout.
 _RESCUE_EXTRA_SECONDS = 20.0
 
+# NOWE (18.09.2026, user: "max 1 minuta, nawet dla trudnych tematow") -
+# bezwzgledne sufity (nie relatywne do tematu/N) na kazda faze procesu -
+# standardowa generacja+weryfikacja, "grace" (dobijanie gdy brakuje malo),
+# i ostateczny "rescue" (rozluzniony tier trudnosci). Suma = twardy limit
+# 60s na CALY proces, niezaleznie jak bardzo trudny/duzy jest quiz -
+# _max_generation_seconds/grace_ceiling/rescue_ceiling ponizej sa
+# dodatkowo obcinane do tych wartosci.
+_ABSOLUTE_MAX_GENERATION_SECONDS = 40.0
+_ABSOLUTE_GRACE_CEILING = 50.0
+_ABSOLUTE_RESCUE_CEILING = 60.0
+
+# POPRAWIONE (18.09.2026, ten sam dzien - user po zobaczeniu, ze "60s"
+# dla tematow BEZ dedykowanego generatora (Safe Parameter Generation)
+# czasem konczy sie niepelnym wynikiem (np. 8/20): "zamawiasz 20 dostajesz
+# 20... kazdy ma byc poprawny a nie [zbugowany]" - user wybral
+# kompletnosc/poprawnosc PONAD szybkosc dla tych trudniejszych przypadkow.
+# Dla tematow z archetypem (is_safe_archetype=True) 40/50/60s zostaje -
+# tam matematyka jest liczona programowo z gory, AI tylko opisuje, wiec
+# jest to i tak szybkie (typowo ~40-45s) i niezawodne. Dla tematow BEZ
+# archetypu (AI samo rozwiazuje matematyke) sufity sa znacznie wyzsze -
+# wiecej rund/prob = wiecej szans, zeby dobic do DOKLADNIE requested_count
+# zamiast poddac sie po minucie z niepelnym wynikiem.
+_ABSOLUTE_MAX_GENERATION_SECONDS_UNSAFE = 90.0
+_ABSOLUTE_GRACE_CEILING_UNSAFE = 150.0
+_ABSOLUTE_RESCUE_CEILING_UNSAFE = 210.0
+_GRACE_EXTRA_ROUNDS_UNSAFE = 6
+_RESCUE_ATTEMPTS_UNSAFE = 6
+# _GRACE_MAX_MISSING (=4) blokuje grace rundy calkowicie, gdy brakuje
+# WIECEJ niz 4 pytania - dla tematow bez archetypu to sie zdarza (np.
+# 8/20 po standardowych rundach, brakuje 12) i grace nigdy by nie
+# wystartowalo bez wzgledu na podniesione sufity czasowe powyzej.
+_GRACE_MAX_MISSING_UNSAFE = 50
+
 
 # NAPRAWIONE (user 04.09.2026, "czy czas jest odpowiedni jak ktos wybierze
 # 20 pytan"): potwierdzone realnym testem (test_real_quiz_n20_budget_check.py)
@@ -3282,7 +3434,7 @@ _EXTRA_SECONDS_PER_QUESTION = 4.5
 _MAX_EXTRA_SECONDS_FOR_N = 54.0
 
 
-def _max_generation_seconds(topic: str = None, difficulty: str = None, num_questions: int = None) -> float:
+def _max_generation_seconds(topic: str = None, difficulty: str = None, num_questions: int = None, is_safe_archetype: bool = True) -> float:
     """Zwraca globalny budzet czasu (sekundy) dla CALEGO procesu
     generowania+weryfikacji+dogenerowania. 45s dla rownan kwadratowych
     z parametrem na poziomie medium (waski, historyczny wyjatek - patrz
@@ -3304,7 +3456,21 @@ def _max_generation_seconds(topic: str = None, difficulty: str = None, num_quest
     except (TypeError, ValueError):
         n = 0
     extra = min(_MAX_EXTRA_SECONDS_FOR_N, max(0, n - _N_BASELINE_FOR_TIME_BUDGET) * _EXTRA_SECONDS_PER_QUESTION)
-    return base + extra
+    # NAPRAWIONE (18.09.2026, user: "max 1 minuta, nawet dla trudnych
+    # tematow") - skalowanie z liczba pytan (04.09.2026, +54s dla n=20)
+    # bylo dodawane NA WIERZCH juz istniejacego "max 1 minuta" dla hard
+    # (_HARD_TIMEOUT_SECONDS=60s, patrz docstring), wiec hard+n=20 mogl
+    # dojsc do 114s - cichy regres wczesniejszego zalozenia. Twardy
+    # sufit ponizej PRZED grace/rescue (patrz ich wlasne sufity nizej,
+    # oba TEZ teraz bezwzglednie ograniczone do 60s) - relatywny priorytet
+    # (trudne/duze zamowienia dostaja wiecej z DOSTEPNEJ puli) zostaje,
+    # tylko cala pula jest teraz naprawde ograniczona do celu usera.
+    # POPRAWIONE (18.09.2026, patrz komentarz nad *_UNSAFE powyzej): sufit
+    # 40s dotyczy tylko tematow z dedykowanym generatorem (is_safe_archetype) -
+    # tam jest bezpieczny, bo matematyka jest i tak juz policzona z gory.
+    # Dla reszty (AI samo liczy matematyke) kompletnosc > szybkosc.
+    abs_cap = _ABSOLUTE_MAX_GENERATION_SECONDS if is_safe_archetype else _ABSOLUTE_MAX_GENERATION_SECONDS_UNSAFE
+    return min(abs_cap, base + extra)
 
 
 def _require_exact_exam_question_count(exam_data: dict, requested_count: int) -> dict:
@@ -3365,7 +3531,7 @@ def _require_exact_question_count(quiz_data: dict, requested_count: int, feature
     return quiz_data
 
 
-async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None, topic: str = None) -> dict:
+async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, regenerate, t_start: float = None, difficulty: str = None, metrics=None, level: str = None, topic: str = None, is_safe_archetype: bool = True) -> dict:
     """STANDARD ARCHITEKTONICZNY (patrz komentarz nad SAFE PARAMETER
     GENERATION w math_verify.py): `current`/`missing` ponizej sa liczone
     WYLACZNIE przez len() na faktycznie zaakceptowanej liscie - kod, nie
@@ -3412,7 +3578,7 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     seen_diversity_tag_dicts = []
     quiz_data = await _verify_and_fix_quiz_math(quiz_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
     max_rounds = 6
-    max_seconds = _max_generation_seconds(topic, difficulty, requested_count)
+    max_seconds = _max_generation_seconds(topic, difficulty, requested_count, is_safe_archetype=is_safe_archetype)
     # NAPRAWIONE (user 04.09.2026, skalowanie budzetu z liczba pytan - patrz
     # komentarz nad _max_generation_seconds): _GRACE_MAX_SECONDS byl STALYM,
     # globalnym sufitem (60s) - dla duzego num_questions max_seconds sam w
@@ -3420,7 +3586,15 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
     # natychmiast (elapsed>=grace_ceiling bylby prawdziwy od razu). Sufit
     # grace liczony wzgledem FAKTYCZNEGO max_seconds (zachowuje ten sam
     # margines +30s co wczesniej, tylko wzgledny zamiast bezwzglednego).
-    grace_ceiling = max_seconds + (_GRACE_MAX_SECONDS - _DEFAULT_TIMEOUT_SECONDS)
+    # POPRAWIONE (18.09.2026, patrz *_UNSAFE komentarz przy stalych): dla
+    # tematow bez dedykowanego generatora grace/rescue dostaja duzo wiecej
+    # czasu I prob - kompletnosc wazniejsza niz predkosc dla tych tematow.
+    grace_abs_ceiling = _ABSOLUTE_GRACE_CEILING if is_safe_archetype else _ABSOLUTE_GRACE_CEILING_UNSAFE
+    rescue_abs_ceiling = _ABSOLUTE_RESCUE_CEILING if is_safe_archetype else _ABSOLUTE_RESCUE_CEILING_UNSAFE
+    grace_extra_rounds = _GRACE_EXTRA_ROUNDS if is_safe_archetype else _GRACE_EXTRA_ROUNDS_UNSAFE
+    rescue_attempts = 3 if is_safe_archetype else _RESCUE_ATTEMPTS_UNSAFE
+    grace_max_missing = _GRACE_MAX_MISSING if is_safe_archetype else _GRACE_MAX_MISSING_UNSAFE
+    grace_ceiling = min(grace_abs_ceiling, max_seconds + (_GRACE_MAX_SECONDS - _DEFAULT_TIMEOUT_SECONDS))
     if t_start is None:
         t_start = time.monotonic()
     round_i = 0
@@ -3439,23 +3613,28 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         # zakonczeniu (uwzgledniane w marginesie timeoutu frontendu).
         in_standard_budget = round_i <= max_rounds and elapsed < max_seconds
         if not in_standard_budget:
-            if missing > _GRACE_MAX_MISSING:
-                print(f"[MathVerify] przekroczono standardowy budzet ({elapsed:.1f}s, runda {round_i}), brakuje {missing} (>{_GRACE_MAX_MISSING}) - zbyt duzo na rozszerzenie, przerywam dogenerowanie")
+            if missing > grace_max_missing:
+                print(f"[MathVerify] przekroczono standardowy budzet ({elapsed:.1f}s, runda {round_i}), brakuje {missing} (>{grace_max_missing}) - zbyt duzo na rozszerzenie, przerywam dogenerowanie")
                 break
-            if grace_rounds_used >= _GRACE_EXTRA_ROUNDS:
-                print(f"[MathVerify] wyczerpano {_GRACE_EXTRA_ROUNDS} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
+            if grace_rounds_used >= grace_extra_rounds:
+                print(f"[MathVerify] wyczerpano {grace_extra_rounds} dodatkowych rund (grace), nadal brakuje {missing} - przerywam dogenerowanie")
                 break
             if elapsed >= grace_ceiling:
                 print(f"[MathVerify] przekroczono sufit rozszerzenia ({elapsed:.1f}s >= {grace_ceiling:.1f}s) - przerywam dogenerowanie")
                 break
             grace_rounds_used += 1
-            print(f"[MathVerify] RUNDA DODATKOWA (grace {grace_rounds_used}/{_GRACE_EXTRA_ROUNDS}): standardowy budzet wyczerpany, ale brakuje tylko {missing} pytan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
+            print(f"[MathVerify] RUNDA DODATKOWA (grace {grace_rounds_used}/{grace_extra_rounds}): standardowy budzet wyczerpany, ale brakuje tylko {missing} pytan - probuje dobic do pelnej liczby ({elapsed:.1f}s)")
         print(f"[MathVerify] brakuje {missing} pytan po weryfikacji (runda {round_i}/{max_rounds}, {elapsed:.1f}s) - dogenerowuje...")
         metrics.retry_count += 1
         avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
         try:
             with _Timer(metrics, "generation_time"):
-                extra_data = await regenerate(missing, avoid_block)
+                # escalate=True od pierwszej rundy grace (not in_standard_budget) -
+                # patrz uzasadnienie w regenerate/_raw_generate_quiz_topic_once:
+                # standardowy budzet juz nie wystarczyl, wiec ta partia
+                # placi premium za mocniejszy model (dla tematow bez
+                # archetypu - dla archetypow/zero-AI to i tak no-op).
+                extra_data = await regenerate(missing, avoid_block, escalate=not in_standard_budget)
             metrics.api_request_count += extra_data.pop("_api_request_count", 1)
             metrics.generated_count += len(extra_data.get("questions", []))
         except Exception as e:
@@ -3484,8 +3663,8 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
         # dostaje ZAKTUALIZOWANY avoid_block, wiec nie powtarza tych samych
         # bledow. Nadal ograniczone (nie nieskonczona petla) - max 3
         # dodatkowe wywolania AI w najgorszym przypadku.
-        rescue_ceiling = grace_ceiling + _RESCUE_EXTRA_SECONDS
-        for _rescue_i in range(1, 4):
+        rescue_ceiling = min(rescue_abs_ceiling, grace_ceiling + _RESCUE_EXTRA_SECONDS)
+        for _rescue_i in range(1, rescue_attempts + 1):
             missing_final = requested_count - final_count
             if missing_final <= 0:
                 break
@@ -3493,12 +3672,15 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
             if rescue_elapsed >= rescue_ceiling:
                 print(f"[MathVerify] OSTATECZNY RATUNEK: przekroczono budzet ratunku ({rescue_elapsed:.0f}s >= {rescue_ceiling:.0f}s) - przerywam dalsze proby")
                 break
-            print(f"[MathVerify] OSTATECZNY RATUNEK {_rescue_i}/3: brakuje {missing_final} pytan - proba z rozluznionym tierem trudnosci")
+            print(f"[MathVerify] OSTATECZNY RATUNEK {_rescue_i}/{rescue_attempts}: brakuje {missing_final} pytan - proba z rozluznionym tierem trudnosci")
             avoid_block = format_avoid_diversity_block(seen_diversity_tag_dicts)
             try:
                 metrics.retry_count += 1
                 with _Timer(metrics, "generation_time"):
-                    rescue_data = await regenerate(missing_final, avoid_block)
+                    # OSTATECZNY RATUNEK zawsze escaluje - to juz ostatnia
+                    # proba przed calkowita porazka, tania sciezka od dawna
+                    # nie wystarczyla.
+                    rescue_data = await regenerate(missing_final, avoid_block, escalate=True)
                 metrics.api_request_count += rescue_data.pop("_api_request_count", 1)
                 metrics.generated_count += len(rescue_data.get("questions", []))
                 rescue_data = await _verify_and_fix_quiz_math(rescue_data, difficulty=difficulty, seen_fingerprints=seen_fingerprints, metrics=metrics, level=level, seen_diversity_tags=seen_diversity_tags, client=client, seen_diversity_tag_dicts=seen_diversity_tag_dicts, relax_difficulty=True)
@@ -3507,11 +3689,49 @@ async def _verify_and_fill_quiz_math(quiz_data: dict, requested_count: int, rege
                 print(f"[MathVerify] blad ostatecznego ratunku: {e}")
             final_count = len(quiz_data.get("questions", []))
 
+    if final_count < requested_count and topic:
+        # MAGAZYN JAKO BACKUP (18.09.2026, user: "AI probuje generowac
+        # ZAWSZE (swiezosc/roznorodnosc) - ALE jesli po X probach/
+        # sekundach NIE udaje sie osiagnac N=N, system SIEGA do gotowej,
+        # JUZ zweryfikowanej bazy pytan jako backup") - OSTATNI krok
+        # PRZED poddaniem sie z niepelnym wynikiem. Kazdy wiersz w
+        # magazynie przeszedl JUZ dokladnie ta sama trzywarstwowa
+        # weryfikacje co zywa generacja (patrz QuestionBankItem/
+        # app/question_bank.py) - wiec dolozenie stamtad NIE obniza
+        # pewnosci matematycznej, tylko unika calkowitej porazki gdy AI
+        # nie zdazylo/nie potrafilo dobic do N na czas. Zawiniete w
+        # try/except - awaria bazy/magazynu NIGDY nie ma prawa zepsuc
+        # istniejacej sciezki (zachowanie identyczne jak dzis, po prostu
+        # spada do istniejacego komunikatu o shortfallu ponizej).
+        try:
+            from .database import SessionLocal
+            from . import question_bank
+            missing_from_bank = requested_count - final_count
+            bank_db = SessionLocal()
+            try:
+                already_texts = {q.get("question", "") for q in quiz_data.get("questions", [])}
+                exclude_fps = {question_bank.compute_fingerprint(t) for t in already_texts}
+                bank_items = question_bank.get_bank_questions(
+                    bank_db, feature="quiz", topic=topic, difficulty=difficulty, level=level,
+                    limit=missing_from_bank, exclude_fingerprints=exclude_fps,
+                )
+            finally:
+                bank_db.close()
+            if bank_items:
+                print(f"[MathVerify] MAGAZYN: dokladam {len(bank_items)} juz zweryfikowanych pytan z bazy (brakowalo {missing_from_bank})")
+                quiz_data.setdefault("questions", []).extend(bank_items)
+                metrics.filled_from_bank_count += len(bank_items)
+        except Exception as e:
+            print(f"[MathVerify] magazyn niedostepny/blad odczytu (pomijam, spadam do zywej generacji): {e}")
+        final_count = len(quiz_data.get("questions", []))
+
     if final_count < requested_count:
         # Bardzo rzadki przypadek - wyczerpano max_rounds ALBO max_seconds
-        # ORAZ ostateczny ratunek (relax_difficulty) i nadal brakuje -
-        # temat prawdopodobnie fundamentalnie problematyczny. Uczciwy
-        # komunikat zamiast cichego podania niepelnego quizu.
+        # ORAZ ostateczny ratunek (relax_difficulty) i magazyn (jesli byl
+        # dostepny) i nadal brakuje - temat prawdopodobnie fundamentalnie
+        # problematyczny, ALBO magazyn jeszcze nie ma dla niego zadnej
+        # puli (patrz app/bank_seeder.py). Uczciwy komunikat zamiast
+        # cichego podania niepelnego quizu.
         total_elapsed = time.monotonic() - t_start
         # NAPRAWIONE (ten sam blad co w exam_pdf_generator.py - patrz
         # commit "Napraw myslacy komunikat shortfallu Sprawdzianu"):
