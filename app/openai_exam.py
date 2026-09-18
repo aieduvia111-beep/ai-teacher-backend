@@ -25,6 +25,7 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch,
     generate_safe_multiplication_table_batch,
+    generate_safe_map_scale_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -1152,6 +1153,16 @@ podaj DOKLADNIE JEDNA z tych wartosci:
     wyrazow ciagu", "oblicz wartosc wyrazenia dla x=...", "znajdz iloraz
     ciagu geometrycznego") Z JEDNA LICZBOWA ODPOWIEDZIA. Decyduje TYLKO
     to, czy odpowiedz to POJEDYNCZA LICZBA - nie to, czy jest "fabula".
+    TA KLASA NIE JEST TYLKO DLA MATEMATYKI - KAZDY przedmiot z liczbowym
+    obliczeniem nalezy TUTAJ, nie do "factual": geografia (skala mapy -
+    "1cm na mapie = 5km w terenie, ile km to 8cm", gestosc zaludnienia -
+    "ludnosc/powierzchnia", strefy czasowe - "roznica dlugosci
+    geograficznej / 15 = roznica godzin", przyrost naturalny), biologia
+    (stezenia, tempo wzrostu populacji), ekonomia/WOS (PKB per capita,
+    stopa bezrobocia, odsetki) - to WSZYSTKO czysta arytmetyka (dzielenie/
+    mnozenie/procent), TAK SAMO liczalna kodem jak zadanie matematyczne -
+    NIE klasyfikuj jej jako "factual" tylko dlatego, ze przedmiot to nie
+    matematyka.
   "geometry" - zadanie geometryczne z jedna liczbowa odpowiedzia (pole,
     obwod, przekatna, objetosc)
   "algebra_symbolic" - odpowiedz to zbior/przedzial/nierownosc/warunek na
@@ -1301,9 +1312,24 @@ FORMAT (TYLKO JSON):
                 "skill": "suma n wyrazow ciagu geometrycznego", "concept": "wzor na sume S_n",
                 "task_type": "oblicz sume", "reasoning": "podstaw b1 i q do wzoru na sume"
             }}
+        }},
+        {{
+            "id": 4,
+            "question": "Odległość między dwoma miastami na mapie w skali 1:5 000 000 wynosi 6 cm. Jaka jest rzeczywista odległość między nimi w kilometrach?",
+            "options": ["$300$ km", "$250$ km", "$180$ km", "$600$ km"],
+            "correct": 0,
+            "final_answer": "$300$ km",
+            "explanation": "Rzeczywista odległość: $6 \\text{{cm}} \\cdot 5\\,000\\,000 = 30\\,000\\,000 \\text{{cm}} = 300$ km.",
+            "problem_class": "arithmetic_word_problem",
+            "validation_rule": {{"variables": {{"cm_na_mapie": 6, "skala": 5000000}}, "expression": "cm_na_mapie * skala / 100000", "expected": 300}},
+            "diversity_tag": {{
+                "skill": "obliczenia skali mapy", "concept": "przeliczanie cm na km wg skali",
+                "task_type": "oblicz odleglosc rzeczywista", "reasoning": "pomnoz przez skale, zamien cm na km"
+            }}
         }}
     ]
 }}
+PRZYKLAD 4 pokazuje WAZNA rzecz: to jest zadanie z GEOGRAFII (nie matematyki), a MIMO TO ma "problem_class": "arithmetic_word_problem" i pelne "validation_rule" - bo odpowiedzia jest JEDNA LICZBA policzona ze wzoru. Ta sama zasada dotyczy KAZDEGO przedmiotu z obliczeniami (biologia, ekonomia/WOS, fizyka/chemia) - NIGDY nie pomijaj validation_rule tylko dlatego, ze przedmiot "nie jest matematyka".
 PRZYKLAD 3 pokazuje WAZNA rzecz: to jest CZYSTA algebra (zaden "temat"
 tekstowy, zadna fabula), a MIMO TO problem_class to "arithmetic_word_problem"
 (bo odpowiedz to jedna liczba) - NIE "algebra_symbolic". To dokladnie ten typ
@@ -2039,6 +2065,22 @@ async def _raw_generate_safe_multiplication_table_batch(n: int) -> Dict:
         q["id"] = i
         q["_safe_generated"] = True
     quiz_data = {"title": "Tabliczka mnożenia - Quiz", "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
+# SAFE PARAMETER GENERATION - SKALA MAPY, ZERO WYWOLAN AI (18.09.2026,
+# patrz _is_map_scale wyzej i pelne uzasadnienie w
+# generate_safe_map_scale_batch, math_verify.py).
+async def _raw_generate_safe_map_scale_batch(n: int) -> Dict:
+    """Generuje `n` pytan o skale mapy - zero wywolan AI."""
+    questions = generate_safe_map_scale_batch(n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Skala mapy - Quiz", "questions": questions}
     quiz_data = fix_latex_in_quiz(quiz_data)
     for q in quiz_data.get("questions", []):
         q["_safe_generated"] = True
@@ -2884,6 +2926,22 @@ def _is_multiplication_table(topic: str, difficulty: str = None) -> bool:
     return ("tabliczk" in t) and ("mnożen" in t or "mnozen" in t)
 
 
+def _is_map_scale(topic: str, difficulty: str = None) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla SKALI MAPY
+    (geografia) - jak _is_multiplication_table wyzej, CELOWO BEZ filtra
+    trudnosci. Real dane produkcyjne (18.09.2026): "geografia" mialo
+    56.4% niepelnych wynikow, real-test na "Skala mapy i obliczenia
+    geograficzne" pokazal 36/45 odrzuconych kandydatow (dominujace
+    blind_ai_mismatch) - dokladnie ten sam wzorzec co w matematyce bez
+    dedykowanego generatora. Proba fixu na poziomie promptu (dodanie
+    przykladu geograficznego do problem_class/validation_rule) NIE
+    POMOGLA - identyczna liczba odrzucen przed i po. Jedyna sprawdzona
+    metoda: build_safe_map_scale_question (math_verify.py) liczy WSZYSTKO
+    kodem (cm_na_mapie * skala = cm_w_terenie, zero ryzyka arytmetyki AI)."""
+    t = (topic or "").lower()
+    return "skal" in t and "map" in t
+
+
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla TRYGONOMETRII na
     poziomie trudny/hard (port wzorca z _is_medium_linear_param_quadratic
@@ -3066,6 +3124,8 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_definite_integral_batch(n)
     elif _is_multiplication_table(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_multiplication_table_batch(n)
+    elif _is_map_scale(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_map_scale_batch(n)
     elif _is_hard_trig_quadratic(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_trig_quadratic_batch(n)
     elif _is_hard_arithmetic_sequence(topic, difficulty):

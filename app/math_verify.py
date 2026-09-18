@@ -5283,6 +5283,123 @@ def build_safe_multiplication_table_question(max_factor: int = 10) -> dict:
     }
 
 
+
+# =================================================================
+# SAFE PARAMETER GENERATION - SKALA MAPY (GEOGRAFIA), ZERO WYWOLAN AI
+# (18.09.2026, real dane produkcyjne: "geografia" ma 56.4% niepelnych
+# wynikow, real-test na "Skala mapy i obliczenia geograficzne" pokazal
+# 36/45 odrzuconych kandydatow, dominujace "blind_ai_mismatch" - ten
+# sam wzorzec co w matematyce bez dedykowanego generatora: AI samo
+# liczy przeliczenie skali i czesto sie myli, a proba samego "popros AI
+# zeby dolaczylo validation_rule" (prompt-level fix) NIE POMOGLA wcale
+# (identyczna liczba odrzucen przed/po). Jedyna sprawdzona metoda (patrz
+# calki/tabliczka mnozenia wyzej) - kod liczy WSZYSTKO, AI tylko
+# formuluje pytanie po polsku. Trzy kierunki zadania (wszystkie
+# odwrotnosci tej samej zaleznosci cm_na_mapie * skala = cm_w_terenie),
+# matematycznie ZAWSZE spojne (budowane od tej samej trojki liczb, nie
+# zaokraglane niezaleznie)."""
+_MAP_SCALES = (10000, 20000, 25000, 50000, 100000, 200000, 250000, 500000, 1000000, 2000000)
+_MAP_SCALE_CM_VALUES = (2, 3, 4, 5, 6, 8, 10, 12, 15, 20)
+
+
+def _fmt_km(cm_w_terenie: int) -> str:
+    km = cm_w_terenie / 100000
+    if km == int(km):
+        return f"{int(km)}"
+    return f"{km:.2f}".rstrip("0").rstrip(".")
+
+
+def _fmt_thousands(n: int) -> str:
+    """Formatuje liczbe calkowita ze spacja co 3 cyfry (np. 2000000 ->
+    '2 000 000') - NIE uzywa .replace(',', ' ') na calym zdaniu (co
+    psulo LITERALNE przecinki interpunkcyjne w tekscie pytania, np.
+    zamieniajac ', wyrazona' na '  wyrazona' z podwojna spacja)."""
+    return f"{n:,}".replace(",", " ")
+
+
+def build_safe_map_scale_question() -> dict:
+    """Buduje JEDNO pelne pytanie o skale mapy - zero wywolan AI. Losuje
+    skale (1:N, z listy realistycznych skal szkolnych) i odleglosc na
+    mapie (cm), z tego liczy PRAWDZIWA odleglosc w terenie (cm_na_mapie
+    * skala = cm_w_terenie, potem / 100000 = km) - wszystkie trzy
+    wielkosci (skala, cm na mapie, km w terenie) sa wiec matematycznie
+    ZAWSZE spojne z definicji, niezaleznie ktora z nich pytanie
+    ostatecznie ujawnia/ukrywa. Trzy warianty pytania (kazdy pyta o
+    INNA z trzech wielkosci, dajac dwie pozostale) - realistyczna
+    roznorodnosc typow zadan ze szkolnego programu geografii."""
+    scale = random.choice(_MAP_SCALES)
+    cm_na_mapie = random.choice(_MAP_SCALE_CM_VALUES)
+    cm_w_terenie = cm_na_mapie * scale
+    km_w_terenie_str = _fmt_km(cm_w_terenie)
+    scale_str = _fmt_thousands(scale)
+    cm_w_terenie_str = _fmt_thousands(cm_w_terenie)
+
+    variant = random.choice(["cm_to_km", "km_to_cm", "find_scale"])
+    if variant == "cm_to_km":
+        question = f"Odległość między dwoma miastami na mapie w skali 1:{scale_str} wynosi {cm_na_mapie} cm. Jaka jest rzeczywista odległość między nimi w kilometrach?"
+        true_text = f"{km_w_terenie_str} km"
+        wrong = {
+            f"{_fmt_km(cm_na_mapie * scale * 10)} km",
+            f"{_fmt_km(max(1, cm_na_mapie * scale // 10))} km",
+            f"{_fmt_km(cm_na_mapie * scale + scale)} km",
+        }
+        explanation = f"Rzeczywista odległość: {cm_na_mapie} cm × {scale_str} = {cm_w_terenie_str} cm = {km_w_terenie_str} km."
+        tag_concept, tag_task = "cm na mapie -> km w terenie", "oblicz odleglosc rzeczywista"
+    elif variant == "km_to_cm":
+        question = f"Rzeczywista odległość między dwoma miastami wynosi {km_w_terenie_str} km. Jaka jest odległość między nimi na mapie w skali 1:{scale_str}, wyrażona w centymetrach?"
+        true_text = f"{cm_na_mapie} cm"
+        wrong = {f"{cm_na_mapie * 10} cm", f"{max(1, cm_na_mapie // 2)} cm", f"{cm_na_mapie + 3} cm"}
+        explanation = f"Odległość na mapie: {km_w_terenie_str} km = {cm_w_terenie_str} cm, podzielone przez skalę {scale_str} daje {cm_na_mapie} cm."
+        tag_concept, tag_task = "km w terenie -> cm na mapie", "oblicz odleglosc na mapie"
+    else:  # find_scale
+        question = f"Na mapie odległość między dwoma miastami wynosi {cm_na_mapie} cm, a w rzeczywistości {km_w_terenie_str} km. W jakiej skali wykonano tę mapę?"
+        true_text = f"1:{scale_str}"
+        wrong = {f"1:{_fmt_thousands(scale * 10)}", f"1:{_fmt_thousands(max(1000, scale // 10))}", f"1:{_fmt_thousands(scale + 50000)}"}
+        explanation = f"Skala: {cm_w_terenie_str} cm (rzeczywista odległość w cm) ÷ {cm_na_mapie} cm (na mapie) = 1:{scale_str}."
+        tag_concept, tag_task = "wyznacz skale mapy", "oblicz skale z dwoch odleglosci"
+
+    wrong.discard(true_text)
+    distractors = list(wrong)[:3]
+    offset = 2
+    while len(distractors) < 3:
+        candidate = f"{true_text}_{offset}"  # zdegenerowany awaryjny przypadek (praktycznie nigdy nie uzywany)
+        distractors.append(candidate)
+        offset += 1
+    options = distractors + [true_text]
+    random.shuffle(options)
+    correct_index = options.index(true_text)
+    return {
+        "question": question,
+        "options": options,
+        "correct": correct_index,
+        "final_answer": true_text,
+        "explanation": explanation,
+        "diversity_tag": {
+            "skill": "skala mapy", "concept": tag_concept,
+            "task_type": tag_task, "reasoning": "przelicz cm na mapie / km w terenie przez skale",
+        },
+        "_fact_key": (scale, cm_na_mapie, variant),
+    }
+
+
+def generate_safe_map_scale_batch(n: int) -> list:
+    """Batch-wrapper - `n` pytan o skale mapy z UNIKALNYM (skala, cm,
+    wariant) KAZDE - zero wywolan AI."""
+    results = []
+    seen_facts = set()
+    max_attempts = max(30, n * 6)
+    for _ in range(max_attempts):
+        if len(results) >= n:
+            break
+        q = build_safe_map_scale_question()
+        fact_key = q.pop("_fact_key")
+        if fact_key in seen_facts:
+            continue
+        seen_facts.add(fact_key)
+        results.append(q)
+    return results
+
+
 def generate_safe_multiplication_table_batch(n: int, max_factor: int = 10) -> list:
     """Batch-wrapper - `n` pytan o tabliczke mnozenia z UNIKALNYM faktem
     (min(a,b), max(a,b)) KAZDE - zero wywolan AI. Unikalnosc pilnowana
