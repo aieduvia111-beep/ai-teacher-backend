@@ -5190,3 +5190,117 @@ def generate_safe_definite_integral_batch(n: int) -> list:
         seen_questions.add(q["question"])
         results.append(q)
     return results
+
+
+# =================================================================
+# SAFE PARAMETER GENERATION - TABLICZKA MNOZENIA, ZERO WYWOLAN AI
+# (18.09.2026, real dane produkcyjne z generation_request_log: "Tabliczka
+# mnozenia" 100%/62.5%/40% niepelnych wynikow w zaleznosci od trudnosci -
+# real-test pokazal 40/53 kandydatow odrzuconych, WSZYSTKIE (16 duplicate
+# + 24 diversity_too_similar) - ZERO bledow matematycznych. To NIE jest
+# problem poprawnosci (validation_rule i tak by to zlapal, gdyby AI sie
+# pomylilo) - to problem WASKIEJ PRZESTRZENI TRESCI: dla a,b w [2,10]
+# istnieje tylko ok. 45 roznych faktow mnozenia, a filtr duplikatow/
+# roznorodnosci (zaprojektowany, zeby quiz nie skladal sie z 10 nudnie
+# identycznych schematow) agresywnie odrzuca AI, ktore wciaz trafia w
+# ten sam, waski zestaw faktow, sformulowanych na tysiac sposobow.
+# Rozwiazanie: jak przy calkach oznaczonych, generator liczy WSZYSTKO
+# kodem (zero ryzyka bledu) I PILNUJE UNIKALNOSCI FAKTU juz na etapie
+# losowania (nie polega na filtrze duplikatow PO fakcie) - wiec nigdy
+# nie koliduje z sama soba i nigdy nie potrzebuje wielu prob AI.
+# =================================================================
+_MULT_TABLE_TEMPLATES = (
+    "Ile to {a} razy {b}?",
+    "Oblicz: {a} · {b} = ?",
+    "Jaki jest wynik mnożenia {a} przez {b}?",
+    "Policz: {a} × {b} = ?",
+    "Ile wynosi iloczyn liczb {a} i {b}?",
+)
+_MULT_TABLE_MISSING_FACTOR_TEMPLATES = (
+    "Jaka liczba pomnożona przez {a} daje {product}?",
+    "Przez jaką liczbę należy pomnożyć {a}, aby otrzymać {product}?",
+)
+
+
+def build_safe_multiplication_table_question(max_factor: int = 10) -> dict:
+    """Buduje JEDNO pelne pytanie o tabliczke mnozenia (fakt mnozenia
+    LUB - z 25% szansa, dla roznorodnosci typu zadania - brakujacy
+    czynnik) - zero wywolan AI. Zwraca DODATKOWY, prywatny klucz
+    "_fact_key" (znormalizowana para (min,max)) - caller (batch-generator
+    ponizej) uzywa go do pilnowania unikalnosci PRZED wygenerowaniem
+    zbyt wielu prob, nie usuwa go NIGDY z finalnego slownika (patrz
+    generate_safe_multiplication_table_batch, ktory go odrzuca)."""
+    a = random.randint(2, max_factor)
+    b = random.randint(2, max_factor)
+    product = a * b
+    if random.random() < 0.25:
+        question = random.choice(_MULT_TABLE_MISSING_FACTOR_TEMPLATES).format(a=a, product=product)
+        true_value = b
+        candidate_distractors = [b + 1, b - 1, b + 2, b - 2, a]
+        explanation = f"{a} razy {b} to {product}, więc brakujący czynnik to {b}."
+        tag_concept = "brakujący czynnik"
+        tag_task = "znajdź brakujący czynnik"
+    else:
+        question = random.choice(_MULT_TABLE_TEMPLATES).format(a=a, b=b)
+        true_value = product
+        candidate_distractors = [product + a, product - a, product + b, product - b, a + b]
+        explanation = f"{a} razy {b} to {product}."
+        tag_concept = f"iloczyn {a}x{b}"
+        tag_task = "oblicz iloczyn"
+
+    seen = {true_value}
+    distractors = []
+    for d in candidate_distractors:
+        if d > 0 and d not in seen:
+            seen.add(d)
+            distractors.append(d)
+    offset = 3
+    while len(distractors) < 3:
+        for sign in (1, -1):
+            candidate = true_value + sign * offset
+            if candidate > 0 and candidate not in seen:
+                seen.add(candidate)
+                distractors.append(candidate)
+            if len(distractors) >= 3:
+                break
+        offset += 1
+    distractors = distractors[:3]
+
+    option_values = distractors + [true_value]
+    random.shuffle(option_values)
+    correct_index = option_values.index(true_value)
+    return {
+        "question": question,
+        "options": [str(v) for v in option_values],
+        "correct": correct_index,
+        "final_answer": str(true_value),
+        "explanation": explanation,
+        "diversity_tag": {
+            "skill": "tabliczka mnożenia", "concept": tag_concept,
+            "task_type": tag_task, "reasoning": "przypomnij sobie tabliczkę mnożenia",
+        },
+        "_fact_key": (min(a, b), max(a, b)),
+    }
+
+
+def generate_safe_multiplication_table_batch(n: int, max_factor: int = 10) -> list:
+    """Batch-wrapper - `n` pytan o tabliczke mnozenia z UNIKALNYM faktem
+    (min(a,b), max(a,b)) KAZDE - zero wywolan AI. Unikalnosc pilnowana
+    NA ETAPIE LOSOWANIA (nie tylko po fakcie przez fingerprint tekstu),
+    wiec dwa pytania o "7x8" (jedno wprost, jedno jako brakujacy
+    czynnik) nigdy nie trafia do tego samego quizu. Dla max_factor=10
+    (a,b w [2,10]) dostepnych jest 36 unikalnych par - wiecej niz
+    wystarczy dla typowego N (10-20)."""
+    results = []
+    seen_facts = set()
+    max_attempts = max(30, n * 6)
+    for _ in range(max_attempts):
+        if len(results) >= n:
+            break
+        q = build_safe_multiplication_table_question(max_factor=max_factor)
+        fact_key = q.pop("_fact_key")
+        if fact_key in seen_facts:
+            continue
+        seen_facts.add(fact_key)
+        results.append(q)
+    return results

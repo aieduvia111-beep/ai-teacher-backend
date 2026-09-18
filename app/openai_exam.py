@@ -24,6 +24,7 @@ from .math_verify import (
     build_safe_indefinite_integral_initial_condition,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch,
+    generate_safe_multiplication_table_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -2028,6 +2029,22 @@ async def _raw_generate_safe_definite_integral_batch(n: int) -> Dict:
     return quiz_data
 
 
+# SAFE PARAMETER GENERATION - TABLICZKA MNOZENIA, ZERO WYWOLAN AI
+# (18.09.2026, patrz _is_multiplication_table wyzej i pelne uzasadnienie
+# w generate_safe_multiplication_table_batch, math_verify.py).
+async def _raw_generate_safe_multiplication_table_batch(n: int) -> Dict:
+    """Generuje `n` pytan o tabliczke mnozenia - zero wywolan AI."""
+    questions = generate_safe_multiplication_table_batch(n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Tabliczka mnożenia - Quiz", "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
 # Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
 # Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
@@ -2844,6 +2861,29 @@ def _is_definite_integral(topic: str, difficulty: str = None) -> bool:
     return topic is not None and is_integral_topic(topic) and "oznaczon" in topic.lower() and "nieoznaczon" not in topic.lower()
 
 
+def _is_multiplication_table(topic: str, difficulty: str = None) -> bool:
+    """Warunek gatujacy 'safe parameter generation' dla TABLICZKI
+    MNOZENIA - jak _is_definite_integral wyzej, CELOWO BEZ filtra
+    trudnosci (problem nie jest zwiazany z trudnoscia, patrz nizej).
+
+    Real dane produkcyjne (18.09.2026, user: "sprawdz ta tabelke co
+    ludzie najczesciej wpisuja" - generation_request_log): "Tabliczka
+    mnozenia" mialo 100%/62.5%/40% niepelnych wynikow (w zaleznosci od
+    trudnosci) - real-test (n=10, sredni) pokazal 40/53 kandydatow
+    odrzuconych, WSZYSTKIE jako "duplicate"/"diversity_too_similar" -
+    ZERO bledow matematycznych. Przyczyna: dla a,b w [2,10] istnieje
+    tylko ok. 45 roznych faktow mnozenia - AI wciaz trafia w ten sam,
+    waski zestaw, a filtr roznorodnosci (zaprojektowany przeciw nudnym,
+    powtarzalnym quizom) agresywnie to odrzuca, wymuszajac wiele
+    kosztownych, wolnych rund AI (7 wywolan, 82s na zaledwie 10 pytan w
+    tescie). build_safe_multiplication_table_question (math_verify.py)
+    generuje KAZDY fakt z gwarantowana unikalnoscia JUZ na etapie
+    losowania (nie polega na filtrze PO fakcie) - wiec nigdy nie
+    koliduje sam ze soba i nigdy nie potrzebuje wielu prob."""
+    t = (topic or "").lower()
+    return ("tabliczk" in t) and ("mnożen" in t or "mnozen" in t)
+
+
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla TRYGONOMETRII na
     poziomie trudny/hard (port wzorca z _is_medium_linear_param_quadratic
@@ -3024,6 +3064,8 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_indefinite_integral_batch(n)
     elif _is_definite_integral(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_definite_integral_batch(n)
+    elif _is_multiplication_table(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_multiplication_table_batch(n)
     elif _is_hard_trig_quadratic(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_trig_quadratic_batch(n)
     elif _is_hard_arithmetic_sequence(topic, difficulty):
