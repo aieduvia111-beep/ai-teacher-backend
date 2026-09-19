@@ -117,8 +117,13 @@ def create_checkout(
             db=db,
             affiliate_code=request.affiliate_code
         )
-        if not result.get("success"):
+        if not result.get("success") and not result.get("already_subscribed"):
             print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
+            # Fallback (mode=setup) ZAWSZE daje trial - nie dla kogos, kto juz go mial.
+            _u = db.query(User).filter(User.firebase_uid == verified_uid).first()
+            _elig = StripeService.trial_eligibility(verified_uid, db, _u.stripe_customer_id if _u else None)
+            if _elig["has_active"] or not _elig["trial_allowed"]:
+                return {"success": False, "error": "Nie udalo sie utworzyc platnosci. Sprobuj ponownie za chwile."}
             result = BlikService.create_setup_session(
                 user_id=verified_uid,
                 email=verified_email,

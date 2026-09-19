@@ -141,6 +141,40 @@ class StripeService:
     """Serwis do obslugi platnosci Stripe"""
 
     @staticmethod
+    def trial_eligibility(user_id: str, db: Session, customer_id: str = None) -> Dict:
+        """19.09.2026 (user: "moze jeszcze raz podac karte i bedzie mial 7 dni za
+        darmo?") - wczesniej KAZDE klikniecie "Subskrybuj" dawalo trial, bez
+        sprawdzania historii. Zwraca:
+          has_active   - user ma juz aktywna/trialujaca subskrypcje (Stripe, BLIK
+                         albo Apple) - nie wolno zakladac drugiej,
+          trial_allowed - False, jesli user MIAL juz jakakolwiek subskrypcje
+                         (dowolny status, dowolny dostawca) - lokalnie ALBO w Stripe
+                         (Stripe jest zrodlem prawdy: lokalny wiersz mogl sie nie
+                         zapisac, patrz historia bledu user_id Integer).
+        Blad Stripe przy sprawdzaniu = trial NIE przyznany (bezpieczniej dla
+        przychodu; user i tak moze subskrybowac, tylko bez darmowych dni)."""
+        active_status = ("active", "trialing", "past_due")
+        has_active, had_any = False, False
+        now = datetime.utcnow()
+        for row in db.query(Subscription).filter(Subscription.user_id == user_id).all():
+            had_any = True
+            end = row.current_period_end
+            if end is not None and getattr(end, "tzinfo", None) is not None:
+                end = end.replace(tzinfo=None)
+            if row.status in active_status and (end is None or end > now):
+                has_active = True
+        if customer_id:
+            try:
+                for sub in stripe.Subscription.list(customer=customer_id, status="all", limit=10).data:
+                    had_any = True
+                    if sub.status in active_status:
+                        has_active = True
+            except Exception as e:
+                print(f"[Trial] blad sprawdzania historii w Stripe ({e}) - trial NIE przyznany")
+                had_any = True
+        return {"has_active": has_active, "trial_allowed": not had_any}
+
+    @staticmethod
     def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "") -> Dict:
         try:
             print(f"Tworze checkout session dla user {user_id} ({email})")
@@ -194,7 +228,14 @@ class StripeService:
             # PROMOCJA (patrz stala PROMO_DEADLINE na gorze pliku) - liczone
             # DOKLADNIE w tym miejscu, bo to jest moment "kliknal Subskrybuj",
             # ktory decyduje o dlugosci triala wg tresci promocji.
-            trial_days = get_trial_days()
+            elig = StripeService.trial_eligibility(user_id, db, customer_id)
+            if elig["has_active"]:
+                print(f"[Trial] user {user_id} ma juz aktywna subskrypcje - checkout zablokowany")
+                return {"success": False, "already_subscribed": True,
+                        "error": "Masz juz aktywna subskrypcje. Zarzadzaj nia w ustawieniach konta."}
+            trial_days = get_trial_days() if elig["trial_allowed"] else 0
+            if not trial_days:
+                print(f"[Trial] user {user_id} juz korzystal z triala - checkout BEZ darmowych dni")
             # BLIK (19.09.2026): Stripe wspiera BLIK w mode="subscription"
             # razem z trialem (zweryfikowane na zywo w trybie testowym) -
             # w odroznieniu od mode="setup". Gdyby konto Stripe odrzucilo
@@ -205,7 +246,7 @@ class StripeService:
                     payment_method_types=methods,
                     line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                     mode="subscription",
-                    subscription_data={"trial_period_days": trial_days},
+                    **({"subscription_data": {"trial_period_days": trial_days}} if trial_days else {}),
                     success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
                     cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                     metadata=checkout_metadata,
