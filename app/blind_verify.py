@@ -186,6 +186,43 @@ def _normalize_text_for_compare(s: str) -> str:
     return s.strip('.,;:!?()[]{}')
 
 
+def _part_equal(pa: str, pb: str) -> bool:
+    """Porownanie JEDNEJ wartosci (bez przecinkow-separatorow) - dokladnie
+    dotychczasowa logika, plus (19.09.2026) tolerancja dla faktografii:
+    gdy w zadnej z wartosci nie ma cyfr ani '=', a wszystkie slowa
+    krotszej odpowiedzi wystepuja w dluzszej (co najmniej 4 znaki) -
+    "Adam Mickiewicz" == "Mickiewicz". Cale slowa (nie podciagi), wiec
+    "chlor" != "chlorek sodu"."""
+    if _normalize_text_for_compare(pa) == _normalize_text_for_compare(pb):
+        return True
+    na, nb = _normalize_text_for_compare(pa), _normalize_text_for_compare(pb)
+    if not re.search(r'[\d=]', na + nb):
+        ta, tb = set(na.split()), set(nb.split())
+        short, long_ = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+        if short and short <= long_ and sum(len(w) for w in short) >= 4:
+            return True
+    va, vb = _extract_single_value(pa), _extract_single_value(pb)
+    if va is None or vb is None:
+        return False
+    if va == vb:
+        return True
+    try:
+        return sp.simplify(va - vb) == 0
+    except Exception:
+        return False
+
+
+def _values_match_ordered(claimed_a: str, claimed_b: str) -> bool:
+    parts_a = [p.strip() for p in str(claimed_a).split(',')]
+    parts_b = [p.strip() for p in str(claimed_b).split(',')]
+    if len(parts_a) != len(parts_b):
+        return False
+    return all(_part_equal(pa, pb) for pa, pb in zip(parts_a, parts_b))
+
+
+_DECIMAL_COMMA_RE = re.compile(r'(?<=\d),(?=\d)')
+
+
 def values_match(claimed_a: str, claimed_b: str) -> bool:
     """Porownuje dwa 'final_answer' stringi. Dla wielo-wartosciowych
     odpowiedzi ('b = 2, c = 4') porownuje KAZDY segment osobno (po
@@ -193,37 +230,47 @@ def values_match(claimed_a: str, claimed_b: str) -> bool:
 
     NAPRAWIONE (user: "a działa poza matematyka" - real-test na biologii
     ujawnil, ze POPRAWNA odpowiedz "Mitochondrium" byla odrzucana jako
-    niezgodna z "mitochondrium" - sympy parsuje pojedyncze slowo jako
-    Symbol i porownuje go case-SENSITIVE, wiec ta funkcja dzialala
-    poprawnie TYLKO dla matematyki): najpierw PROSTE porownanie tekstowe
-    (case/whitespace-insensitive) - jesli sie zgadza, koniec, bez
-    dotykania sympy w ogole. Dopiero gdy tekst sie NIE zgadza, proba
-    numeryczna/symboliczna przez sympy (tolerancyjne na format: 'm = -3'
-    vs '-3', '5/7' vs '0.714...') - lapie przypadki, gdzie ten sam wynik
-    matematyczny jest zapisany inaczej. Zwraca False (niezgodnosc) gdy
-    NI JEDNO NI DRUGIE sie nie zgadza - caller decyduje, czy to ma
-    blokowac (patrz komentarz w callerach: nieparsowalne CLAIMED = 'nie
-    blokuj', wiec ten przypadek jest obslugiwany PRZED wywolaniem
-    values_match, nie w niej samej)."""
-    parts_a = [p.strip() for p in str(claimed_a).split(',')]
-    parts_b = [p.strip() for p in str(claimed_b).split(',')]
-    if len(parts_a) != len(parts_b):
-        return False
-    for pa, pb in zip(parts_a, parts_b):
-        if _normalize_text_for_compare(pa) == _normalize_text_for_compare(pb):
-            continue
-        va, vb = _extract_single_value(pa), _extract_single_value(pb)
-        if va is None or vb is None:
-            return False
-        if va == vb:
-            continue
-        try:
-            if sp.simplify(va - vb) == 0:
-                continue
-        except Exception:
-            pass
-        return False
-    return True
+    niezgodna z "mitochondrium"): najpierw PROSTE porownanie tekstowe
+    (case/whitespace-insensitive), dopiero potem sympy (tolerancyjne na
+    format: 'm = -3' vs '-3', '5/7' vs '0.714...').
+
+    ROZSZERZONE (19.09.2026, real dane produkcyjne: od 06.09 zadania
+    OTWARTE Sprawdzianu odrzucane w ~18% zamowien, glownie
+    blind_ai_mismatch_open; offline potwierdzone 7 klas POPRAWNYCH
+    odpowiedzi fałszywie uznawanych za niezgodne). Kazde z ponizszych
+    DODAJE tylko dopasowania (dotychczasowe True zostaje True), nigdy
+    nie zrownuje roznych odpowiedzi:
+    1. przecinek dziesietny ("2,5" == "2.5") - wczesniej "2,5" bylo
+       ciete po przecinku na "2" i "5";
+    2. lista bez nazw zmiennych ("2, 3" == "3, 2") - kolejnosc
+       pierwiastkow nie ma znaczenia. Przy jakimkolwiek '=' (np. "b = 2,
+       c = 4") kolejnosc/przypisanie NADAL obowiazuje;
+    3. faktografia - patrz _part_equal."""
+    if _values_match_ordered(claimed_a, claimed_b):
+        return True
+    a2 = _DECIMAL_COMMA_RE.sub('.', str(claimed_a))
+    b2 = _DECIMAL_COMMA_RE.sub('.', str(claimed_b))
+    if (a2, b2) != (str(claimed_a), str(claimed_b)) and _values_match_ordered(a2, b2):
+        return True
+    for a_s, b_s in ((str(claimed_a), str(claimed_b)), (a2, b2)):
+        parts_a = [p.strip() for p in a_s.split(',')]
+        parts_b = [p.strip() for p in b_s.split(',')]
+        all_parts = parts_a + parts_b
+        no_names = not any('=' in p for p in all_parts)
+        # "x = 2, x = 3": wszystkie czesci maja TE SAME zmienna po lewej
+        # (to lista pierwiastkow) - kolejnosc bez znaczenia; "b = 2, c = 4"
+        # (rozne zmienne) - przypisanie liczy sie, zostaje kolejnosc.
+        same_var = all('=' in p for p in all_parts) and len({p.split('=')[0].strip().lower() for p in all_parts}) == 1
+        if len(parts_a) == len(parts_b) > 1 and (no_names or same_var):
+            remaining = list(parts_b)
+            for pa in parts_a:
+                idx = next((i for i, pb in enumerate(remaining) if _part_equal(pa, pb)), None)
+                if idx is None:
+                    break
+                remaining.pop(idx)
+            else:
+                return True
+    return False
 
 
 def safe_json_loads(raw: str):
