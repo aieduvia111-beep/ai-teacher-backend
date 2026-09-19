@@ -5583,3 +5583,216 @@ def generate_safe_fraction_batch(n: int, mode: str = "common") -> list:
         seen.add(key)
         results.append(q)
     return results
+
+
+# =================================================================
+# SAFE PARAMETER GENERATION - GEOGRAFIA (obliczenia) I HISTORIA (daty),
+# ZERO AI (19.09.2026, real dane produkcyjne: geografia 56% niepelnych,
+# Sprawdzian "Historia: Czas w historii" 66%). Ten sam wzorzec co skala
+# mapy/tabliczka: kod liczy wynik, dystraktory to typowe bledy.
+# Unikamy niejednoznacznosci: w historii NIE mieszamy p.n.e. z n.e.
+# (brak roku zerowego) i nie uzywamy lat granicznych (1000, 1900...).
+# =================================================================
+_ROMAN = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+          (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"))
+
+
+def _to_roman(n: int) -> str:
+    out = ""
+    for v, s in _ROMAN:
+        while n >= v:
+            out += s
+            n -= v
+    return out
+
+
+def _from_roman(s: str) -> int:
+    vals = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+    total = 0
+    for i, ch in enumerate(s):
+        v = vals[ch]
+        total += -v if i + 1 < len(s) and vals[s[i + 1]] > v else v
+    return total
+
+
+def _finish_text_options(true, wrong, extra_pool=None):
+    """true: str; wrong: lista str (kandydaci). Zwraca (opcje, indeks) albo None."""
+    seen = {true}
+    dis = []
+    for w in list(wrong) + list(extra_pool or []):
+        if w not in seen:
+            seen.add(w)
+            dis.append(w)
+        if len(dis) == 3:
+            break
+    if len(dis) < 3:
+        return None
+    opts = dis + [true]
+    random.shuffle(opts)
+    return opts, opts.index(true)
+
+
+def _pack(question, opts_ci, true, explanation, skill, concept, key):
+    if opts_ci is None:
+        return None
+    opts, ci = opts_ci
+    return {"question": question, "options": opts, "correct": ci, "final_answer": true,
+            "explanation": explanation,
+            "diversity_tag": {"skill": skill, "concept": concept, "task_type": "oblicz", "reasoning": "podstaw dane do wzoru"},
+            "_fact_key": key}
+
+
+def _fmt_int(n: int) -> str:
+    return f"{n:,}".replace(",", " ")
+
+
+_CITY_LON = (("Londyn", 0), ("Warszawa", 21), ("Kair", 30), ("Moskwa", 37), ("Dubaj", 55),
+             ("Nowy Jork", -74), ("Chicago", -88), ("Paryż", 2), ("Ateny", 24), ("Delhi", 77))
+
+
+def build_geo_time_zone_question():
+    """Roznica czasu = roznica dlugosci geograficznej / 15 (1 h = 15 stopni)."""
+    lon_a = random.choice((0, 15, 30, 45, 60, -15, -30, -45, -60, -75, 75, 90))
+    lon_b = random.choice([x for x in (0, 15, 30, 45, 60, -15, -30, -45, -60, -75, 75, 90) if x != lon_a])
+    hh = random.randint(6, 18)
+    diff_h = (lon_b - lon_a) // 15
+    res_h = hh + diff_h
+    if not 0 <= res_h <= 23:
+        return None
+    ew = lambda x: f"{abs(x)}° {'długości wschodniej' if x > 0 else 'długości zachodniej'}" if x != 0 else "0° (południk zerowy)"
+    question = (f"W miejscowości leżącej na {ew(lon_a)} jest godzina {hh}:00 czasu słonecznego. "
+                f"Jaka jest godzina w miejscowości leżącej na {ew(lon_b)}?")
+    true = f"{res_h}:00"
+    wrong = [f"{(hh - diff_h) % 24}:00", f"{(res_h + 1) % 24}:00", f"{(res_h - 1) % 24}:00",
+             f"{(hh + abs(lon_b - lon_a)) % 24}:00"]
+    expl = (f"Różnica długości geograficznych to {abs(lon_b - lon_a)}°, a 15° odpowiada 1 godzinie, więc różnica czasu wynosi {abs(diff_h)} h. "
+            f"Na {'wschód' if diff_h > 0 else 'zachód'} czas jest {'późniejszy' if diff_h > 0 else 'wcześniejszy'}, czyli {true}.")
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "strefy czasowe", "różnica długości / 15", ("tz", lon_a, lon_b, hh))
+
+
+def build_geo_density_question():
+    area = random.choice((5000, 12000, 20000, 35000, 50000, 80000, 120000, 300000))
+    dens = random.choice((20, 35, 48, 60, 75, 90, 120, 150, 200, 310))
+    pop = dens * area
+    question = f"Państwo ma powierzchnię {_fmt_int(area)} km² i {_fmt_int(pop)} mieszkańców. Jaka jest gęstość zaludnienia tego państwa?"
+    true = f"{dens} os./km²"
+    wrong = [f"{dens * 10} os./km²", f"{max(1, dens // 10)} os./km²", f"{dens + 15} os./km²", f"{dens * 2} os./km²"]
+    expl = f"Gęstość zaludnienia = liczba mieszkańców ÷ powierzchnia = {_fmt_int(pop)} ÷ {_fmt_int(area)} = {dens} os./km²."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "gęstość zaludnienia", "ludność / powierzchnia", ("dens", area, dens))
+
+
+def build_geo_natural_increase_question():
+    births = random.randint(9, 24)
+    deaths = random.randint(5, 20)
+    if births == deaths:
+        return None
+    inc = births - deaths
+    question = (f"W pewnym kraju współczynnik urodzeń wynosi {births}‰, a współczynnik zgonów {deaths}‰. "
+                f"Jaki jest przyrost naturalny w tym kraju?")
+    fmt = lambda v: f"{v}‰"
+    true = fmt(inc)
+    wrong = [fmt(births + deaths), fmt(-inc), fmt(inc * 10), fmt(inc + 2), fmt(abs(inc) + 5)]
+    expl = f"Przyrost naturalny = urodzenia − zgony = {births}‰ − {deaths}‰ = {inc}‰ ({'dodatni' if inc > 0 else 'ujemny'})."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "przyrost naturalny", "urodzenia - zgony", ("nat", births, deaths))
+
+
+def build_geo_unemployment_question():
+    force = random.choice((200, 400, 500, 800, 1000, 2000, 5000))
+    pct = random.choice((4, 5, 6, 8, 10, 12, 15))
+    unemployed = force * pct // 100
+    if unemployed * 100 != force * pct:
+        return None
+    question = (f"W kraju zawodowo czynnych jest {_fmt_int(force)} tys. osób, w tym {_fmt_int(unemployed)} tys. bezrobotnych. "
+                f"Ile wynosi stopa bezrobocia?")
+    true = f"{pct}%"
+    wrong = [f"{pct * 10}%", f"{max(1, pct // 2)}%", f"{pct + 3}%", f"{pct + 7}%"]
+    expl = f"Stopa bezrobocia = bezrobotni ÷ zawodowo czynni × 100% = {_fmt_int(unemployed)} ÷ {_fmt_int(force)} × 100% = {pct}%."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "stopa bezrobocia", "procent", ("unemp", force, pct))
+
+
+def build_hist_century_question():
+    year = random.randint(101, 1999)
+    if year % 100 == 0:
+        return None
+    ce = year // 100 + 1
+    true = _to_roman(ce)
+    wrong = [_to_roman(ce - 1), _to_roman(ce + 1), _to_roman(max(1, ce - 2)), _to_roman(ce + 2)]
+    question = f"W którym wieku przypada rok {year}?"
+    expl = f"Rok {year} należy do {ce}. wieku ({(ce - 1) * 100 + 1}–{ce * 100}), czyli wieku {true}."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "wieki", "rok → wiek", ("cent", year))
+
+
+def build_hist_roman_question():
+    n = random.randint(4, 3900)
+    if random.random() < 0.5:
+        r = _to_roman(n)
+        true = str(n)
+        question = f"Jaką liczbę oznacza zapis rzymski {r}?"
+        wrong = [str(n + 10), str(max(1, n - 10)), str(n + 5), str(n * 2)]
+        expl = f"{r} = {n}."
+    else:
+        true = _to_roman(n)
+        question = f"Jak zapisać liczbę {n} cyframi rzymskimi?"
+        wrong = [_to_roman(n + 10), _to_roman(max(1, n - 10)), _to_roman(n + 1), _to_roman(n + 5)]
+        expl = f"{n} = {true}."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "cyfry rzymskie", "zapis rzymski", ("rom", n, question[:8]))
+
+
+def build_hist_span_question():
+    if random.random() < 0.7:
+        a = random.randint(500, 1900)
+        b = a + random.randint(5, 250)
+        if b > 2000:
+            return None
+        question = f"Ile lat minęło od roku {a} do roku {b}?"
+        d = b - a
+    else:
+        a = random.randint(100, 900)
+        d = random.randint(5, 90)
+        b = a - d
+        question = f"Ile lat minęło od roku {a} p.n.e. do roku {b} p.n.e.?"
+    fmt = lambda v: "1 rok" if v == 1 else (f"{v} lat" if v % 10 not in (2, 3, 4) or 12 <= v % 100 <= 14 else f"{v} lata")
+    true = fmt(d)
+    wrong = [fmt(d + 10), fmt(max(1, d - 10)), fmt(d + 1), fmt(max(1, d - 1)), fmt(d + 100)]
+    expl = f"Różnica lat: {max(a, b)} − {min(a, b)} = {d}."
+    return _pack(question, _finish_text_options(true, wrong), true, expl, "obliczanie czasu", "różnica lat", ("span", a, b, question[:10]))
+
+
+_GEO_BUILDERS = (build_geo_time_zone_question, build_geo_density_question,
+                 build_geo_natural_increase_question, build_geo_unemployment_question)
+_HIST_BUILDERS = (build_hist_century_question, build_hist_roman_question, build_hist_span_question)
+
+
+def geo_hist_kind(topic: str):
+    """'tz'/'density'/'natural'/'geo_mixed'/'hist' albo None."""
+    t = (topic or "").lower()
+    if "czas w historii" in t or "oś czasu" in t or "os czasu" in t or "chronolog" in t:
+        return "hist"
+    if "stref" in t and "czas" in t:
+        return "tz"
+    if "gęstoś" in t or "gestos" in t:
+        return "density"
+    if "przyrost naturaln" in t:
+        return "natural"
+    if "obliczen" in t and "geograf" in t:
+        return "geo_mixed"
+    return None
+
+
+def generate_geo_hist_batch(kind: str, n: int) -> list:
+    builders = {"tz": (build_geo_time_zone_question,), "density": (build_geo_density_question,),
+                "natural": (build_geo_natural_increase_question,),
+                "geo_mixed": _GEO_BUILDERS, "hist": _HIST_BUILDERS}[kind]
+    results, seen = [], set()
+    for _ in range(max(80, n * 15)):
+        if len(results) >= n:
+            break
+        q = random.choice(builders)()
+        if q is None:
+            continue
+        key = q.pop("_fact_key")
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append(q)
+    return results

@@ -45,6 +45,7 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch, generate_safe_multiplication_table_batch,
     generate_safe_map_scale_batch, generate_safe_fraction_batch,
+    generate_geo_hist_batch, geo_hist_kind,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -1420,6 +1421,9 @@ def _zero_ai_exam_kind(temat: str):
         dec = "dziesiętn" in t or "dziesietn" in t
         com = "zwykł" in t or "zwykl" in t
         return "frac_mixed" if (dec and com) else ("frac_decimal" if dec else "frac_common")
+    gh = geo_hist_kind(temat)
+    if gh:
+        return "gh_" + gh
     return None
 
 
@@ -2452,7 +2456,8 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                "integral": generate_safe_definite_integral_batch,
                "frac_common": lambda k: generate_safe_fraction_batch(k, "common"),
                "frac_decimal": lambda k: generate_safe_fraction_batch(k, "decimal"),
-               "frac_mixed": lambda k: generate_safe_fraction_batch(k, "mixed")}[kind]
+               "frac_mixed": lambda k: generate_safe_fraction_batch(k, "mixed")}.get(kind) or (
+                   lambda k, _kd=kind[3:]: generate_geo_hist_batch(_kd, k))
         letters = "abcd"
         pytania = []
         for i, q in enumerate(gen(max(1, n)), start=1):

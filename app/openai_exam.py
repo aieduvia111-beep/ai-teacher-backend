@@ -26,6 +26,7 @@ from .math_verify import (
     generate_safe_definite_integral_batch,
     generate_safe_multiplication_table_batch,
     generate_safe_map_scale_batch, generate_safe_fraction_batch,
+    generate_geo_hist_batch, geo_hist_kind,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -2100,6 +2101,21 @@ async def _raw_generate_safe_fraction_batch(n: int, mode: str = "common") -> Dic
     return quiz_data
 
 
+async def _raw_generate_safe_geo_hist_batch(n: int, kind: str) -> Dict:
+    """Geografia (obliczenia) / historia (daty) - zero wywolan AI
+    (math_verify.generate_geo_hist_batch, 19.09.2026)."""
+    questions = generate_geo_hist_batch(kind, n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    title = "Historia: czas w historii - Quiz" if kind == "hist" else "Geografia: obliczenia - Quiz"
+    quiz_data = {"title": title, "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
 # Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
 # Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
@@ -3152,6 +3168,9 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_multiplication_table_batch(n)
     elif _is_map_scale(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_map_scale_batch(n)
+    elif geo_hist_kind(topic):
+        _gh_kind = geo_hist_kind(topic)
+        safe_batch_fn = lambda n: _raw_generate_safe_geo_hist_batch(n, _gh_kind)
     elif _fraction_mode(topic):
         _frac_mode = _fraction_mode(topic)
         safe_batch_fn = lambda n: _raw_generate_safe_fraction_batch(n, _frac_mode)
