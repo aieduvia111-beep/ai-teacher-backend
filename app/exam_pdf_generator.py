@@ -2475,7 +2475,12 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 "diversity_tag": q.get("diversity_tag"),
                 "_safe_generated": True,
             })
-        return {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+        return {"sekcje": [{
+            "nazwa": "Część A — Zadania zamknięte",
+            "typ": "zamkniete",
+            "instrukcja_sekcji": "Zaznacz poprawną odpowiedź (a, b, c lub d). Za każde poprawne: 1 pkt.",
+            "pytania": pytania,
+        }]}
 
     def _raw_generate_safe_linear_param_quadratic_batch(self, n: int, klasa: str = None, used_letters: set = None, used_constants: set = None) -> dict:
         """Generuje `n` zadan zamknietych dla podwzorca x^2+mx+C=0
@@ -3713,6 +3718,16 @@ ZASADY:
                 # dogeneruje _fill_missing_exam_questions przez only_open)
                 _closed_n = batch_size if _teacher_wants_only_closed(wlasne_instrukcje) else max(1, round(liczba_pytan * 0.6) + 2)
                 data = self._raw_generate_zero_ai_closed_batch(_zk, _closed_n)
+                # Metadane dokumentu, ktore normalnie zwraca AI (tytul,
+                # przedmiot, czas, instrukcja) - bez nich PDF mial PUSTY
+                # tytul/przedmiot (19.09.2026, wykryte przy ogladaniu PDF).
+                _subj = przedmiot or (temat.split(':')[0].strip() if ':' in temat else "")
+                _title = ("Sprawdzian: " + (temat.split(':', 1)[1].strip() if ':' in temat else temat))[:60]
+                data.update({
+                    "tytul": _title, "przedmiot": _subj or "Matematyka", "klasa": klasa, "czas": 45,
+                    "punkty_lacznie": liczba_pytan,
+                    "instrukcja": "Przeczytaj każde zadanie uważnie. Odpowiedzi pisz czytelnie. Przy zadaniach obliczeniowych pokazuj sposób rozwiązania.",
+                })
             else:
                 data = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
         metrics.api_request_count += 1
