@@ -852,6 +852,32 @@ class SectionHeader(Flowable):
 # ============================================================
 # OKŁADKA SPRAWDZIANU
 # ============================================================
+def _draw_cover_icon(c, kind: str, cx: float, cy: float, color):
+    """Ikony okladki rysowane WEKTOROWO (19.09.2026). Wczesniej emoji
+    (zegar/wykres/kalendarz) - czcionka PDF (DejaVu) ich nie ma, wiec na
+    KAZDYM sprawdzianie byly puste kwadraty."""
+    c.saveState()
+    c.setStrokeColor(color)
+    c.setFillColor(color)
+    c.setLineWidth(1.6)
+    c.setLineCap(1)
+    if kind == "clock":
+        c.circle(cx, cy, 8, stroke=1, fill=0)
+        c.line(cx, cy, cx, cy + 5.2)
+        c.line(cx, cy, cx + 3.6, cy - 1.2)
+    elif kind == "chart":
+        for i, hgt in enumerate((5, 9, 13)):
+            c.rect(cx - 8 + i * 6, cy - 7, 4, hgt, stroke=0, fill=1)
+    else:  # calendar
+        c.roundRect(cx - 8, cy - 7, 16, 15, 2.5, stroke=1, fill=0)
+        c.line(cx - 8, cy + 3, cx + 8, cy + 3)
+        c.line(cx - 4, cy + 6.5, cx - 4, cy + 10)
+        c.line(cx + 4, cy + 6.5, cx + 4, cy + 10)
+        for dx in (-3.5, 0, 3.5):
+            c.circle(cx + dx, cy - 2, 0.9, stroke=0, fill=1)
+    c.restoreState()
+
+
 def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     w, h = PW, PH
     # Białe tło
@@ -914,9 +940,9 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     # Info box — czas, punkty, data
     box_y = y_after - 90
     box_items = [
-        ("⏱", f"{data.get('czas', 45)} minut", "Czas"),
-        ("📊", f"{data.get('punkty_lacznie', 30)} pkt", "Punkty"),
-        ("📅", datetime.date.today().strftime("%d.%m.%Y"), "Data"),
+        ("clock", f"{data.get('czas', 45)} minut", "Czas"),
+        ("chart", f"{data.get('punkty_lacznie', 30)} pkt", "Punkty"),
+        ("cal", datetime.date.today().strftime("%d.%m.%Y"), "Data"),
     ]
     box_w = 120
     box_x_start = w/2 - (len(box_items) * box_w + (len(box_items)-1)*10) / 2
@@ -927,9 +953,7 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
         c.setStrokeColor(C_BORDER)
         c.setLineWidth(1)
         c.roundRect(bx, box_y, box_w, 56, 10, fill=0, stroke=1)
-        c.setFillColor(C_ACCENT)
-        c.setFont(FN, 16)
-        c.drawCentredString(bx + box_w/2, box_y + 34, icon)
+        _draw_cover_icon(c, icon, bx + box_w/2, box_y + 40, C_ACCENT)
         c.setFillColor(C_TEXT)
         c.setFont(FB, 13)
         c.drawCentredString(bx + box_w/2, box_y + 18, val)
