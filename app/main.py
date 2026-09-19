@@ -369,6 +369,14 @@ async def startup():
     except Exception as e:
         print(f"⚠️ Baza danych: {e}")
 
+    # Pomiar zuzycia tokenow OpenAI (patrz app/usage_tracker.py) - blad tu
+    # NIGDY nie moze zatrzymac aplikacji.
+    try:
+        from .usage_tracker import install as _install_usage_tracker
+        _install_usage_tracker()
+    except Exception as e:
+        print(f"⚠️ UsageTracker: {e}")
+
     # create_all() tworzy tylko BRAKUJACE TABELE, nie dokłada nowych
     # kolumn do już istniejącej tabeli (SQLAlchemy tego nie robi) - stąd
     # recznie dodajemy nowe, opcjonalne kolumny (jesli jeszcze ich nie ma)

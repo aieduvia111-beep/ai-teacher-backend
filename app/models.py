@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, Float, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, Float, Index, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -297,6 +297,26 @@ class QuestionBankItem(Base):
     __table_args__ = (
         Index("ix_question_bank_lookup", "feature", "topic", "difficulty", "level"),
     )
+
+
+class ApiUsageDaily(Base):
+    """Zuzycie tokenow OpenAI na dzien/funkcje/model (19.09.2026, patrz
+    app/usage_tracker.py). Same LICZBY - zero tresci rozmow ani danych
+    osobowych. `label` = "modul.funkcja" w app/, ktora wywolala AI.
+    stream_calls = wywolania strumieniowe (bez danych o tokenach)."""
+    __tablename__ = "api_usage_daily"
+
+    id = Column(Integer, primary_key=True, index=True)
+    day = Column(String(10), nullable=False, index=True)   # YYYY-MM-DD
+    label = Column(String(120), nullable=False)
+    model = Column(String(60), nullable=False)
+    calls = Column(Integer, default=0, nullable=False)
+    prompt_tokens = Column(Integer, default=0, nullable=False)
+    completion_tokens = Column(Integer, default=0, nullable=False)
+    cached_tokens = Column(Integer, default=0, nullable=False)
+    stream_calls = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint("day", "label", "model", name="uq_api_usage_day_label_model"),)
 
 
 class UsageStats(Base):
