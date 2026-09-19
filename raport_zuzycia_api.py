@@ -15,6 +15,11 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 PRICES = {  # (wejscie, wyjscie) USD / 1M tokenow - PRZYBLIZONE
     "gpt-4o-mini": (0.15, 0.60),
     "gpt-4o": (2.50, 10.00),
+    # glos (19.09.2026): realtime liczone z response.done; ceny gpt-4o-realtime-preview
+    "realtime-text": (5.00, 20.00),
+    "realtime-audio": (40.00, 80.00),
+    # tts-1: rozliczane za ZNAKI (15 USD / 1M znakow) - kolumna "we" to znaki, nie tokeny
+    "tts-1": (15.00, 0.0),
 }
 USD_PLN = 4.0   # przyblizony kurs
 

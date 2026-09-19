@@ -22,6 +22,8 @@ async def fake_async(self, *a, **k):
     return STREAM if k.get("stream") else FAKE
 Completions.create = fake_sync            # podmiana PRZED install() -> zadne wywolanie nie idzie do sieci
 AsyncCompletions.create = fake_async
+from openai.resources.audio.speech import Speech
+Speech.create = lambda self, *a, **k: b"mp3"
 
 import app.usage_tracker as ut
 ut.install()
@@ -58,7 +60,39 @@ print("  liczniki:", by_label)
 check("sync+watek: 2 wywolania generate_pdf, 2000/400 tokenow, 800 cached",
       by_label.get("notes_pdf_generator.generate_pdf") == [2, 2000, 400, 800, 0], by_label)
 check("async: etykieta agen, 1 wywolanie", by_label.get("notes_pdf_generator.agen") == [1, 1000, 200, 400, 0], by_label)
-check("stream: policzone jako stream_call, tokeny 0", by_label.get("notes_pdf_generator.gstream") == [1, 0, 0, 0, 1], by_label)
+check("stream: stream_call + SZACUNEK (pusty prompt -> 0 we, 150 wy = polowa max_tokens domyslnych 300)", by_label.get("notes_pdf_generator.gstream") == [1, 0, 150, 0, 1], by_label)
+
+
+# --- nowe (19.09.2026): strumien = szacunek, realtime z response.done, TTS = znaki ---
+import json
+mod2 = types.ModuleType("app.api.voice"); mod2.__dict__["c"] = c
+exec("""
+def stream_llm():
+    return c.chat.completions.create(model='gpt-4o-mini', messages=[{'role':'user','content':'x'*330}], max_tokens=380, stream=True)
+def say():
+    return c.audio.speech.create(model='tts-1', voice='nova', input='a'*120)
+""", mod2.__dict__)
+sys.modules["app.api.voice"] = mod2
+mod2.stream_llm(); mod2.say()
+ut.record_realtime_message(json.dumps({"type": "response.done", "response": {"usage": {
+    "input_token_details": {"text_tokens": 100, "audio_tokens": 400},
+    "output_token_details": {"text_tokens": 20, "audio_tokens": 300}}}}))
+ut.record_realtime_message(json.dumps({"type": "session.created"}))     # ignorowane
+ut.record_realtime_message("to nie jest json response.done")            # nie rzuca
+ut.record_realtime_message(b"bytes")                                    # nie rzuca
+snap2 = dict(ut._counters)
+def find(label, model):
+    return [v for k, v in snap2.items() if k[1] == label and k[2] == model]
+st = find("api.voice.stream_llm", "gpt-4o-mini~szac")
+check("strumien: szacunek ~100 tok. wejscia, 190 wyjscia, model z sufiksem ~szac", st and st[0][1] == 100 and st[0][2] == 190 and st[0][4] == 1, st)
+tts = find("api.voice.say", "tts-1")
+check("TTS: 120 znakow wejscia", tts and tts[0][0] == 1 and tts[0][1] == 120, tts)
+rt_t, rt_a = find("api.realtime.session", "realtime-text"), find("api.realtime.session", "realtime-audio")
+check("realtime tekst: 100 we / 20 wy", rt_t and rt_t[0][1] == 100 and rt_t[0][2] == 20, rt_t)
+check("realtime audio: 400 we / 300 wy", rt_a and rt_a[0][1] == 400 and rt_a[0][2] == 300, rt_a)
+check("inne zdarzenia realtime i smieci nie dodaly wpisow", len(find("api.realtime.session", "realtime-text")) == 1 and rt_t[0][0] == 1, rt_t)
+for _k in [k for k in ut._counters if k[1].startswith(('api.voice.', 'api.realtime.'))]:
+    del ut._counters[_k]
 
 # zapis do bazy + skumulowanie przy kolejnym flush
 from app.database import SessionLocal, engine, Base

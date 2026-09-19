@@ -79,6 +79,11 @@ async def realtime_ws(ws: WebSocket):
                 try:
                     async for message in openai_ws:
                         try:
+                            from ..usage_tracker import record_realtime_message
+                            record_realtime_message(message)
+                        except Exception:
+                            pass
+                        try:
                             await ws.send_text(message if isinstance(message, str) else message.decode())
                         except Exception as e:
                             print(f"[RT] send: {e}")
