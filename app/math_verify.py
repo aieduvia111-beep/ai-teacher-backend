@@ -5421,3 +5421,165 @@ def generate_safe_multiplication_table_batch(n: int, max_factor: int = 10) -> li
         seen_facts.add(fact_key)
         results.append(q)
     return results
+
+
+# =================================================================
+# SAFE PARAMETER GENERATION - UŁAMKI (zwykłe i dziesiętne), ZERO AI
+# (19.09.2026, real dane produkcyjne: Sprawdzian "Ułamki"/"Ułamki zwykłe"
+# ~66% niepełnych, Quiz "Ułamki" 33%). Ten sam wzorzec co tabliczka
+# mnożenia/skala mapy: kod liczy wynik (fractions.Fraction / Decimal),
+# dystraktory to typowe błędy uczniów (dodawanie liczników i mianowników,
+# brak odwrócenia przy dzieleniu, przesunięcie przecinka), unikalność
+# zadania pilnowana przy losowaniu.
+# =================================================================
+from fractions import Fraction as _Fr
+from decimal import Decimal as _Dec
+from math import gcd as _gcd
+
+_FRAC_DENOMS = (2, 3, 4, 5, 6, 8, 9, 10, 12)
+
+
+def _fr_tex(f) -> str:
+    if f.denominator == 1:
+        return f"{f.numerator}"
+    return f"\\frac{{{f.numerator}}}{{{f.denominator}}}"
+
+
+def _fr_opt(f) -> str:
+    """Opcja odpowiedzi: liczba mieszana dla f>1 (jak w szkole)."""
+    if f.denominator == 1:
+        return f"${f.numerator}$"
+    if f > 1:
+        whole = f.numerator // f.denominator
+        rest = _Fr(f.numerator - whole * f.denominator, f.denominator)
+        return f"${whole}{_fr_tex(rest)}$"
+    return f"${_fr_tex(f)}$"
+
+
+def _finish_options(true, wrong, fmt):
+    """Zwraca (opcje, indeks_poprawnej) albo None gdy nie da się zrobić 3
+    RÓŻNYCH, dodatnich dystraktorów."""
+    seen = {true}
+    dis = []
+    for w in wrong:
+        if w > 0 and w not in seen:
+            seen.add(w)
+            dis.append(w)
+    dis = dis[:3]
+    if len(dis) < 3:
+        return None
+    vals = dis + [true]
+    random.shuffle(vals)
+    opts = [fmt(v) for v in vals]
+    if len(set(opts)) != 4:
+        return None
+    return opts, vals.index(true)
+
+
+def build_safe_fraction_question():
+    d1, d2 = random.choice(_FRAC_DENOMS), random.choice(_FRAC_DENOMS)
+    n1, n2 = random.randint(1, d1 - 1), random.randint(1, d2 - 1)
+    a, b = _Fr(n1, d1), _Fr(n2, d2)
+    kind = random.choice(["add", "sub", "mul", "div", "simplify"])
+    if kind == "simplify":
+        k = random.choice([2, 3, 4, 5])
+        true = a
+        num, den = a.numerator * k, a.denominator * k
+        question = f"Skróć ułamek $\\frac{{{num}}}{{{den}}}$ do postaci nieskracalnej."
+        wrong = [_Fr(a.numerator + 1, a.denominator), _Fr(a.numerator, a.denominator + 1),
+                 _Fr(num, den * k) if k > 1 else a, _Fr(a.numerator * 2, a.denominator * 2 + 1)]
+        explanation = f"Dzielimy licznik i mianownik przez {k}: $\\frac{{{num}}}{{{den}}} = {_fr_tex(true)}$."
+        fact = (kind, num, den)
+    else:
+        if kind == "sub":
+            if a == b:
+                return None
+            if a < b:
+                a, b, n1, d1, n2, d2 = b, a, n2, d2, n1, d1
+        ta, tb = f"\\frac{{{n1}}}{{{d1}}}", f"\\frac{{{n2}}}{{{d2}}}"
+        if kind == "add":
+            true = a + b
+            question = f"Oblicz: ${ta} + {tb}$."
+            wrong = [_Fr(n1 + n2, d1 + d2), true + _Fr(1, d1 * d2 // _gcd(d1, d2)), a * b + a]
+            explanation = f"Sprowadzamy do wspólnego mianownika i dodajemy liczniki: ${ta} + {tb} = {_fr_tex(true)}$."
+        elif kind == "sub":
+            true = a - b
+            question = f"Oblicz: ${ta} - {tb}$."
+            wrong = [a + b, true + _Fr(1, d1 * d2 // _gcd(d1, d2)), _Fr(n1 - n2 if n1 > n2 else n1 + n2, d1 + d2)]
+            explanation = f"Sprowadzamy do wspólnego mianownika i odejmujemy liczniki: ${ta} - {tb} = {_fr_tex(true)}$."
+        elif kind == "mul":
+            true = a * b
+            question = f"Oblicz: ${ta} \\cdot {tb}$."
+            wrong = [a + b, _Fr(n1 * n2, d1 + d2), a / b]
+            explanation = f"Mnożymy liczniki i mianowniki: ${ta} \\cdot {tb} = {_fr_tex(true)}$."
+        else:
+            true = a / b
+            question = f"Oblicz: ${ta} : {tb}$."
+            wrong = [a * b, b / a, _Fr(n1, d1 * n2)]
+            explanation = f"Dzielenie zamieniamy na mnożenie przez odwrotność: ${ta} \\cdot \\frac{{{d2}}}{{{n2}}} = {_fr_tex(true)}$."
+        fact = (kind, n1, d1, n2, d2)
+    res = _finish_options(true, wrong + [true + _Fr(1, true.denominator * 2), true + _Fr(2, true.denominator * 3)], _fr_opt)
+    if res is None:
+        return None
+    opts, ci = res
+    return {
+        "question": question, "options": opts, "correct": ci,
+        "final_answer": opts[ci], "explanation": explanation,
+        "diversity_tag": {"skill": "ułamki zwykłe", "concept": kind,
+                          "task_type": "oblicz/skróć ułamek", "reasoning": "działania na ułamkach zwykłych"},
+        "_fact_key": fact,
+    }
+
+
+def _dec_str(x) -> str:
+    s = format(x.normalize(), "f")
+    if "." in s:
+        s = s.rstrip("0").rstrip(".")
+    return s.replace(".", ",")
+
+
+def build_safe_decimal_question():
+    kind = random.choice(["add", "sub", "mul"])
+    if kind == "mul":
+        a = _Dec(random.randint(11, 99)) / _Dec(10)
+        b = _Dec(random.randint(2, 9)) / random.choice([_Dec(1), _Dec(10)])
+        true = a * b
+        question = f"Oblicz: {_dec_str(a)} · {_dec_str(b)}."
+    else:
+        a = _Dec(random.randint(101, 999)) / _Dec(100)
+        b = _Dec(random.randint(11, 99)) / random.choice([_Dec(10), _Dec(100)])
+        if kind == "sub" and a < b:
+            a, b = b, a
+        true = a + b if kind == "add" else a - b
+        question = f"Oblicz: {_dec_str(a)} {'+' if kind == 'add' else '−'} {_dec_str(b)}."
+    wrong = [true * 10, true / 10, true + _Dec("0.1"), true - _Dec("0.1"), true + _Dec("1")]
+    res = _finish_options(true, wrong, _dec_str)
+    if res is None:
+        return None
+    opts, ci = res
+    return {
+        "question": question, "options": opts, "correct": ci,
+        "final_answer": opts[ci],
+        "explanation": f"Wynik działania: {opts[ci]} (pamiętaj o ustawieniu przecinka).",
+        "diversity_tag": {"skill": "ułamki dziesiętne", "concept": kind,
+                          "task_type": "oblicz", "reasoning": "działania na ułamkach dziesiętnych"},
+        "_fact_key": (kind, str(a), str(b)),
+    }
+
+
+def generate_safe_fraction_batch(n: int, mode: str = "common") -> list:
+    """mode: 'common' (zwykłe), 'decimal' (dziesiętne), 'mixed' (naprzemiennie)."""
+    results, seen = [], set()
+    for _ in range(max(60, n * 10)):
+        if len(results) >= n:
+            break
+        m = mode if mode != "mixed" else random.choice(["common", "decimal"])
+        q = build_safe_fraction_question() if m == "common" else build_safe_decimal_question()
+        if q is None:
+            continue
+        key = q.pop("_fact_key")
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append(q)
+    return results

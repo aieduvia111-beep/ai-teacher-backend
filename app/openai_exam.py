@@ -25,7 +25,7 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch,
     generate_safe_multiplication_table_batch,
-    generate_safe_map_scale_batch,
+    generate_safe_map_scale_batch, generate_safe_fraction_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -2087,6 +2087,19 @@ async def _raw_generate_safe_map_scale_batch(n: int) -> Dict:
     return quiz_data
 
 
+async def _raw_generate_safe_fraction_batch(n: int, mode: str = "common") -> Dict:
+    """Ulamki zwykle/dziesietne - zero wywolan AI (math_verify.generate_safe_fraction_batch)."""
+    questions = generate_safe_fraction_batch(n, mode)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Ułamki - Quiz", "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 # SAFE PARAMETER GENERATION - CIAGI ARYTMETYCZNE (29.08.2026, port na
 # Quiz) - patrz pelne uzasadnienie w math_verify.build_safe_sequence_two_terms.
 # Identyczny mechanizm co trygonometria wyzej: AI dostaje gotowe opcje +
@@ -2926,6 +2939,19 @@ def _is_multiplication_table(topic: str, difficulty: str = None) -> bool:
     return ("tabliczk" in t) and ("mnożen" in t or "mnozen" in t)
 
 
+def _fraction_mode(topic: str):
+    """'common'/'decimal'/'mixed' dla tematow o ulamkach, inaczej None
+    (19.09.2026, real dane: Quiz "Ulamki" 33% niepelnych, Sprawdzian ~66%)."""
+    t = (topic or "").lower()
+    if "ułamk" not in t and "ulamk" not in t:
+        return None
+    dec = "dziesiętn" in t or "dziesietn" in t
+    com = "zwykł" in t or "zwykl" in t
+    if dec and com:
+        return "mixed"
+    return "decimal" if dec else "common"
+
+
 def _is_map_scale(topic: str, difficulty: str = None) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla SKALI MAPY
     (geografia) - jak _is_multiplication_table wyzej, CELOWO BEZ filtra
@@ -3126,6 +3152,9 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_multiplication_table_batch(n)
     elif _is_map_scale(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_map_scale_batch(n)
+    elif _fraction_mode(topic):
+        _frac_mode = _fraction_mode(topic)
+        safe_batch_fn = lambda n: _raw_generate_safe_fraction_batch(n, _frac_mode)
     elif _is_hard_trig_quadratic(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_trig_quadratic_batch(n)
     elif _is_hard_arithmetic_sequence(topic, difficulty):

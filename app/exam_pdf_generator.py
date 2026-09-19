@@ -44,7 +44,7 @@ from .math_verify import (
     build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch, generate_safe_multiplication_table_batch,
-    generate_safe_map_scale_batch,
+    generate_safe_map_scale_batch, generate_safe_fraction_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -1416,6 +1416,10 @@ def _zero_ai_exam_kind(temat: str):
     if "całk" in t or "calk" in t:
         if "oznaczon" in t and "nieoznaczon" not in t:
             return "integral"
+    if "ułamk" in t or "ulamk" in t:
+        dec = "dziesiętn" in t or "dziesietn" in t
+        com = "zwykł" in t or "zwykl" in t
+        return "frac_mixed" if (dec and com) else ("frac_decimal" if dec else "frac_common")
     return None
 
 
@@ -2445,7 +2449,10 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         same co w Quizie) zamieniane na ksztalt sprawdzianu."""
         gen = {"mult": generate_safe_multiplication_table_batch,
                "map": generate_safe_map_scale_batch,
-               "integral": generate_safe_definite_integral_batch}[kind]
+               "integral": generate_safe_definite_integral_batch,
+               "frac_common": lambda k: generate_safe_fraction_batch(k, "common"),
+               "frac_decimal": lambda k: generate_safe_fraction_batch(k, "decimal"),
+               "frac_mixed": lambda k: generate_safe_fraction_batch(k, "mixed")}[kind]
         letters = "abcd"
         pytania = []
         for i, q in enumerate(gen(max(1, n)), start=1):
