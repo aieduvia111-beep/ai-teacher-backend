@@ -52,7 +52,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Optional
 
 from ..config import settings
-from ..models import User, Subscription
+from ..models import User, Subscription, TrialCardFingerprint
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -320,6 +320,41 @@ class StripeService:
 
 
     @staticmethod
+    def _enforce_one_trial_per_card(subscription, user_id: str, db: Session) -> None:
+        """19.09.2026: ta sama KARTA na innym koncie = drugi trial. Po starcie
+        triala czytamy odcisk karty ze Stripe; jesli ten odcisk uzyl juz triala
+        INNE konto, konczymy trial od razu (trial_end="now" -> Stripe pobiera
+        pierwsza oplate teraz, user platny jak kazdy inny). BLIK nie ma
+        odcisku (pusta metoda platnosci) - pomijamy. Tryb wg TRIAL_CARD_ACTION:
+        "end_trial" (domyslny) albo "log_only" (tylko log, bez zmian u usera).
+        NIGDY nie rzuca wyjatku - webhook musi sie zakonczyc sukcesem."""
+        try:
+            if getattr(subscription, "status", None) != "trialing":
+                return
+            pm = getattr(subscription, "default_payment_method", None)
+            if isinstance(pm, str) or pm is None:
+                pm_list = stripe.PaymentMethod.list(customer=subscription.customer, type="card", limit=1)
+                pm = pm_list.data[0] if pm_list.data else None
+            if not pm or getattr(pm, "type", None) != "card":
+                return
+            fp = getattr(getattr(pm, "card", None), "fingerprint", None)
+            if not fp:
+                return
+            known = db.query(TrialCardFingerprint).filter(TrialCardFingerprint.fingerprint == fp).first()
+            if known is None:
+                db.add(TrialCardFingerprint(fingerprint=fp, first_user_id=user_id))
+                db.commit()
+                return
+            if known.first_user_id == user_id:
+                return
+            action = os.environ.get("TRIAL_CARD_ACTION", "end_trial")
+            print(f"[Trial] ta sama karta juz uzyla triala na koncie {known.first_user_id[:8]}..., nowe konto {user_id[:8]}... - akcja: {action}")
+            if action == "end_trial":
+                stripe.Subscription.modify(subscription.id, trial_end="now")
+        except Exception as e:
+            print(f"[Trial] blad sprawdzania odcisku karty (pomijam, webhook OK): {e}")
+
+    @staticmethod
     def _handle_checkout_completed(event: Dict, db: Session) -> Dict:
         """Obsluguje zakonczenie checkout - nowa subskrypcja"""
         session = event['data']['object']
@@ -347,6 +382,8 @@ class StripeService:
         )
         db.add(db_subscription)
         db.commit()
+
+        StripeService._enforce_one_trial_per_card(subscription, user_id, db)
 
         affiliate_code = session.get('metadata', {}).get('affiliate_code')
         if affiliate_code:

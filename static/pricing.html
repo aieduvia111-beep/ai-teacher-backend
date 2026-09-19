@@ -432,6 +432,21 @@ function trialButtonLabel(){
   return 'Wypróbuj ' + TRIAL_DAYS + ' dni za darmo →';
 }
 
+// 19.09.2026: kto juz mial trial (albo ma subskrypcje), nie dostaje kolejnego -
+// napisy "za darmo" ukrywamy (patrz /api/v1/payments/trial-eligibility).
+function applyNoTrialTexts(){
+  if(isNativeIosApp) return;
+  const set = function(id, txt){ const el = document.getElementById(id); if(el) el.textContent = txt; };
+  set('heroTrialDays', 'Pro bez limitów');
+  set('badgeTrialDays', '⭐ Pełny dostęp do wszystkich funkcji');
+  set('btnText', 'Subskrybuj Pro →');
+  set('bottomCtaBtn', 'Subskrybuj Pro →');
+  set('ctaNoteText', '🔒 Bezpieczna płatność · Anuluj kiedy chcesz');
+  set('faqTrialQuestion', 'Jak działa subskrypcja Pro?');
+  set('faqTrialAnswer', 'Darmowy okres próbny przysługuje raz na konto. Subskrypcja Pro jest płatna od razu, a dostęp aktywuje się natychmiast po płatności. Możesz ją anulować w każdej chwili.');
+  const pb = document.getElementById('promoBanner'); if(pb) pb.style.display = 'none';
+}
+
 function applyPlatformPrice(){
   const amtEl = document.getElementById('proAmt');
   if(amtEl) amtEl.textContent = String(PRO_PRICE);
@@ -461,9 +476,22 @@ function applyPlatformPrice(){
     if(bottomBtnEl) bottomBtnEl.textContent = trialButtonLabel();
     const ctaNoteEl = document.getElementById('ctaNoteText');
     if(ctaNoteEl) ctaNoteEl.textContent = '🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez ' + TRIAL_DAYS + ' dni';
+    if(window._noTrial) applyNoTrialTexts();
   }
 }
 applyPlatformPrice();
+
+// 19.09.2026: po zalogowaniu pytamy backend, czy user jeszcze ma prawo do triala.
+(async function(){
+  if(isNativeIosApp) return;
+  try{
+    const tok = await window._getAuthToken();
+    if(!tok) return;
+    const r = await fetch(API_BASE + '/api/v1/payments/trial-eligibility', {headers:{'Authorization':'Bearer ' + tok}});
+    const d = await r.json();
+    if(d && d.success && d.trial_allowed === false){ window._noTrial = true; applyNoTrialTexts(); }
+  }catch(e){}
+})();
 
 // NOWE (11.09.2026, minimalna wlasna analityka lejka - patrz
 // app/api/analytics.py): fire-and-forget, nigdy nie blokuje ani nie

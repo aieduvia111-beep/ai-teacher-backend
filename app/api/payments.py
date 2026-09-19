@@ -31,6 +31,23 @@ async def trial_info():
     return get_promo_status()
 
 
+@router.get("/trial-eligibility")
+def trial_eligibility_endpoint(
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
+):
+    """19.09.2026: czy ZALOGOWANY user dostanie darmowy trial (frontend
+    ukrywa wtedy napisy "7 dni za darmo"). Ta sama logika co w checkout."""
+    try:
+        uid = firebase_user["uid"]
+        u = db.query(User).filter(User.firebase_uid == uid).first()
+        e = StripeService.trial_eligibility(uid, db, u.stripe_customer_id if u else None)
+        return {"success": True, "trial_allowed": e["trial_allowed"], "has_active": e["has_active"]}
+    except Exception as ex:
+        print(f"trial-eligibility blad: {ex}")
+        return {"success": False}
+
+
 # =============================================================================
 # REQUEST/RESPONSE MODELS
 # =============================================================================

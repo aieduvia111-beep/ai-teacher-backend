@@ -338,3 +338,15 @@ class UsageStats(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
+
+
+class TrialCardFingerprint(Base):
+    """Odciski kart (Stripe card.fingerprint) uzyte przy starcie triala -
+    19.09.2026, blokada "ta sama karta, nowe konto = drugi trial". Zapisujemy
+    WYLACZNIE odcisk (nieodwracalny skrot od Stripe, nie numer karty) i UID
+    pierwszego konta. BLIK nie ma odcisku - tu go nie ma."""
+    __tablename__ = "trial_card_fingerprints"
+
+    fingerprint = Column(String(64), primary_key=True)
+    first_user_id = Column(String(128), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
