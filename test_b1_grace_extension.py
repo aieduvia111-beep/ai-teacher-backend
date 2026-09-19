@@ -86,7 +86,7 @@ epg.time.monotonic = clock.monotonic
 call_count = {"n": 0}
 
 
-def _mock_succeeds(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block=""):
+def _mock_succeeds(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_count["n"] += 1
     clock.advance(5)  # symuluje czas trwania rundy (krotki, zeby nie zblizyc sie do sufitu 220s)
     return {"sekcje": [{"typ": "zamkniete", "pytania": _make_closed(n, start_nr=100 + call_count["n"] * 10)}]}
@@ -121,7 +121,7 @@ epg.time.monotonic = clock2.monotonic
 call_count2 = {"n": 0}
 
 
-def _mock_should_not_be_called(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block=""):
+def _mock_should_not_be_called(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_count2["n"] += 1
     return {"sekcje": [{"typ": "zamkniete", "pytania": _make_closed(n)}]}
 
@@ -177,7 +177,7 @@ epg.time.monotonic = clock4.monotonic
 call_count4 = {"n": 0}
 
 
-def _mock_always_empty(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block=""):
+def _mock_always_empty(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_count4["n"] += 1
     clock4.advance(5)
     return {"sekcje": [{"typ": "zamkniete", "pytania": []}]}  # nigdy nic uzywalnego

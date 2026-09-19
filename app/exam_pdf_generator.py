@@ -2232,7 +2232,7 @@ class ExamGenerator:
         raw = ''.join(result)
         return sanitize_latex_json_backslashes(raw)
 
-    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False) -> dict:
+    def _get_exam_data_raw(self, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False, force_model=None) -> dict:
         """Jedno 'surowe' wywolanie AI (bez weryfikacji sympy) - wydzielone
         z _get_exam_data, zeby dogenerowywanie brakujacych zadan (patrz
         _fill_missing_exam_questions) moglo to wywolywac wielokrotnie bez
@@ -2359,8 +2359,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         last_error = None
         for attempt in range(2):
             try:
+                # force_model (19.09.2026): eskalacja gpt-4o-mini -> gpt-4o
+                # w grace/rescue (port z Quizu, patrz openai_exam.py:
+                # real A/B - trygonometria 8/12 -> 12/12). None = tani domyslny.
                 r = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=force_model or "gpt-4o-mini",
                     messages=[
                         {"role": "system", "content":
                             "Jestes nauczycielem tworzacym sprawdziany. "
@@ -2408,7 +2411,7 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         print(f"[ExamGen] Nie udalo sie wygenerowac po 2 probach: {last_error}")
         return {}
 
-    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False) -> dict:
+    def _get_exam_data_raw_parallel(self, temat, klasa, trudnosc, total_n, wlasne_instrukcje=None, przedmiot=None, avoid_block="", only_open=False, force_model=None) -> dict:
         """Jak _get_exam_data_raw, ale dla wiekszych `total_n` dzieli
         zadanie na kilka mniejszych, ROWNOLEGLYCH wywolan AI (PORT z
         Quizu - _raw_generate_quiz_topic_batch w openai_exam.py, ta sama
@@ -2425,11 +2428,11 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         bez zmian do kazdego rownoleglego wywolania."""
         sizes = _parallel_batch_sizes(total_n)
         if len(sizes) == 1:
-            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot, avoid_block=avoid_block, only_open=only_open)
+            return self._get_exam_data_raw(temat, klasa, trudnosc, sizes[0], wlasne_instrukcje, przedmiot, avoid_block=avoid_block, only_open=only_open, force_model=force_model)
         print(f"[MathVerify][Exam] rownolegle generowanie: {total_n} zadan podzielone na {len(sizes)} wywolan {sizes}")
         with _cf.ThreadPoolExecutor(max_workers=len(sizes)) as ex:
             futures = [
-                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot, avoid_block, only_open)
+                ex.submit(self._get_exam_data_raw, temat, klasa, trudnosc, size, wlasne_instrukcje, przedmiot, avoid_block, only_open, force_model)
                 for size in sizes
             ]
             results = [f.result() for f in futures]
@@ -3834,9 +3837,9 @@ ZASADY:
         # zawodny generator probowany po prostu wiecej razy). Wydzielone
         # do wspoldzielonej funkcji, zeby ratunek korzystal z TEGO SAMEGO,
         # bardziej niezawodnego mechanizmu co normalne rundy.
-        def _dispatch_regen(missing_n, need_type_x, avoid_block_x):
+        def _dispatch_regen(missing_n, need_type_x, avoid_block_x, escalate=False):
             if need_type_x == 'otwarte':
-                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True)
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True, force_model=("gpt-4o" if escalate else None))
             elif _zero_ai_exam_kind(temat):
                 return self._raw_generate_zero_ai_closed_batch(_zero_ai_exam_kind(temat), max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
@@ -3858,7 +3861,7 @@ ZASADY:
             elif _is_hard_quadratic_two_positive_roots_exam(temat, trudnosc):
                 return self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing_n, _MIN_FILL_BATCH_EXAM), used_letters=used_safe_letters, used_constants=used_safe_constants)
             else:
-                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x)
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, force_model=("gpt-4o" if escalate else None))
 
         while True:
             round_i += 1
@@ -3940,7 +3943,7 @@ ZASADY:
                     # tego przypadku (stad w ogole te rundy sa potrzebne).
                     # Dispatch wydzielony do _dispatch_regen (patrz wyzej) -
                     # wspoldzielony z ostatecznym ratunkiem.
-                    extra = _dispatch_regen(missing, need_type, avoid_block)
+                    extra = _dispatch_regen(missing, need_type, avoid_block, escalate=not in_standard_budget)
                 metrics.api_request_count += 1
                 metrics.generated_count += sum(len(s.get('pytania', [])) for s in (extra or {}).get('sekcje', []))
             except Exception as e:
@@ -4049,7 +4052,7 @@ ZASADY:
                         # wlasnym, dużo bardziej niezawodnym archetypem
                         # "bezpiecznej generacji" - patrz _dispatch_regen
                         # wyzej, ta sama funkcja co normalne rundy).
-                        rescue_extra = _dispatch_regen(rescue_missing, need_type_rescue, avoid_block)
+                        rescue_extra = _dispatch_regen(rescue_missing, need_type_rescue, avoid_block, escalate=True)
                     metrics.api_request_count += 1
                     metrics.generated_count += sum(len(s.get('pytania', [])) for s in (rescue_extra or {}).get('sekcje', []))
                     rescue_extra = _verify_and_fix_exam_math(rescue_extra, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts, relax_difficulty=True)

@@ -22,7 +22,7 @@ data = {
 
 call_log = []
 
-def fake_raw_parallel(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def fake_raw_parallel(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log.append(("raw_parallel", n, only_open))
     print(f"  [FAKE] _get_exam_data_raw_parallel wywolane: n={n} only_open={only_open}")
     return {"sekcje": []}  # symuluj: nic nie wygenerowano (zawsze pusto)

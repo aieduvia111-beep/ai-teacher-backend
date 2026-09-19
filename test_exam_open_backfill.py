@@ -62,7 +62,7 @@ epg.time.monotonic = clock.monotonic
 call_log = []
 
 
-def _mock_only_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def _mock_only_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log.append({"n": n, "only_open": only_open})
     clock.advance(3)
     return {"sekcje": [{"typ": "otwarte", "pytania": _make_open(n, start_nr=200 + len(call_log) * 10)}]}
@@ -95,7 +95,7 @@ epg.time.monotonic = clock2.monotonic
 call_log2 = []
 
 
-def _mock_closed_only(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def _mock_closed_only(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log2.append({"n": n, "only_open": only_open})
     clock2.advance(3)
     return {"sekcje": [{"typ": "zamkniete", "pytania": _make_closed(n, start_nr=300 + len(call_log2) * 10)}]}
@@ -128,7 +128,7 @@ epg.time.monotonic = clock3.monotonic
 call_log3 = []
 
 
-def _mock_should_not_use_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def _mock_should_not_use_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log3.append({"n": n, "only_open": only_open})
     clock3.advance(3)
     return {"sekcje": [{"typ": "zamkniete", "pytania": _make_closed(n, start_nr=400 + len(call_log3) * 10)}]}
@@ -158,7 +158,7 @@ epg.time.monotonic = clock4.monotonic
 call_log4 = []
 
 
-def _mock_open_always_empty(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def _mock_open_always_empty(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log4.append({"n": n, "only_open": only_open})
     clock4.advance(5)
     return {"sekcje": [{"typ": "otwarte", "pytania": []}]}
@@ -192,7 +192,7 @@ print("=" * 70)
 call_log5 = []
 
 
-def _mock_b2_only_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False):
+def _mock_b2_only_open(temat, klasa, trudnosc, n, wlasne_instrukcje, przedmiot, avoid_block="", only_open=False, force_model=None):
     call_log5.append({"n": n, "only_open": only_open, "trudnosc": trudnosc})
     return {"sekcje": [{"typ": "otwarte", "pytania": _make_open(n, start_nr=500)}]}
 
