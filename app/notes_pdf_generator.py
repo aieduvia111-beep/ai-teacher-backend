@@ -1123,7 +1123,7 @@ class SectionLabel(Flowable):
 # GŁÓWNA KLASA
 # ============================================================
 _SUP_MAP = str.maketrans("0123456789+-n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ")
-_SUB_MAP = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
+_SUB_MAP = str.maketrans("0123456789+-nmki", "₀₁₂₃₄₅₆₇₈₉₊₋ₙₘₖᵢ")
 
 
 def _plain_math_text(txt: str) -> str:
@@ -1145,12 +1145,12 @@ def _plain_math_text(txt: str) -> str:
 
     def _sub(m):
         body = m.group(1) if m.group(1) is not None else m.group(2)
-        if body and all(ch in "0123456789+-" for ch in body):
+        if body and all(ch in "0123456789+-nmki" for ch in body):
             return body.translate(_SUB_MAP)
         return "_" + body
 
     txt = _r.sub(r'\^(?:\{([^{}]*)\}|([0-9nA-Za-z]))', _sup, txt)
-    txt = _r.sub(r'_(?:\{([^{}]*)\}|([0-9]))', _sub, txt)
+    txt = _r.sub(r'_(?:\{([^{}]*)\}|([0-9]|[nmki](?![A-Za-z])))', _sub, txt)
     return txt
 
 

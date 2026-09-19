@@ -14,6 +14,9 @@ CASES = [
     ("x_1, x_2", "x₁, x₂"),
     ("a^{n+1}", "aⁿ⁺¹"),
     (r"\frac{-b}{2a}", "(-b)/(2a)"),
+    ("S_n = (n)/(2)(a_1 + a_n)", "Sₙ = (n)/(2)(a₁ + aₙ)"),
+    ("b_n = b_1 * q^{n-1}", "bₙ = b₁ * qⁿ⁻¹"),
+    ("x_index", "x_index"),   # indeks literowy tylko gdy nie jest poczatkiem slowa
 ]
 bad = 0
 for src, exp in CASES:
