@@ -1723,6 +1723,60 @@ def _blind_verify_batch_closed(client, candidates: list, topic: str = None) -> d
     return results
 
 
+_OPEN_ENDED_VERBS = (
+    "wymień", "wymien", "podaj", "opisz", "wyjaśnij", "wyjasnij", "scharakteryzuj",
+    "omów", "omow", "porównaj", "porownaj", "zdefiniuj", "uzasadnij", "przedstaw",
+    "wskaż", "wskaz", "na czym polega", "jakie są", "jakie sa",
+)
+
+
+def _is_open_ended_answer(tresc: str, claimed: str) -> bool:
+    """19.09.2026 (prod: 24 i 13 falszywych odrzucen w 2 sprawdzianach -
+    "Empatia, Uczciwosc, Tolerancja" vs "empatia, szczerosc, cierpliwosc",
+    definicje vs jedno slowo): porownanie odpowiedz-vs-odpowiedz (values_match)
+    ma sens TYLKO dla pytan z JEDNA poprawna wartoscia. Pytania typu
+    wymien/opisz/wyjasnij maja wiele poprawnych odpowiedzi - tam ocenia sie
+    MERYTORYCZNA POPRAWNOSC, nie zgodnosc z drugim modelem."""
+    claimed = str(claimed or "")
+    t = (tresc or "").lower().strip()
+    words = len(claimed.split())
+    if words > 8:
+        return True
+    if claimed.count(",") + claimed.count(";") >= 1 and words >= 2:
+        return True
+    return any(v in t for v in _OPEN_ENDED_VERBS) and words > 3
+
+
+def _judge_open_answer(client, pyt, topic: str = None) -> bool:
+    """Sedzia dla pytan otwartych z wieloma poprawnymi odpowiedziami: True
+    gdy odpowiedz modelowa jest MERYTORYCZNIE poprawna (inne slowa, inne
+    przyklady, niepelna lista - OK). False tylko przy bledzie merytorycznym.
+    Blad wywolania = True (jak reszta modulu: brak danych = abstain)."""
+    try:
+        r = client.chat.completions.create(
+            model=_select_blind_verify_model(topic),
+            messages=[
+                {"role": "system", "content": (
+                    "Jestes surowym, ale sprawiedliwym nauczycielem-recenzentem. Dostajesz pytanie "
+                    "sprawdzianu i ODPOWIEDZ MODELOWA. Oceniasz WYLACZNIE, czy odpowiedz modelowa jest "
+                    "MERYTORYCZNIE POPRAWNA i odpowiada na pytanie. Rozne sformulowania, inne poprawne "
+                    "przyklady, skrotowosc - to NIE jest blad. Blad = nieprawdziwy fakt, zla liczba/data/"
+                    "nazwa, sprzecznosc, albo odpowiedz nie na temat pytania. Zwroc JSON: "
+                    '{"poprawna": true|false, "powod": "krotko"}.')},
+                {"role": "user", "content": f"PYTANIE:\n{pyt.get('tresc', '')}\n\nODPOWIEDZ MODELOWA:\n{pyt.get('odpowiedz_modelowa') or pyt.get('final_answer', '')}"},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=200,
+        )
+        parsed = safe_json_loads(r.choices[0].message.content)
+        if isinstance(parsed, dict) and isinstance(parsed.get("poprawna"), bool):
+            return parsed["poprawna"]
+    except Exception as e:
+        print(f"[BlindVerify][Exam][Otwarte][Sedzia] blad wywolania: {e}")
+    return True
+
+
 def _blind_verify_one_open(client, pyt, topic: str = None) -> bool:
     """Jak _blind_verify_one_closed, ale dla zadan OTWARTYCH (Czesc B) -
     porownuje "final_answer" (nowe, wymagane pole - patrz zmiana promptu
@@ -1745,6 +1799,9 @@ def _blind_verify_one_open(client, pyt, topic: str = None) -> bool:
     # wiec dla "factual" wystarczy sprawdzic, ze `claimed` NIE jest puste.
     if not claimed:
         return True
+    # Sedzia TYLKO dla faktografii - matematyka zostaje przy sympy/values_match.
+    if pyt_class == "factual" and _is_open_ended_answer(pyt.get("tresc", ""), claimed):
+        return _judge_open_answer(client, pyt, topic)
     if pyt_class != "factual" and _extract_single_value(str(claimed).split(',')[0]) is None:
         return True
     try:
