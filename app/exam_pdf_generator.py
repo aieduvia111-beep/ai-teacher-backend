@@ -43,6 +43,8 @@ from .math_verify import (
     build_safe_geometric_sequence_two_terms, build_safe_abs_value_equation,
     build_safe_law_of_sines_triangle, build_safe_quadratic_two_positive_roots,
     verify_word_problem_validation_rule, extract_number_from_answer_text,
+    generate_safe_definite_integral_batch, generate_safe_multiplication_table_batch,
+    generate_safe_map_scale_batch,
     WORDING_DIVERSITY_MANDATE,
 )
 from .blind_verify import (
@@ -1400,6 +1402,23 @@ _GRACE_MAX_SECONDS_EXAM = 60.0
 _RESCUE_EXTRA_SECONDS_EXAM = 20.0
 
 
+def _zero_ai_exam_kind(temat: str):
+    """18.09.2026 - port zero-AI generatorow z Quizu (patrz
+    _is_multiplication_table/_is_map_scale/_is_definite_integral w
+    openai_exam.py): zwraca "mult"/"map"/"integral" albo None. Sprawdzian
+    ma WLASNY kod generowania, wiec dispatch trzeba bylo dolozyc tu osobno
+    (real dane: "Tabliczka mnozenia" 3/3 niepelnych w Sprawdzianie)."""
+    t = (temat or "").lower()
+    if "tabliczk" in t and ("mnożen" in t or "mnozen" in t):
+        return "mult"
+    if "skal" in t and "map" in t:
+        return "map"
+    if "całk" in t or "calk" in t:
+        if "oznaczon" in t and "nieoznaczon" not in t:
+            return "integral"
+    return None
+
+
 def _is_medium_linear_param_quadratic_exam(temat: str, trudnosc: str) -> bool:
     """Warunek gatujacy 'safe parameter generation' - PORT z Quizu
     (_is_medium_linear_param_quadratic w openai_exam.py), ten sam warunek
@@ -2420,6 +2439,29 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
     # sformulowanie pytania + 3 blednych dystraktorow. Warstwa 2
     # (_verify_and_fix_exam_math) NADAL robi koncowa weryfikacje jako
     # dodatkowe zabezpieczenie - ten kod NIE omija Warstwy 2.
+    def _raw_generate_zero_ai_closed_batch(self, kind: str, n: int) -> dict:
+        """Zamkniete zadania BEZ ZADNEGO wywolania AI (tabliczka mnozenia /
+        skala mapy / calki oznaczone) - generatory z math_verify.py (te
+        same co w Quizie) zamieniane na ksztalt sprawdzianu."""
+        gen = {"mult": generate_safe_multiplication_table_batch,
+               "map": generate_safe_map_scale_batch,
+               "integral": generate_safe_definite_integral_batch}[kind]
+        letters = "abcd"
+        pytania = []
+        for i, q in enumerate(gen(max(1, n)), start=1):
+            pytania.append({
+                "nr": i,
+                "tresc": q["question"],
+                "opcje": [f"{letters[j]}) {opt}" for j, opt in enumerate(q["options"])],
+                "odpowiedz": letters[q["correct"]],
+                "final_answer": q["final_answer"],
+                "punkty": 1,
+                "wyjasnienie": q.get("explanation", ""),
+                "diversity_tag": q.get("diversity_tag"),
+                "_safe_generated": True,
+            })
+        return {"sekcje": [{"typ": "zamkniete", "pytania": pytania}]}
+
     def _raw_generate_safe_linear_param_quadratic_batch(self, n: int, klasa: str = None, used_letters: set = None, used_constants: set = None) -> dict:
         """Generuje `n` zadan zamknietych dla podwzorca x^2+mx+C=0
         (parametr jako goly wspolczynnik liniowy) metoda 'safe parameter
@@ -3650,7 +3692,14 @@ ZASADY:
             # dzielimy na rownolegle wywolania AI (ThreadPoolExecutor, bo
             # ExamGenerator.client jest SYNCHRONICZNY - w przeciwienstwie do
             # AsyncOpenAI w Quizie) - skraca czas oczekiwania proporcjonalnie.
-            data = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
+            _zk = _zero_ai_exam_kind(temat)
+            if _zk:
+                # zero-AI: pierwsza partia zamknietych z kodu (otwarte
+                # dogeneruje _fill_missing_exam_questions przez only_open)
+                _closed_n = batch_size if _teacher_wants_only_closed(wlasne_instrukcje) else max(1, round(liczba_pytan * 0.6) + 2)
+                data = self._raw_generate_zero_ai_closed_batch(_zk, _closed_n)
+            else:
+                data = self._get_exam_data_raw_parallel(temat, klasa, trudnosc, batch_size, wlasne_instrukcje, przedmiot)
         metrics.api_request_count += 1
         metrics.generated_count += sum(len(s.get('pytania', [])) for s in data.get('sekcje', []))
         if not data.get('sekcje'):
@@ -3776,6 +3825,8 @@ ZASADY:
         def _dispatch_regen(missing_n, need_type_x, avoid_block_x):
             if need_type_x == 'otwarte':
                 return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True)
+            elif _zero_ai_exam_kind(temat):
+                return self._raw_generate_zero_ai_closed_batch(_zero_ai_exam_kind(temat), max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
                 return self._raw_generate_safe_linear_param_quadratic_batch(max(missing_n, _MIN_FILL_BATCH_EXAM), klasa, used_letters=used_safe_letters, used_constants=used_safe_constants)
             elif _is_hard_trig_quadratic_exam(temat, trudnosc):
