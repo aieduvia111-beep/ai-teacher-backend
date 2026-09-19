@@ -109,12 +109,22 @@ def create_checkout(
         # zostaje w kodzie nietkniety - obsluguje TYLKO juz istniejace
         # subskrypcje zalozone przed ta zmiana, nie jest juz wolany dla
         # nowych checkoutow.
-        result = BlikService.create_setup_session(
+        # 19.09.2026: karta + BLIK w natywnej subskrypcji Stripe (trial 7 dni
+        # zachowany). Gdyby sie nie udalo - awaryjnie stary checkout (karta).
+        result = StripeService.create_checkout_session(
             user_id=verified_uid,
             email=verified_email,
             db=db,
             affiliate_code=request.affiliate_code
         )
+        if not result.get("success"):
+            print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
+            result = BlikService.create_setup_session(
+                user_id=verified_uid,
+                email=verified_email,
+                db=db,
+                affiliate_code=request.affiliate_code
+            )
 
         return result
         

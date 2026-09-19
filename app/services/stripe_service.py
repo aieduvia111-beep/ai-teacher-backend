@@ -195,17 +195,27 @@ class StripeService:
             # DOKLADNIE w tym miejscu, bo to jest moment "kliknal Subskrybuj",
             # ktory decyduje o dlugosci triala wg tresci promocji.
             trial_days = get_trial_days()
-            checkout_session = stripe.checkout.Session.create(
-                customer=customer_id,
-                payment_method_types=["card"],
-                line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
-                mode="subscription",
-                subscription_data={"trial_period_days": trial_days},
-                                success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
-                metadata=checkout_metadata,
-                **checkout_kwargs
-            )
+            # BLIK (19.09.2026): Stripe wspiera BLIK w mode="subscription"
+            # razem z trialem (zweryfikowane na zywo w trybie testowym) -
+            # w odroznieniu od mode="setup". Gdyby konto Stripe odrzucilo
+            # BLIK (np. brak wlaczonej metody), wracamy do samej karty.
+            def _create(methods):
+                return stripe.checkout.Session.create(
+                    customer=customer_id,
+                    payment_method_types=methods,
+                    line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
+                    mode="subscription",
+                    subscription_data={"trial_period_days": trial_days},
+                    success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
+                    cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
+                    metadata=checkout_metadata,
+                    **checkout_kwargs
+                )
+            try:
+                checkout_session = _create(["card", "blik"])
+            except stripe.error.InvalidRequestError as _e:
+                print(f"BLIK odrzucony przez Stripe, checkout tylko karta: {_e}")
+                checkout_session = _create(["card"])
 
             return {"success": True, "checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
