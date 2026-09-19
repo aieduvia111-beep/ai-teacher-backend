@@ -897,7 +897,7 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
     defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
     defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
-    defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
+    defn_clean = _re_def.sub(r'[\\{}]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
     # Utnij po pełnym zdaniu (nie w środku słowa)
     if len(defn_clean) > 200:
@@ -906,6 +906,8 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         if cut < 100:  # Za krótko - utnij po ostatnim spacji
             cut = defn_clean[:210].rfind(' ')
         defn = defn_clean[:cut+1] if cut > 0 else defn_clean[:200] + '...'
+        if cut > 0 and not defn.rstrip().endswith(('.', '!', '?')):
+            defn = defn.rstrip() + '…'   # ucieta w polowie zdania - nie udawaj kompletnego zdania
     else:
         defn = defn_clean
     _cpl = max(18, int((W_IN * 0.88) * 72 / (7.2 * 0.63)))
@@ -1120,6 +1122,38 @@ class SectionLabel(Flowable):
 # ============================================================
 # GŁÓWNA KLASA
 # ============================================================
+_SUP_MAP = str.maketrans("0123456789+-n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ")
+_SUB_MAP = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
+
+
+def _plain_math_text(txt: str) -> str:
+    """Tekst definicji do karty pojecia (BEZ mathtext): potegi i indeksy
+    zamieniane na znaki Unicode (x^2 -> x², x_1 -> x₁), ulamki na (a)/(b).
+    Wczesniej '^' i '_' byly po prostu usuwane, wiec "x^2" wychodzilo jako
+    "x2" (uczen czyta "x razy 2"). Czego nie da sie zapisac Unicode,
+    zostaje jako 'x^k' / 'x_i' (czytelne), nigdy nie znika po cichu."""
+    import re as _r
+    for _ in range(2):
+        txt = _r.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'(\1)/(\2)', txt)
+    txt = _r.sub(r'\\sqrt\{([^{}]*)\}', r'√(\1)', txt)
+
+    def _sup(m):
+        body = m.group(1) if m.group(1) is not None else m.group(2)
+        if body and all(ch in "0123456789+-n" for ch in body):
+            return body.translate(_SUP_MAP)
+        return "^" + body
+
+    def _sub(m):
+        body = m.group(1) if m.group(1) is not None else m.group(2)
+        if body and all(ch in "0123456789+-" for ch in body):
+            return body.translate(_SUB_MAP)
+        return "_" + body
+
+    txt = _r.sub(r'\^(?:\{([^{}]*)\}|([0-9nA-Za-z]))', _sup, txt)
+    txt = _r.sub(r'_(?:\{([^{}]*)\}|([0-9]))', _sub, txt)
+    return txt
+
+
 def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_px=110):
     import io as _io2
     DPI = 150; W_IN = width_px / 72; H_IN = 1.95
@@ -1137,13 +1171,19 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
     # Usuń cały LaTeX $...$ z definicji - w kartach nie renderujemy wzorów
     import re as _re_def
     defn_clean = _re_def.sub(r'\$[^$]*\$', lambda m: m.group(0).replace('$','').strip(), definicja)
-    defn_clean = defn_clean.replace('\\frac{', '(').replace('}{', ')/(')
+    defn_clean = _plain_math_text(defn_clean)
     defn_clean = defn_clean.replace('\\cdot', '·').replace('\\times', '×')
     defn_clean = defn_clean.replace('\\rightarrow', ' \\to ').replace('\\to', ' \\to ')
     defn_clean = defn_clean.replace('\\int', '∫').replace('\\sum', 'Σ')
     defn_clean = defn_clean.replace('\\alpha', 'α').replace('\\beta', 'β').replace('\\gamma', 'γ')
     defn_clean = defn_clean.replace('\\delta', 'δ').replace('\\Delta', 'Δ').replace('\\pi', 'π')
     defn_clean = defn_clean.replace('\\infty', '∞').replace('\\pm', '±').replace('\\sqrt', '√')
+    # znaki relacji - wczesniej wycinane przez ogolne usuniecie "\\slowo",
+    # wiec "a \\neq 0" wychodzilo jako "a 0" (zmienia sens definicji).
+    # Granica slowa (nie "\\left" -> "≤ft").
+    for _tex, _uni in (('neq', '≠'), ('ne', '≠'), ('leq', '≤'), ('le', '≤'), ('geq', '≥'),
+                       ('ge', '≥'), ('approx', '≈'), ('in', '∈'), ('Rightarrow', '⇒')):
+        defn_clean = _re_def.sub(r'\\' + _tex + r'(?![a-zA-Z])', _uni, defn_clean)
     defn_clean = _re_def.sub(r'\\[a-zA-Z]+', '', defn_clean)
     defn_clean = _re_def.sub(r'[\\{}^_]', '', defn_clean)
     defn_clean = _re_def.sub(r'  +', ' ', defn_clean).strip()
@@ -1372,7 +1412,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                     if not linia.strip(): continue
                     linia_s = linia.strip()
                     # Jesli linia zawiera wzor LaTeX - renderuj jako formule
-                    if '$' in linia_s:
+                    if linia_s.startswith('$') and linia_s.endswith('$') and linia_s.count('$') == 2:
                         img_wzor = formula_to_rl_image(linia_s, width_pt=W * 0.9)
                         if img_wzor:
                             story.append(img_wzor)
@@ -1498,7 +1538,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         bledy = data.get('bledy_uczniow', [])
         if bledy:
             story.append(Spacer(1, 20))
-            story.append(SectionLabel("BŁĘDY KTÓRE ROBI 7/10 UCZNIÓW", ACC_RED, W))
+            story.append(SectionLabel("TYPOWE BŁĘDY UCZNIÓW", ACC_RED, W))
             story.append(Spacer(1, 8))
             for idx_b, bl in enumerate(bledy):
                 rows_b = []

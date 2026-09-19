@@ -24,12 +24,34 @@ class NotesRequest(BaseModel):
     images: Optional[List[str]] = None
     wlasne_instrukcje: Optional[str] = None
 
+def _log_notes_metrics(temat: str, klasa: str, t0: float, ok: bool, reason: str = None, from_image: bool = False):
+    """Statystyki notatek (19.09.2026): Quiz i Sprawdzian mialy tabele
+    generation_request_log, notatki NIE mialy nic - nie dalo sie ustalic,
+    ile notatek sie nie udalo ani ile trwaly. Zapis NIGDY nie blokuje ani
+    nie psuje odpowiedzi (wszystko w try/except)."""
+    try:
+        import time as _t
+        from ..metrics import GenerationMetrics, persist_generation_metrics
+        m = GenerationMetrics(requested_count=1)
+        m.accepted_count = 1 if ok else 0
+        m.total_time = _t.monotonic() - t0
+        if not ok:
+            m.record_rejection(reason or "notes_failed")
+        persist_generation_metrics(m, feature="notes", temat=(temat or "")[:300],
+                                   trudnosc="zdjecie" if from_image else "tekst", poziom=klasa)
+    except Exception as _e:
+        print(f"[NotesMetrics] pominieto zapis statystyk: {_e}")
+
+
 def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> str:
     gen = PremiumNotesGenerator(api_key)
     return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje)
 
 @router.post("/generate")
 async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_feature_limit("notes"))):
+    import time as _time
+    _t0 = _time.monotonic()
+    _img = bool(req.images or req.image)
     try:
         os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -79,12 +101,14 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
         )
 
         if filename and os.path.exists(filename):
+            _log_notes_metrics(temat, req.klasa, _t0, True, from_image=_img)
             return FileResponse(
                 path=filename,
                 media_type="application/pdf",
                 filename=filename.encode('ascii', 'ignore').decode('ascii'),
                 headers={"Content-Disposition": "attachment; filename=notatka.pdf"}
             )
+        _log_notes_metrics(temat, req.klasa, _t0, False, "no_pdf", from_image=_img)
         return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}
 
     except Exception as e:
@@ -92,4 +116,5 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
         print(f"NOTES ERROR: {traceback.format_exc()}")
         import traceback
         traceback.print_exc()
+        _log_notes_metrics(req.temat, req.klasa, _t0, False, "exception", from_image=_img)
         return {"success": False, "error": str(e)}
