@@ -21,6 +21,17 @@ router = APIRouter(prefix="/users", tags=["Users"])
 _re_topic_split = re.compile(r"\s+-\s+|,|\(")
 
 
+# 19.09.2026 (koszty): temat na kafelek "Nastepny krok" byl generowany PELNYM
+# quizem (z weryfikacja i ponowieniami) osobno dla KAZDEGO usera raz dziennie
+# - ~100-200 wywolan/dzien, zeby wziac z nich sam tytul (13 s, kilka wywolan
+# AI kazde). Roznych par (poziom, przedmiot) jest kilkanascie, wiec wynik
+# cache'ujemy per (poziom, przedmiot, dzien) i dzielimy miedzy userow.
+# Cache jest w pamieci procesu (po restarcie/na innym workerze najwyzej
+# wygeneruje sie ponownie - to tylko koszt, nie blad).
+_SUGGEST_CACHE: dict = {}      # (poziom, przedmiot) -> (data_iso, tytul)
+_SUGGEST_LOCKS: dict = {}      # (poziom, przedmiot) -> asyncio.Lock
+
+
 class OnboardingRequest(BaseModel):
     education_level: str
     favorite_subject: Optional[str] = None
@@ -57,56 +68,78 @@ async def _refresh_suggested_topic_if_stale(user: User, db: Session) -> None:
     if user.suggested_topic_date == today and user.suggested_topic:
         return
 
-    previous_topic = user.suggested_topic
-    wlasne_instrukcje = ""
-    if previous_topic:
-        # Uzywamy juz istniejacego kanalu "wlasne instrukcje" (najwyzszy
-        # priorytet w prompcie) do wymuszenia, zeby nowy temat byl INNY
-        # niz wczorajszy - bez tego losowanie/wybor AI moglby przez
-        # przypadek trafic w ten sam temat dwa dni z rzedu.
-        wlasne_instrukcje = (
-            f"Wybrany temat NIE MOZE byc tym samym tematem co poprzednio: "
-            f"'{previous_topic}'. Wybierz inny temat z podanego zakresu materialu."
-        )
+    key = (user.education_level, user.favorite_subject)
 
-    try:
-        result = await generate_quiz_from_topic(
-            topic=user.favorite_subject,
-            subject=user.favorite_subject,
-            level=user.education_level,
-            num_questions=1,
-            difficulty="medium",
-            wlasne_instrukcje=wlasne_instrukcje,
-        )
-    except Exception as e:
-        print(f"[SuggestedTopic] blad generacji dla usera {user.id}: {e}")
+    def _apply(title_: str) -> None:
+        user.suggested_topic = title_[:255]
+        user.suggested_topic_date = today
+        db.commit()
+
+    cached = _SUGGEST_CACHE.get(key)
+    if cached and cached[0] == today:
+        _apply(cached[1])
         return
 
-    if not result.get("success"):
-        print(f"[SuggestedTopic] generacja nieudana dla usera {user.id}: {result.get('error')}")
-        return
+    import asyncio
+    lock = _SUGGEST_LOCKS.setdefault(key, asyncio.Lock())
+    async with lock:
+        # Ktos mogl wygenerowac ten temat, gdy czekalismy na lock.
+        cached = _SUGGEST_CACHE.get(key)
+        if cached and cached[0] == today:
+            _apply(cached[1])
+            return
 
-    title = (result["quiz"].get("title") or "").strip()
-    # generate_quiz_from_topic dokleja " - Quiz" do tytulu (patrz FORMAT w
-    # prompcie) - to dobre w quizie, ale zbedne na karcie Dashboardu.
-    if title.lower().endswith(" - quiz"):
-        title = title[: -len(" - Quiz")].strip()
-    # W trybie "AI samo wybiera" model czesto kopiuje CALA fraze z
-    # SUBJECT_SCOPE (np. "ciagi arytmetyczne i geometryczne - wzor
-    # ogolny, suma n wyrazow, zastosowania (np. procent skladany)") -
-    # dobre jako zakres dla quizu, za dlugie na maly kafelek "Nastepny
-    # krok". Skracamy do pierwszego sensownego fragmentu (przed " - "
-    # albo przecinkiem/nawiasem), zeby karta pokazywala krotka nazwe
-    # tematu, nie cale zdanie.
-    short_title = _re_topic_split.split(title, maxsplit=1)[0].strip()
-    if short_title:
-        title = short_title
-    if not title:
-        return
+        # "Inny niz poprzednio": bierzemy wczorajszy temat tej pary (z cache),
+        # a w razie jego braku - poprzedni temat tego usera.
+        previous_topic = (cached[1] if cached else None) or user.suggested_topic
+        wlasne_instrukcje = ""
+        if previous_topic:
+            # Uzywamy juz istniejacego kanalu "wlasne instrukcje" (najwyzszy
+            # priorytet w prompcie) do wymuszenia, zeby nowy temat byl INNY
+            # niz wczorajszy - bez tego losowanie/wybor AI moglby przez
+            # przypadek trafic w ten sam temat dwa dni z rzedu.
+            wlasne_instrukcje = (
+                f"Wybrany temat NIE MOZE byc tym samym tematem co poprzednio: "
+                f"'{previous_topic}'. Wybierz inny temat z podanego zakresu materialu."
+            )
 
-    user.suggested_topic = title[:255]
-    user.suggested_topic_date = today
-    db.commit()
+        try:
+            result = await generate_quiz_from_topic(
+                topic=user.favorite_subject,
+                subject=user.favorite_subject,
+                level=user.education_level,
+                num_questions=1,
+                difficulty="medium",
+                wlasne_instrukcje=wlasne_instrukcje,
+            )
+        except Exception as e:
+            print(f"[SuggestedTopic] blad generacji dla usera {user.id}: {e}")
+            return
+
+        if not result.get("success"):
+            print(f"[SuggestedTopic] generacja nieudana dla usera {user.id}: {result.get('error')}")
+            return
+
+        title = (result["quiz"].get("title") or "").strip()
+        # generate_quiz_from_topic dokleja " - Quiz" do tytulu (patrz FORMAT w
+        # prompcie) - to dobre w quizie, ale zbedne na karcie Dashboardu.
+        if title.lower().endswith(" - quiz"):
+            title = title[: -len(" - Quiz")].strip()
+        # W trybie "AI samo wybiera" model czesto kopiuje CALA fraze z
+        # SUBJECT_SCOPE (np. "ciagi arytmetyczne i geometryczne - wzor
+        # ogolny, suma n wyrazow, zastosowania (np. procent skladany)") -
+        # dobre jako zakres dla quizu, za dlugie na maly kafelek "Nastepny
+        # krok". Skracamy do pierwszego sensownego fragmentu (przed " - "
+        # albo przecinkiem/nawiasem), zeby karta pokazywala krotka nazwe
+        # tematu, nie cale zdanie.
+        short_title = _re_topic_split.split(title, maxsplit=1)[0].strip()
+        if short_title:
+            title = short_title
+        if not title:
+            return
+
+        _SUGGEST_CACHE[key] = (today, title)
+        _apply(title)
 
 
 @router.get("/me")
