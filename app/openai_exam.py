@@ -2981,7 +2981,7 @@ def _is_map_scale(topic: str, difficulty: str = None) -> bool:
     metoda: build_safe_map_scale_question (math_verify.py) liczy WSZYSTKO
     kodem (cm_na_mapie * skala = cm_w_terenie, zero ryzyka arytmetyki AI)."""
     t = (topic or "").lower()
-    return "skal" in t and "map" in t
+    return ("skal" in t or "odległ" in t or "odleglo" in t) and "map" in t
 
 
 def _is_hard_trig_quadratic(topic: str, difficulty: str) -> bool:

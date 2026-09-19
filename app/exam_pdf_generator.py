@@ -1436,7 +1436,7 @@ def _zero_ai_exam_kind(temat: str):
     t = (temat or "").lower()
     if "tabliczk" in t and ("mnożen" in t or "mnozen" in t):
         return "mult"
-    if "skal" in t and "map" in t:
+    if ("skal" in t or "odległ" in t or "odleglo" in t) and "map" in t:
         return "map"
     if "całk" in t or "calk" in t:
         if "oznaczon" in t and "nieoznaczon" not in t:
