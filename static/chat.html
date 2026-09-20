@@ -562,7 +562,7 @@ button:active{transform:scale(.95)!important;}
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, arrayUnion, increment, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, arrayUnion, increment, query, orderBy, where, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",
@@ -585,7 +585,7 @@ if (!deviceId) {
 }
 
 // Eksportuj do window
-window._fb = { db, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy, serverTimestamp, deviceId };
+window._fb = { db, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, orderBy, where, limit, serverTimestamp, deviceId };
 window._fbReady = true;
 window.dispatchEvent(new Event('fbReady'));
 
@@ -2388,15 +2388,22 @@ async function renderHistList() {
   el.innerHTML = '<div class="hist-empty" style="opacity:.5">Ładowanie...</div>';
   const db = getDb();
   if (!db) { el.innerHTML = '<div class="hist-empty">Brak połączenia z bazą</div>'; return; }
-  const { collection, getDocs, query, orderBy } = window._fb;
+  const { collection, getDocs, query, where, limit } = window._fb;
   let chats = [];
   try {
-    const q = query(collection(db, 'chats'), orderBy('ts', 'desc'));
-    const snap = await getDocs(q);
-    snap.forEach(d => chats.push({ id: d.id, ...d.data() }));
-    // Filtruj po deviceId
+    // 20.09.2026 (KOSZTY/PRYWATNOSC): wczesniej pobieralo CALA kolekcje 'chats' WSZYSTKICH userow
+    // (bez filtra i limitu) i filtrowalo na urzadzeniu - kazde otwarcie listy czytalo kazdy czat
+    // w bazie (to wyczerpywalo dzienny limit odczytow Firestore) i sciagalo cudze rozmowy.
+    // Teraz filtr po stronie serwera: tylko czaty tego usera/urzadzenia, max 50.
     const uid = localStorage.getItem('eduvia_uid') || getDeviceId();
-    chats = chats.filter(ch => ch.uid === uid || ch.deviceId === getDeviceId());
+    const dev = getDeviceId();
+    const queries = [query(collection(db, 'chats'), where('uid', '==', uid), limit(50))];
+    if (dev && dev !== uid) queries.push(query(collection(db, 'chats'), where('deviceId', '==', dev), limit(50)));
+    const snaps = await Promise.all(queries.map(q => getDocs(q)));
+    const seen = new Set();
+    snaps.forEach(snap => snap.forEach(d => { if (!seen.has(d.id)) { seen.add(d.id); chats.push({ id: d.id, ...d.data() }); } }));
+    const tsMs = ch => (ch.ts && ch.ts.toDate) ? ch.ts.toDate().getTime() : new Date(ch.ts || 0).getTime() || Date.now();
+    chats.sort((a, b) => tsMs(b) - tsMs(a));
   } catch(e) { el.innerHTML = '<div class="hist-empty">Błąd ładowania</div>'; return; }
 
   el.innerHTML = '';
