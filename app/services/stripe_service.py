@@ -52,7 +52,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Optional
 
 from ..config import settings
-from ..models import User, Subscription, TrialCardFingerprint
+from ..models import User, Subscription, TrialCardFingerprint, FunnelEvent
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -358,6 +358,28 @@ class StripeService:
             print(f"[Trial] blad sprawdzania odcisku karty (pomijam, webhook OK): {e}")
 
     @staticmethod
+    def _record_payment_method(subscription, user_id: str, db: Session) -> None:
+        """20.09.2026 (user: "blikiem zaplacil?"): zapisuje do lejka, JAKA metoda platnosci
+        zostala uzyta przy nowej subskrypcji ('card' / 'blik'). Sam typ, zero danych karty.
+        Nigdy nie rzuca - webhook musi sie zakonczyc sukcesem."""
+        try:
+            pm = getattr(subscription, "default_payment_method", None)
+            if isinstance(pm, str):
+                pm = stripe.PaymentMethod.retrieve(pm)
+            ptype = getattr(pm, "type", None) if pm else None
+            if not ptype:
+                lst = stripe.PaymentMethod.list(customer=subscription.customer, limit=1)
+                ptype = lst.data[0].type if lst.data else None
+            db.add(FunnelEvent(event="payment_method_used", user_id=user_id, meta={"type": ptype or "unknown"}))
+            db.commit()
+        except Exception as e:
+            print(f"[PaymentMethod] zapis typu pominiety: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
+    @staticmethod
     def _handle_checkout_completed(event: Dict, db: Session) -> Dict:
         """Obsluguje zakonczenie checkout - nowa subskrypcja"""
         session = event['data']['object']
@@ -387,6 +409,7 @@ class StripeService:
         db.commit()
 
         StripeService._enforce_one_trial_per_card(subscription, user_id, db)
+        StripeService._record_payment_method(subscription, user_id, db)
 
         affiliate_code = session.get('metadata', {}).get('affiliate_code')
         if affiliate_code:
