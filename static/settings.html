@@ -472,22 +472,15 @@ async function saveLevelChange(value,label){
 // KONIEC oplaconego okresu (albo triala - user nadal nie placi, jesli
 // anuluje przed jego koncem), nie natychmiast - zgodnie z tekstem FAQ na
 // pricing.html ("dostep do konca oplaconego okresu").
-async function cancelSubscriptionFlow(){
-  if(!confirm('Na pewno chcesz anulować subskrypcję Pro?\n\nZachowasz dostęp do końca opłaconego okresu (albo do końca darmowego triala, jeśli jeszcze trwa) — nic więcej Cię nie obciąży.'))return;
-  try{
-    const u=auth.currentUser;
-    if(!u)throw new Error('Nie jestes zalogowany.');
-    const token=await u.getIdToken();
-    const res=await fetch(window.API_BASE+'/api/v1/payments/cancel-subscription',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+token}
-    });
-    const data=await res.json();
-    if(!data.success)throw new Error(data.error||'Nie udalo sie anulowac subskrypcji.');
-    window.showError('Subskrypcja anulowana — dostęp do końca opłaconego okresu.');
-  }catch(e){
-    window.showError(e.message||'Nie udalo sie anulowac subskrypcji. Sprobuj ponownie albo napisz do nas.');
-  }
+function cancelSubscriptionFlow(){
+  // 20.09.2026: potwierdzenie + anulowanie + ankieta "dlaczego odchodzisz" w jednym oknie
+  // (static/cancel_survey.js) zamiast systemowego confirm(). Sam mechanizm anulowania
+  // (POST /api/v1/payments/cancel-subscription, na koniec oplaconego okresu) bez zmian.
+  if(!window.EduviaCancelFlow){window.showError('Nie udalo sie otworzyc okna anulowania. Odswiez strone.');return;}
+  window.EduviaCancelFlow.open({
+    apiBase: window.API_BASE,
+    getToken: async function(){ const u=auth.currentUser; return u ? await u.getIdToken() : ''; }
+  });
 }
 
 onAuthStateChanged(auth,async u=>{
@@ -783,5 +776,6 @@ if (!_isIosAppBackBtn) {
   history.pushState(null, '', window.location.href);
 }
 </script>
+<script src="cancel_survey.js?v=20260920"></script>
 </body>
 </html>

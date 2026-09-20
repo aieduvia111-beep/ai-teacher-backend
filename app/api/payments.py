@@ -31,6 +31,76 @@ async def trial_info():
     return get_promo_status()
 
 
+# Whitelist powodow rezygnacji (kody zapisywane w bazie; teksty widzi user w
+# static/cancel_survey.js - trzymaj obie listy zgodne).
+_CANCEL_REASONS = {"price", "low_use", "missing_features", "quality", "bugs", "free_enough", "trial_only", "other"}
+
+
+class CancellationFeedbackRequest(BaseModel):
+    reason: str
+    details: Optional[str] = None
+
+
+@router.post("/cancellation-feedback")
+def cancellation_feedback(
+    req: CancellationFeedbackRequest,
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
+):
+    """Zapisuje odpowiedz z ankiety po anulowaniu. Wymaga zalogowania; jedna
+    odpowiedz na 30 minut na usera (ponowne wyslanie aktualizuje ostatnia)."""
+    from datetime import datetime, timedelta
+    from ..models import CancellationFeedback
+    try:
+        reason = (req.reason or "").strip()
+        if reason not in _CANCEL_REASONS:
+            return {"success": False, "error": "Nieznany powod"}
+        details = (req.details or "").strip()[:500] or None
+        uid = firebase_user["uid"]
+        sub = (db.query(Subscription).filter(Subscription.user_id == uid)
+               .order_by(Subscription.created_at.desc()).first())
+        status = sub.status if sub else None
+        recent = (db.query(CancellationFeedback)
+                  .filter(CancellationFeedback.user_id == uid,
+                          CancellationFeedback.created_at >= datetime.utcnow() - timedelta(minutes=30))
+                  .order_by(CancellationFeedback.created_at.desc()).first())
+        if recent:
+            recent.reason, recent.details, recent.sub_status = reason, details, status
+        else:
+            db.add(CancellationFeedback(user_id=uid, reason=reason, details=details, sub_status=status))
+        db.commit()
+        return {"success": True}
+    except Exception as e:
+        print(f"cancellation-feedback blad: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {"success": False}
+
+
+@router.get("/cancellation-feedback-summary")
+def cancellation_feedback_summary(key: str = "", days: int = 90, db: Session = Depends(get_db)):
+    """Zestawienie powodow rezygnacji (za kluczem ANALYTICS_ADMIN_KEY, jak
+    /analytics/funnel-summary). Zawiera komentarze usera - nie publikowac."""
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    from ..config import settings
+    from ..models import CancellationFeedback
+    if not settings.ANALYTICS_ADMIN_KEY or key != settings.ANALYTICS_ADMIN_KEY:
+        return {"success": False, "error": "Brak lub bledny klucz dostepu"}
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (db.query(CancellationFeedback.reason, func.count(CancellationFeedback.id))
+            .filter(CancellationFeedback.created_at >= cutoff)
+            .group_by(CancellationFeedback.reason).all())
+    comments = (db.query(CancellationFeedback.reason, CancellationFeedback.details, CancellationFeedback.sub_status,
+                         CancellationFeedback.created_at)
+                .filter(CancellationFeedback.created_at >= cutoff, CancellationFeedback.details.isnot(None))
+                .order_by(CancellationFeedback.created_at.desc()).limit(30).all())
+    return {"success": True, "days": days, "counts": {r: c for r, c in rows},
+            "comments": [{"reason": r, "details": d, "sub_status": st, "at": t.isoformat()} for r, d, st, t in comments]}
+
+
 @router.get("/trial-eligibility")
 def trial_eligibility_endpoint(
     db: Session = Depends(get_db),

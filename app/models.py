@@ -350,3 +350,20 @@ class TrialCardFingerprint(Base):
     fingerprint = Column(String(64), primary_key=True)
     first_user_id = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CancellationFeedback(Base):
+    """Ankieta po anulowaniu subskrypcji (20.09.2026, user: "6 z 10 zrezygnowalo,
+    nie wiemy dlaczego"). Jeden wiersz = jedna odpowiedz. `reason` to kod z
+    whitelisty (patrz _CANCEL_REASONS w app/api/payments.py), `details` to
+    opcjonalny komentarz do 500 znakow, `sub_status` = status subskrypcji w
+    chwili anulowania (trialing/active) - odroznia rezygnacje w triali od
+    rezygnacji po platnosci."""
+    __tablename__ = "cancellation_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(128), nullable=False, index=True)
+    reason = Column(String(32), nullable=False, index=True)
+    details = Column(Text, nullable=True)
+    sub_status = Column(String(20), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
