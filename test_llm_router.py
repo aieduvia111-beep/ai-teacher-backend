@@ -39,7 +39,7 @@ class FakeClient:
 
 def reset():
     lr._state.update({"fails": 0, "paused_until": 0.0})
-    for k in ("DEEPSEEK_API_KEY", "MATH_PROVIDER", "DEEPSEEK_MODEL"): os.environ.pop(k, None)
+    for k in ("DEEPSEEK_API_KEY", "MATH_PROVIDER", "DEEPSEEK_MODEL", "DEEPSEEK_SUBJECTS"): os.environ.pop(k, None)
 
 DS = {"c": None}
 lr._client = lambda is_async: DS["c"]
@@ -52,6 +52,14 @@ check("is_math: przedmiot Matematyka", lr.is_math("Matematyka", "x") is True)
 check("is_math: przedmiot pusty, temat 'Matematyka: Ciagi'", lr.is_math(None, "Matematyka: Ciągi") is True)
 check("is_math: Historia -> nie", lr.is_math("Historia", "Matematyka w historii") is False)
 check("is_math: brak danych -> nie", lr.is_math(None, None) is False)
+check("is_math: Fizyka -> tak (domyslna lista matem+fizyk)", lr.is_math("Fizyka", "Elektrostatyka") is True)
+check("is_math: temat 'Fizyka: Ruch' bez przedmiotu -> tak", lr.is_math(None, "Fizyka: Ruch") is True)
+check("is_math: Chemia, Biologia, Jezyk polski -> nie", not any(lr.is_math(x, "t") for x in ("Chemia", "Biologia", "Język polski")))
+os.environ["DEEPSEEK_SUBJECTS"] = "matem"
+check("DEEPSEEK_SUBJECTS=matem wylacza fizyke bez zmiany kodu", lr.is_math("Fizyka", "t") is False and lr.is_math("Matematyka", "t") is True)
+os.environ["DEEPSEEK_SUBJECTS"] = "matem,fizyk,chem"
+check("DEEPSEEK_SUBJECTS mozna rozszerzyc (chem)", lr.is_math("Chemia", "t") is True)
+os.environ.pop("DEEPSEEK_SUBJECTS")
 
 # ---- bez klucza: zero zmian ----
 reset(); DS["c"] = FakeClient([Msg("ds")]); oa = FakeClient([Msg("oa")])

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Routing generowania MATEMATYKI do DeepSeek z automatycznym zapasem na OpenAI (20.09.2026, KOSZTY).
 
-Decyzja usera: DeepSeek TYLKO do generowania pytan z matematyki (quiz + sprawdzian). Czat, zdjecia, tablica,
+Decyzja usera: DeepSeek do generowania pytan z matematyki i fizyki (quiz + sprawdzian; lista w DEEPSEEK_SUBJECTS). Czat, zdjecia, tablica,
 glos i pozostale przedmioty zostaja na OpenAI (dane uczniow, obraz, brak testow jakosci).
 Dane z testu na naszych zadaniach (trudne tematy, ten sam sedzia): deepseek-flash bez myslenia 57%
 przechodzacych weryfikacje w 135 s vs gpt-4o 39% / gpt-4o-mini 46% (patrz sesja 20.09.2026).
@@ -35,11 +35,21 @@ def enabled() -> bool:
     return bool(os.environ.get("DEEPSEEK_API_KEY", "").strip())
 
 
+def _subjects() -> tuple:
+    """Przedmioty kierowane do DeepSeek: fragmenty nazw (male litery), z DEEPSEEK_SUBJECTS (po przecinku).
+    Domyslnie matematyka i fizyka (przedmioty rachunkowe, bez danych osobowych w zadaniach)."""
+    raw = os.environ.get("DEEPSEEK_SUBJECTS", "matem,fizyk")
+    return tuple(x.strip().lower() for x in raw.split(",") if x.strip())
+
+
 def is_math(subject=None, topic=None) -> bool:
+    """Nazwa historyczna: True dla przedmiotow z listy DEEPSEEK_SUBJECTS (domyslnie matematyka + fizyka)."""
+    subs = _subjects()
     s = (subject or "").strip().lower()
     if s:
-        return "matem" in s
-    return (topic or "").strip().lower().startswith("matem")
+        return any(x in s for x in subs)
+    t = (topic or "").strip().lower()
+    return any(t.startswith(x) for x in subs)
 
 
 def _model() -> str:
@@ -145,6 +155,7 @@ def status() -> dict:
             "math_provider_env": os.environ.get("MATH_PROVIDER", "") or "(domyslnie)",
             "deepseek_enabled": enabled(),
             "model": _model(),
+            "subjects": list(_subjects()),
             "deepseek_ok_since_start": _stats["ok"],
             "fallback_to_openai_since_start": _stats["fallback"],
             "last_error": _stats["last_error"],
