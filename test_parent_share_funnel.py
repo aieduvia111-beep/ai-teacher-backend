@@ -34,7 +34,7 @@ token = r["token"]
 
 # 2) rodzic kupuje - wspolny checkout
 CALLS = []
-def fake_run_checkout(uid, email, db_, aff="", success_url=None, cancel_url=None):
+def fake_run_checkout(uid, email, db_, aff="", success_url=None, cancel_url=None, payer_email=None):
     CALLS.append((uid, email, success_url, cancel_url))
     return CALLS_RESULT["r"]
 CALLS_RESULT = {"r": {"success": True, "checkout_url": "https://stripe/x", "session_id": "cs_1"}}

@@ -21,7 +21,11 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
+import re
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -181,14 +185,25 @@ def read_share_link(token: str, db: Session = Depends(get_db)):
     return {"success": True, **stats}
 
 
+class ParentCheckoutRequest(BaseModel):
+    email: Optional[str] = None
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
+
+
 @router.post("/{token}/checkout")
-def checkout_from_share_link(token: str, db: Session = Depends(get_db)):
+def checkout_from_share_link(token: str, db: Session = Depends(get_db), body: Optional[ParentCheckoutRequest] = None):
     """Publiczny - rodzic kupuje Pro DLA DZIECKA spod tego linku, bez
     zakladania wlasnego konta. Uzywa DOKLADNIE tej samej sciezki co zwykly
     przycisk 'Kup Pro' w apce (karta+BLIK, ten sam webhook aktywuje
     is_premium na koncie dziecka) - zero osobnej, rownoleglej logiki
     platnosci do utrzymania."""
     user = _resolve_token(token, db)
+    # E-mail rodzica (opcjonalny) - tylko do potwierdzen/faktur Stripe, NIE zapisujemy go u nas.
+    payer_email = ((body.email if body else None) or "").strip().lower() or None
+    if payer_email and (len(payer_email) > 254 or not _EMAIL_RE.match(payer_email)):
+        return {"success": False, "error": "Podaj poprawny adres e-mail."}
     # 20.09.2026: TA SAMA sciezka co przycisk "Kup Pro" w apce (create_checkout:
     # karta+BLIK w subskrypcji, blokada ponownego triala, zapis wyniku do lejka).
     # Wczesniej wolala stary BlikService.create_setup_session (tylko karta, bez
@@ -198,6 +213,7 @@ def checkout_from_share_link(token: str, db: Session = Depends(get_db)):
         user.firebase_uid, user.email or "", db, "",
         success_url=f"{PARENT_SHARE_DOMAIN}/rodzic.html?t={token}&paid=1",
         cancel_url=f"{PARENT_SHARE_DOMAIN}/rodzic.html?t={token}",
+        payer_email=payer_email,
     )
     if result.get("already_subscribed"):
         result = {"success": False, "error": "To konto ma już aktywną subskrypcję Pro."}

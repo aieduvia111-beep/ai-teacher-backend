@@ -53,6 +53,11 @@ body{background:var(--s2);color:var(--text);font-family:var(--b);margin:0;min-he
 .dz-consent-text b{color:var(--accent2);}
 .dz-consent-price{font-family:var(--b);font-size:.7em;color:var(--muted);margin:0 0 14px 30px;}
 .dz-consent-price b{color:var(--text);font-size:1.3em;font-family:var(--h);font-weight:800;}
+.dz-mail-lbl{display:block;font-size:.78em;font-weight:600;color:#eeeef5;margin:14px 0 6px;text-align:left;}
+.dz-mail-lbl span{font-weight:400;color:#8888a0;}
+.dz-mail{width:100%;box-sizing:border-box;padding:13px 15px;margin-bottom:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#eeeef5;font-family:inherit;font-size:.92em;outline:none;transition:border-color .2s;}
+.dz-mail:focus{border-color:#7c6aff;}
+.dz-mail::placeholder{color:#55556a;}
 .dz-sign{display:block;width:100%;padding:14px;border-radius:9px;font-family:var(--h);font-size:.85em;font-weight:700;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#4f3fcf);color:#fff;box-shadow:0 4px 14px rgba(124,106,255,.28);text-align:center;}
 .dz-sign:disabled{opacity:.6;cursor:default;}
 .dz-sign-err{font-family:var(--b);font-size:.72em;color:var(--red);text-align:center;margin-top:10px;display:none;}
@@ -107,6 +112,8 @@ body{background:var(--s2);color:var(--text);font-family:var(--b);margin:0;min-he
           <div class="dz-consent-text">Wyrażam zgodę na <b>Plan Pro</b> dla <span id="fName2">dziecka</span> — nauka bez dziennych limitów, na dowolnym przedmiocie.</div>
         </div>
         <div class="dz-consent-price"><b id="fPrice">30 zł</b> / mies. · pierwsze <span id="fTrialDays">7</span> dni za darmo, anulujesz kiedy chcesz</div>
+        <label class="dz-mail-lbl" for="parentEmail">Twój e-mail <span>(tu wyślemy potwierdzenie i fakturę)</span></label>
+        <input class="dz-mail" id="parentEmail" type="email" inputmode="email" autocomplete="email" placeholder="np. jan@poczta.pl" maxlength="254">
         <button class="dz-sign" id="signBtn">Podpisz i aktywuj →</button>
         <div class="dz-sign-err" id="signErr"></div>
       </div>
@@ -218,9 +225,11 @@ async function main(){
     trackParent('parent_checkout_click');
     const btn=this, err=document.getElementById('signErr');
     err.style.display='none';
+    const em=(document.getElementById('parentEmail').value||'').trim();
+    if(em && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em)){ err.textContent='Podaj poprawny adres e-mail albo zostaw pole puste.'; err.style.display='block'; return; }
     btn.disabled=true; btn.textContent='Łączenie z płatnością…';
     try{
-      const r=await fetch(BACKEND_URL+'/api/v1/parent-share/'+encodeURIComponent(token)+'/checkout',{method:'POST'});
+      const r=await fetch(BACKEND_URL+'/api/v1/parent-share/'+encodeURIComponent(token)+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em||null})});
       const body=await r.json();
       if(!r.ok || !body.success || !body.checkout_url) throw new Error(body.detail||body.error||'Błąd płatności');
       window.location.href=body.checkout_url;

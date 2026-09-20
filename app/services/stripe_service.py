@@ -175,7 +175,7 @@ class StripeService:
         return {"has_active": has_active, "trial_allowed": not had_any}
 
     @staticmethod
-    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "", success_url: str = None, cancel_url: str = None) -> Dict:
+    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "", success_url: str = None, cancel_url: str = None, payer_email: str = None) -> Dict:
         try:
             print(f"Tworze checkout session dla user {user_id} ({email})")
 
@@ -241,8 +241,11 @@ class StripeService:
             # w odroznieniu od mode="setup". Gdyby konto Stripe odrzucilo
             # BLIK (np. brak wlaczonej metody), wracamy do samej karty.
             def _create(methods):
+                # 20.09.2026: gdy placi RODZIC spod linku, potwierdzenia/faktury maja isc na JEGO
+                # e-mail (Stripe pozwala albo na `customer`, albo na `customer_email`). Subskrypcja i
+                # tak trafia na konto dziecka przez metadata.user_id (webhook).
                 return stripe.checkout.Session.create(
-                    customer=customer_id,
+                    **({"customer_email": payer_email} if payer_email else {"customer": customer_id}),
                     payment_method_types=methods,
                     line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                     mode="subscription",

@@ -161,7 +161,7 @@ def verify_session(request: VerifySessionRequest):
         return {"success": False, "error": str(e)}
 
 def _run_checkout(verified_uid: str, verified_email: str, db: Session, affiliate_code: str = "",
-                  success_url: str = None, cancel_url: str = None) -> dict:
+                  success_url: str = None, cancel_url: str = None, payer_email: str = None) -> dict:
     """Wspolna sciezka tworzenia checkoutu (przycisk "Kup Pro" ORAZ zakup rodzica
     spod linku - patrz parent_share.py). Opcjonalne URL-e pozwalaja odeslac
     rodzica z powrotem na jego strone, a nie na dashboard dziecka (na ktorym
@@ -186,6 +186,7 @@ def _run_checkout(verified_uid: str, verified_email: str, db: Session, affiliate
         affiliate_code=affiliate_code,
         success_url=success_url,
         cancel_url=cancel_url,
+        payer_email=payer_email,
     )
     _first_error = None if result.get("success") else str(result.get("error", ""))[:120]
     _used_fallback = False
