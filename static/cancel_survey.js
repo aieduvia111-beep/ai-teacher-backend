@@ -285,8 +285,6 @@
   /* ---------- EKRAN 3: podziekowanie ---------- */
   function stepThanks() {
     var w = el('div', 'eds-screen');
-    var big = el('div', 'eds-big'); big.innerHTML = CHECK;
-    w.appendChild(big);
     w.appendChild(greet('Gotowe'));
     w.appendChild(el('h2', 'eds-title', 'Dziękujemy!'));
     w.appendChild(el('p', 'eds-sub', 'Twoja opinia pomoże nam ulepszyć Eduvię. Jeśli zmienisz zdanie, wrócisz do Pro w każdej chwili.'));
