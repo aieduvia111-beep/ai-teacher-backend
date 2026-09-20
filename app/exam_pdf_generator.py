@@ -1003,13 +1003,17 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     c.setFillColor(C_MUTED); c.setFont(FN, 8)
     _canvas_pl(c, "SKALA OCEN", 52, scale_y + 42, 120, fontsize=8, color='#6B7280')
     max_pkt = data.get('punkty_lacznie', 30)
+    # progi jako dolne granice (zaokraglone w gore) - kazdy zakres konczy sie tuz przed poczatkiem wyzszego,
+    # wiec zadne dwa oceny nie maja wspolnego punktu (wczesniej np. "4: 23-28" i "5: 28-32")
+    import math as _math
+    _lo6, _lo5, _lo4, _lo3, _lo2 = (_math.ceil(max_pkt * f - 1e-9) for f in (0.92, 0.80, 0.65, 0.50, 0.30))
     oceny = [
-        (f"{int(max_pkt*0.92)}–{max_pkt}", "6", C_ACCENT),
-        (f"{int(max_pkt*0.80)}–{int(max_pkt*0.91)}", "5", C_GREEN),
-        (f"{int(max_pkt*0.65)}–{int(max_pkt*0.79)}", "4", colors.HexColor('#0891B2')),
-        (f"{int(max_pkt*0.50)}–{int(max_pkt*0.64)}", "3", C_GOLD),
-        (f"{int(max_pkt*0.30)}–{int(max_pkt*0.49)}", "2", C_RED),
-        (f"0–{int(max_pkt*0.29)}", "1", C_MUTED),
+        (f"{_lo6}–{max_pkt}", "6", C_ACCENT),
+        (f"{_lo5}–{_lo6 - 1}", "5", C_GREEN),
+        (f"{_lo4}–{_lo5 - 1}", "4", colors.HexColor('#0891B2')),
+        (f"{_lo3}–{_lo4 - 1}", "3", C_GOLD),
+        (f"{_lo2}–{_lo3 - 1}", "2", C_RED),
+        (f"0–{_lo2 - 1}", "1", C_MUTED),
     ]
         
     col_w2 = (w - 80) / len(oceny)
@@ -2287,6 +2291,80 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
 # ============================================================
 # GŁÓWNA KLASA
 # ============================================================
+
+# ---------------------------------------------------------------------------
+# 20.09.2026 (skarga: sprawdzian z polskiego "za latwy i niedoprecyzowany"): rozpoznanie, czy temat wymaga
+# obliczen (ta sama logika co wczesniej wewnatrz _get_exam_data_raw, wydzielona, zeby uzyc jej tez do
+# poprawnego polecenia Czesci B) oraz blok jakosci/precyzji dla przedmiotow NIEobliczeniowych.
+# ---------------------------------------------------------------------------
+_ZAWSZE_OBLICZENIA = ['matematyka', 'fizyka', 'chemia']
+_SLOWA_OBLICZENIOWE = [
+    'oblicz', 'procent', 'predkosc', 'stezenie', 'masa', 'cisnienie',
+    'temperatura', 'energia', 'wydajnosc', 'wzrost', 'przyrost',
+    'odleglosc', 'sila', 'moc', 'napiecie', 'gestosc', 'objetosc',
+    'pole', 'obwod', 'calka', 'pochodna', 'rownanie', 'logarytm',
+    'ulamek', 'funkcja', 'wskaznik', 'bilans'
+]
+_SLOWA_BEZ_OBLICZEN = [
+    'gramatyka', 'slownictwo', 'grammar', 'czasy', 'reading',
+    'wypracowanie', 'esej', 'lektura', 'literatura', 'epoka',
+    'autor', 'bohater', 'bitwa', 'data', 'wydarzenie', 'postac',
+    'chronologia', 'definicja', 'pojecie', 'grzyby', 'rosliny',
+    'zwierzeta', 'ekologia', 'ewolucja', 'komorka', 'tkanki',
+    'fotosynteza', 'bakterie', 'wirusy', 'mitoza', 'mejoza'
+]
+
+
+def _exam_topic_needs_calculations(temat, przedmiot=None) -> bool:
+    temat_low = (temat or "").lower()
+    przedmiot_low = (przedmiot or "").lower()
+    ma_obliczenia = any(s in temat_low for s in _SLOWA_OBLICZENIOWE)
+    bez_obliczen = any(s in temat_low for s in _SLOWA_BEZ_OBLICZEN)
+    zawsze = any(p in przedmiot_low for p in _ZAWSZE_OBLICZENIA)
+    return bool(ma_obliczenia or (zawsze and not bez_obliczen))
+
+
+def _humanities_quality_block(trudnosc, klasa) -> str:
+    return (
+        "\nJAKOSC I PRECYZJA (przedmiot nieobliczeniowy) - KRYTYCZNE:\n"
+        f"POZIOM TRUDNOSCI \"{trudnosc}\" dla klasy {klasa} - rozumiej go tak:\n"
+        "- latwy/latwa: rozpoznawanie i przypominanie (definicje, pojedyncze fakty, proste przyklady).\n"
+        "- sredni/srednia: zastosowanie wiedzy w nowej sytuacji (analiza krotkiego zdania lub fragmentu, prosty przyklad, krotkie uzasadnienie).\n"
+        "- trudny/trudna: analiza, porownanie, wielokrokowe rozumowanie i uzasadnienie, na gornej granicy programu TEJ klasy (nie wykraczaj poza program). "
+        "ZAKAZ pytan wylacznie o definicje lub pojedynczy fakt; w zamknietych uzywaj zdan lub krotkich tekstow z kontekstem zamiast pojedynczych slow, z wiarygodnymi dystraktorami.\n"
+        "PRECYZJA ZADAN ZAMKNIETYCH:\n"
+        "- Dokladnie JEDNA odpowiedz poprawna. Zadna z pozostalych opcji nie moze byc poprawna w innym rozumieniu polecenia.\n"
+        "- Pytanie o forme gramatyczna lub odmiane MUSI podawac przypadek, liczbe, rodzaj albo czas (np. \"w dopelniaczu liczby mnogiej\"). "
+        "Zabronione: pytanie o forme bez przypadku, gdy opcje to rozne przypadki tego samego wyrazu.\n"
+        "- Kazde pytanie sprawdza INNA umiejetnosc - nie powtarzaj tego samego typu pytania (np. dwa razy \"ktore slowo jest przyslowkiem\").\n"
+        "PRECYZJA ZADAN OTWARTYCH:\n"
+        "- Polecenie konkretne i policzalne (\"Podaj trzy...\", \"Uzasadnij w dwoch zdaniach...\", \"Wypisz...\"). "
+        "ZAKAZ polecen ogolnych typu \"Opisz zasady...\" lub \"Wyjasnij...\" bez okreslenia zakresu i liczby elementow.\n"
+        "- Wszystkie dane potrzebne do odpowiedzi sa w tresci zadania (zdanie, fragment, lista). Uzywaj poprawnej terminologii przedmiotowej "
+        "(np. w jezyku polskim: podmiot, orzeczenie, dopelnienie, okolicznik miejsca - nie myl ich).\n"
+        "- Liczba punktow = liczba elementow odpowiedzi (1 pkt za element); zadanie na jedno slowo lub jeden fakt = 1 pkt. "
+        "Schemat oceniania i odpowiedz_modelowa OBEJMUJA WSZYSTKO, o co pyta polecenie (nic mniej).\n"
+        "- Zadania otwarte nie powtarzaja zadan zamknietych (inny material, inna umiejetnosc).\n"
+    )
+
+
+def _fix_open_section_instruction(data: dict, temat, przedmiot=None) -> dict:
+    """Dla przedmiotow NIEobliczeniowych Czesc B nie moze miec polecenia 'pokazujac pelny sposob obliczen.
+    Podaj jednostki.' (szablon matematyczny) - real prod 20.09.2026: sprawdzian z polskiego."""
+    try:
+        if _exam_topic_needs_calculations(temat, przedmiot):
+            return data
+        for s in (data or {}).get("sekcje", []):
+            if str(s.get("typ", "")).lower().startswith("otw"):
+                if "oblicz" in str(s.get("instrukcja_sekcji", "")).lower() or not s.get("instrukcja_sekcji"):
+                    s["instrukcja_sekcji"] = "Odpowiedz na pytania pełnymi zdaniami. Zwróć uwagę na liczbę elementów, o które prosi polecenie."
+                if "obliczeniow" in str(s.get("nazwa", "")).lower():
+                    s["nazwa"] = "Część B — Zadania otwarte"
+    except Exception:
+        pass
+    return data
+
+
 class ExamGenerator:
     def __init__(self, openai_api_key: str):
         from openai import OpenAI
@@ -2355,29 +2433,10 @@ class ExamGenerator:
         temat_low = temat.lower()
         przedmiot_low = (przedmiot or '').lower()
 
-        # Wykryj typ zadań na podstawie tematu i przedmiotu
-        ZAWSZE_OBLICZENIA = ['matematyka', 'fizyka', 'chemia']
-        SLOWA_OBLICZENIOWE = [
-            'oblicz', 'procent', 'predkosc', 'stezenie', 'masa', 'cisnienie',
-            'temperatura', 'energia', 'wydajnosc', 'wzrost', 'przyrost',
-            'odleglosc', 'sila', 'moc', 'napiecie', 'gestosc', 'objetosc',
-            'pole', 'obwod', 'calka', 'pochodna', 'rownanie', 'logarytm',
-            'ulamek', 'funkcja', 'wskaznik', 'bilans'
-        ]
-        SLOWA_BEZ_OBLICZEN = [
-            'gramatyka', 'slownictwo', 'grammar', 'czasy', 'reading',
-            'wypracowanie', 'esej', 'lektura', 'literatura', 'epoka',
-            'autor', 'bohater', 'bitwa', 'data', 'wydarzenie', 'postac',
-            'chronologia', 'definicja', 'pojecie', 'grzyby', 'rosliny',
-            'zwierzeta', 'ekologia', 'ewolucja', 'komorka', 'tkanki',
-            'fotosynteza', 'bakterie', 'wirusy', 'mitoza', 'mejoza'
-        ]
+        # Wykryj typ zadań na podstawie tematu i przedmiotu (logika wydzielona: _exam_topic_needs_calculations)
+        needs_calc = _exam_topic_needs_calculations(temat, przedmiot)
 
-        ma_obliczenia = any(s in temat_low for s in SLOWA_OBLICZENIOWE)
-        bez_obliczen = any(s in temat_low for s in SLOWA_BEZ_OBLICZEN)
-        zawsze = any(p in przedmiot_low for p in ZAWSZE_OBLICZENIA)
-
-        if ma_obliczenia or (zawsze and not bez_obliczen):
+        if needs_calc:
             typ_instrukcja = "Ten temat wymaga zadan obliczeniowych — dodaj Czesc B z zadaniami obliczeniowymi i wzorami."
         else:
             typ_instrukcja = """WAZNE: Ten temat NIE wymaga zadan obliczeniowych matematycznych.
@@ -2404,6 +2463,9 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 blok = f"{typ_instrukcja}\nNAUCZYCIEL CHCE: {instr}\nMUSISZ to uwzglednic w sprawdzianie."
         else:
             blok = typ_instrukcja
+
+        if not needs_calc:
+            blok = blok + _humanities_quality_block(trudnosc, klasa)
 
         # "gated injection" skali trudnosci - rownania kwadratowe (1-10),
         # ETAP 6: ciagi arytmetyczne/geometryczne (1-5), ETAP 7: trygonometria
@@ -3898,6 +3960,7 @@ ZASADY:
         used_safe_constants = set()
         data = _verify_and_fix_exam_math(data, trudnosc=trudnosc, seen_fingerprints=seen_fingerprints, metrics=metrics, level=klasa, seen_diversity_tags=seen_diversity_tags, client=self.client, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
         data = self._fill_missing_exam_questions(data, temat, klasa, trudnosc, liczba_pytan, wlasne_instrukcje, przedmiot, t_start=t_start, seen_fingerprints=seen_fingerprints, metrics=metrics, seen_diversity_tags=seen_diversity_tags, used_safe_letters=used_safe_letters, used_safe_constants=used_safe_constants, seen_diversity_tag_dicts=seen_diversity_tag_dicts)
+        data = _fix_open_section_instruction(data, temat, przedmiot)
         # BRAK CICHEGO DOWNGRADE: zamowiony poziom trudnosci jest kontraktem.
         # Jesli B1 nie dowiozl kompletu, generate_exam ma zwrocic kontrolowany
         # blad zamiast PDF z 10/14 albo z pytaniami na nizszym poziomie.
