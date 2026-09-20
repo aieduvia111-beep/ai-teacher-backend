@@ -26,6 +26,7 @@ from .math_verify import (
     generate_safe_definite_integral_batch,
     generate_safe_multiplication_table_batch,
     generate_safe_map_scale_batch, generate_safe_fraction_batch,
+    generate_safe_cuboid_batch, generate_safe_order_ops_batch,
     generate_geo_hist_batch, geo_hist_kind,
     WORDING_DIVERSITY_MANDATE,
 )
@@ -2088,6 +2089,32 @@ async def _raw_generate_safe_map_scale_batch(n: int) -> Dict:
     return quiz_data
 
 
+async def _raw_generate_safe_cuboid_batch(n: int) -> Dict:
+    """`n` pytan o prostopadloscianie - zero wywolan AI (math_verify.generate_safe_cuboid_batch)."""
+    questions = generate_safe_cuboid_batch(n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Prostopadłościan - Quiz", "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
+async def _raw_generate_safe_order_ops_batch(n: int) -> Dict:
+    """`n` pytan o kolejnosci dzialan - zero wywolan AI (math_verify.generate_safe_order_ops_batch)."""
+    questions = generate_safe_order_ops_batch(n)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": "Kolejność działań - Quiz", "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 async def _raw_generate_safe_fraction_batch(n: int, mode: str = "common") -> Dict:
     """Ulamki zwykle/dziesietne - zero wywolan AI (math_verify.generate_safe_fraction_batch)."""
     questions = generate_safe_fraction_batch(n, mode)
@@ -2968,6 +2995,22 @@ def _fraction_mode(topic: str):
     return "decimal" if dec else "common"
 
 
+def _is_cuboid(topic: str, difficulty: str = None) -> bool:
+    """20.09.2026 - gating zero-AI generatora PROSTOPADLOSCIANU/SZESCIANU (real prod:
+    6 prob z rzedu 5-6/10 pytan). Bez filtra trudnosci, jak _is_map_scale."""
+    t = (topic or "").lower()
+    return "prostopad" in t or "sześcian" in t or "szescian" in t
+
+
+def _is_order_ops(topic: str, difficulty: str = None) -> bool:
+    """20.09.2026 - gating zero-AI generatora KOLEJNOSCI DZIALAN (wyrazenia calkowitoliczbowe).
+    Wylaczone dla tematow z ulamkami/pierwiastkami/logarytmami - tam generator byloby nie na temat."""
+    t = (topic or "").lower()
+    if any(x in t for x in ("ułamk", "ulamk", "pierwiast", "logarytm", "równań", "rownan")):
+        return False
+    return ("kolejnoś" in t or "kolejnosc" in t or "kolejno" in t) and ("dział" in t or "dzial" in t)
+
+
 def _is_map_scale(topic: str, difficulty: str = None) -> bool:
     """Warunek gatujacy 'safe parameter generation' dla SKALI MAPY
     (geografia) - jak _is_multiplication_table wyzej, CELOWO BEZ filtra
@@ -3168,6 +3211,10 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_multiplication_table_batch(n)
     elif _is_map_scale(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_map_scale_batch(n)
+    elif _is_cuboid(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_cuboid_batch(n)
+    elif _is_order_ops(topic, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_order_ops_batch(n)
     elif geo_hist_kind(topic):
         _gh_kind = geo_hist_kind(topic)
         safe_batch_fn = lambda n: _raw_generate_safe_geo_hist_batch(n, _gh_kind)

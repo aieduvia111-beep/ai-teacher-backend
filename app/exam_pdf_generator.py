@@ -45,6 +45,7 @@ from .math_verify import (
     verify_word_problem_validation_rule, extract_number_from_answer_text,
     generate_safe_definite_integral_batch, generate_safe_multiplication_table_batch,
     generate_safe_map_scale_batch, generate_safe_fraction_batch,
+    generate_safe_cuboid_batch, generate_safe_order_ops_batch,
     generate_geo_hist_batch, geo_hist_kind,
     WORDING_DIVERSITY_MANDATE,
 )
@@ -1438,6 +1439,11 @@ def _zero_ai_exam_kind(temat: str):
         return "mult"
     if ("skal" in t or "odległ" in t or "odleglo" in t) and "map" in t:
         return "map"
+    if "prostopad" in t or "sześcian" in t or "szescian" in t:
+        return "cuboid"
+    if (("kolejnoś" in t or "kolejnosc" in t or "kolejno" in t) and ("dział" in t or "dzial" in t)
+            and not any(x in t for x in ("ułamk", "ulamk", "pierwiast", "logarytm", "równań", "rownan"))):
+        return "orderops"
     if "całk" in t or "calk" in t:
         if "oznaczon" in t and "nieoznaczon" not in t:
             return "integral"
@@ -1881,6 +1887,11 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
                     metrics.record_rejection("duplicate")
                 continue
             seen_fingerprints.update(fp_keys)
+        # 20.09.2026: otwarte z generatora kodu (prostopadloscian, kolejnosc dzialan) maja poprawnosc
+        # z konstrukcji - bez blind-checku AI (byl zrodlem falszywych odrzucen i kosztu).
+        if pyt.get("_safe_generated"):
+            kept.append(pyt)
+            continue
         tresc = pyt.get("tresc", "")
         # WARSTWA 1.5 (identyczny mechanizm co dla zamknietych - patrz
         # openai_exam.validate_latex_formatting/auto_wrap_bare_latex):
@@ -1940,6 +1951,9 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
     if seen_diversity_tags is not None:
         diverse = []
         for pyt in kept:
+            if pyt.get("_safe_generated"):
+                diverse.append(pyt)
+                continue
             too_similar, tokens = is_too_similar_diversity_tag(pyt.get("diversity_tag"), seen_diversity_tags, question_text=pyt.get("tresc"))
             if too_similar:
                 print(f"[MathVerify][Exam][Otwarte][Diversity] USUNIETO - zbyt podobny schemat do juz zaakceptowanego zadania: '{pyt.get('tresc', '')[:60]}...' tag={pyt.get('diversity_tag')}")
@@ -2145,6 +2159,11 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
                 _difficulty_timer.__enter__()
             kept2 = []
             for pyt in kept:
+                # 20.09.2026: pytania z generatorow kodu (prostopadloscian, kolejnosc dzialan) nie
+                # podlegaja ocenie trudnosci - odrzucala 20 z 32 i zostawiala tylko wybrane typy zadan.
+                if pyt.get("_skip_difficulty"):
+                    kept2.append(pyt)
+                    continue
                 tresc = pyt.get("tresc", "")
                 try:
                     score = _difficulty_analyzer.analyze(
@@ -2538,6 +2557,8 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
         gen = {"mult": generate_safe_multiplication_table_batch,
                "map": generate_safe_map_scale_batch,
                "integral": generate_safe_definite_integral_batch,
+               "cuboid": generate_safe_cuboid_batch,
+               "orderops": generate_safe_order_ops_batch,
                "frac_common": lambda k: generate_safe_fraction_batch(k, "common"),
                "frac_decimal": lambda k: generate_safe_fraction_batch(k, "decimal"),
                "frac_mixed": lambda k: generate_safe_fraction_batch(k, "mixed")}.get(kind) or (
@@ -2555,11 +2576,43 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 "wyjasnienie": q.get("explanation", ""),
                 "diversity_tag": q.get("diversity_tag"),
                 "_safe_generated": True,
+                **({"_skip_difficulty": True} if kind in ("cuboid", "orderops") else {}),
             })
         return {"sekcje": [{
             "nazwa": "Część A — Zadania zamknięte",
             "typ": "zamkniete",
             "instrukcja_sekcji": "Zaznacz poprawną odpowiedź (a, b, c lub d). Za każde poprawne: 1 pkt.",
+            "pytania": pytania,
+        }]}
+
+    def _raw_generate_zero_ai_open_batch(self, kind: str, n: int) -> dict:
+        """Zadania OTWARTE (Czesc B) BEZ wywolania AI - z tych samych generatorow co zamkniete
+        (prostopadloscian, kolejnosc dzialan): tresc bez opcji, klucz = wyjasnienie liczone kodem.
+        Dodane 20.09.2026: sprawdzian sklada sie z czesci zamknietej i otwartej, a otwarte nadal
+        szly przez AI (real prod: 5-6 z 10 pytan z prostopadloscianu)."""
+        import re as _re
+        gen = {"cuboid": generate_safe_cuboid_batch, "orderops": generate_safe_order_ops_batch}[kind]
+        pytania = []
+        for i, q in enumerate(gen(max(1, n)), start=1):
+            m = _re.match(r"-?\d+", str(q["final_answer"]))
+            pytania.append({
+                "nr": i,
+                "tresc": q["question"],
+                "punkty": 2,
+                "miejsce_na_odpowiedz": 4,
+                "schemat_oceniania": ["1 pkt — poprawna metoda (wzór lub kolejność działań)",
+                                      "1 pkt — poprawny wynik końcowy"],
+                "odpowiedz_modelowa": f"{q.get('explanation', '')} Odpowiedź: {q['final_answer']}.",
+                "final_answer": m.group(0) if m else q["final_answer"],
+                "problem_class": "arithmetic_word_problem",
+                "diversity_tag": q.get("diversity_tag"),
+                "_safe_generated": True,
+                "_skip_difficulty": True,
+            })
+        return {"sekcje": [{
+            "nazwa": "Część B — Zadania obliczeniowe",
+            "typ": "otwarte",
+            "instrukcja_sekcji": "Rozwiąż zadania, pokazując pełny sposób obliczeń. Podaj jednostki.",
             "pytania": pytania,
         }]}
 
@@ -3934,6 +3987,8 @@ ZASADY:
         # do wspoldzielonej funkcji, zeby ratunek korzystal z TEGO SAMEGO,
         # bardziej niezawodnego mechanizmu co normalne rundy.
         def _dispatch_regen(missing_n, need_type_x, avoid_block_x, escalate=False):
+            if need_type_x == 'otwarte' and _zero_ai_exam_kind(temat) in ("cuboid", "orderops"):
+                return self._raw_generate_zero_ai_open_batch(_zero_ai_exam_kind(temat), max(missing_n, _MIN_FILL_BATCH_EXAM))
             if need_type_x == 'otwarte':
                 return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True, force_model=("gpt-4o" if escalate else None))
             elif _zero_ai_exam_kind(temat):

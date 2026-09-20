@@ -5796,3 +5796,313 @@ def generate_geo_hist_batch(kind: str, n: int) -> list:
         seen.add(key)
         results.append(q)
     return results
+
+
+# =============================================================================
+# 20.09.2026 - zero-AI generatory: PROSTOPADLOSCIAN (bryly) i KOLEJNOSC DZIALAN.
+# Powod (real dane prod z tego samego dnia): "Matematyka: prostopadloscian" dawal
+# 5-6 pytan z 10 w 6 probach z rzedu (91-109 s), "Kolejnosc dzialan" 14/15 i quiz
+# 128 s - weryfikator (druga AI) i test trudnosci odrzucaly wiekszosc kandydatow,
+# a rundy ratunkowe na gpt-4o palily pieniadze. Ten sam wzorzec co skala mapy /
+# calki / tabliczka mnozenia: WSZYSTKO liczy kod, wiec poprawnosc jest z definicji.
+# =============================================================================
+import math as _math_new
+from fractions import Fraction as _Fraction_new
+
+_CUBOID_UNITS = [("cm", "cm²", "cm³"), ("dm", "dm²", "dm³"), ("m", "m²", "m³")]
+# czworki pitagorejskie a²+b²+c²=d² (filtrowane kodem - blad w liscie nie moze trafic do pytania)
+_CUBOID_QUADS = [q for q in [
+    (1, 2, 2, 3), (2, 3, 6, 7), (1, 4, 8, 9), (4, 4, 7, 9), (2, 6, 9, 11), (6, 6, 7, 11),
+    (3, 4, 12, 13), (4, 8, 8, 12), (2, 10, 11, 15), (2, 5, 14, 15), (8, 9, 12, 17), (1, 12, 12, 17),
+] if q[0] ** 2 + q[1] ** 2 + q[2] ** 2 == q[3] ** 2]
+_CUBOID_TRIPLES = [t for t in [(3, 4, 5), (6, 8, 10), (5, 12, 13), (8, 15, 17), (9, 12, 15), (7, 24, 25)]
+                   if t[0] ** 2 + t[1] ** 2 == t[2] ** 2]
+_CUBOID_RATIOS = [(1, 2, 3), (2, 3, 4), (1, 2, 4), (2, 3, 5), (1, 3, 4), (1, 1, 2), (2, 2, 3)]
+
+
+def _pick_distractors(true_value, candidates, fmt):
+    """Wybiera 3 UNIKALNE, dodatnie, rozne od poprawnej odpowiedzi zle opcje
+    (najpierw 'typowe bledy' z listy, potem sasiednie wartosci); zwraca teksty."""
+    seen = {true_value}
+    out = []
+    for c in list(candidates) + [true_value + 1, true_value - 1, true_value + 2, true_value - 2,
+                                 true_value * 2, max(1, true_value // 2), true_value + 10, true_value + 5]:
+        if isinstance(c, (int, _Fraction_new)) and c > 0 and c not in seen:
+            seen.add(c)
+            out.append(fmt(c))
+        if len(out) == 3:
+            break
+    k = 3
+    while len(out) < 3:  # awaryjnie (praktycznie nigdy)
+        out.append(fmt(true_value + k))
+        k += 1
+    return out
+
+
+def build_safe_cuboid_question() -> dict:
+    """Jedno pytanie o prostopadloscianie/szescianie - zero AI. 10 typow zadan
+    (objetosc, pole, suma krawedzi, przekatna z czworek pitagorejskich, brakujaca
+    krawedz, przekatna podstawy, szescian, stosunek krawedzi, upakowanie kostek)."""
+    u, u2, u3 = random.choice(_CUBOID_UNITS)
+    kind = random.choice(["volume", "surface", "edges_sum", "diagonal", "missing_edge", "base_diagonal",
+                          "cube_from_edges", "cube_surface_from_volume", "ratio_edges", "cubes_fit"])
+    fmt_u = lambda x: f"{x} {u}"
+    fmt_u2 = lambda x: f"{x} {u2}"
+    fmt_u3 = lambda x: f"{x} {u3}"
+
+    if kind == "volume":
+        a, b, c = random.sample(range(2, 13), 3)
+        true = a * b * c
+        q = f"Krawędzie prostopadłościanu mają długości {a} {u}, {b} {u} i {c} {u}. Oblicz objętość tego prostopadłościanu."
+        wrong = [a * b + b * c + c * a, 2 * (a * b + b * c + c * a), a + b + c, 2 * a * b * c]
+        fmt, key = fmt_u3, ("volume", a, b, c)
+        expl = f"V = a·b·c = {a}·{b}·{c} = {true} {u3}."
+        concept = "objętość prostopadłościanu"
+    elif kind == "surface":
+        a, b, c = random.sample(range(2, 11), 3)
+        true = 2 * (a * b + b * c + c * a)
+        q = f"Prostopadłościan ma krawędzie długości {a} {u}, {b} {u} i {c} {u}. Oblicz pole powierzchni całkowitej tego prostopadłościanu."
+        wrong = [a * b + b * c + c * a, a * b * c, 2 * (a + b + c), 4 * (a + b + c)]
+        fmt, key = fmt_u2, ("surface", a, b, c)
+        expl = f"P = 2(ab + bc + ca) = 2({a}·{b} + {b}·{c} + {c}·{a}) = {true} {u2}."
+        concept = "pole powierzchni prostopadłościanu"
+    elif kind == "edges_sum":
+        a, b, c = random.sample(range(2, 15), 3)
+        true = 4 * (a + b + c)
+        q = f"Prostopadłościan ma krawędzie długości {a} {u}, {b} {u} i {c} {u}. Oblicz sumę długości wszystkich krawędzi tego prostopadłościanu."
+        wrong = [2 * (a + b + c), a + b + c, 12 * max(a, b, c), 4 * (a + b + c) + 4]
+        fmt, key = fmt_u, ("edges_sum", a, b, c)
+        expl = f"Prostopadłościan ma 12 krawędzi (po 4 każdej długości): 4·({a} + {b} + {c}) = {true} {u}."
+        concept = "suma długości krawędzi"
+    elif kind == "diagonal":
+        a, b, c, d = random.choice(_CUBOID_QUADS)
+        k = random.choice([1, 1, 2, 3])
+        a, b, c, d = a * k, b * k, c * k, d * k
+        true = d
+        dims = [a, b, c]
+        random.shuffle(dims)
+        q = f"Wymiary prostopadłościanu to {dims[0]} {u}, {dims[1]} {u} i {dims[2]} {u}. Oblicz długość przekątnej tego prostopadłościanu."
+        wrong = [a + b + c, d - 1, d + 1, d + 2]
+        fmt, key = fmt_u, ("diagonal", tuple(sorted((a, b, c))), d)
+        expl = f"d² = a² + b² + c² = {a}² + {b}² + {c}² = {a*a + b*b + c*c} = {d}², więc d = {d} {u}."
+        concept = "przekątna prostopadłościanu"
+    elif kind == "missing_edge":
+        a, b, c = random.sample(range(2, 11), 3)
+        V = a * b * c
+        true = c
+        q = f"Objętość prostopadłościanu wynosi {V} {u3}. Dwie krawędzie wychodzące z jednego wierzchołka mają długości {a} {u} i {b} {u}. Jaka jest długość trzeciej krawędzi?"
+        wrong = [c + 1, c - 1, a + b, V // (a + b) if (a + b) and V // (a + b) > 0 else c + 2]
+        fmt, key = fmt_u, ("missing_edge", a, b, c)
+        expl = f"c = V ÷ (a·b) = {V} ÷ ({a}·{b}) = {V} ÷ {a*b} = {c} {u}."
+        concept = "brakująca krawędź z objętości"
+    elif kind == "base_diagonal":
+        a, b, d = random.choice(_CUBOID_TRIPLES)
+        if random.random() < 0.5:
+            a, b = b, a
+        true = d
+        h = random.randint(2, 12)
+        q = f"Podstawą prostopadłościanu jest prostokąt o bokach {a} {u} i {b} {u}, a wysokość bryły wynosi {h} {u}. Oblicz długość przekątnej podstawy."
+        wrong = [a + b, d + 1, d - 1, a * b]
+        fmt, key = fmt_u, ("base_diagonal", a, b, h, d)
+        expl = f"Przekątna podstawy: √({a}² + {b}²) = √{a*a + b*b} = {d} {u}."
+        concept = "przekątna podstawy"
+    elif kind == "cube_from_edges":
+        a = random.randint(2, 9)
+        L = 12 * a
+        true = a ** 3
+        q = f"Suma długości wszystkich krawędzi sześcianu wynosi {L} {u}. Oblicz objętość tego sześcianu."
+        wrong = [a ** 2, 6 * a * a, L, 3 * a]
+        fmt, key = fmt_u3, ("cube_from_edges", a)
+        expl = f"Sześcian ma 12 równych krawędzi, więc a = {L} ÷ 12 = {a} {u}. V = a³ = {a}³ = {true} {u3}."
+        concept = "sześcian - objętość z sumy krawędzi"
+    elif kind == "cube_surface_from_volume":
+        a = random.randint(2, 9)
+        V = a ** 3
+        true = 6 * a * a
+        q = f"Objętość sześcianu wynosi {V} {u3}. Oblicz pole powierzchni całkowitej tego sześcianu."
+        wrong = [a * a, 4 * a * a, 12 * a, V]
+        fmt, key = fmt_u2, ("cube_surface_from_volume", a)
+        expl = f"Krawędź: a = ∛{V} = {a} {u}. Pole całkowite: 6a² = 6·{a}² = {true} {u2}."
+        concept = "sześcian - pole z objętości"
+    elif kind == "ratio_edges":
+        p, r_, s = random.choice(_CUBOID_RATIOS)
+        k = random.randint(1, 4)
+        S = 4 * k * (p + r_ + s)
+        true = k ** 3 * p * r_ * s
+        q = (f"Krawędzie prostopadłościanu wychodzące z jednego wierzchołka pozostają w stosunku {p} : {r_} : {s}. "
+             f"Suma długości wszystkich krawędzi tego prostopadłościanu wynosi {S} {u}. Oblicz jego objętość.")
+        wrong = [k * p * r_ * s, k ** 2 * p * r_ * s, S, (p + r_ + s) * k ** 3]
+        fmt, key = fmt_u3, ("ratio_edges", p, r_, s, k)
+        expl = (f"Krawędzie: {p}x, {r_}x, {s}x, suma wszystkich krawędzi 4·({p}+{r_}+{s})x = {S}, więc x = {k} {u}. "
+                f"V = {p*k}·{r_*k}·{s*k} = {true} {u3}.")
+        concept = "prostopadłościan - stosunek krawędzi"
+    else:  # cubes_fit
+        e = random.choice([2, 3, 4, 5])
+        na, nb, nc = random.sample(range(2, 8), 3)
+        a, b, c = na * e, nb * e, nc * e
+        true = na * nb * nc
+        q = (f"Pudełko ma kształt prostopadłościanu o wymiarach {a} {u} × {b} {u} × {c} {u}. "
+             f"Ile sześciennych kostek o krawędzi {e} {u} zmieści się w pudełku, jeśli układamy je bez odstępów?")
+        wrong = [a * b * c // e, a * b * c, (a + b + c) // e, na * nb + nc]
+        fmt = lambda x: f"{x}"
+        key = ("cubes_fit", e, na, nb, nc)
+        expl = f"W każdym kierunku mieści się: {a}÷{e} = {na}, {b}÷{e} = {nb}, {c}÷{e} = {nc}. Razem {na}·{nb}·{nc} = {true} kostek."
+        concept = "upakowanie kostek w prostopadłościanie"
+
+    true_text = fmt(true)
+    distractors = _pick_distractors(true, wrong, fmt)
+    options = distractors + [true_text]
+    random.shuffle(options)
+    return {
+        "question": q,
+        "options": options,
+        "correct": options.index(true_text),
+        "final_answer": true_text,
+        "explanation": expl,
+        "diversity_tag": {"skill": "prostopadłościan i bryły", "concept": concept,
+                          "task_type": kind, "reasoning": "wzór na objętość, pole, przekątną lub sumę krawędzi"},
+        "_fact_key": key,
+    }
+
+
+def generate_safe_cuboid_batch(n: int) -> list:
+    """`n` pytan o prostopadloscianie z UNIKALNYM (typ, parametry) - zero wywolan AI."""
+    results, seen = [], set()
+    for _ in range(max(60, n * 8)):
+        if len(results) >= n:
+            break
+        q = build_safe_cuboid_question()
+        fk = q.pop("_fact_key")
+        if fk in seen:
+            continue
+        seen.add(fk)
+        results.append(q)
+    return results
+
+
+# ---------------------------------------------------------------------------
+# KOLEJNOSC DZIALAN
+# ---------------------------------------------------------------------------
+def _eval_order_expr(expr: str):
+    """Niezalezna ewaluacja wyrazenia w postaci tekstu (× ÷ ² i nawiasy) na ulamkach -
+    UZYWANA jako siatka bezpieczenstwa: wynik szablonu musi sie zgadzac z ta ewaluacja."""
+    import re as _re
+    s = expr.replace("×", "*").replace("÷", "/").replace("−", "-")
+    s = _re.sub(r"(\d+)²", r"(\1**2)", s)
+    s = _re.sub(r"\)²", r")**2", s)
+    s = _re.sub(r"(?<![\w.])(\d+)(?![\w.])", r"F(\1)", s)
+    return eval(s, {"__builtins__": {}}, {"F": _Fraction_new})
+
+
+def _left_to_right(nums_ops):
+    """Wynik 'z pominieciem kolejnosci dzialan' (od lewej do prawej) dla wyrazen bez nawiasow."""
+    val = _Fraction_new(nums_ops[0])
+    for i in range(1, len(nums_ops), 2):
+        op, x = nums_ops[i], _Fraction_new(nums_ops[i + 1])
+        val = val + x if op == "+" else val - x if op == "−" else val * x if op == "×" else val / x
+    return val
+
+
+def build_safe_order_ops_question() -> dict:
+    r = random.randint
+    t = random.choice(range(11))
+    if t == 0:
+        a, b, c = r(2, 20), r(2, 9), r(2, 9)
+        expr, wrong_ltr = f"{a} + {b} × {c}", _left_to_right([a, "+", b, "×", c])
+        expl = f"Najpierw mnożenie: {b}·{c} = {b*c}, potem dodawanie: {a} + {b*c} = {a + b*c}."
+    elif t == 1:
+        a, b, c, d = r(10, 30), r(2, 6), r(2, 6), r(2, 12)
+        expr, wrong_ltr = f"{a} − {b} × {c} + {d}", _left_to_right([a, "−", b, "×", c, "+", d])
+        expl = f"Najpierw mnożenie: {b}·{c} = {b*c}. Potem od lewej: {a} − {b*c} + {d} = {a - b*c + d}."
+    elif t == 2:
+        a, b, c, d = r(2, 12), r(2, 12), r(2, 9), r(2, 20)
+        expr, wrong_ltr = f"({a} + {b}) × {c} − {d}", None
+        expl = f"Najpierw nawias: {a} + {b} = {a+b}, potem mnożenie: {a+b}·{c} = {(a+b)*c}, na końcu odejmowanie: {(a+b)*c} − {d} = {(a+b)*c - d}."
+    elif t == 3:
+        a, b, d, m = r(2, 9), r(2, 9), r(2, 6), r(2, 6)
+        c = d * m
+        expr, wrong_ltr = f"{a} × {b} − {c} ÷ {d}", None
+        expl = f"Najpierw mnożenie i dzielenie: {a}·{b} = {a*b} oraz {c} ÷ {d} = {m}. Potem odejmowanie: {a*b} − {m} = {a*b - m}."
+    elif t == 4:
+        a, b, c = r(2, 20), r(2, 6), r(2, 6)
+        expr, wrong_ltr = f"{a} + {b}² × {c}", None
+        expl = f"Najpierw potęga: {b}² = {b*b}, potem mnożenie: {b*b}·{c} = {b*b*c}, na końcu dodawanie: {a} + {b*b*c} = {a + b*b*c}."
+    elif t == 5:
+        a, b, c, d = r(5, 15), r(1, 4), r(2, 9), r(2, 9)
+        a = max(a, b + 1)
+        expr, wrong_ltr = f"({a} − {b})² + {c} × {d}", None
+        expl = f"Nawias: {a} − {b} = {a-b}, potęga: {a-b}² = {(a-b)**2}, mnożenie: {c}·{d} = {c*d}. Suma: {(a-b)**2 + c*d}."
+    elif t == 6:
+        d, m, b, c = r(2, 6), r(2, 6), r(2, 9), r(2, 9)
+        a = d * m
+        expr, wrong_ltr = f"{a} × ({b} + {c}) ÷ {d}", None
+        val = a * (b + c) // d
+        expl = f"Nawias: {b} + {c} = {b+c}. Potem od lewej: {a}·{b+c} = {a*(b+c)}, a {a*(b+c)} ÷ {d} = {val}."
+    elif t == 7:
+        a, b, c, d = r(15, 40), r(5, 12), r(1, 4), r(2, 6)
+        b = max(b, c + 1)
+        expr, wrong_ltr = f"{a} − ({b} − {c}) × {d}", None
+        expl = f"Nawias: {b} − {c} = {b-c}, mnożenie: {b-c}·{d} = {(b-c)*d}, odejmowanie: {a} − {(b-c)*d} = {a - (b-c)*d}."
+    elif t == 8:
+        e, m, a, b, c = r(2, 6), r(2, 6), r(2, 12), r(2, 6), r(2, 6)
+        d = e * m
+        expr, wrong_ltr = f"{a} + {b} × {c} − {d} ÷ {e}", _left_to_right([a, "+", b, "×", c, "−", d, "÷", e])
+        expl = f"Mnożenie i dzielenie: {b}·{c} = {b*c}, {d} ÷ {e} = {m}. Potem: {a} + {b*c} − {m} = {a + b*c - m}."
+    elif t == 9:
+        c, m, d, e = r(2, 6), r(2, 9), r(2, 6), r(2, 6)
+        s = c * m
+        a = r(1, s - 1)
+        b = s - a
+        expr, wrong_ltr = f"({a} + {b}) ÷ {c} + {d} × {e}", None
+        expl = f"Nawias: {a} + {b} = {s}, dzielenie: {s} ÷ {c} = {m}, mnożenie: {d}·{e} = {d*e}. Suma: {m + d*e}."
+    else:
+        a, b, c, d = r(2, 9), r(2, 9), r(2, 6), r(2, 12)
+        expr, wrong_ltr = f"{a}² − {b} × {c} + {d}", None
+        expl = f"Potęga: {a}² = {a*a}, mnożenie: {b}·{c} = {b*c}. Potem od lewej: {a*a} − {b*c} + {d} = {a*a - b*c + d}."
+
+    val = _eval_order_expr(expr)
+    if val.denominator != 1:  # siatka bezpieczenstwa: tylko wyniki calkowite
+        return build_safe_order_ops_question()
+    true = int(val)
+
+    cands = []
+    if wrong_ltr is not None and wrong_ltr.denominator == 1:
+        cands.append(int(wrong_ltr))  # klasyczny blad: dzialania od lewej do prawej
+    cands += [true + 1, true - 1, true + 2, true - 2, true + 10, true * 2, -true]
+    seen, distractors = {true}, []
+    for c in cands:
+        if c not in seen and abs(c) < 10 ** 6:
+            seen.add(c)
+            distractors.append(str(c))
+        if len(distractors) == 3:
+            break
+    true_text = str(true)
+    options = distractors + [true_text]
+    random.shuffle(options)
+    intro = random.choice(["Oblicz wartość wyrażenia:", "Ile wynosi wartość wyrażenia:", "Oblicz:"])
+    return {
+        "question": f"{intro} {expr}",
+        "options": options,
+        "correct": options.index(true_text),
+        "final_answer": true_text,
+        "explanation": expl,
+        "diversity_tag": {"skill": "kolejność działań", "concept": f"szablon {t}",
+                          "task_type": "oblicz wartość wyrażenia",
+                          "reasoning": "nawiasy, potęgi, mnożenie i dzielenie przed dodawaniem i odejmowaniem"},
+        "_fact_key": expr,
+    }
+
+
+def generate_safe_order_ops_batch(n: int) -> list:
+    """`n` pytan o kolejnosc dzialan z UNIKALNYM wyrazeniem - zero wywolan AI."""
+    results, seen = [], set()
+    for _ in range(max(60, n * 8)):
+        if len(results) >= n:
+            break
+        q = build_safe_order_ops_question()
+        fk = q.pop("_fact_key")
+        if fk in seen:
+            continue
+        seen.add(fk)
+        results.append(q)
+    return results
