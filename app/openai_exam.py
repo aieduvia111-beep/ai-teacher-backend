@@ -274,6 +274,35 @@ def validate_latex_formatting(text: str):
     return True, ""
 
 
+_SELF_CORRECTION_MARKERS = (
+    "zadanie bledne", "zadanie jest bledne", "pytanie bledne", "pytanie jest bledne",
+    "blad w tresci", "blad w zadaniu", "blad w pytaniu", "poprawmy", "poprawiamy tresc",
+    "zmieniamy na", "zmieniamy tresc", "zmieniamy zadanie", "zmieniamy pytanie",
+    "zadna z odpowiedzi", "zadna z opcji", "zadna z podanych", "nie ma poprawnej odpowiedzi",
+    "brak poprawnej odpowiedzi", "nie zgadza sie z opcjami", "nie pasuje do zadnej opcji",
+    "pomylka w tresci", "pomylilem", "pomylilismy", "przepraszam",
+)
+_SELF_CORRECTION_FIELDS = ("explanation", "wyjasnienie", "odpowiedz_modelowa")
+
+
+def detect_self_correction(text: str):
+    """(20.09.2026) Zwraca znaleziony marker, gdy klucz/wyjasnienie zawiera SLADY SAMOKOREKTY AI
+    ("Zadanie bledne. Poprawmy: ...", "zmieniamy na ...", "zadna z odpowiedzi ..."). Real-test na
+    produkcji: sprawdzian z zadaniem, ktorego wynik nie zalezal od parametru (max = 1 zamiast 5), mial w
+    kluczu cale to "myslenie na glos" - pytanie bledne trafialo do PDF, bo dla tego typu nie ma wzorca
+    w sympy. Lista fraz jest WASKA (zero fraz, ktore uczciwe wyjasnienie moze zawierac, np. 'nie istnieje
+    takie m' czy 'pierwiastek podwojny')."""
+    if not text:
+        return None
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(text).lower().replace("ł", "l"))
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    for marker in _SELF_CORRECTION_MARKERS:
+        if marker in t:
+            return marker
+    return None
+
+
 def validate_question_latex(item: dict, text_fields: list):
     """Sprawdza validate_latex_formatting() na WSZYSTKICH podanych polach
     pytania (w tym listach - np. opcje/options) - zwraca (is_valid, reason)
@@ -289,6 +318,10 @@ def validate_question_latex(item: dict, text_fields: list):
             ok, reason = validate_latex_formatting(str(v))
             if not ok:
                 return False, f"pole '{field}': {reason}"
+        if field in _SELF_CORRECTION_FIELDS:
+            marker = detect_self_correction(val if isinstance(val, str) else " ".join(map(str, values)))
+            if marker:
+                return False, f"pole '{field}': slad samokorekty AI w kluczu ('{marker}') - pytanie bledne lub niepewne"
     return True, ""
 
 
