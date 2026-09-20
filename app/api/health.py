@@ -29,3 +29,9 @@ def health_exam():
 @router.get("/lessons")
 def health_lessons():
     return {"status": "ok", "service": "lessons"}
+
+
+@router.get("/llm")
+def health_llm():
+    from .. import llm_router
+    return llm_router.status()

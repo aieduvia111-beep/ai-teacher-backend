@@ -26,6 +26,7 @@ _DS_MAX_TOKENS = 8192           # limit odpowiedzi w trybie bez myslenia
 
 _lock = threading.Lock()
 _state = {"fails": 0, "paused_until": 0.0}
+_stats = {"ok": 0, "fallback": 0, "last_error": ""}   # od startu procesu; tylko liczby i skrocony komunikat bledu (bez tresci pytan)
 
 
 def enabled() -> bool:
@@ -52,6 +53,8 @@ def _breaker_open() -> bool:
 
 def _fail(reason: str):
     with _lock:
+        _stats["fallback"] += 1
+        _stats["last_error"] = reason[:160]
         _state["fails"] += 1
         if _state["fails"] >= _BREAKER_FAILS:
             _state["paused_until"] = time.time() + _BREAKER_PAUSE
@@ -63,6 +66,7 @@ def _fail(reason: str):
 def _ok():
     with _lock:
         _state["fails"] = 0
+        _stats["ok"] += 1
 
 
 def _ds_kwargs(kw: dict) -> dict:
@@ -131,3 +135,18 @@ async def create_async(openai_client, use_deepseek: bool, **kw):
         except Exception as e:
             _fail(f"{type(e).__name__}: {str(e)[:120]}")
     return await openai_client.chat.completions.create(**kw)
+
+
+def status() -> dict:
+    """Podglad dla /health/llm - czy DeepSeek jest skonfigurowany i uzywany (bez sekretow)."""
+    with _lock:
+        return {
+            "deepseek_key_set": bool(os.environ.get("DEEPSEEK_API_KEY", "").strip()),
+            "math_provider_env": os.environ.get("MATH_PROVIDER", "") or "(domyslnie)",
+            "deepseek_enabled": enabled(),
+            "model": _model(),
+            "deepseek_ok_since_start": _stats["ok"],
+            "fallback_to_openai_since_start": _stats["fallback"],
+            "last_error": _stats["last_error"],
+            "breaker_open": time.time() < _state["paused_until"],
+        }
