@@ -169,19 +169,7 @@ def read_share_link(token: str, db: Session = Depends(get_db)):
     potrzebne do pokazania strony (imię, XP, seria, aktywność tygodnia) -
     zero danych kontaktowych/wrazliwych ucznia."""
     user = _resolve_token(token, db)
-    diag: dict = {}
-    stats = _get_student_stats(user.firebase_uid, diag)
-    # TYMCZASOWA DIAGNOSTYKA (20.09.2026): rodzic widzial same zera. Zapis TYLKO nazw pol i flag
-    # do lejka (nie publicznie, zero wartosci danych ucznia) - do usuniecia po ustaleniu przyczyny.
-    if not stats.get("name") and not stats.get("xp"):
-        try:
-            db.add(FunnelEvent(event="parent_stats_debug", user_id=user.firebase_uid, meta=diag))
-            db.commit()
-        except Exception:
-            try:
-                db.rollback()
-            except Exception:
-                pass
+    stats = _get_student_stats(user.firebase_uid)
     return {"success": True, **stats}
 
 

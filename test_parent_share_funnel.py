@@ -70,13 +70,5 @@ check("track_event zapisuje parent_page_view", r["success"] and any(e[0] == "par
 r = an.track_event(an.TrackEventRequest(event="cokolwiek_innego"), db)
 check("nieznane zdarzenie nadal ignorowane", r.get("ignored") is True, r)
 
-# 5) diagnostyka statystyk (Firestore niedostepny w tescie -> flaga fdb_connected=False, zero wartosci danych)
-import json
-tok2 = ps.create_share_link(db, {"uid": "kid2", "email": "k2@x.pl"})["token"]
-r = ps.read_share_link(tok2, db)
-dbg = [e for e in db.query(FunnelEvent).all() if e.event == "parent_stats_debug"]
-check("odczyt statystyk zwraca zera i zapisuje diagnostyke z flagami", r["success"] and r["xp"] == 0 and dbg and "fdb_connected" in dbg[-1].meta, (r, [e.meta for e in dbg]))
-check("diagnostyka nie zawiera wartosci danych ucznia (tylko flagi/nazwy pol)", all(set(e.meta.keys()) <= {"fdb_connected","doc_exists","keys","xp_type","history_sizes","error"} for e in dbg))
-
 print("WYNIK:", "WSZYSTKIE TESTY PRZESZLY" if not FAILED else f"{len(FAILED)} NIE PRZESZLY {FAILED}")
 sys.exit(1 if FAILED else 0)
