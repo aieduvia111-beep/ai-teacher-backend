@@ -54,11 +54,11 @@ check("is_math: Historia -> nie", lr.is_math("Historia", "Matematyka w historii"
 check("is_math: brak danych -> nie", lr.is_math(None, None) is False)
 check("is_math: Fizyka -> tak (domyslna lista matem+fizyk)", lr.is_math("Fizyka", "Elektrostatyka") is True)
 check("is_math: temat 'Fizyka: Ruch' bez przedmiotu -> tak", lr.is_math(None, "Fizyka: Ruch") is True)
-check("is_math: Chemia, Biologia, Jezyk polski -> nie", not any(lr.is_math(x, "t") for x in ("Chemia", "Biologia", "Język polski")))
+check("is_math: Chemia -> tak; Biologia, Historia, Jezyk polski, Angielski -> nie", lr.is_math("Chemia", "t") and not any(lr.is_math(x, "t") for x in ("Biologia", "Historia", "Język polski", "Język angielski")))
 os.environ["DEEPSEEK_SUBJECTS"] = "matem"
-check("DEEPSEEK_SUBJECTS=matem wylacza fizyke bez zmiany kodu", lr.is_math("Fizyka", "t") is False and lr.is_math("Matematyka", "t") is True)
-os.environ["DEEPSEEK_SUBJECTS"] = "matem,fizyk,chem"
-check("DEEPSEEK_SUBJECTS mozna rozszerzyc (chem)", lr.is_math("Chemia", "t") is True)
+check("DEEPSEEK_SUBJECTS=matem wylacza fizyke bez zmiany kodu", lr.is_math("Fizyka", "t") is False and lr.is_math("Chemia", "t") is False and lr.is_math("Matematyka", "t") is True)
+os.environ["DEEPSEEK_SUBJECTS"] = "matem,fizyk,chem,biol"
+check("DEEPSEEK_SUBJECTS mozna rozszerzyc (biol)", lr.is_math("Biologia", "t") is True)
 os.environ.pop("DEEPSEEK_SUBJECTS")
 
 # ---- bez klucza: zero zmian ----

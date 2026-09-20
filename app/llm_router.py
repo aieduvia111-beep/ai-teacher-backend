@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Routing generowania MATEMATYKI do DeepSeek z automatycznym zapasem na OpenAI (20.09.2026, KOSZTY).
 
-Decyzja usera: DeepSeek do generowania pytan z matematyki i fizyki (quiz + sprawdzian; lista w DEEPSEEK_SUBJECTS). Czat, zdjecia, tablica,
+Decyzja usera: DeepSeek do generowania pytan z matematyki, fizyki i chemii (quiz + sprawdzian; lista w DEEPSEEK_SUBJECTS). Czat, zdjecia, tablica,
 glos i pozostale przedmioty zostaja na OpenAI (dane uczniow, obraz, brak testow jakosci).
 Dane z testu na naszych zadaniach (trudne tematy, ten sam sedzia): deepseek-flash bez myslenia 57%
 przechodzacych weryfikacje w 135 s vs gpt-4o 39% / gpt-4o-mini 46% (patrz sesja 20.09.2026).
@@ -37,8 +37,8 @@ def enabled() -> bool:
 
 def _subjects() -> tuple:
     """Przedmioty kierowane do DeepSeek: fragmenty nazw (male litery), z DEEPSEEK_SUBJECTS (po przecinku).
-    Domyslnie matematyka i fizyka (przedmioty rachunkowe, bez danych osobowych w zadaniach)."""
-    raw = os.environ.get("DEEPSEEK_SUBJECTS", "matem,fizyk")
+    Domyslnie matematyka, fizyka i chemia (przedmioty rachunkowe, bez danych osobowych w zadaniach)."""
+    raw = os.environ.get("DEEPSEEK_SUBJECTS", "matem,fizyk,chem")
     return tuple(x.strip().lower() for x in raw.split(",") if x.strip())
 
 
