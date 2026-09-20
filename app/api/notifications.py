@@ -143,6 +143,24 @@ def _run_blik_charge_sweep():
 
 _scheduler.add_job(_run_blik_charge_sweep, CronTrigger(hour=3, minute=0), id='blik_charge_sweep', replace_existing=True, max_instances=1)
 
+# ═══ STRIPE - codzienne uzgadnianie subskrypcji (04:00, Europe/Warsaw) ═══
+# 20.09.2026: samonaprawa po zgubionym/opoznionym webhooku (patrz StripeService.reconcile_subscriptions).
+def _run_stripe_reconcile():
+    from ..database import SessionLocal
+    from ..services.stripe_service import StripeService
+    db = SessionLocal()
+    try:
+        r = StripeService.reconcile_subscriptions(db)
+        print(f"[Reconcile] sprawdzono {r['checked']}, poprawiono {r['changed']}, bledy {r['errors']}")
+    except Exception as e:
+        print(f"[Reconcile] blad zadania: {e}")
+    finally:
+        db.close()
+
+
+_scheduler.add_job(_run_stripe_reconcile, CronTrigger(hour=4, minute=0), id='stripe_reconcile', replace_existing=True, max_instances=1)
+
 _scheduler.start()
 print("✅ Harmonogram powiadomien push uruchomiony - codziennie o 18:00")
 print("✅ Harmonogram pobierania platnosci BLIK uruchomiony - codziennie o 3:00")
+print("✅ Harmonogram uzgadniania subskrypcji Stripe uruchomiony - codziennie o 4:00")

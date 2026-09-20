@@ -419,6 +419,43 @@ class StripeService:
 
 
     @staticmethod
+    def reconcile_subscriptions(db: Session, limit: int = 500) -> Dict:
+        """20.09.2026: UZGADNIANIE ze Stripe (samonaprawa po zgubionym webhooku). Dla kazdej
+        naszej subskrypcji Stripe (provider="stripe", jeszcze nie zamknietej) pyta Stripe o stan
+        i przepuszcza go przez TEN SAM handler co webhook customer.subscription.updated - wiec
+        efekt (status, koniec okresu, is_premium, plan w Firebase) jest identyczny jak po
+        prawdziwym webhooku. Blad jednego wiersza nie zatrzymuje reszty. Zwraca podsumowanie."""
+        rows = (db.query(Subscription)
+                .filter(Subscription.provider == "stripe",
+                        Subscription.stripe_subscription_id.isnot(None),
+                        Subscription.status.in_(["trialing", "active", "past_due", "incomplete", "unpaid"]))
+                .order_by(Subscription.id).limit(limit).all())
+        summary = {"checked": 0, "changed": 0, "errors": 0, "changes": []}
+        for row in rows:
+            summary["checked"] += 1
+            before = (row.status, row.current_period_end, bool(row.cancel_at_period_end))
+            sub_id, uid = row.stripe_subscription_id, row.user_id
+            try:
+                remote = stripe.Subscription.retrieve(sub_id)
+                StripeService._handle_subscription_updated({"data": {"object": remote}}, db)
+                db.refresh(row)
+            except Exception as e:
+                summary["errors"] += 1
+                print(f"[Reconcile] blad dla {sub_id}: {e}")
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                continue
+            after = (row.status, row.current_period_end, bool(row.cancel_at_period_end))
+            if after != before:
+                summary["changed"] += 1
+                summary["changes"].append({"id": row.id, "user": (uid or "")[:8], "status": f"{before[0]} -> {after[0]}",
+                                           "okres_do": str(after[1])[:10]})
+                print(f"[Reconcile] poprawiono subskrypcje {row.id}: {before[0]} -> {after[0]}")
+        return summary
+
+    @staticmethod
     def _handle_subscription_updated(event: Dict, db: Session) -> Dict:
         """Obsluguje aktualizacje subskrypcji"""
         subscription = event['data']['object']

@@ -101,6 +101,17 @@ def cancellation_feedback_summary(key: str = "", days: int = 90, db: Session = D
             "comments": [{"reason": r, "details": d, "sub_status": st, "at": t.isoformat()} for r, d, st, t in comments]}
 
 
+@router.get("/reconcile-subscriptions")
+def reconcile_subscriptions_endpoint(key: str = "", db: Session = Depends(get_db)):
+    """Reczne uruchomienie uzgadniania subskrypcji ze Stripe (to samo, co robi codzienne zadanie o 4:00).
+    Za kluczem ANALYTICS_ADMIN_KEY. Zwraca liste poprawionych wierszy (bez danych osobowych)."""
+    from ..config import settings as _settings
+    if not _settings.ANALYTICS_ADMIN_KEY or key != _settings.ANALYTICS_ADMIN_KEY:
+        return {"success": False, "error": "Brak lub bledny klucz dostepu"}
+    r = StripeService.reconcile_subscriptions(db)
+    return {"success": True, **r}
+
+
 @router.get("/trial-eligibility")
 def trial_eligibility_endpoint(
     db: Session = Depends(get_db),
