@@ -49,7 +49,9 @@ HISTORY_KEYS = [
 ]
 
 
-def _get_student_stats(firebase_uid: str) -> dict:
+def _get_student_stats(firebase_uid: str, diag: dict = None) -> dict:
+    diag = diag if diag is not None else {}
+    diag['fdb_connected'] = bool(_fdb)
     defaults = {"name": None, "xp": 0, "streak_days": 0, "week_activity": [False] * 7, "actions_this_week": 0}
     if not _fdb:
         return defaults
@@ -57,10 +59,15 @@ def _get_student_stats(firebase_uid: str) -> dict:
         doc = _fdb.collection("users").document(firebase_uid).get()
     except Exception as e:
         print(f"[parent-share] Firestore read blad: {e}")
+        diag['error'] = f"{type(e).__name__}: {str(e)[:120]}"
         return defaults
+    diag['doc_exists'] = bool(doc.exists)
     if not doc.exists:
         return defaults
     data = doc.to_dict() or {}
+    diag['keys'] = sorted(list(data.keys()))[:60]
+    diag['xp_type'] = type(data.get('xp')).__name__
+    diag['history_sizes'] = {k: len(data.get(k) or []) for k in HISTORY_KEYS if data.get(k)}
 
     all_days = set()
     actions_this_week = 0
@@ -158,7 +165,19 @@ def read_share_link(token: str, db: Session = Depends(get_db)):
     potrzebne do pokazania strony (imię, XP, seria, aktywność tygodnia) -
     zero danych kontaktowych/wrazliwych ucznia."""
     user = _resolve_token(token, db)
-    stats = _get_student_stats(user.firebase_uid)
+    diag: dict = {}
+    stats = _get_student_stats(user.firebase_uid, diag)
+    # TYMCZASOWA DIAGNOSTYKA (20.09.2026): rodzic widzial same zera. Zapis TYLKO nazw pol i flag
+    # do lejka (nie publicznie, zero wartosci danych ucznia) - do usuniecia po ustaleniu przyczyny.
+    if not stats.get("name") and not stats.get("xp"):
+        try:
+            db.add(FunnelEvent(event="parent_stats_debug", user_id=user.firebase_uid, meta=diag))
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
     return {"success": True, **stats}
 
 
@@ -174,11 +193,11 @@ def checkout_from_share_link(token: str, db: Session = Depends(get_db)):
     # karta+BLIK w subskrypcji, blokada ponownego triala, zapis wyniku do lejka).
     # Wczesniej wolala stary BlikService.create_setup_session (tylko karta, bez
     # blokady triala i bez logowania).
-    from .payments import create_checkout, CreateCheckoutRequest
-    result = create_checkout(
-        CreateCheckoutRequest(user_id=user.firebase_uid, email=user.email or ""),
-        db,
-        {"uid": user.firebase_uid, "email": user.email},
+    from .payments import _run_checkout
+    result = _run_checkout(
+        user.firebase_uid, user.email or "", db, "",
+        success_url=f"{PARENT_SHARE_DOMAIN}/rodzic.html?t={token}&paid=1",
+        cancel_url=f"{PARENT_SHARE_DOMAIN}/rodzic.html?t={token}",
     )
     if result.get("already_subscribed"):
         result = {"success": False, "error": "To konto ma już aktywną subskrypcję Pro."}

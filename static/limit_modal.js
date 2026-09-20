@@ -254,6 +254,7 @@
     });
 
     var askBtn = document.getElementById('askParentBtn');
+    if (askBtn && isIosApp) { askBtn.style.display = 'none'; askBtn = null; } // iOS: zewnetrzny link platnosci lamie zasady App Store (3.1.1)
     if (askBtn) askBtn.addEventListener('click', function () { askParent(askBtn, name); });
   }
 

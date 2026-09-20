@@ -160,6 +160,74 @@ def verify_session(request: VerifySessionRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+def _run_checkout(verified_uid: str, verified_email: str, db: Session, affiliate_code: str = "",
+                  success_url: str = None, cancel_url: str = None) -> dict:
+    """Wspolna sciezka tworzenia checkoutu (przycisk "Kup Pro" ORAZ zakup rodzica
+    spod linku - patrz parent_share.py). Opcjonalne URL-e pozwalaja odeslac
+    rodzica z powrotem na jego strone, a nie na dashboard dziecka (na ktorym
+    rodzic nie jest zalogowany)."""
+    # NAPRAWIONE (12.09.2026, user: "nie chcem miec wyboru pomiedzy
+    # blikiem jak i karta [w apce], ma to byc w Stripe") - juz nie
+    # rozgalezia sie tutaj po request.payment_method (pole zostaje w
+    # modelu dla wstecznej zgodnosci, ale jest ignorowane) - ZAWSZE
+    # jeden, wspolny checkout (BlikService.create_setup_session,
+    # mode="setup", payment_method_types=["card","blik"]), Stripe sam
+    # pokazuje obie opcje na jednej stronie. StripeService.
+    # create_checkout_session (stary, karta-only mode="subscription")
+    # zostaje w kodzie nietkniety - obsluguje TYLKO juz istniejace
+    # subskrypcje zalozone przed ta zmiana, nie jest juz wolany dla
+    # nowych checkoutow.
+    # 19.09.2026: karta + BLIK w natywnej subskrypcji Stripe (trial 7 dni
+    # zachowany). Gdyby sie nie udalo - awaryjnie stary checkout (karta).
+    result = StripeService.create_checkout_session(
+        user_id=verified_uid,
+        email=verified_email,
+        db=db,
+        affiliate_code=affiliate_code,
+        success_url=success_url,
+        cancel_url=cancel_url,
+    )
+    _first_error = None if result.get("success") else str(result.get("error", ""))[:120]
+    _used_fallback = False
+    if not result.get("success") and not result.get("already_subscribed"):
+        print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
+        # Fallback (mode=setup) ZAWSZE daje trial - nie dla kogos, kto juz go mial.
+        _u = db.query(User).filter(User.firebase_uid == verified_uid).first()
+        _elig = StripeService.trial_eligibility(verified_uid, db, _u.stripe_customer_id if _u else None)
+        if _elig["has_active"] or not _elig["trial_allowed"]:
+            return {"success": False, "error": "Nie udalo sie utworzyc platnosci. Sprobuj ponownie za chwile."}
+        result = BlikService.create_setup_session(
+            user_id=verified_uid,
+            email=verified_email,
+            db=db,
+            affiliate_code=affiliate_code
+        )
+        _used_fallback = True
+
+    # 20.09.2026: zapis wyniku tworzenia sesji platnosci do lejka (user: "nikt nie
+    # podaje karty" - nie mielismy danych, czy checkout w ogole sie tworzy).
+    # Zero PII: UID + krotki kod bledu. Blad zapisu NIGDY nie psuje checkoutu.
+    try:
+        from ..models import FunnelEvent
+        db.add(FunnelEvent(
+            event="checkout_created" if result.get("success") else "checkout_failed",
+            user_id=verified_uid,
+            meta={"fallback": _used_fallback,
+                  "already_subscribed": bool(result.get("already_subscribed")),
+                  "first_error": _first_error,
+                  "error": None if result.get("success") else str(result.get("error", ""))[:120]},
+        ))
+        db.commit()
+    except Exception as _e:
+        print(f"[checkout-log] pominiete: {_e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    return result
+
+
 @router.post("/create-checkout")
 def create_checkout(
     request: CreateCheckoutRequest,
@@ -185,63 +253,7 @@ def create_checkout(
         verified_email = firebase_user.get("email") or request.email
         print(f"💳 Request checkout dla user {verified_uid}")
 
-        # NAPRAWIONE (12.09.2026, user: "nie chcem miec wyboru pomiedzy
-        # blikiem jak i karta [w apce], ma to byc w Stripe") - juz nie
-        # rozgalezia sie tutaj po request.payment_method (pole zostaje w
-        # modelu dla wstecznej zgodnosci, ale jest ignorowane) - ZAWSZE
-        # jeden, wspolny checkout (BlikService.create_setup_session,
-        # mode="setup", payment_method_types=["card","blik"]), Stripe sam
-        # pokazuje obie opcje na jednej stronie. StripeService.
-        # create_checkout_session (stary, karta-only mode="subscription")
-        # zostaje w kodzie nietkniety - obsluguje TYLKO juz istniejace
-        # subskrypcje zalozone przed ta zmiana, nie jest juz wolany dla
-        # nowych checkoutow.
-        # 19.09.2026: karta + BLIK w natywnej subskrypcji Stripe (trial 7 dni
-        # zachowany). Gdyby sie nie udalo - awaryjnie stary checkout (karta).
-        result = StripeService.create_checkout_session(
-            user_id=verified_uid,
-            email=verified_email,
-            db=db,
-            affiliate_code=request.affiliate_code
-        )
-        _first_error = None if result.get("success") else str(result.get("error", ""))[:120]
-        _used_fallback = False
-        if not result.get("success") and not result.get("already_subscribed"):
-            print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
-            # Fallback (mode=setup) ZAWSZE daje trial - nie dla kogos, kto juz go mial.
-            _u = db.query(User).filter(User.firebase_uid == verified_uid).first()
-            _elig = StripeService.trial_eligibility(verified_uid, db, _u.stripe_customer_id if _u else None)
-            if _elig["has_active"] or not _elig["trial_allowed"]:
-                return {"success": False, "error": "Nie udalo sie utworzyc platnosci. Sprobuj ponownie za chwile."}
-            result = BlikService.create_setup_session(
-                user_id=verified_uid,
-                email=verified_email,
-                db=db,
-                affiliate_code=request.affiliate_code
-            )
-            _used_fallback = True
-
-        # 20.09.2026: zapis wyniku tworzenia sesji platnosci do lejka (user: "nikt nie
-        # podaje karty" - nie mielismy danych, czy checkout w ogole sie tworzy).
-        # Zero PII: UID + krotki kod bledu. Blad zapisu NIGDY nie psuje checkoutu.
-        try:
-            from ..models import FunnelEvent
-            db.add(FunnelEvent(
-                event="checkout_created" if result.get("success") else "checkout_failed",
-                user_id=verified_uid,
-                meta={"fallback": _used_fallback,
-                      "already_subscribed": bool(result.get("already_subscribed")),
-                      "first_error": _first_error,
-                      "error": None if result.get("success") else str(result.get("error", ""))[:120]},
-            ))
-            db.commit()
-        except Exception as _e:
-            print(f"[checkout-log] pominiete: {_e}")
-            try:
-                db.rollback()
-            except Exception:
-                pass
-
+        result = _run_checkout(verified_uid, verified_email, db, request.affiliate_code)
         return result
         
     except Exception as e:

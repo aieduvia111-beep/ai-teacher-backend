@@ -197,6 +197,19 @@ async function main(){
   }
 
   show('content');
+  // 20.09.2026: po platnosci Stripe odsyla rodzica TUTAJ (?paid=1), a nie na dashboard dziecka.
+  if(params.get('paid')==='1'){
+    const cb=document.querySelector('.dz-consent');
+    if(cb){
+      cb.innerHTML='';
+      const tag=document.createElement('div'); tag.className='dz-consent-tag'; tag.textContent='Płatność przyjęta';
+      const tx=document.createElement('div'); tx.className='dz-consent-text';
+      const b=document.createElement('b'); b.textContent='Dziękujemy! ';
+      tx.appendChild(b);
+      tx.appendChild(document.createTextNode('Plan Pro dla '+name+' zostanie włączony w ciągu chwili. Wystarczy, że dziecko odświeży aplikację.'));
+      cb.appendChild(tag); cb.appendChild(tx);
+    }
+  }
   // 20.09.2026: pomiar lejka (publiczna strona, bez logowania - zdarzenie bez user_id).
   function trackParent(ev){ try{ fetch(BACKEND_URL+'/api/v1/analytics/track',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({event:ev,meta:{source:'parent_share'}})}).catch(function(){}); }catch(e){} }
   trackParent('parent_page_view');

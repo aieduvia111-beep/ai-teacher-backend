@@ -34,13 +34,15 @@ token = r["token"]
 
 # 2) rodzic kupuje - wspolny checkout
 CALLS = []
-def fake_create_checkout(req, db_, fu):
-    CALLS.append((req.user_id, req.email, fu))
+def fake_run_checkout(uid, email, db_, aff="", success_url=None, cancel_url=None):
+    CALLS.append((uid, email, success_url, cancel_url))
     return CALLS_RESULT["r"]
 CALLS_RESULT = {"r": {"success": True, "checkout_url": "https://stripe/x", "session_id": "cs_1"}}
-pay.create_checkout = fake_create_checkout
+pay._run_checkout = fake_run_checkout
 r = ps.checkout_from_share_link(token, db)
-check("checkout rodzica: uzywa create_checkout (nowa sciezka) dla konta dziecka", r["success"] and CALLS and CALLS[-1][0] == "kid1" and CALLS[-1][2]["uid"] == "kid1", (r, CALLS))
+check("checkout rodzica: wspolna sciezka _run_checkout dla konta dziecka", r["success"] and CALLS and CALLS[-1][0] == "kid1", (r, CALLS))
+check("po platnosci rodzic wraca na SWOJA strone (rodzic.html?t=..&paid=1), nie na dashboard dziecka", CALLS[-1][2].endswith("/rodzic.html?t=" + token + "&paid=1") and "dashboard" not in CALLS[-1][2], CALLS[-1])
+check("anulowanie platnosci wraca na strone rodzica", CALLS[-1][3].endswith("/rodzic.html?t=" + token), CALLS[-1])
 check("checkout rodzica: zdarzenie parent_checkout_created", ("parent_checkout_created", "kid1") in events())
 
 CALLS_RESULT["r"] = {"success": False, "error": "boom"}
@@ -67,6 +69,14 @@ r = an.track_event(an.TrackEventRequest(event="parent_page_view", meta={"source"
 check("track_event zapisuje parent_page_view", r["success"] and any(e[0] == "parent_page_view" for e in events()), r)
 r = an.track_event(an.TrackEventRequest(event="cokolwiek_innego"), db)
 check("nieznane zdarzenie nadal ignorowane", r.get("ignored") is True, r)
+
+# 5) diagnostyka statystyk (Firestore niedostepny w tescie -> flaga fdb_connected=False, zero wartosci danych)
+import json
+tok2 = ps.create_share_link(db, {"uid": "kid2", "email": "k2@x.pl"})["token"]
+r = ps.read_share_link(tok2, db)
+dbg = [e for e in db.query(FunnelEvent).all() if e.event == "parent_stats_debug"]
+check("odczyt statystyk zwraca zera i zapisuje diagnostyke z flagami", r["success"] and r["xp"] == 0 and dbg and "fdb_connected" in dbg[-1].meta, (r, [e.meta for e in dbg]))
+check("diagnostyka nie zawiera wartosci danych ucznia (tylko flagi/nazwy pol)", all(set(e.meta.keys()) <= {"fdb_connected","doc_exists","keys","xp_type","history_sizes","error"} for e in dbg))
 
 print("WYNIK:", "WSZYSTKIE TESTY PRZESZLY" if not FAILED else f"{len(FAILED)} NIE PRZESZLY {FAILED}")
 sys.exit(1 if FAILED else 0)

@@ -175,7 +175,7 @@ class StripeService:
         return {"has_active": has_active, "trial_allowed": not had_any}
 
     @staticmethod
-    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "") -> Dict:
+    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "", success_url: str = None, cancel_url: str = None) -> Dict:
         try:
             print(f"Tworze checkout session dla user {user_id} ({email})")
 
@@ -247,8 +247,8 @@ class StripeService:
                     line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
                     mode="subscription",
                     **({"subscription_data": {"trial_period_days": trial_days}} if trial_days else {}),
-                    success_url=f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
-                    cancel_url=f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
+                    success_url=success_url or f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
+                    cancel_url=cancel_url or f"{settings.FRONTEND_URL}/pricing.html?payment=cancelled",
                     metadata=checkout_metadata,
                     **checkout_kwargs
                 )
