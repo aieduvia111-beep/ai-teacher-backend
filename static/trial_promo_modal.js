@@ -130,7 +130,7 @@
       '<div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.08));border:1px solid rgba(124,106,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 0 26px rgba(124,106,255,.3);">' +
       '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
       '</div>' +
-      '<div style="font-family:\'Syne\',sans-serif;font-size:1.1em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:1.1em;font-weight:800;color:#eeeef5;margin-bottom:8px;line-height:1.3;">' +
       'Ucz się bez ograniczeń<br>' +
       '<span style="background:linear-gradient(135deg,#a78bfa,#7c6aff);-webkit-background-clip:text;background-clip:text;color:transparent;">' + TRIAL_DAYS + ' dni gratis</span>' +
       '</div>' +
@@ -159,7 +159,7 @@
       '</div>' +
       '<button onclick="window.location.href=\'pricing.html\'" style="' +
       'width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);' +
-      'border:none;border-radius:12px;color:white;font-family:\'Syne\',sans-serif;' +
+      'border:none;border-radius:12px;color:white;font-family:\'Inter\',sans-serif;' +
       'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +

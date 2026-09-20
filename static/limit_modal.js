@@ -88,12 +88,12 @@
   // user to odrzucil ("wyglada jakby AI zrobil"). Uzyty ponizej box to
   // DOKLADNIE ten sam wzorzec co juz istnieje w tym kodzie (patrz
   // .stat-box/.stat-val/.stat-lbl w quiz_app.html, ekran wynikow quizu) -
-  // plaski box #161622, cienki border, duza liczba (Syne 800), maly szary
+  // plaski box #161622, cienki border, duza liczba (Inter 800), maly szary
   // podpis pod spodem. Zero ikon/gradientow/swiecenia - to nie jest
   // spojne z reszta apki.
   function statBoxHtml(value, label, color) {
     return '<div style="flex:1;background:#161622;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 8px;text-align:center;">' +
-      '<div style="font-family:\'Syne\',sans-serif;font-size:1.3em;font-weight:800;color:' + color + ';">' + value + '</div>' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:1.3em;font-weight:800;color:' + color + ';">' + value + '</div>' +
       '<div style="font-size:.66em;color:#8888a0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em;">' + label + '</div>' +
       '</div>';
   }
@@ -166,7 +166,7 @@
       '<div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,rgba(124,106,255,.28),rgba(124,106,255,.08));border:1px solid rgba(124,106,255,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 0 26px rgba(124,106,255,.3);">' +
       '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
       '</div>' +
-      '<div style="font-family:\'Syne\',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">' +
+      '<div style="font-family:\'Inter\',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">' +
       'Limit ' + name + ' wyczerpany' +
       '</div>' +
       '<p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:16px;">' +
@@ -190,7 +190,7 @@
       '</div>' +
       '<button onclick="window.location.href=\'pricing.html\'" style="' +
       'width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);' +
-      'border:none;border-radius:12px;color:white;font-family:\'Syne\',sans-serif;' +
+      'border:none;border-radius:12px;color:white;font-family:\'Inter\',sans-serif;' +
       'font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;' +
       'box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;' +
       '" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
@@ -204,7 +204,7 @@
       '<button id="askParentBtn" style="' +
       'display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:11px;' +
       'background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.35);border-radius:12px;' +
-      'color:#a78bfa;font-family:\'Syne\',sans-serif;font-size:.82em;font-weight:700;cursor:pointer;margin-bottom:10px;transition:all .2s;' +
+      'color:#a78bfa;font-family:\'Inter\',sans-serif;font-size:.82em;font-weight:700;cursor:pointer;margin-bottom:10px;transition:all .2s;' +
       '">' +
       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>' +
       'Poproś rodzica o Pro' +
