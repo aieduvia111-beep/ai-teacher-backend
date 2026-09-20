@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from . import usage_tracker as _usage_tracker
 from .config import settings
 from .level_config import (
     describe_level, validate_generic_topic, get_forced_fallback_topic,
@@ -620,7 +621,7 @@ async def generate_quiz_from_image(
         quiz_data = fix_latex_in_quiz(quiz_data)
         quiz_data = await _verify_and_fill_quiz_math(
             quiz_data, num_questions,
-            lambda n, avoid_block="", escalate=False: _raw_call(_adaptive_fill_batch(n), force_model=("gpt-4o" if escalate else None)),
+            lambda n, avoid_block="", escalate=False, _sb=_usage_tracker.OrderStrongBudget(): _raw_call(_adaptive_fill_batch(n), force_model=("gpt-4o" if (escalate and _sb.use()) else None)),
             t_start=t_start, difficulty=difficulty, level=level, topic=topic,
         )
         quiz_data = _require_exact_question_count(quiz_data, num_questions, "Quiz z obrazka")
@@ -1708,7 +1709,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(8000, max(2000, 400 + len(skeletons) * 300)),
         temperature=0.7,
@@ -1802,7 +1803,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -1905,7 +1906,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -2002,7 +2003,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -2224,7 +2225,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -2433,7 +2434,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -2531,7 +2532,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(6000, max(1500, 250 * len(skeletons))),
         temperature=0.7,
@@ -2631,7 +2632,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         # NAPRAWIONE (real-test, sierpien 2026): wyjasnienia tego archetypu
         # sa DLUZSZE niz w innych archetypach (dwa przypadki + sprawdzenie
@@ -2731,7 +2732,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         # Mnoznik 450/pytanie - ta sama poprawka co przy archetypie
         # wartosci bezwzglednej (patrz komentarz wyzej), zeby uniknac
@@ -2852,7 +2853,7 @@ ZASADY:
 - TYLKO JSON"""
 
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=min(8000, max(2000, 450 * len(skeletons))),
         temperature=0.7,
@@ -3290,9 +3291,9 @@ async def _generate_quiz_topic_once(
         # nie wystarczyl) przelacza TYLKO TA JEDNA regenerujaca partie na
         # gpt-4o - koszt premium placony WYLACZNIE tam, gdzie dane pokazuja,
         # ze jest faktycznie potrzebny.
-        regenerate = lambda n, avoid_block="", escalate=False: _raw_generate_quiz_topic_batch(
+        regenerate = lambda n, avoid_block="", escalate=False, _sb=_usage_tracker.OrderStrongBudget(): _raw_generate_quiz_topic_batch(
             topic, effective_topic_is_forced, subject, level, _adaptive_fill_batch(n, max_batch=30), difficulty, wlasne_instrukcje,
-            avoid_block=avoid_block, force_model=("gpt-4o" if escalate else None),
+            avoid_block=avoid_block, force_model=("gpt-4o" if (escalate and _sb.use()) else None),
         )
     try:
         with _Timer(metrics, "generation_time"):

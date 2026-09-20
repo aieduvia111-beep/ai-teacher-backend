@@ -21,6 +21,7 @@ usage bez zmiany parametrow zapytania (co mogloby zepsuc klientow) -
 liczymy tylko liczbe wywolan ("stream_calls"), tokeny=0. Whisper/TTS/
 realtime (WebSocket) nie przechodza przez chat.completions - poza pomiarem
 (patrz panel OpenAI)."""
+import os
 import sys
 import threading
 import time
@@ -228,3 +229,75 @@ def install():
         print("[UsageTracker] pomiar zuzycia tokenow wlaczony")
     except Exception as e:
         print(f"[UsageTracker] nie zainstalowano (aplikacja dziala normalnie): {e}")
+
+
+# =============================================================================
+# 20.09.2026 (KOSZTY): ograniczenie GPT-4O. Dane: gpt-4o to ~55% rachunku OpenAI, prawie w calosci
+# z rund ratunkowych (eskalacja, gdy tani model nie dal kompletu pytan). Dwa bezpieczniki:
+#   GPT4O_MAX_PER_ORDER   - ile razy JEDNO zamowienie moze siegnac po gpt-4o (domyslnie 2)
+#   GPT4O_DAILY_BUDGET_USD - dzienny budzet na gpt-4o w USD (domyslnie 1.2 = ok. 5 zl); po jego
+#                            przekroczeniu rundy ratunkowe ida na tanim modelu (0 = bez limitu dziennego)
+# Po przekroczeniu system NIE zwraca bledu - tylko dogenerowuje tanim modelem (wiecej rund mini).
+# =============================================================================
+_STRONG_CACHE = {"t": 0.0, "v": 0.0}
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except Exception:
+        return default
+
+
+def gpt4o_spend_today() -> float:
+    """Szacowany koszt gpt-4o dzis w USD: dane z bazy (zflushowane) + liczniki w pamieci (jeszcze nie zapisane).
+    Wynik cache'owany 60 s. Blad odczytu -> 0.0 (nie psujemy produktu przez blad pomiaru)."""
+    now = time.time()
+    if now - _STRONG_CACHE["t"] < 60:
+        return _STRONG_CACHE["v"]
+    total = 0.0
+    day = date.today().isoformat()
+    def cost(pt, ct, ca):
+        return ((pt - ca) * 2.50 + ca * 2.50 * 0.5 + ct * 10.00) / 1_000_000
+    try:
+        with _lock:
+            for (d, _label, model), (calls, pt, ct, cached, _st) in _counters.items():
+                if d == day and model.startswith("gpt-4o") and not model.startswith("gpt-4o-mini"):
+                    total += cost(pt, ct, cached)
+        from .database import SessionLocal
+        from .models import ApiUsageDaily
+        db = SessionLocal()
+        try:
+            for r in db.query(ApiUsageDaily).filter(ApiUsageDaily.day == day).all():
+                if r.model.startswith("gpt-4o") and not r.model.startswith("gpt-4o-mini"):
+                    total += cost(r.prompt_tokens, r.completion_tokens, r.cached_tokens)
+        finally:
+            db.close()
+    except Exception:
+        total = 0.0
+    _STRONG_CACHE["t"], _STRONG_CACHE["v"] = now, total
+    return total
+
+
+def strong_model_allowed() -> bool:
+    budget = _env_float("GPT4O_DAILY_BUDGET_USD", 1.2)
+    if budget <= 0:
+        return True
+    return gpt4o_spend_today() < budget
+
+
+class OrderStrongBudget:
+    """Licznik JEDNEGO zamowienia: pozwala na najwyzej GPT4O_MAX_PER_ORDER eskalacji do gpt-4o
+    i tylko gdy dzienny budzet nie jest wyczerpany. use() zwraca True, gdy wolno uzyc gpt-4o."""
+
+    def __init__(self):
+        self.max = int(_env_float("GPT4O_MAX_PER_ORDER", 2))
+        self.used = 0
+
+    def use(self) -> bool:
+        if self.used >= self.max:
+            return False
+        if not strong_model_allowed():
+            return False
+        self.used += 1
+        return True

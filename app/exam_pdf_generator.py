@@ -32,6 +32,7 @@ from .level_config import (
     get_exponential_function_difficulty_anchor, is_exponential_function_topic,
     get_integral_difficulty_anchor, is_integral_topic,
 )
+from . import usage_tracker as _usage_tracker
 from .math_verify import (
     verify_and_fix_math_question, match_final_answer_index,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
@@ -3986,11 +3987,11 @@ ZASADY:
         # zawodny generator probowany po prostu wiecej razy). Wydzielone
         # do wspoldzielonej funkcji, zeby ratunek korzystal z TEGO SAMEGO,
         # bardziej niezawodnego mechanizmu co normalne rundy.
-        def _dispatch_regen(missing_n, need_type_x, avoid_block_x, escalate=False):
+        def _dispatch_regen(missing_n, need_type_x, avoid_block_x, escalate=False, _sb=_usage_tracker.OrderStrongBudget()):
             if need_type_x == 'otwarte' and _zero_ai_exam_kind(temat) in ("cuboid", "orderops"):
                 return self._raw_generate_zero_ai_open_batch(_zero_ai_exam_kind(temat), max(missing_n, _MIN_FILL_BATCH_EXAM))
             if need_type_x == 'otwarte':
-                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True, force_model=("gpt-4o" if escalate else None))
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, only_open=True, force_model=("gpt-4o" if (escalate and _sb.use()) else None))
             elif _zero_ai_exam_kind(temat):
                 return self._raw_generate_zero_ai_closed_batch(_zero_ai_exam_kind(temat), max(missing_n, _MIN_FILL_BATCH_EXAM))
             elif _is_medium_linear_param_quadratic_exam(temat, trudnosc):
@@ -4012,7 +4013,7 @@ ZASADY:
             elif _is_hard_quadratic_two_positive_roots_exam(temat, trudnosc):
                 return self._raw_generate_safe_quadratic_two_positive_roots_batch(max(missing_n, _MIN_FILL_BATCH_EXAM), used_letters=used_safe_letters, used_constants=used_safe_constants)
             else:
-                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, force_model=("gpt-4o" if escalate else None))
+                return self._get_exam_data_raw_parallel(temat, klasa, trudnosc, max(missing_n, _MIN_FILL_BATCH_EXAM), wlasne_instrukcje, przedmiot, avoid_block=avoid_block_x, force_model=("gpt-4o" if (escalate and _sb.use()) else None))
 
         while True:
             round_i += 1
