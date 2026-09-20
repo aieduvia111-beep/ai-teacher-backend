@@ -795,6 +795,37 @@ class AnswerLines(Flowable):
             y = self.height - 20 - i * 22
             self.canv.line(0, y, self.width, y)
 
+class AnswerGrid(Flowable):
+    """Kratka (5 mm) na odpowiedz do zadan otwartych z matematyki i fizyki (20.09.2026: zamiast linii).
+    Wysokosc zblizona do AnswerLines o tej samej liczbie 'linii', zaokraglona do pelnych kratek."""
+    CELL = 14.17   # 5 mm w punktach
+
+    def __init__(self, width, lines=4):
+        super().__init__()
+        self.cols = max(1, int(width // self.CELL))
+        self.rows = max(3, int(round((lines * 22 + 6) / self.CELL)))
+        self.width = width
+        self.height = self.rows * self.CELL
+
+    def draw(self):
+        c = self.canv
+        c.setStrokeColor(colors.HexColor('#C9D1E0'))
+        c.setLineWidth(0.4)
+        gw = self.cols * self.CELL
+        for i in range(self.rows + 1):
+            y = i * self.CELL
+            c.line(0, y, gw, y)
+        for j in range(self.cols + 1):
+            x = j * self.CELL
+            c.line(x, 0, x, self.rows * self.CELL)
+
+
+def _uses_grid(przedmiot) -> bool:
+    """Kratka dla matematyki i fizyki (zadania rachunkowe), linie dla reszty."""
+    p = (przedmiot or "").lower()
+    return "matem" in p or "fizyk" in p
+
+
 class QuestionBox(Flowable):
     """Ramka pytania zamkniętego z numerem."""
     def __init__(self, nr, punkty, width):
@@ -1231,7 +1262,10 @@ def _build_exam_pages(data: dict) -> bytes:
                 story.append(Spacer(1, 8))
                 # Linie na odpowiedź
                 lines = p.get('miejsce_na_odpowiedz', 4)
-                story.append(AnswerLines(W, lines=lines))
+                if _uses_grid(data.get('przedmiot')):
+                    story.append(AnswerGrid(W, lines=lines))
+                else:
+                    story.append(AnswerLines(W, lines=lines))
                 story.append(Spacer(1, 12))
 
     # Klucz odpowiedzi
