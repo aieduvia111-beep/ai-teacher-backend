@@ -2332,7 +2332,14 @@ def _humanities_quality_block(trudnosc, klasa) -> str:
         "- sredni/srednia: zastosowanie wiedzy w nowej sytuacji (analiza krotkiego zdania lub fragmentu, prosty przyklad, krotkie uzasadnienie).\n"
         "- trudny/trudna: analiza, porownanie, wielokrokowe rozumowanie i uzasadnienie, na gornej granicy programu TEJ klasy (nie wykraczaj poza program). "
         "ZAKAZ pytan wylacznie o definicje lub pojedynczy fakt; w zamknietych uzywaj zdan lub krotkich tekstow z kontekstem zamiast pojedynczych slow, z wiarygodnymi dystraktorami.\n"
-        "PRECYZJA ZADAN ZAMKNIETYCH:\n"
+        + (
+            "DLA POZIOMU TRUDNEGO DODATKOWO (bezwzglednie): co najmniej 2/3 pytan zamknietych to zadania W KONTEKSCIE - analiza zdania lub krotkiego tekstu, "
+            "odroznianie bliskich pojec, wyjatki od reguly, ten sam wyraz w dwoch zdaniach pelniacy rozne funkcje. "
+            "ZAKAZ pytan typu \"ktore z tych slow jest [pojeciem]?\" z oczywistymi dystraktorami z zupelnie innych kategorii. "
+            "Nie zadawaj wiecej niz JEDNEGO pytania o to samo pojecie lub te sama umiejetnosc.\n"
+            if str(trudnosc).strip().lower() in ("trudna", "trudny", "hard") else ""
+        )
+        + "PRECYZJA ZADAN ZAMKNIETYCH:\n"
         "- Dokladnie JEDNA odpowiedz poprawna. Zadna z pozostalych opcji nie moze byc poprawna w innym rozumieniu polecenia.\n"
         "- Pytanie o forme gramatyczna lub odmiane MUSI podawac przypadek, liczbe, rodzaj albo czas (np. \"w dopelniaczu liczby mnogiej\"). "
         "Zabronione: pytanie o forme bez przypadku, gdy opcje to rozne przypadki tego samego wyrazu.\n"
