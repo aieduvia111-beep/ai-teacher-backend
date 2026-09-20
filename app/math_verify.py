@@ -4481,6 +4481,9 @@ _DIVERSITY_NON_WORD_RE = re.compile(r'[^a-ząćęłńóśźż]+')
 _DIVERSITY_NUMBER_RE = re.compile(r'-?\d+(?:[.,]\d+)?')
 
 
+_DIVERSITY_QUOTED_RE = re.compile(r"(?<!\w)['\"\u201e\u201c\u2018\u2019\u00ab](\w[\w\s/\-]{0,24}?)['\"\u201d\u201c\u2019\u00bb](?!\w)")
+
+
 def diversity_tag_tokens(tag, question_text: str = None) -> frozenset:
     """Zamienia diversity_tag (dict z polami skill/concept/task_type/
     reasoning, kazde krotka fraza wygenerowana przez AI) na
@@ -4520,6 +4523,12 @@ def diversity_tag_tokens(tag, question_text: str = None) -> frozenset:
         numbers = _DIVERSITY_NUMBER_RE.findall(question_text)
         if numbers:
             base = base | frozenset(f"num_{n}" for n in numbers)
+        # 20.09.2026: slowa w cudzyslowach z TRESCI ("Podaj forme przeszla czasownika 'go'") odrozniaja pytania o RZECZY
+        # (slowko, pojecie) przy tym samym schemacie. Real prod: quiz "Czasowniki nieregularne" - kazde pytanie mialo ten
+        # sam tag, filtr roznorodnosci odrzucal wszystkie oprocz pierwszego (wyszlo 6-9 z 20).
+        quoted = _DIVERSITY_QUOTED_RE.findall(question_text)
+        if quoted:
+            base = base | frozenset(f"q_{w.strip().lower()}" for w in quoted)
     return base
 
 

@@ -58,7 +58,7 @@ from .blind_verify import (
     parse_blind_verify_final_answer, safe_json_loads, values_match,
     _extract_single_value,
 )
-from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes, validate_question_latex, auto_wrap_bare_latex_in_question, fix_latex_string
+from .openai_exam import sanitize_latex_json_backslashes, _parallel_batch_sizes, validate_question_latex, auto_wrap_bare_latex_in_question, fix_latex_string, strip_stray_dollars_in_question
 from .difficulty import DifficultyAnalyzer
 
 # ETAP 2 Universal Difficulty Engine: patrz identyczny komentarz w
@@ -1955,6 +1955,7 @@ def _verify_open_section(pytania: list, metrics=None, client=None, tytul: str = 
         # "latex_malformed" wlasnie dla goleg "\cdot"/"\frac" w
         # odpowiedz_modelowa, bez zadnej proby naprawy PRZED odrzuceniem).
         # Potem walidacja strukturalna, sprawdzona PRZED sympy/blind-check.
+        strip_stray_dollars_in_question(pyt, ["tresc", "odpowiedz_modelowa", "final_answer"])
         auto_wrap_bare_latex_in_question(pyt, ["final_answer"])
         if pyt.get("tresc"): pyt["tresc"] = fix_latex_string(pyt["tresc"])
         if pyt.get("odpowiedz_modelowa"): pyt["odpowiedz_modelowa"] = fix_latex_string(pyt["odpowiedz_modelowa"])
@@ -2135,6 +2136,7 @@ def _verify_and_fix_exam_math(data: dict, trudnosc: str = None, seen_fingerprint
             # naprawa juz istniala - patrz fix_latex_in_quiz w
             # openai_exam.py, wywolane PRZED analogiczna walidacja). Potem
             # walidacja strukturalna, sprawdzona PRZED Warstwa 2/2.5.
+            strip_stray_dollars_in_question(pyt, ["opcje", "tresc", "wyjasnienie"])
             auto_wrap_bare_latex_in_question(pyt, ["opcje"])
             if pyt.get("tresc"): pyt["tresc"] = fix_latex_string(pyt["tresc"])
             if pyt.get("wyjasnienie"): pyt["wyjasnienie"] = fix_latex_string(pyt["wyjasnienie"])

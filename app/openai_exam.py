@@ -232,6 +232,31 @@ def auto_wrap_bare_latex(text: str) -> str:
     return f"${text}$"
 
 
+def strip_stray_dollars(text: str) -> str:
+    """(20.09.2026) Model (gpt-4o-mini) dopisuje do opcji z jezykow obcych zbedne '$' ("went$", "saw$"), co daje
+    NIEPARZYSTA liczbe '$' i walidator odrzuca cale pytanie - real prod: quiz 'Czasowniki nieregularne' 295 odrzuceni,
+    wyszlo 6-9 z 20 (lokalnie: 0 z 20). Tekst z nieparzysta liczba '$' BEZ zadnej notacji matematycznej
+    (backslash, ^, _, {, }) nie jest wzorem - usuwamy wszystkie '$'. Tekst z LaTeX-em zostaje NIETKNIETY."""
+    t = str(text)
+    if t.count('$') % 2 == 0:
+        return t
+    if any(ch in t for ch in ('\\', '^', '_', '{', '}')):
+        return t
+    return t.replace('$', '')
+
+
+def strip_stray_dollars_in_question(item: dict, text_fields: list) -> None:
+    """Stosuje strip_stray_dollars do podanych pol (takze list, np. options/opcje). MUTUJE `item`."""
+    for field in text_fields:
+        val = item.get(field)
+        if val is None:
+            continue
+        if isinstance(val, list):
+            item[field] = [strip_stray_dollars(v) for v in val]
+        elif isinstance(val, str):
+            item[field] = strip_stray_dollars(val)
+
+
 def auto_wrap_bare_latex_in_question(item: dict, text_fields: list) -> None:
     """Stosuje auto_wrap_bare_latex do WSZYSTKICH podanych pol (w tym list -
     opcje/options) - MUTUJE `item` w miejscu. Wywolac PRZED validate_
@@ -4283,6 +4308,7 @@ async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, see
         # granic). Sprawdzone PRZED Warstwa 2/2.5, zeby nie marnowac
         # (platnego) blind-check na pytanie, ktore i tak nie wyrenderuje
         # sie poprawnie.
+        strip_stray_dollars_in_question(q, ["options", "question", "explanation"])
         auto_wrap_bare_latex_in_question(q, ["options"])
         latex_ok, latex_reason = validate_question_latex(q, ["question", "options", "explanation"])
         if not latex_ok:
