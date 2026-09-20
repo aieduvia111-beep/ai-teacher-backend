@@ -27,6 +27,7 @@ from .math_verify import (
     generate_safe_multiplication_table_batch,
     generate_safe_map_scale_batch, generate_safe_fraction_batch,
     generate_safe_cuboid_batch, generate_safe_order_ops_batch,
+    generate_safe_hs_math_batch, hs_math_level_supported, hs_math_title,
     generate_geo_hist_batch, geo_hist_kind,
     WORDING_DIVERSITY_MANDATE,
 )
@@ -2089,6 +2090,19 @@ async def _raw_generate_safe_map_scale_batch(n: int) -> Dict:
     return quiz_data
 
 
+async def _raw_generate_safe_hs_math_batch(n: int, level: str) -> Dict:
+    """`n` pytan z ogolnej matematyki dla poziomu - zero wywolan AI (math_verify.generate_safe_hs_math_batch)."""
+    questions = generate_safe_hs_math_batch(n, level)
+    for i, q in enumerate(questions, start=1):
+        q["id"] = i
+        q["_safe_generated"] = True
+    quiz_data = {"title": hs_math_title(level), "questions": questions}
+    quiz_data = fix_latex_in_quiz(quiz_data)
+    for q in quiz_data.get("questions", []):
+        q["_safe_generated"] = True
+    return quiz_data
+
+
 async def _raw_generate_safe_cuboid_batch(n: int) -> Dict:
     """`n` pytan o prostopadloscianie - zero wywolan AI (math_verify.generate_safe_cuboid_batch)."""
     questions = generate_safe_cuboid_batch(n)
@@ -2995,6 +3009,21 @@ def _fraction_mode(topic: str):
     return "decimal" if dec else "common"
 
 
+def _is_generic_hs_math(topic: str, subject: str, level: str, difficulty: str = None) -> bool:
+    """20.09.2026 - zamowienie 'matematyka' BEZ tematu (topic == przedmiot) dla liceum/technikum:
+    zamiast zgadywac przez AI (real prod, 7 dni: 97 takich quizow, 28 niepelnych = 29%, 129 rund
+    ratunkowych; test: ~60% blednych zadan z ciagow) skladamy mieszanke zadan LICZONYCH KODEM wg
+    programu poziomu (math_verify.generate_safe_hs_math_batch). Tylko latwy/sredni - 'hard' zostaje
+    przy AI (generator nie skaluje trudnosci)."""
+    if (subject or "").strip().lower() != "matematyka":
+        return False
+    if (topic or "").strip().lower() != (subject or "").strip().lower():
+        return False
+    if (difficulty or "medium") not in ("easy", "medium"):
+        return False
+    return hs_math_level_supported(level)
+
+
 def _is_cuboid(topic: str, difficulty: str = None) -> bool:
     """20.09.2026 - gating zero-AI generatora PROSTOPADLOSCIANU/SZESCIANU (real prod:
     6 prob z rzedu 5-6/10 pytan). Bez filtra trudnosci, jak _is_map_scale."""
@@ -3213,6 +3242,8 @@ async def _generate_quiz_topic_once(
         safe_batch_fn = lambda n: _raw_generate_safe_map_scale_batch(n)
     elif _is_cuboid(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_cuboid_batch(n)
+    elif _is_generic_hs_math(topic, subject, level, difficulty):
+        safe_batch_fn = lambda n: _raw_generate_safe_hs_math_batch(n, level)
     elif _is_order_ops(topic, difficulty):
         safe_batch_fn = lambda n: _raw_generate_safe_order_ops_batch(n)
     elif geo_hist_kind(topic):

@@ -6106,3 +6106,498 @@ def generate_safe_order_ops_batch(n: int) -> list:
         seen.add(fk)
         results.append(q)
     return results
+
+
+# =============================================================================
+# 20.09.2026 - zero-AI generatory OGOLNEJ MATEMATYKI dla liceum/technikum (zamowienie
+# "matematyka" bez tematu, AI dobiera z zakresu poziomu). Real prod (7 dni): 97 takich
+# quizow, 28 niepelnych (29%), 129 rund ratunkowych - skupione na technikum_1, liceum_1,
+# liceum_2. Test: tani model dawal ~60% blednych zadan z ciagow. Ten zestaw liczy WSZYSTKO
+# kodem (poprawnosc z definicji), dobierajac rodzaje zadan do PROGRAMU poziomu.
+# =============================================================================
+import sympy as _sp_hs
+
+
+def _fmt_num(x):
+    """Liczba calkowita/ulamek jako tekst (1/2), bez '.0'."""
+    x = _sp_hs.nsimplify(x)
+    if x.is_Integer:
+        return str(int(x))
+    return f"{x.p}/{x.q}" if x.q != 1 else str(x.p)
+
+
+def _num_options(true_value, wrong_candidates, fmt=None):
+    """(opcje, indeks poprawnej, tekst poprawnej) dla odpowiedzi liczbowej - 3 unikalne zle opcje."""
+    fmt = fmt or (lambda v: str(v))
+    true_text = fmt(true_value)
+    seen, wrong = {true_text}, []
+    extra = []
+    if isinstance(true_value, int):
+        extra = [true_value + 1, true_value - 1, true_value + 2, true_value - 2, true_value * 2, -true_value, true_value + 10]
+    for c in list(wrong_candidates) + extra:
+        t = fmt(c)
+        if t not in seen:
+            seen.add(t)
+            wrong.append(t)
+        if len(wrong) == 3:
+            break
+    k = 3
+    while len(wrong) < 3 and isinstance(true_value, int):
+        t = fmt(true_value + k)
+        if t not in seen:
+            seen.add(t); wrong.append(t)
+        k += 1
+    options = wrong + [true_text]
+    random.shuffle(options)
+    return options, options.index(true_text), true_text
+
+
+def _text_options(true_text, wrong_texts):
+    """Jak _num_options, dla odpowiedzi tekstowych (np. wspolrzedne, rownania prostej)."""
+    seen, wrong = {true_text}, []
+    for t in wrong_texts:
+        if t not in seen:
+            seen.add(t); wrong.append(t)
+        if len(wrong) == 3:
+            break
+    options = wrong + [true_text]
+    random.shuffle(options)
+    return options, options.index(true_text), true_text
+
+
+def _pack(question, options, correct, final, expl, skill, concept, task, key):
+    return {
+        "question": question, "options": options, "correct": correct, "final_answer": final,
+        "explanation": expl,
+        "diversity_tag": {"skill": skill, "concept": concept, "task_type": task,
+                          "reasoning": "wzór lub definicja z programu poziomu"},
+        "_fact_key": key,
+    }
+
+
+# ---------------------------- POTEGI I PIERWIASTKI ----------------------------
+def build_safe_powers_roots_question() -> dict:
+    kind = random.choice(["same_base_mul", "same_base_div", "power_of_power", "sqrt_perfect", "sqrt_simplify", "mixed"])
+    if kind == "same_base_mul":
+        b, m, n = random.choice([2, 3, 5, 10]), random.randint(2, 6), random.randint(2, 5)
+        true = b ** (m + n)
+        q = f"Oblicz wartość wyrażenia: {b}^{m} · {b}^{n}."
+        wrong = [b ** (m * n), b ** m + b ** n, (b * b) ** (m + n)]
+        opts, ci, ft = _num_options(true, wrong)
+        return _pack(q, opts, ci, ft, f"Mnożymy potęgi o tej samej podstawie, więc dodajemy wykładniki: {b}^{m+n} = {true}.",
+                     "potęgi", "mnożenie potęg", "oblicz iloczyn potęg", ("same_base_mul", b, m, n, true))
+    if kind == "same_base_div":
+        b, k, n = random.choice([2, 3, 5]), random.randint(2, 4), random.randint(5, 9)
+        m = n + k
+        true = b ** k
+        q = f"Oblicz wartość wyrażenia: {b}^{m} ÷ {b}^{n}."
+        wrong = [b ** (m // n), b ** (m + n), b * k, b ** (k + 1)]
+        opts, ci, ft = _num_options(true, wrong)
+        return _pack(q, opts, ci, ft, f"Dzielimy potęgi o tej samej podstawie, więc odejmujemy wykładniki: {b}^{m-n} = {true}.",
+                     "potęgi", "dzielenie potęg", "oblicz iloraz potęg", ("same_base_div", b, m, n, true))
+    if kind == "power_of_power":
+        b, m, n = random.choice([2, 3]), random.randint(2, 4), random.randint(2, 3)
+        true = b ** (m * n)
+        q = f"Oblicz wartość wyrażenia: ({b}^{m})^{n}."
+        wrong = [b ** (m + n), b ** m * n, (b ** m) + n]
+        opts, ci, ft = _num_options(true, wrong)
+        return _pack(q, opts, ci, ft, f"Potęgę potęgi liczymy, mnożąc wykładniki: {b}^({m}·{n}) = {b}^{m*n} = {true}.",
+                     "potęgi", "potęga potęgi", "oblicz potęgę potęgi", ("power_of_power", b, m, n, true))
+    if kind == "sqrt_perfect":
+        a, b = random.randint(2, 9), random.randint(2, 9)
+        true = a * b
+        q = f"Oblicz wartość wyrażenia: √({a*a} · {b*b})."
+        wrong = [a + b, a * a * b, a * b * b]
+        opts, ci, ft = _num_options(true, wrong)
+        return _pack(q, opts, ci, ft, f"√({a*a}·{b*b}) = √{a*a}·√{b*b} = {a}·{b} = {true}.",
+                     "pierwiastki", "pierwiastek z iloczynu", "oblicz pierwiastek", ("sqrt_perfect", a, b, true))
+    if kind == "sqrt_simplify":
+        a, b = random.randint(2, 7), random.choice([2, 3, 5, 6, 7])
+        n = a * a * b
+        true_text = f"{a}√{b}"
+        wrongs = [f"{a*b}√{a}" if a != b else f"{a}√{a}", f"{a*a}√{b}", f"{b}√{a}", f"{a + b}"]
+        opts, ci, ft = _text_options(true_text, [w for w in wrongs if w != true_text])
+        return _pack(f"Zapisz liczbę √{n} w postaci a√b, gdzie b jest liczbą całkowitą możliwie najmniejszą.", opts, ci, ft,
+                     f"√{n} = √({a*a}·{b}) = {a}√{b}.", "pierwiastki", "wyłączanie czynnika przed pierwiastek", "uprość pierwiastek", ("sqrt_simplify", a, b))
+    a, b = random.randint(2, 6), random.randint(2, 6)   # mixed: a^2 + b^2 - ...
+    c = random.randint(1, 5)
+    true = a * a + b * b - c * c
+    q = f"Oblicz wartość wyrażenia: {a}² + {b}² − {c}²."
+    wrong = [(a + b - c) ** 2, a * a + b * b + c * c, a * 2 + b * 2 - c * 2]
+    opts, ci, ft = _num_options(true, wrong)
+    return _pack(q, opts, ci, ft, f"{a}² = {a*a}, {b}² = {b*b}, {c}² = {c*c}, więc {a*a} + {b*b} − {c*c} = {true}.",
+                 "potęgi", "kwadraty liczb", "oblicz wyrażenie z kwadratami", ("mixed", a, b, c, true))
+
+
+# ---------------------------- FUNKCJA LINIOWA ----------------------------
+def _lin_expr(a, b):
+    """Prawa strona funkcji liniowej bez "y =" (np. "3x − 2", "−x", "4x")."""
+    return _line_str(a, b)[4:]
+
+
+def _line_str(a, b):
+    if a == 0:
+        return f"y = {b}"
+    ax = "x" if a == 1 else ("−x" if a == -1 else (f"{a}x" if a > 0 else f"−{-a}x"))
+    if b == 0:
+        return f"y = {ax}"
+    return f"y = {ax} {'+' if b > 0 else '−'} {abs(b)}"
+
+
+def build_safe_linear_function_question() -> dict:
+    kind = random.choice(["slope_two_points", "zero", "value_at", "line_from_two_points", "line_slope_point", "parallel"])
+    if kind == "slope_two_points":
+        a, x1, dx = random.choice([-3, -2, -1, 1, 2, 3, 4]), random.randint(-3, 3), random.randint(1, 4)
+        b = random.randint(-5, 5)
+        x2 = x1 + dx
+        y1, y2 = a * x1 + b, a * x2 + b
+        opts, ci, ft = _num_options(a, [dx, -a, a + 1, a - 1, y2 - y1])
+        return _pack(f"Wykres funkcji liniowej przechodzi przez punkty A = ({x1}, {y1}) i B = ({x2}, {y2}). Oblicz współczynnik kierunkowy tej funkcji.",
+                     opts, ci, ft, f"a = (y₂ − y₁) ÷ (x₂ − x₁) = ({y2} − {y1}) ÷ ({x2} − {x1}) = {y2 - y1} ÷ {dx} = {a}.",
+                     "funkcja liniowa", "współczynnik kierunkowy", "oblicz a z dwóch punktów", ("slope_two_points", x1, y1, x2, y2, a))
+    if kind == "zero":
+        a = random.choice([-4, -3, -2, 2, 3, 4, 5])
+        x0 = random.randint(-6, 6)
+        b = -a * x0
+        opts, ci, ft = _num_options(x0, [-x0, b, a, -b])
+        return _pack(f"Wyznacz miejsce zerowe funkcji liniowej f(x) = {_lin_expr(a, b)}.",
+                     opts, ci, ft, f"Rozwiązujemy {_lin_expr(a, b)} = 0, więc x = {-b} ÷ {a} = {x0}.",
+                     "funkcja liniowa", "miejsce zerowe", "oblicz miejsce zerowe", ("zero", a, b, x0))
+    if kind == "value_at":
+        a, b, x = random.choice([-3, -2, 2, 3, 4]), random.randint(-6, 6), random.randint(-4, 5)
+        true = a * x + b
+        opts, ci, ft = _num_options(true, [a * x - b, a + x + b, -a * x + b])
+        return _pack(f"Funkcja liniowa jest określona wzorem f(x) = {_lin_expr(a, b)}. Oblicz f({x}).",
+                     opts, ci, ft, f"f({x}) = {a}·({x}) + ({b}) = {true}.",
+                     "funkcja liniowa", "wartość funkcji", "oblicz wartość funkcji", ("value_at", a, b, x, true))
+    if kind == "line_from_two_points":
+        a, b = random.choice([-3, -2, -1, 1, 2, 3]), random.randint(-4, 4)
+        x1, x2 = random.randint(-2, 1), random.randint(2, 4)
+        y1, y2 = a * x1 + b, a * x2 + b
+        true = _line_str(a, b)
+        opts, ci, ft = _text_options(true, [_line_str(-a, b), _line_str(a, -b), _line_str(b if b else 1, a), _line_str(a, b + 1)])
+        return _pack(f"Prosta przechodzi przez punkty ({x1}, {y1}) i ({x2}, {y2}). Wskaż równanie tej prostej.", opts, ci, ft,
+                     f"a = ({y2} − {y1}) ÷ ({x2} − {x1}) = {a}. Z punktu ({x1}, {y1}): b = {y1} − {a}·({x1}) = {b}. Zatem {true}.",
+                     "funkcja liniowa", "równanie prostej", "wyznacz równanie z dwóch punktów", ("line_from_two_points", x1, y1, x2, y2, a, b))
+    if kind == "line_slope_point":
+        a, x0, y0 = random.choice([-2, -1, 1, 2, 3]), random.randint(-3, 3), random.randint(-4, 4)
+        b = y0 - a * x0
+        true = _line_str(a, b)
+        opts, ci, ft = _text_options(true, [_line_str(a, y0), _line_str(a, y0 + a * x0), _line_str(-a, b), _line_str(a, -b)])
+        return _pack(f"Prosta o współczynniku kierunkowym {a} przechodzi przez punkt ({x0}, {y0}). Wskaż równanie tej prostej.", opts, ci, ft,
+                     f"y = {a}x + b, a punkt ({x0}, {y0}) daje {y0} = {a}·({x0}) + b, czyli b = {b}. Zatem {true}.",
+                     "funkcja liniowa", "równanie prostej", "wyznacz równanie ze współczynnika i punktu", ("line_slope_point", a, x0, y0, b))
+    a, b, x0 = random.choice([-2, -1, 2, 3]), random.randint(-4, 4), random.randint(-3, 3)   # parallel
+    y0 = random.randint(-4, 4)
+    c = y0 - a * x0
+    while c == b:   # rownolegla = INNA prosta o tym samym wspolczynniku (nie ta sama prosta)
+        y0 = random.randint(-4, 4)
+        c = y0 - a * x0
+    true = _line_str(a, c)
+    opts, ci, ft = _text_options(true, [_line_str(a, b), _line_str(-a, c), _line_str(a, y0), _line_str(-a if a else 1, -c)])
+    return _pack(f"Prosta k ma równanie {_line_str(a, b)}. Wskaż równanie prostej równoległej do k, przechodzącej przez punkt ({x0}, {y0}).",
+                 opts, ci, ft, f"Proste równoległe mają ten sam współczynnik kierunkowy a = {a}. Punkt ({x0}, {y0}) daje c = {y0} − {a}·({x0}) = {c}. Zatem {true}.",
+                 "funkcja liniowa", "proste równoległe", "wyznacz prostą równoległą", ("parallel", a, x0, y0, c))
+
+
+# ---------------------------- FUNKCJA KWADRATOWA ----------------------------
+def _poly_str(a, b, c):
+    def term(coef, var, first):
+        if coef == 0:
+            return ""
+        s = "−" if coef < 0 else ("" if first else "+")
+        mag = abs(coef)
+        body = (var if mag == 1 and var else f"{mag}{var}") if var else str(mag)
+        return (s + body) if first else f" {s} {body}"
+    out = term(a, "x²", True) + term(b, "x", a == 0) + term(c, "", a == 0 and b == 0)
+    return out.replace("+  ", "+ ")
+
+
+def build_safe_quadratic_basic_question() -> dict:
+    kind = random.choice(["roots", "discriminant", "vertex", "viete_sum", "viete_product", "value_at"])
+    if kind == "roots":
+        r1, r2 = random.sample(range(-6, 7), 2)
+        lo, hi = sorted((r1, r2))
+        b, c = -(r1 + r2), r1 * r2
+        true = f"x = {lo} lub x = {hi}"
+        wrongs = [f"x = {-lo} lub x = {-hi}", f"x = {lo} lub x = {-hi}" if lo != hi else f"x = {lo + 1} lub x = {hi}",
+                  f"x = {lo + 1} lub x = {hi + 1}", f"x = {lo - 1} lub x = {hi}"]
+        opts, ci, ft = _text_options(true, [w for w in wrongs if w != true])
+        return _pack(f"Rozwiąż równanie {_poly_str(1, b, c)} = 0.",
+                     opts, ci, ft, f"Δ = {b*b - 4*c} = {(r1 - r2) ** 2}, √Δ = {abs(r1 - r2)}. x₁ = ({-b} − {abs(r1 - r2)}) ÷ 2 = {lo}, x₂ = ({-b} + {abs(r1 - r2)}) ÷ 2 = {hi}.",
+                     "funkcja kwadratowa", "równanie kwadratowe", "rozwiąż równanie kwadratowe", ("roots", lo, hi))
+    if kind == "discriminant":
+        a, b, c = random.choice([1, 1, 2, 3]), random.randint(-7, 7), random.randint(-6, 6)
+        true = b * b - 4 * a * c
+        opts, ci, ft = _num_options(true, [b * b + 4 * a * c, b * b - 2 * a * c, -b * b - 4 * a * c, b - 4 * a * c])
+        return _pack(f"Oblicz wyróżnik Δ trójmianu kwadratowego f(x) = {_poly_str(a, b, c)}.", opts, ci, ft,
+                     f"Δ = b² − 4ac = ({b})² − 4·{a}·({c}) = {b*b} − ({4*a*c}) = {true}.",
+                     "funkcja kwadratowa", "wyróżnik", "oblicz deltę", ("discriminant", a, b, c, true))
+    if kind == "vertex":
+        p, q = random.randint(-5, 5), random.randint(-8, 8)
+        b, c = -2 * p, p * p + q
+        true = f"({p}, {q})"
+        opts, ci, ft = _text_options(true, [f"({-p}, {q})", f"({p}, {c})", f"({-p}, {-q})", f"({q}, {p})"])
+        return _pack(f"Wyznacz współrzędne wierzchołka paraboli będącej wykresem funkcji f(x) = {_poly_str(1, b, c)}.", opts, ci, ft,
+                     f"p = −b ÷ (2a) = {-b} ÷ 2 = {p}, q = f({p}) = {q}. Zatem W = {true}.",
+                     "funkcja kwadratowa", "wierzchołek paraboli", "oblicz wierzchołek", ("vertex", b, c, p, q))
+    if kind in ("viete_sum", "viete_product"):
+        a = random.choice([1, 1, 2])
+        r1, r2 = random.sample(range(-5, 7), 2)
+        b, c = -a * (r1 + r2), a * r1 * r2
+        if kind == "viete_sum":
+            true = r1 + r2
+            opts, ci, ft = _num_options(true, [-true, c, r1 * r2, a * true])
+            q = f"Równanie {_poly_str(a, b, c)} = 0 ma dwa różne pierwiastki rzeczywiste x₁ i x₂. Oblicz x₁ + x₂."
+            expl = f"Ze wzorów Viète'a: x₁ + x₂ = −b ÷ a = {-b} ÷ {a} = {true}."
+            return _pack(q, opts, ci, ft, expl, "funkcja kwadratowa", "wzory Viète'a", "oblicz sumę pierwiastków", ("viete_sum", a, b, c, true))
+        true = r1 * r2
+        opts, ci, ft = _num_options(true, [-true, r1 + r2, c, a * true])
+        q = f"Równanie {_poly_str(a, b, c)} = 0 ma dwa różne pierwiastki rzeczywiste x₁ i x₂. Oblicz x₁ · x₂."
+        expl = f"Ze wzorów Viète'a: x₁ · x₂ = c ÷ a = {c} ÷ {a} = {true}."
+        return _pack(q, opts, ci, ft, expl, "funkcja kwadratowa", "wzory Viète'a", "oblicz iloczyn pierwiastków", ("viete_product", a, b, c, true))
+    a, b, c, x = random.choice([1, 2, -1]), random.randint(-5, 5), random.randint(-6, 6), random.randint(-3, 4)
+    true = a * x * x + b * x + c
+    opts, ci, ft = _num_options(true, [a * x * x - b * x + c, a * x + b * x + c, a * x * x + b * x - c])
+    return _pack(f"Funkcja kwadratowa jest określona wzorem f(x) = {_poly_str(a, b, c)}. Oblicz f({x}).", opts, ci, ft,
+                 f"f({x}) = {a}·({x})² + ({b})·({x}) + ({c}) = {true}.", "funkcja kwadratowa", "wartość funkcji", "oblicz wartość funkcji", ("value_at", a, b, c, x, true))
+
+
+# ---------------------------- LOGARYTMY ----------------------------
+def build_safe_logarithm_question() -> dict:
+    kind = random.choice(["log_value", "log_sum", "log_diff", "solve_x", "log_of_power"])
+    b = random.choice([2, 3, 5, 10])
+    if kind == "log_value":
+        k = random.randint(2, 5) if b != 10 else random.randint(2, 4)
+        n = b ** k
+        opts, ci, ft = _num_options(k, [b, n // b if b else k, k + b, n - b])
+        return _pack(f"Oblicz log_{b} {n}.", opts, ci, ft, f"{b}^{k} = {n}, więc log_{b} {n} = {k}.",
+                     "logarytmy", "wartość logarytmu", "oblicz logarytm", ("log_value", b, k))
+    if kind == "log_sum":
+        m, n = random.randint(1, 3), random.randint(1, 3)
+        true = m + n
+        opts, ci, ft = _num_options(true, [m * n, b ** true, abs(m - n) or 1])
+        return _pack(f"Oblicz wartość wyrażenia: log_{b} {b**m} + log_{b} {b**n}.", opts, ci, ft,
+                     f"log_{b} {b**m} = {m}, log_{b} {b**n} = {n}, więc suma to {true}.", "logarytmy", "suma logarytmów", "oblicz sumę logarytmów", ("log_sum", b, m, n))
+    if kind == "log_diff":
+        m, n = random.randint(3, 6), random.randint(1, 2)
+        true = m - n
+        opts, ci, ft = _num_options(true, [m + n, m * n, b ** true])
+        return _pack(f"Oblicz wartość wyrażenia: log_{b} {b**m} − log_{b} {b**n}.", opts, ci, ft,
+                     f"log_{b} {b**m} = {m}, log_{b} {b**n} = {n}, więc różnica to {true}.", "logarytmy", "różnica logarytmów", "oblicz różnicę logarytmów", ("log_diff", b, m, n))
+    if kind == "solve_x":
+        k = random.randint(2, 4)
+        true = b ** k
+        opts, ci, ft = _num_options(true, [b * k, k ** b, b + k, b ** (k + 1)])
+        return _pack(f"Wyznacz x, jeżeli log_{b} x = {k}.", opts, ci, ft, f"Z definicji logarytmu x = {b}^{k} = {true}.",
+                     "logarytmy", "równanie logarytmiczne", "wyznacz x z logarytmu", ("solve_x", b, k))
+    k, m = random.randint(2, 4), random.randint(2, 4)
+    true = k * m
+    opts, ci, ft = _num_options(true, [k + m, m ** k, k ** m])
+    return _pack(f"Oblicz wartość wyrażenia: log_{b} ({b}^{k})^{m}.".replace(f"({b}^{k})^{m}", f"(({b}^{k})^{m})"), opts, ci, ft,
+                 f"({b}^{k})^{m} = {b}^{k*m}, więc logarytm równa się {true}.", "logarytmy", "logarytm potęgi", "oblicz logarytm potęgi", ("log_of_power", b, k, m))
+
+
+# ---------------------------- CIAGI ----------------------------
+def build_safe_sequence_basic_question() -> dict:
+    kind = random.choice(["arith_nth", "arith_r", "arith_sum", "geo_nth", "geo_q", "geo_sum", "arith_find_n"])
+    if kind == "arith_nth":
+        a1, r, n = random.randint(-5, 10), random.choice([-3, -2, 2, 3, 4, 5]), random.randint(6, 15)
+        true = a1 + (n - 1) * r
+        opts, ci, ft = _num_options(true, [a1 + n * r, a1 * r * n, a1 + (n - 2) * r, a1 + (n + 1) * r])
+        return _pack(f"Ciąg arytmetyczny ma pierwszy wyraz a₁ = {a1} i różnicę r = {r}. Oblicz a{_sub(n)}.", opts, ci, ft,
+                     f"a{_sub(n)} = a₁ + (n − 1)·r = {a1} + {n - 1}·({r}) = {true}.", "ciągi", "n-ty wyraz ciągu arytmetycznego", "oblicz wyraz", ("arith_nth", a1, r, n, true))
+    if kind == "arith_r":
+        a1, r = random.randint(-4, 8), random.choice([-3, -2, 2, 3, 4, 5])
+        m, n = random.randint(2, 4), random.randint(6, 10)
+        am, an = a1 + (m - 1) * r, a1 + (n - 1) * r
+        opts, ci, ft = _num_options(r, [an - am, (an - am) // (n + m) if (n + m) else r, -r, r + 1])
+        return _pack(f"W ciągu arytmetycznym a{_sub(m)} = {am} oraz a{_sub(n)} = {an}. Oblicz różnicę r tego ciągu.", opts, ci, ft,
+                     f"r = (a{_sub(n)} − a{_sub(m)}) ÷ ({n} − {m}) = ({an} − ({am})) ÷ {n - m} = {r}.", "ciągi", "różnica ciągu", "oblicz różnicę", ("arith_r", m, am, n, an, r))
+    if kind == "arith_sum":
+        a1, r, n = random.randint(-3, 9), random.choice([1, 2, 3, 4, 5]), random.randint(5, 12)
+        true = n * (2 * a1 + (n - 1) * r) // 2
+        opts, ci, ft = _num_options(true, [n * (a1 + (n - 1) * r), n * (2 * a1 + n * r) // 2, n * a1 + (n - 1) * r, (2 * a1 + (n - 1) * r) // 2])
+        return _pack(f"Ciąg arytmetyczny ma a₁ = {a1} i r = {r}. Oblicz sumę {n} pierwszych wyrazów tego ciągu.", opts, ci, ft,
+                     f"S{_sub(n)} = n·(2a₁ + (n − 1)·r) ÷ 2 = {n}·({2*a1} + {(n-1)*r}) ÷ 2 = {true}.", "ciągi", "suma ciągu arytmetycznego", "oblicz sumę", ("arith_sum", a1, r, n, true))
+    if kind == "geo_nth":
+        b1, q, n = random.choice([1, 2, 3, 4, 5]), random.choice([2, 3, -2]), random.randint(3, 6)
+        true = b1 * q ** (n - 1)
+        opts, ci, ft = _num_options(true, [b1 * q ** n, b1 * q * (n - 1), b1 + q * (n - 1), (b1 * q) ** (n - 1)])
+        return _pack(f"Ciąg geometryczny ma pierwszy wyraz b₁ = {b1} i iloraz q = {q}. Oblicz b{_sub(n)}.", opts, ci, ft,
+                     f"b{_sub(n)} = b₁·q^(n−1) = {b1}·({q})^{n-1} = {true}.", "ciągi", "n-ty wyraz ciągu geometrycznego", "oblicz wyraz", ("geo_nth", b1, q, n, true))
+    if kind == "geo_q":
+        b1, q = random.choice([1, 2, 3, 5]), random.choice([2, 3, 4])
+        m, n = random.randint(1, 2), random.randint(4, 5)
+        bm, bn = b1 * q ** (m - 1), b1 * q ** (n - 1)
+        opts, ci, ft = _num_options(q, [q + 1, q - 1 if q > 2 else q + 2, q * 2, bn // bm])
+        return _pack(f"W ciągu geometrycznym b{_sub(m)} = {bm} oraz b{_sub(n)} = {bn}. Oblicz iloraz q (q > 0).", opts, ci, ft,
+                     f"b{_sub(n)} ÷ b{_sub(m)} = q^{n - m}, więc q^{n-m} = {bn // bm}, a q = {q}.", "ciągi", "iloraz ciągu geometrycznego", "oblicz iloraz", ("geo_q", m, bm, n, bn, q))
+    if kind == "geo_sum":
+        b1, q, n = random.choice([1, 2, 3, 5]), random.choice([2, 3]), random.randint(3, 5)
+        true = b1 * (q ** n - 1) // (q - 1)
+        opts, ci, ft = _num_options(true, [b1 * q ** n, b1 * (q ** n - 1), b1 * q ** (n - 1), true + b1])
+        return _pack(f"Ciąg geometryczny ma b₁ = {b1} i q = {q}. Oblicz sumę {n} pierwszych wyrazów tego ciągu.", opts, ci, ft,
+                     f"S{_sub(n)} = b₁·(qⁿ − 1) ÷ (q − 1) = {b1}·({q ** n} − 1) ÷ {q - 1} = {true}.", "ciągi", "suma ciągu geometrycznego", "oblicz sumę", ("geo_sum", b1, q, n, true))
+    a1, r, n = random.randint(1, 8), random.choice([2, 3, 4, 5]), random.randint(6, 14)   # arith_find_n
+    an = a1 + (n - 1) * r
+    opts, ci, ft = _num_options(n, [n + 1, n - 1, an // r if r else n, n + 2])
+    return _pack(f"Ciąg arytmetyczny ma a₁ = {a1} i r = {r}. Który wyraz tego ciągu jest równy {an}?", opts, ci, ft,
+                 f"{an} = {a1} + (n − 1)·{r}, więc n − 1 = {(an - a1) // r} i n = {n}.", "ciągi", "numer wyrazu", "znajdź numer wyrazu", ("arith_find_n", a1, r, n, an))
+
+
+_SUBS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+
+def _sub(n):
+    return str(n).translate(_SUBS)
+
+
+# ---------------------------- TRYGONOMETRIA (wartosci) ----------------------------
+_TRIG = {
+    ("sin", 30): _sp_hs.Rational(1, 2), ("sin", 45): _sp_hs.sqrt(2) / 2, ("sin", 60): _sp_hs.sqrt(3) / 2, ("sin", 90): _sp_hs.Integer(1),
+    ("cos", 30): _sp_hs.sqrt(3) / 2, ("cos", 45): _sp_hs.sqrt(2) / 2, ("cos", 60): _sp_hs.Rational(1, 2), ("cos", 90): _sp_hs.Integer(0),
+    ("tg", 30): _sp_hs.sqrt(3) / 3, ("tg", 45): _sp_hs.Integer(1), ("tg", 60): _sp_hs.sqrt(3),
+}
+_TRIG_TEXT = {"1/2": "1/2", "sqrt(2)/2": "√2/2", "sqrt(3)/2": "√3/2", "1": "1", "0": "0", "sqrt(3)/3": "√3/3", "sqrt(3)": "√3",
+              "3/2": "3/2", "2": "2", "sqrt(2)": "√2", "1/4": "1/4", "3/4": "3/4", "1 + sqrt(3)/2": "1 + √3/2"}
+
+
+def _trig_text(v):
+    import re as _re
+    v = _sp_hs.simplify(v)
+    if str(v) in _TRIG_TEXT:
+        return _TRIG_TEXT[str(v)]
+    t = _re.sub(r"sqrt\((\d+)\)", "√" + chr(92) + "1", str(v))   # sqrt(3) -> √3
+    return t.replace("*", "")                            # 3*√3/2 -> 3√3/2
+
+
+def _trig_name(f, a):
+    return f"{f} {a}°"
+
+
+def build_safe_trig_values_question() -> dict:
+    kind = random.choice(["single", "sum", "product", "squares", "diff"])
+    keys = list(_TRIG.keys())
+    if kind == "single":
+        f, a = random.choice(keys)
+        true = _TRIG[(f, a)]
+        expr, expl = _trig_name(f, a), f"{_trig_name(f, a)} = {_trig_text(true)}."
+        q = f"Oblicz wartość: {expr}."
+    elif kind == "sum":
+        (f1, a1), (f2, a2) = random.sample(keys, 2)
+        true = _TRIG[(f1, a1)] + _TRIG[(f2, a2)]
+        q = f"Oblicz wartość wyrażenia: {_trig_name(f1, a1)} + {_trig_name(f2, a2)}."
+        expl = f"{_trig_name(f1, a1)} = {_trig_text(_TRIG[(f1, a1)])}, {_trig_name(f2, a2)} = {_trig_text(_TRIG[(f2, a2)])}. Suma: {_trig_text(true)}."
+    elif kind == "diff":
+        (f1, a1), (f2, a2) = random.sample(keys, 2)
+        true = _TRIG[(f1, a1)] - _TRIG[(f2, a2)]
+        q = f"Oblicz wartość wyrażenia: {_trig_name(f1, a1)} − {_trig_name(f2, a2)}."
+        expl = f"{_trig_name(f1, a1)} = {_trig_text(_TRIG[(f1, a1)])}, {_trig_name(f2, a2)} = {_trig_text(_TRIG[(f2, a2)])}. Różnica: {_trig_text(true)}."
+    elif kind == "product":
+        (f1, a1), (f2, a2) = random.sample(keys, 2)
+        true = _TRIG[(f1, a1)] * _TRIG[(f2, a2)]
+        q = f"Oblicz wartość wyrażenia: {_trig_name(f1, a1)} · {_trig_name(f2, a2)}."
+        expl = f"{_trig_name(f1, a1)} = {_trig_text(_TRIG[(f1, a1)])}, {_trig_name(f2, a2)} = {_trig_text(_TRIG[(f2, a2)])}. Iloczyn: {_trig_text(true)}."
+    else:
+        a = random.choice([30, 45, 60])
+        true = _TRIG[("sin", a)] ** 2 + _TRIG[("cos", a)] ** 2
+        q = f"Oblicz wartość wyrażenia: sin² {a}° + cos² {a}°."
+        expl = f"Z jedynki trygonometrycznej sin²α + cos²α = 1 dla każdego kąta α."
+        key = ("squares", a)
+    if kind != "squares":
+        key = (kind, q)
+    true = _sp_hs.simplify(true)
+    ft = _trig_text(true)
+    pool = {_trig_text(_sp_hs.simplify(v)) for v in _TRIG.values()} | {"1/4", "3/4", "3/2", "2", "√2"}
+    pool.discard(ft)
+    wrong = random.sample(sorted(pool), 3)
+    opts, ci, ft = _text_options(ft, wrong)
+    return _pack(q, opts, ci, ft, expl, "trygonometria", "wartości funkcji trygonometrycznych", "oblicz wartość wyrażenia", key)
+
+
+# ---------------------------- GEOMETRIA ANALITYCZNA ----------------------------
+def build_safe_analytic_geometry_question() -> dict:
+    kind = random.choice(["distance", "midpoint", "line_through_points"])
+    if kind == "distance":
+        dx, dy = random.choice([(3, 4), (4, 3), (6, 8), (8, 6), (5, 12), (12, 5), (9, 12), (0, 5), (7, 0)])
+        sx, sy = random.choice([-1, 1]), random.choice([-1, 1])
+        x1, y1 = random.randint(-5, 5), random.randint(-5, 5)
+        x2, y2 = x1 + sx * dx, y1 + sy * dy
+        true = int(round((dx * dx + dy * dy) ** 0.5))
+        opts, ci, ft = _num_options(true, [dx + dy, dx * dy, true + 2, abs(dx - dy) or true + 3])
+        return _pack(f"Oblicz odległość punktów A = ({x1}, {y1}) i B = ({x2}, {y2}).", opts, ci, ft,
+                     f"|AB| = √[({x2} − ({x1}))² + ({y2} − ({y1}))²] = √({dx*dx} + {dy*dy}) = √{dx*dx + dy*dy} = {true}.",
+                     "geometria analityczna", "odległość punktów", "oblicz odległość", ("distance", x1, y1, x2, y2, true))
+    if kind == "midpoint":
+        mx, my = random.randint(-5, 5), random.randint(-5, 5)
+        dx, dy = random.randint(1, 5), random.randint(1, 5)
+        x1, y1, x2, y2 = mx - dx, my - dy, mx + dx, my + dy
+        true = f"({mx}, {my})"
+        opts, ci, ft = _text_options(true, [f"({x2 - x1}, {y2 - y1})", f"({mx}, {my + 1})", f"({-mx}, {my})", f"({mx + dx}, {my})"])
+        return _pack(f"Wyznacz współrzędne środka odcinka AB, gdzie A = ({x1}, {y1}) i B = ({x2}, {y2}).", opts, ci, ft,
+                     f"S = (({x1} + {x2}) ÷ 2, ({y1} + {y2}) ÷ 2) = ({mx}, {my}).",
+                     "geometria analityczna", "środek odcinka", "oblicz środek odcinka", ("midpoint", x1, y1, x2, y2, mx, my))
+    a, b = random.choice([-3, -2, -1, 1, 2, 3]), random.randint(-4, 4)
+    x1, x2 = random.randint(-2, 1), random.randint(2, 4)
+    y1, y2 = a * x1 + b, a * x2 + b
+    true = _line_str(a, b)
+    opts, ci, ft = _text_options(true, [_line_str(-a, b), _line_str(a, -b), _line_str(b if b else 2, a), _line_str(a, b + 1)])
+    return _pack(f"Wskaż równanie prostej przechodzącej przez punkty A = ({x1}, {y1}) i B = ({x2}, {y2}).", opts, ci, ft,
+                 f"a = ({y2} − {y1}) ÷ ({x2} − {x1}) = {a}, b = {y1} − {a}·({x1}) = {b}. Zatem {true}.",
+                 "geometria analityczna", "równanie prostej", "wyznacz równanie prostej", ("line_through_points", x1, y1, x2, y2, a, b))
+
+
+# ---------------------------- MIESZANKA WG POZIOMU ----------------------------
+_HS_BUILDERS = {
+    "powers_roots": build_safe_powers_roots_question, "linear_function": build_safe_linear_function_question,
+    "quadratic_basic": build_safe_quadratic_basic_question, "logarithm": build_safe_logarithm_question,
+    "sequence_basic": build_safe_sequence_basic_question, "trig_values": build_safe_trig_values_question,
+    "analytic_geometry": build_safe_analytic_geometry_question,
+}
+# Zakres wg programu poziomu (patrz SUBJECT_SCOPE w level_config.py, przedmiot: matematyka)
+_HS_LEVEL_POOLS = {
+    "liceum_1": ["powers_roots", "linear_function", "quadratic_basic", "logarithm"],
+    "technikum_1": ["powers_roots", "linear_function", "quadratic_basic"],
+    "liceum_2": ["sequence_basic", "trig_values"],
+    "technikum_2": ["logarithm", "trig_values", "analytic_geometry"],
+    "technikum_3": ["sequence_basic", "trig_values"],
+    "matura_podstawowa": ["linear_function", "quadratic_basic", "sequence_basic", "trig_values", "powers_roots"],
+}
+# Tytuly zgodne z programem poziomu (uzywane tez przez walidacje zakresu "samo wybiera" - level_config.validate_generic_topic)
+_HS_LEVEL_TITLES = {
+    "liceum_1": "Potęgi i pierwiastki, funkcja liniowa i kwadratowa, logarytmy - Quiz",
+    "technikum_1": "Potęgi i pierwiastki, funkcja liniowa i kwadratowa - Quiz",
+    "liceum_2": "Trygonometria, ciąg arytmetyczny i ciąg geometryczny - Quiz",
+    "technikum_2": "Logarytmy, trygonometria i geometria analityczna - Quiz",
+    "technikum_3": "Trygonometria i ciągi arytmetyczne i geometryczne - Quiz",
+    "matura_podstawowa": "Funkcja liniowa i kwadratowa, ciągi, trygonometria - Quiz",
+}
+
+
+def hs_math_title(level: str) -> str:
+    return _HS_LEVEL_TITLES.get(level or "", "Matematyka - Quiz")
+
+
+def hs_math_level_supported(level: str) -> bool:
+    return (level or "") in _HS_LEVEL_POOLS
+
+
+def generate_safe_hs_math_batch(n: int, level: str) -> list:
+    """`n` pytan z ogolnej matematyki dla poziomu `level` (mieszanka rodzajow wg programu) -
+    UNIKALNE (rodzaj, parametry), zero wywolan AI."""
+    pool = _HS_LEVEL_POOLS.get(level or "")
+    if not pool:
+        return []
+    results, seen = [], set()
+    for _ in range(max(80, n * 12)):
+        if len(results) >= n:
+            break
+        name = pool[len(results) % len(pool)] if random.random() < 0.5 else random.choice(pool)
+        q = _HS_BUILDERS[name]()
+        fk = (name,) + tuple(q.pop("_fact_key"))
+        if fk in seen or len(set(q["options"])) != 4:
+            continue
+        seen.add(fk)
+        results.append(q)
+    return results
