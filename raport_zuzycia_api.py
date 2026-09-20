@@ -15,6 +15,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 PRICES = {  # (wejscie, wyjscie) USD / 1M tokenow - PRZYBLIZONE
     "gpt-4o-mini": (0.15, 0.60),
     "gpt-4o": (2.50, 10.00),
+    "deepseek-flash": (0.30, 1.20),   # DeepSeek (20.09.2026): 0.15/0.60 poza szczytem, 0.30/1.20 w szczycie - liczymy gorszy przypadek
     # glos (19.09.2026): realtime liczone z response.done; ceny gpt-4o-realtime-preview
     "realtime-text": (5.00, 20.00),
     "realtime-audio": (40.00, 80.00),

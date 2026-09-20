@@ -33,6 +33,7 @@ from .level_config import (
     get_integral_difficulty_anchor, is_integral_topic,
 )
 from . import usage_tracker as _usage_tracker
+from . import llm_router as _llm_router
 from .math_verify import (
     verify_and_fix_math_question, match_final_answer_index,
     shuffle_options_preserving_correct, log_unverifiable_diagnostic,
@@ -2463,7 +2464,8 @@ LICZBA PYTAN = {liczba_pytan}. Ani wiecej, ani mniej."""
                 # force_model (19.09.2026): eskalacja gpt-4o-mini -> gpt-4o
                 # w grace/rescue (port z Quizu, patrz openai_exam.py:
                 # real A/B - trygonometria 8/12 -> 12/12). None = tani domyslny.
-                r = self.client.chat.completions.create(
+                r = _llm_router.create_sync(
+                    self.client, _llm_router.is_math(przedmiot, temat),
                     model=force_model or "gpt-4o-mini",
                     messages=[
                         {"role": "system", "content":

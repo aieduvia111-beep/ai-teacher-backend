@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI
 from . import usage_tracker as _usage_tracker
+from . import llm_router as _llm_router
 from .config import settings
 from .level_config import (
     describe_level, validate_generic_topic, get_forced_fallback_topic,
@@ -1385,7 +1386,8 @@ ZASADY:
     # TYLKO rundy, ktore juz wiadomo ze sa w klopotach (grace/rescue) na
     # mocniejszy model - plati sie premium TYLKO tam, gdzie dane pokazuja
     # realna potrzebe.
-    response = await client.chat.completions.create(
+    response = await _llm_router.create_async(
+        client, _llm_router.is_math(subject, topic),
         model=force_model or "gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
