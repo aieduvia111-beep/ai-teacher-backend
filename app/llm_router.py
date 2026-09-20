@@ -37,8 +37,8 @@ def enabled() -> bool:
 
 def _subjects() -> tuple:
     """Przedmioty kierowane do DeepSeek: fragmenty nazw (male litery), z DEEPSEEK_SUBJECTS (po przecinku).
-    Domyslnie matematyka, fizyka i chemia (przedmioty rachunkowe, bez danych osobowych w zadaniach)."""
-    raw = os.environ.get("DEEPSEEK_SUBJECTS", "matem,fizyk,chem")
+    Domyslnie matematyka, fizyka, chemia i geografia (rachunkowe / tanie na DeepSeek wg testow 20.09.2026; biologia i historia: DeepSeek szybszy, ale nie tanszy - zostaja na OpenAI)."""
+    raw = os.environ.get("DEEPSEEK_SUBJECTS", "matem,fizyk,chem,geogr")
     return tuple(x.strip().lower() for x in raw.split(",") if x.strip())
 
 
