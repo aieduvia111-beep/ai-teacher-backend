@@ -22,6 +22,8 @@ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 _ALLOWED_EVENTS = {
     "view_pricing", "click_upgrade", "payment_success",
     "payment_cancelled", "blik_setup_cancelled",
+    # 20.09.2026: sciezka "Popros rodzica" i wyczerpanie limitu (patrz limit_modal.js, rodzic.html)
+    "limit_hit", "ask_parent_click", "parent_page_view", "parent_checkout_click",
 }
 
 

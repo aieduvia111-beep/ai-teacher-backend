@@ -39,6 +39,18 @@
     }).catch(function () {});
   }
 
+  // 20.09.2026: pomiar lejka (patrz app/api/analytics.py). Cichy, nigdy nie psuje UI.
+  function track(event, meta) {
+    try {
+      var uid = null;
+      try { uid = localStorage.getItem('eduvia_uid'); } catch (e) {}
+      fetch(BASE + '/api/v1/analytics/track', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+        body: JSON.stringify({ event: event, user_id: uid, meta: meta || {} })
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   var NAMES = {
     chat: 'Chatu AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
@@ -127,6 +139,7 @@
     if (old) old.remove();
 
     var name = NAMES[feature] || feature;
+    track('limit_hit', { feature: feature });
 
     var popup = document.createElement('div');
     popup.id = 'limitPopup';
@@ -249,7 +262,8 @@
   // Messenger - dziecko samo wybiera odbiorce, apka NIGDZIE nie zapisuje
   // numeru/maila rodzica). Bez navigator.share (desktop/stare przegladarki)
   // - link trafia do schowka, zeby dziecko mogl wkleic go recznie.
-  function askParent(btn, featureName) {
+  function askParent(btn, featureName, customText) {
+    track('ask_parent_click', { feature: featureName || 'pricing' });
     if (typeof window._getAuthToken !== 'function') {
       btn.textContent = 'Zaloguj się ponownie, aby wysłać';
       return;
@@ -269,7 +283,7 @@
       return r.json();
     }).then(function (data) {
       if (!data.success || !data.url) throw new Error('brak linku');
-      var text = 'Cześć! Uczę się w Eduvia AI i właśnie wykorzystałem dzisiejszy darmowy limit ' + featureName + '. Włączysz mi Pro? ' + data.url;
+      var text = customText ? (customText + ' ' + data.url) : ('Cześć! Uczę się w Eduvia AI i właśnie wykorzystałem dzisiejszy darmowy limit ' + featureName + '. Włączysz mi Pro? ' + data.url);
       if (navigator.share) {
         navigator.share({ title: 'Eduvia AI', text: text }).catch(function () {});
         btn.disabled = false;
@@ -289,7 +303,9 @@
   window.EduviaLimitModal = {
     show: showLimitPopup,
     close: closeLimitPopup,
-    useLimit: useLimit
+    useLimit: useLimit,
+    askParent: askParent,
+    isIosApp: isIosApp
   };
   // Nazwy globalne zachowane dla wstecznej zgodnosci - kazda strona
   // wywoluje je dzis jako showLimitPopup(...)/useLimit(...) bez prefiksu.

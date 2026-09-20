@@ -197,8 +197,12 @@ async function main(){
   }
 
   show('content');
+  // 20.09.2026: pomiar lejka (publiczna strona, bez logowania - zdarzenie bez user_id).
+  function trackParent(ev){ try{ fetch(BACKEND_URL+'/api/v1/analytics/track',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({event:ev,meta:{source:'parent_share'}})}).catch(function(){}); }catch(e){} }
+  trackParent('parent_page_view');
 
   document.getElementById('signBtn').addEventListener('click', async function(){
+    trackParent('parent_checkout_click');
     const btn=this, err=document.getElementById('signErr');
     err.style.display='none';
     btn.disabled=true; btn.textContent='Łączenie z płatnością…';

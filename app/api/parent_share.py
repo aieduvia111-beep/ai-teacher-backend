@@ -25,10 +25,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import User
+from ..models import User, FunnelEvent
 from ..firebase_auth import get_verified_firebase_user
 from ..services.stripe_service import _fdb
-from ..services.blik_service import BlikService
 
 router = APIRouter(prefix="/api/v1/parent-share", tags=["parent-share"])
 
@@ -101,6 +100,19 @@ def _get_student_stats(firebase_uid: str) -> dict:
     }
 
 
+def _log_event(db, event: str, uid: str) -> None:
+    """Zapis zdarzenia lejka po stronie serwera (zero PII). Nigdy nie rzuca."""
+    try:
+        db.add(FunnelEvent(event=event, user_id=uid, meta={"source": "parent_share"}))
+        db.commit()
+    except Exception as e:
+        print(f"[parent-share] log zdarzenia '{event}' pominiety: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+
 @router.post("/create")
 def create_share_link(
     db: Session = Depends(get_db),
@@ -124,6 +136,7 @@ def create_share_link(
     db.commit()
 
     url = f"{PARENT_SHARE_DOMAIN}/rodzic.html?t={token}"
+    _log_event(db, "parent_link_created", uid)
     return {"success": True, "token": token, "url": url, "expires_in_hours": TOKEN_TTL_HOURS}
 
 
@@ -157,9 +170,17 @@ def checkout_from_share_link(token: str, db: Session = Depends(get_db)):
     is_premium na koncie dziecka) - zero osobnej, rownoleglej logiki
     platnosci do utrzymania."""
     user = _resolve_token(token, db)
-    result = BlikService.create_setup_session(
-        user_id=user.firebase_uid,
-        email=user.email,
-        db=db,
+    # 20.09.2026: TA SAMA sciezka co przycisk "Kup Pro" w apce (create_checkout:
+    # karta+BLIK w subskrypcji, blokada ponownego triala, zapis wyniku do lejka).
+    # Wczesniej wolala stary BlikService.create_setup_session (tylko karta, bez
+    # blokady triala i bez logowania).
+    from .payments import create_checkout, CreateCheckoutRequest
+    result = create_checkout(
+        CreateCheckoutRequest(user_id=user.firebase_uid, email=user.email or ""),
+        db,
+        {"uid": user.firebase_uid, "email": user.email},
     )
+    if result.get("already_subscribed"):
+        result = {"success": False, "error": "To konto ma już aktywną subskrypcję Pro."}
+    _log_event(db, "parent_checkout_created" if result.get("success") else "parent_checkout_failed", user.firebase_uid)
     return result

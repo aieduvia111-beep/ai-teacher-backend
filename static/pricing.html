@@ -229,6 +229,7 @@ onAuthStateChanged(auth,async(user)=>{
     // sprawdzana z OBU stron (przed pokazaniem I po, na wypadek gdyby
     // baner zdazyl sie juz pokazac zanim ten async fetch planu sie skonczyl).
     window.userIsPro = true;
+    var _apb = document.getElementById('askParentPricingBtn'); if (_apb) _apb.style.display = 'none';
     if (typeof window.hidePromoIfPro === 'function') window.hidePromoIfPro();
   }
 });
@@ -330,6 +331,10 @@ window._currentUser=()=>currentUser;
     <button class="plan-btn primary" id="proBuyBtn" onclick="startCheckout()">
       <span id="btnText">Wypróbuj 7 dni za darmo →</span>
       <div class="btn-loader" id="btnLoader"></div>
+    </button>
+    <button class="plan-btn outline" id="askParentPricingBtn" style="display:none;margin-top:-10px;" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Nie masz karty? Poproś rodzica
     </button>
     <div class="plan-divider"></div>
     <div class="plan-feature-label">Wszystko z Free, plus:</div>
@@ -507,7 +512,8 @@ function trackEvent(event, meta){
     }).catch(function(){});
   }catch(e){}
 }
-trackEvent('view_pricing');
+// 20.09.2026: czekamy na odczyt sesji (max 3 s), zeby zdarzenie mialo user_id.
+(window._authReady ? Promise.race([window._authReady, new Promise(function(r){setTimeout(r,3000);})]) : Promise.resolve()).then(function(){ trackEvent('view_pricing'); }).catch(function(){ trackEvent('view_pricing'); });
 
 // NOWE (07.09.2026, promocja): pobiera aktualny status promocji z backendu
 // (jedno, wspolne zrodlo prawdy - patrz get_promo_status w stripe_service.py)
@@ -814,6 +820,21 @@ if (!isNativeIosApp) {
   });
   history.pushState(null, '', window.location.href);
 }
+</script>
+<script src="limit_modal.js?v=20260920"></script>
+<script>
+// 20.09.2026: "Poproś rodzica" tez z cennika (wczesniej tylko po wyczerpaniu limitu).
+// Ukryte w natywnej apce iOS - zakup przez zewnetrzny link Stripe lamalby zasady App Store.
+(function(){
+  var btn = document.getElementById('askParentPricingBtn');
+  if(!btn || isNativeIosApp) return;
+  btn.style.display = 'flex';
+  btn.addEventListener('click', function(){
+    if(window.EduviaLimitModal && window.EduviaLimitModal.askParent){
+      window.EduviaLimitModal.askParent(btn, 'pricing', 'Cześć! Uczę się w Eduvia AI i chciałbym odblokować Pro. Włączysz mi?');
+    }
+  });
+})();
 </script>
 </body>
 </html>
