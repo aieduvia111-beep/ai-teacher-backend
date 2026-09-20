@@ -28,7 +28,7 @@ def g_draw(self): calls["grid"] += 1; orig_grid(self)
 def l_draw(self): calls["lines"] += 1; orig_lines(self)
 eg.AnswerGrid.draw, eg.AnswerLines.draw = g_draw, l_draw
 
-for przedmiot, expect_grid in (("Matematyka", True), ("Fizyka", True), ("fizyka", True), ("Język polski", False), ("Historia", False), ("Chemia", False)):
+for przedmiot, expect_grid in (("Matematyka", True), ("Fizyka", True), ("fizyka", True), ("Język polski", False), ("Historia", False), ("Chemia", True), ("Biologia", False)):
     calls["grid"] = calls["lines"] = 0
     pdf = eg._build_exam_pages(sample(przedmiot))
     ok = (calls["grid"] == 2 and calls["lines"] == 0) if expect_grid else (calls["lines"] == 2 and calls["grid"] == 0)

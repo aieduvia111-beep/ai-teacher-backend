@@ -17,7 +17,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Flowable
+    PageBreak, Flowable, KeepTogether
 )
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -796,7 +796,7 @@ class AnswerLines(Flowable):
             self.canv.line(0, y, self.width, y)
 
 class AnswerGrid(Flowable):
-    """Kratka (5 mm) na odpowiedz do zadan otwartych z matematyki i fizyki (20.09.2026: zamiast linii).
+    """Kratka (5 mm) na odpowiedz do zadan otwartych z matematyki, fizyki i chemii (20.09.2026: zamiast linii).
     Wysokosc zblizona do AnswerLines o tej samej liczbie 'linii', zaokraglona do pelnych kratek."""
     CELL = 14.17   # 5 mm w punktach
 
@@ -821,9 +821,9 @@ class AnswerGrid(Flowable):
 
 
 def _uses_grid(przedmiot) -> bool:
-    """Kratka dla matematyki i fizyki (zadania rachunkowe), linie dla reszty."""
+    """Kratka dla matematyki, fizyki i chemii (zadania rachunkowe), linie dla reszty."""
     p = (przedmiot or "").lower()
-    return "matem" in p or "fizyk" in p
+    return "matem" in p or "fizyk" in p or "chem" in p
 
 
 class QuestionBox(Flowable):
@@ -865,6 +865,18 @@ class OpenQuestionHeader(Flowable):
         _canvas_pl(c, f"{self.punkty} punktow", self.width - 12, 10, self.width / 2,
                    fontsize=10, color='#FFFFFF', align='right', bg='#7C3AED')
 
+def _short_instruction(text: str, limit: int = 86) -> str:
+    """Polecenie w ramce sekcji miesci sie w jednej linii: tnij na koncu zdania/slowa, nie w srodku."""
+    t = (text or "").strip()
+    if len(t) <= limit:
+        return t
+    cut = t[:limit]
+    k = cut.rfind(". ")
+    if k >= 30:
+        return cut[:k + 1]
+    return cut.rsplit(" ", 1)[0].rstrip(",;:") + "…"
+
+
 class SectionHeader(Flowable):
     """Nagłówek sekcji sprawdzianu."""
     def __init__(self, nazwa, instrukcja, width):
@@ -880,7 +892,7 @@ class SectionHeader(Flowable):
         c.roundRect(0, 0, self.width, self.height, 8, fill=0, stroke=1)
         _canvas_pl(c, self.nazwa, 14, 28, self.width - 28,
                    fontsize=12, color='#4F46E5', bold=True)
-        _canvas_pl(c, self.instrukcja[:90], 14, 12, self.width - 28,
+        _canvas_pl(c, _short_instruction(self.instrukcja), 14, 12, self.width - 28,
                    fontsize=9, color='#6B7280')
 
 # ============================================================
@@ -1254,19 +1266,18 @@ def _build_exam_pages(data: dict) -> bytes:
 
             else:
                 # Zadanie otwarte
-                story.append(OpenQuestionHeader(nr, pkt, W))
-                story.append(Spacer(1, 6))
                 el = _math_line(tresc, W, fontsize=10.5,
                                color='#1E1B4B', bg='#FFFFFF', styl=S['body'])
-                story.append(el)
-                story.append(Spacer(1, 8))
-                # Linie na odpowiedź
+                # Linie / kratka na odpowiedź
                 lines = p.get('miejsce_na_odpowiedz', 4)
                 if _uses_grid(data.get('przedmiot')):
-                    story.append(AnswerGrid(W, lines=lines))
+                    place = AnswerGrid(W, lines=lines)
                 else:
-                    story.append(AnswerLines(W, lines=lines))
-                story.append(Spacer(1, 12))
+                    place = AnswerLines(W, lines=lines)
+                # KeepTogether: naglowek zadania, tresc i miejsce na odpowiedz nie rozdzielaja sie miedzy strony
+                story.append(KeepTogether([
+                    OpenQuestionHeader(nr, pkt, W), Spacer(1, 6), el, Spacer(1, 8), place, Spacer(1, 12),
+                ]))
 
     # Klucz odpowiedzi
     _draw_answer_key_page(story, data, S, W)
