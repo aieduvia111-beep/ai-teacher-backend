@@ -134,6 +134,8 @@ def create_checkout(
             db=db,
             affiliate_code=request.affiliate_code
         )
+        _first_error = None if result.get("success") else str(result.get("error", ""))[:120]
+        _used_fallback = False
         if not result.get("success") and not result.get("already_subscribed"):
             print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
             # Fallback (mode=setup) ZAWSZE daje trial - nie dla kogos, kto juz go mial.
@@ -147,6 +149,28 @@ def create_checkout(
                 db=db,
                 affiliate_code=request.affiliate_code
             )
+            _used_fallback = True
+
+        # 20.09.2026: zapis wyniku tworzenia sesji platnosci do lejka (user: "nikt nie
+        # podaje karty" - nie mielismy danych, czy checkout w ogole sie tworzy).
+        # Zero PII: UID + krotki kod bledu. Blad zapisu NIGDY nie psuje checkoutu.
+        try:
+            from ..models import FunnelEvent
+            db.add(FunnelEvent(
+                event="checkout_created" if result.get("success") else "checkout_failed",
+                user_id=verified_uid,
+                meta={"fallback": _used_fallback,
+                      "already_subscribed": bool(result.get("already_subscribed")),
+                      "first_error": _first_error,
+                      "error": None if result.get("success") else str(result.get("error", ""))[:120]},
+            ))
+            db.commit()
+        except Exception as _e:
+            print(f"[checkout-log] pominiete: {_e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
         return result
         
