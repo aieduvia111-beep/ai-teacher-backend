@@ -167,7 +167,7 @@
       '</button>' +
       '<button onclick="window.EduviaTrialPromo.close()" style="' +
       'width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);' +
-      'border-radius:12px;color:#55556a;font-family:\'DM Sans\',sans-serif;' +
+      'border-radius:12px;color:#55556a;font-family:\'Inter\',sans-serif;' +
       'font-size:.82em;cursor:pointer;transition:all .2s;' +
       '" onmouseover="this.style.borderColor=\'rgba(255,255,255,.15)\';this.style.color=\'#8888a0\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.08)\';this.style.color=\'#55556a\'">' +
       'Nie teraz' +

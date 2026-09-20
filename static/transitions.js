@@ -33,7 +33,7 @@ style.textContent=`
   }
 
   /* TOAST */
-  .edu-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(20,20,32,.97);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:12px 22px;color:#eeeef5;font-family:'DM Sans',sans-serif;font-size:.84em;font-weight:500;z-index:99999;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;pointer-events:none;}
+  .edu-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(20,20,32,.97);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:12px 22px;color:#eeeef5;font-family:'Inter',sans-serif;font-size:.84em;font-weight:500;z-index:99999;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;pointer-events:none;}
   .edu-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .edu-toast.success{border-color:rgba(34,211,160,.3);box-shadow:0 8px 32px rgba(34,211,160,.15);}
   .edu-toast.error{border-color:rgba(248,113,113,.3);box-shadow:0 8px 32px rgba(248,113,113,.15);}
@@ -44,9 +44,9 @@ style.textContent=`
   .edu-offline.show{display:flex;}
   .edu-offline-icon{width:72px;height:72px;border-radius:50%;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);display:flex;align-items:center;justify-content:center;margin-bottom:8px;animation:pulse 2s ease-in-out infinite;}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.2);}50%{box-shadow:0 0 0 12px rgba(248,113,113,0);}}
-  .edu-offline-title{font-family:'Syne',sans-serif;font-size:1.4em;font-weight:800;color:#eeeef5;}
+  .edu-offline-title{font-family:'Inter',sans-serif;font-size:1.4em;font-weight:800;color:#eeeef5;}
   .edu-offline-sub{font-size:.84em;color:#6e6e88;line-height:1.6;max-width:280px;}
-  .edu-offline-btn{margin-top:8px;padding:13px 28px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:100px;color:white;font-family:'Syne',sans-serif;font-size:.88em;font-weight:700;cursor:pointer;transition:all .2s;}
+  .edu-offline-btn{margin-top:8px;padding:13px 28px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:100px;color:white;font-family:'Inter',sans-serif;font-size:.88em;font-weight:700;cursor:pointer;transition:all .2s;}
   .edu-offline-btn:active{transform:scale(.96);}
 
   /* SKELETON */

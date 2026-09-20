@@ -11,7 +11,7 @@
 <title>Eduvia Brain</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07070d;--s1:#0f0f18;--s2:#161622;--s3:#1c1c2e;
@@ -20,7 +20,7 @@
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --blue:#38bdf8;--gold:#f5a623;--red:#f87171;--pink:#f472b6;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100vh;overflow-x:hidden;}
@@ -248,6 +248,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
 .start-btn:hover{background:rgba(124,106,255,.18);transform:translateY(-1px);}
 @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
 </style>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 
@@ -984,7 +985,7 @@ function _showHoleFixed(topic) {
   toast.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
     background:linear-gradient(135deg,rgba(34,211,160,.15),rgba(124,106,255,.15));
     border:1px solid rgba(34,211,160,.4);border-radius:14px;padding:12px 24px;
-    font-family:'Syne',sans-serif;font-weight:800;font-size:.88em;color:#22d3a0;
+    font-family:'Inter',sans-serif;font-weight:800;font-size:.88em;color:#22d3a0;
     z-index:99998;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.4);
     animation:slideUp .3s ease;`;
   toast.textContent = '🎉 Dziura "' + topic + '" naprawiona! +50 Brain Score';

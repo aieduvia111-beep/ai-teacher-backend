@@ -6,7 +6,7 @@ s.textContent=`
 .card,.tool-card,.feat-card,.stat-card,.quick-card,.review-card{transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease!important;}
 .card:active,.tool-card:active,.feat-card:active,.stat-card:active,.quick-card:active,.review-card:active{transform:translateY(-3px) scale(1.01)!important;box-shadow:0 12px 32px rgba(124,106,255,.15)!important;}
 @keyframes xpFloat{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-30px);}}
-.xp-float-pop{position:fixed;font-family:"Syne",sans-serif;font-weight:800;font-size:.9em;color:#22d3a0;pointer-events:none;z-index:9999;animation:xpFloat .9s ease forwards;}
+.xp-float-pop{position:fixed;font-family:"Inter",sans-serif;font-weight:800;font-size:.9em;color:#22d3a0;pointer-events:none;z-index:9999;animation:xpFloat .9s ease forwards;}
 `;
 document.head.appendChild(s);
 

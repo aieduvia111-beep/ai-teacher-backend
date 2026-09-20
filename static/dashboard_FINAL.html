@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Eduvia AI — Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#7c6aff">
   <meta name="mobile-web-app-capable" content="yes">
@@ -24,7 +24,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--b);min-height:100v
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --blue:#38bdf8;--gold:#f5a623;--red:#f87171;--pink:#f472b6;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
   --r:16px;--r2:12px;
 }
 
@@ -1079,8 +1079,8 @@ async function checkLimit(feature) {
 }
 
 function getPlanBadgeHTML(plan) {
-  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
-  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">FREE</span>';
 }
 // Załaduj badge od razu z localStorage (przed Firebase)
 (function(){
@@ -1096,6 +1096,7 @@ function getPlanBadgeHTML(plan) {
 <script src="limit_modal.js?v=6"></script>
 <script src="trial_promo_modal.js?v=4"></script>
 <link rel="stylesheet" href="calendar_picker.css">
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 
 <body style="display:block!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;margin:0!important;">
@@ -1731,7 +1732,7 @@ function showPushPrompt(){
 
   const prompt = document.createElement('div');
   prompt.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;max-width:420px;margin:0 auto;background:linear-gradient(135deg,#0f0f18,#161622);border:1px solid rgba(124,106,255,.3);border-radius:20px;padding:20px;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.5);';
-  prompt.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="width:44px;height:44px;border-radius:12px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;">🔔</div><div><div style="font-family:Syne,sans-serif;font-weight:800;font-size:.95em;color:white;margin-bottom:3px;">Włącz przypomnienia</div><div style="font-size:.78em;color:#8888a0;line-height:1.4;">Otrzymuj codzienne powiadomienia o nauce!</div></div></div><div style="display:flex;gap:10px;"><button id="pushYes" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:12px;color:white;font-family:Syne,sans-serif;font-size:.85em;font-weight:700;cursor:pointer;">🔔 Włącz</button><button id="pushNo" style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#8888a0;font-family:Syne,sans-serif;font-size:.85em;cursor:pointer;">Nie teraz</button></div>';
+  prompt.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="width:44px;height:44px;border-radius:12px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;">🔔</div><div><div style="font-family:Inter,sans-serif;font-weight:800;font-size:.95em;color:white;margin-bottom:3px;">Włącz przypomnienia</div><div style="font-size:.78em;color:#8888a0;line-height:1.4;">Otrzymuj codzienne powiadomienia o nauce!</div></div></div><div style="display:flex;gap:10px;"><button id="pushYes" style="flex:1;padding:12px;background:linear-gradient(135deg,#7c6aff,#5040c8);border:none;border-radius:12px;color:white;font-family:Inter,sans-serif;font-size:.85em;font-weight:700;cursor:pointer;">🔔 Włącz</button><button id="pushNo" style="flex:1;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#8888a0;font-family:Inter,sans-serif;font-size:.85em;cursor:pointer;">Nie teraz</button></div>';
 
   // Doczepione do <html>, nie do <body> - <body> ma ustawiony CSS transform,
   // ktory tworzy wlasny containing block i psuje position:fixed dla dzieci body.

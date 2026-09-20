@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#7c6aff">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="level_picker.css?v=20260831m">
 <script src="level_picker.js?v=20260831m"></script>
 <script src="limit_modal.js?v=6"></script>
@@ -21,7 +21,7 @@
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
@@ -518,8 +518,8 @@ async function checkLimit(feature) {
 }
 
 function getPlanBadgeHTML(plan) {
-  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
-  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">FREE</span>';
 }
 // Załaduj badge od razu z localStorage (przed Firebase)
 (function(){
@@ -531,6 +531,7 @@ function getPlanBadgeHTML(plan) {
 </script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 

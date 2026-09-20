@@ -12,7 +12,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eduvia — AI Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -26,7 +26,7 @@
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;margin:0;padding:0;overflow:hidden;}
@@ -352,9 +352,9 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 @keyframes shimmer{0%{background-position:0% center}50%{background-position:100% center}100%{background-position:0% center}}
 @keyframes logoPulse{0%,100%{box-shadow:0 0 10px rgba(124,106,255,.4)}50%{box-shadow:0 0 22px rgba(124,106,255,.7)}}
 .m-hdr{display:none;position:fixed;top:0;left:0;right:0;height:56px;padding:0 12px 0 14px;background:rgba(7,7,13,.98);backdrop-filter:blur(20px);border-bottom:1px solid rgba(124,106,255,.15);z-index:9000;align-items:center;gap:10px;box-shadow:0 2px 20px rgba(0,0,0,.4);}
-.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Syne',sans-serif;font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
+.m-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Inter',sans-serif;font-weight:800;font-size:.95em;color:white;animation:logoPulse 3s ease-in-out infinite;}
 .m-hdr-info{flex:1;min-width:0;}
-.m-hdr-title{font-family:'Syne',sans-serif;font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
+.m-hdr-title{font-family:'Inter',sans-serif;font-size:.88em;font-weight:800;background:linear-gradient(90deg,#e8e4ff 0%,#a78bfa 30%,#7c6aff 50%,#38bdf8 70%,#22d3a0 90%,#a78bfa 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s ease-in-out infinite;}
 .m-hdr-sub{font-size:.6em;color:#55556a;margin-top:1px;}
 .m-burger{width:36px;height:36px;border-radius:8px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
 .m-burger span{width:16px;height:1.5px;background:#a78bfa;border-radius:2px;transition:.2s;}
@@ -363,10 +363,10 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .m-drawer{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,#0a0a16,#070710);border-right:1px solid rgba(124,106,255,.12);z-index:9200;transform:translateX(-100%);transition:transform .25s ease;padding:20px 12px;overflow-y:auto;}
 .m-drawer.open{transform:translateX(0);}
 .d-brand{display:flex;align-items:center;gap:10px;padding:8px 4px 20px;}
-.d-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:white;font-size:.9em;}
-.d-brand-name{font-family:'Syne',sans-serif;font-size:.9em;font-weight:800;color:white;}
+.d-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c6aff,#4f3fcf);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-weight:800;color:white;font-size:.9em;}
+.d-brand-name{font-family:'Inter',sans-serif;font-size:.9em;font-weight:800;color:white;}
 .d-brand-sub{font-size:.65em;color:#55556a;margin-top:1px;}
-.d-sec{font-family:'Syne',sans-serif;font-size:.55em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#55556a;padding:8px 8px 5px;}
+.d-sec{font-family:'Inter',sans-serif;font-size:.55em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#55556a;padding:8px 8px 5px;}
 .d-link{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;font-size:.82em;color:#8888a0;text-decoration:none;border:1px solid transparent;margin-bottom:2px;transition:.18s;}
 .d-link.active,.d-link:hover{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.2);color:#a78bfa;}
 .m-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;grid-template-columns:repeat(5,minmax(0,1fr));background:rgba(7,7,13,.98);border-top:1px solid rgba(124,106,255,.12);z-index:9000;box-shadow:0 -2px 20px rgba(0,0,0,.4);}
@@ -713,8 +713,8 @@ async function checkLimit(feature) {
 }
 
 function getPlanBadgeHTML(plan) {
-  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
-  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">FREE</span>';
 }
 // Załaduj badge od razu z localStorage (przed Firebase)
 (function(){
@@ -726,6 +726,7 @@ function getPlanBadgeHTML(plan) {
 </script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 <header class="m-hdr" id="mHdr"><div class="m-logo"><span>E</span></div><div class="m-hdr-info"><div class="m-hdr-title">Chat AI</div><div class="m-hdr-sub">Pytaj z każdego przedmiotu</div></div><button onclick="clearChat()" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:6px 10px;color:#f87171;font-size:.72em;font-family:var(--b);cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Wyczyść</button><button onclick="openHistPanel()" style="background:none;border:none;color:var(--muted2);cursor:pointer;padding:4px;display:flex;align-items:center;" title="Historia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button><button class="m-burger" id="mBurger" onclick="mOpen()"><span></span><span></span><span></span></button></header>

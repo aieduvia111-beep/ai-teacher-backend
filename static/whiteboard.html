@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#7c6aff">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="level_picker.css?v=20260831m">
 <script src="level_picker.js?v=20260831m"></script>
 <style>
@@ -21,7 +21,7 @@
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
@@ -391,7 +391,7 @@ button:active{transform:scale(.95)!important;}
 .edu-error svg{flex-shrink:0;}
 
 /* ═══ WHITEBOARD EXTRA CSS ═══ */
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* MAIN CONTENT */
 .wb-wrap{padding:24px 30px;display:flex;flex-direction:column;gap:20px;}
@@ -550,6 +550,7 @@ button:active{transform:scale(.95)!important;}
 .word.said{color:var(--accent2);}
 
 </style>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 
@@ -1123,10 +1124,10 @@ function showLimitPopup(feature,limit){
       <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <div style="font-family:'Syne',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">Limit ${name} wyczerpany</div>
+      <div style="font-family:'Inter',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">Limit ${name} wyczerpany</div>
       <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">Wykorzystałeś ${limit} darmowych kroków z XP dzisiaj. Odnawia się o północy.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!</p>
-      <button onclick="window.location.href='pricing.html'" style="width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);border:none;border-radius:12px;color:white;font-family:'Syne',sans-serif;font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 0 20px rgba(124,106,255,.3);">Kup Pro — bez limitów →</button>
-      <button onclick="document.getElementById('limitPopup').remove()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#55556a;font-family:'DM Sans',sans-serif;font-size:.82em;cursor:pointer;">Może później</button>
+      <button onclick="window.location.href='pricing.html'" style="width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);border:none;border-radius:12px;color:white;font-family:'Inter',sans-serif;font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 0 20px rgba(124,106,255,.3);">Kup Pro — bez limitów →</button>
+      <button onclick="document.getElementById('limitPopup').remove()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#55556a;font-family:'Inter',sans-serif;font-size:.82em;cursor:pointer;">Może później</button>
     </div>`;
   document.body.appendChild(popup);
   popup.addEventListener('click',function(e){if(e.target===popup)popup.remove();});

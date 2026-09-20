@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eduvia — Vision AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -19,7 +19,7 @@
   --green:#22d3a0;--gg:rgba(34,211,160,0.3);
   --gold:#f5a623;--blue:#38bdf8;--pink:#f472b6;--red:#f87171;
   --text:#eeeef5;--muted:#55556a;--muted2:#8888a0;
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
@@ -534,7 +534,7 @@ function showLimitPopup(feature, limit) {
       <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.2),rgba(124,106,255,.05));border:1px solid rgba(124,106,255,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <div style="font-family:'Syne',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">
+      <div style="font-family:'Inter',sans-serif;font-size:1.2em;font-weight:800;color:#eeeef5;margin-bottom:8px;">
         Limit ${name} wyczerpany
       </div>
       <p style="color:#8888a0;font-size:.85em;line-height:1.6;margin-bottom:20px;">
@@ -557,7 +557,7 @@ function showLimitPopup(feature, limit) {
       </div>
       <button onclick="window.location.href='pricing.html'" style="
         width:100%;padding:13px;background:linear-gradient(135deg,#7c6aff,#5b4fcf);
-        border:none;border-radius:12px;color:white;font-family:'Syne',sans-serif;
+        border:none;border-radius:12px;color:white;font-family:'Inter',sans-serif;
         font-size:.88em;font-weight:700;cursor:pointer;margin-bottom:10px;
         box-shadow:0 0 20px rgba(124,106,255,.3);transition:all .2s;letter-spacing:.03em;
       " onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
@@ -565,7 +565,7 @@ function showLimitPopup(feature, limit) {
       </button>
       <button onclick="document.getElementById('limitPopup').remove()" style="
         width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.08);
-        border-radius:12px;color:#55556a;font-family:'DM Sans',sans-serif;
+        border-radius:12px;color:#55556a;font-family:'Inter',sans-serif;
         font-size:.82em;cursor:pointer;transition:all .2s;
       " onmouseover="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#8888a0'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.color='#55556a'">
         Może później
@@ -580,8 +580,8 @@ function showLimitPopup(feature, limit) {
 }
 
 function getPlanBadgeHTML(plan) {
-  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">PRO</span>';
-  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Syne\',sans-serif;letter-spacing:.06em;">FREE</span>';
+  if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">PRO</span>';
+  return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">FREE</span>';
 }
 // Załaduj badge od razu z localStorage (przed Firebase)
 (function(){
@@ -593,6 +593,7 @@ function getPlanBadgeHTML(plan) {
 </script>
 <script src="transitions.js"></script>
 <script src="animations.js"></script>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 

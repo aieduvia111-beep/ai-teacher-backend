@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -17,7 +17,7 @@
   --accent:#7c6aff;--accent2:#a78bfa;--green:#22d3a0;--red:#f87171;--gold:#f5a623;
   --text:#eeeef5;--muted:#44445a;--muted2:#6e6e88;
   --border:rgba(255,255,255,.06);--border-hi:rgba(255,255,255,.1);
-  --h:'Syne',sans-serif;--b:'DM Sans',sans-serif;
+  --h:'Inter',sans-serif;--b:'Inter',sans-serif;
   --gg:rgba(34,211,160,.5);
 }
 html,body{min-height:100%;height:100%;}
@@ -28,16 +28,16 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);display:flex;fl
 .chrome-screen{position:fixed;inset:0;z-index:99999;background:#06060f;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;}
 .chrome-logo{width:80px;height:80px;margin:0 auto 24px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853,#FBBC05,#EA4335);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(66,133,244,.3);}
 .chrome-logo svg{width:44px;height:44px;}
-.chrome-title{font-family:'Syne',sans-serif;font-size:1.5em;font-weight:800;color:white;margin-bottom:12px;}
+.chrome-title{font-family:'Inter',sans-serif;font-size:1.5em;font-weight:800;color:white;margin-bottom:12px;}
 .chrome-sub{font-size:.88em;color:#6e6e88;line-height:1.65;max-width:300px;margin:0 auto 32px;}
-.chrome-install-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;padding:16px;background:linear-gradient(135deg,#4285F4,#1a73e8);border:none;border-radius:14px;color:white;font-family:'Syne',sans-serif;font-size:.95em;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:12px;box-shadow:0 6px 24px rgba(66,133,244,.35);}
+.chrome-install-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;padding:16px;background:linear-gradient(135deg,#4285F4,#1a73e8);border:none;border-radius:14px;color:white;font-family:'Inter',sans-serif;font-size:.95em;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:12px;box-shadow:0 6px 24px rgba(66,133,244,.35);}
 .chrome-install-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(66,133,244,.45);}
 .chrome-skip{font-size:.75em;color:#44445a;cursor:pointer;text-decoration:underline;margin-top:8px;}
 .chrome-skip:hover{color:#6e6e88;}
 .chrome-steps{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;max-width:300px;width:100%;margin-bottom:24px;text-align:left;}
 .chrome-step{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);}
 .chrome-step:last-child{border-bottom:none;}
-.chrome-step-num{width:26px;height:26px;border-radius:50%;background:rgba(66,133,244,.15);border:1px solid rgba(66,133,244,.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.72em;font-weight:800;color:#4285F4;flex-shrink:0;}
+.chrome-step-num{width:26px;height:26px;border-radius:50%;background:rgba(66,133,244,.15);border:1px solid rgba(66,133,244,.3);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:.72em;font-weight:800;color:#4285F4;flex-shrink:0;}
 .chrome-step-txt{font-size:.8em;color:#8888a0;line-height:1.4;}
 
 /* NOISE */
@@ -203,6 +203,7 @@ button:active{transform:scale(.95)!important;}
 .edu-error svg{flex-shrink:0;}
 
 </style>
+<link rel="stylesheet" href="ui-refresh.css?v=20260920">
 </head>
 <body>
 
