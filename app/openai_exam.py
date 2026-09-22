@@ -35,7 +35,7 @@ from .math_verify import (
 )
 from .blind_verify import (
     BLIND_VERIFY_SYSTEM_PROMPT, BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL,
-    build_blind_verify_prompt_closed,
+    build_blind_verify_prompt_closed, build_blind_verify_prompt_closed_batch,
     parse_blind_verify_letter, safe_json_loads,
 )
 from .difficulty import DifficultyAnalyzer
@@ -4197,13 +4197,110 @@ async def _blind_verify_one_closed_quiz(q: dict, client=None, topic: str = None)
     return ai2_idx == q.get("correct")
 
 
+_BLIND_VERIFY_QUIZ_BATCH_SIZE = 5
+
+
+def _blind_verify_prescreen_closed_quiz(q: dict):
+    """Wydzielone z _blind_verify_one_closed_quiz: proba rozstrzygniecia
+    przez validation_rule (deterministyczne, kod, zero kosztu) PRZED
+    jakimkolwiek wywolaniem AI-2. True/False = rozstrzygniete, None =
+    trzeba spytac AI-2 (patrz _blind_verify_batch_closed_quiz nizej)."""
+    validation_rule = q.get("validation_rule")
+    if isinstance(validation_rule, dict):
+        claimed = extract_number_from_answer_text(q.get("final_answer", ""))
+        if claimed is not None:
+            ok, reason = verify_word_problem_validation_rule(validation_rule, claimed)
+            if ok is True:
+                return True
+            if ok is False:
+                print(f"[ValidationRule] odrzucono bez AI-2 (validation_rule): {reason}")
+                return False
+    return None
+
+
+async def _blind_verify_chunk_closed_quiz(chunk: list, client, topic: str, problem_class) -> list:
+    """JEDNO wywolanie AI-2 weryfikuje CALY `chunk` (do _BLIND_VERIFY_QUIZ_BATCH_SIZE pytan,
+    wszystkie tego samego problem_class - patrz build_blind_verify_prompt_closed_batch).
+    Zwraca liste bool w TEJ SAMEJ kolejnosci co `chunk`. Fail-closed: caly chunk -> False
+    przy bledzie wywolania/parsowania calosci; POJEDYNCZE pytanie w chunku -> False, jesli
+    JEGO WLASNY numer/odpowiedz nie da sie sparsowac (nie zalezy od pozostalych w chunku)."""
+    items = [(q.get("question", ""), q.get("options", [])) for q in chunk]
+    try:
+        r = await client.chat.completions.create(
+            model=_select_blind_verify_model(topic),
+            messages=[
+                {"role": "system", "content": BLIND_VERIFY_SYSTEM_PROMPT_FACTUAL if problem_class == "factual" else BLIND_VERIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": build_blind_verify_prompt_closed_batch(items, problem_class=problem_class)},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+            max_tokens=300 + 350 * len(chunk),
+        )
+        parsed = safe_json_loads(r.choices[0].message.content)
+    except Exception as e:
+        print(f"[BlindVerify] blad wywolania AI-2 (batch {len(chunk)}): {e}")
+        return [False] * len(chunk)
+    if not isinstance(parsed, dict):
+        print("[BlindVerify] AI-2 (batch) nie zwrocilo obiektu JSON - odrzucam caly chunk")
+        return [False] * len(chunk)
+    results = []
+    for i, q in enumerate(chunk, start=1):
+        letter = parse_blind_verify_letter(parsed.get(str(i)))
+        if letter is None:
+            print(f"[BlindVerify] AI-2 (batch) brak/nieprawidlowa odpowiedz dla zadania {i}/{len(chunk)} - odrzucam kandydata")
+            results.append(False)
+            continue
+        ai2_idx = _QUIZ_LETTER_TO_IDX.get(letter)
+        if ai2_idx is None:
+            print(f"[BlindVerify] AI-2 (batch) nieobslugiwana opcja dla zadania {i}/{len(chunk)}: {letter!r} - odrzucam kandydata")
+            results.append(False)
+            continue
+        results.append(ai2_idx == q.get("correct"))
+    return results
+
+
 async def _blind_verify_batch_closed_quiz(candidates: list, client=None, topic: str = None) -> list:
-    """Rownolegle (asyncio.gather), zeby dodatkowe wywolania NIE wydluzaly
-    liniowo czasu generacji. Zwraca liste bool w TEJ SAMEJ kolejnosci co
-    `candidates`. `topic` - patrz _select_blind_verify_model."""
+    """Rownolegle (asyncio.gather) - grupowane w chunki (patrz
+    _BLIND_VERIFY_QUIZ_BATCH_SIZE) zamiast po jednym wywolaniu AI-2 na
+    pytanie (22.09.2026, KOSZTY: real prod 3621 wywolan/dzien na sam ten
+    krok - jedno wywolanie na KAZDE pytanie osobno). Kandydaci sa NAJPIERW
+    rozstrzygani przez validation_rule (bez AI), potem grupowani wg
+    problem_class (rozny system prompt, patrz build_blind_verify_prompt_closed_batch)
+    i dzieleni na chunki. Zwraca liste bool w TEJ SAMEJ kolejnosci co
+    `candidates` - identyczny kontrakt jak przed ta zmiana, callerzy sie
+    nie zmieniaja. `topic` - patrz _select_blind_verify_model."""
     if not candidates:
         return []
-    return await asyncio.gather(*(_blind_verify_one_closed_quiz(q, client=client, topic=topic) for q in candidates))
+    results = [None] * len(candidates)
+    remaining_idx = []
+    for i, q in enumerate(candidates):
+        pre = _blind_verify_prescreen_closed_quiz(q)
+        if pre is not None:
+            results[i] = pre
+        else:
+            remaining_idx.append(i)
+    if not remaining_idx:
+        return results
+    if client is None:
+        # Fail-closed: brak niezaleznego weryfikatora nie moze byc
+        # traktowany jako potwierdzenie poprawnosci w produkcji.
+        for i in remaining_idx:
+            results[i] = False
+        return results
+    groups = {}
+    for i in remaining_idx:
+        groups.setdefault(candidates[i].get("problem_class"), []).append(i)
+    chunk_tasks, chunk_index_lists = [], []
+    for problem_class, idxs in groups.items():
+        for start in range(0, len(idxs), _BLIND_VERIFY_QUIZ_BATCH_SIZE):
+            sub = idxs[start:start + _BLIND_VERIFY_QUIZ_BATCH_SIZE]
+            chunk_index_lists.append(sub)
+            chunk_tasks.append(_blind_verify_chunk_closed_quiz([candidates[i] for i in sub], client, topic, problem_class))
+    chunk_results = await asyncio.gather(*chunk_tasks)
+    for idxs, chunk_res in zip(chunk_index_lists, chunk_results):
+        for i, val in zip(idxs, chunk_res):
+            results[i] = val
+    return results
 
 
 async def _verify_and_fix_quiz_math(quiz_data: dict, difficulty: str = None, seen_fingerprints: set = None, metrics=None, level: str = None, seen_diversity_tags: list = None, client=None, seen_diversity_tag_dicts: list = None, relax_difficulty: bool = False) -> dict:

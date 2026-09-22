@@ -85,6 +85,53 @@ def build_blind_verify_prompt_closed(tresc: str, opcje: list, problem_class: str
     )
 
 
+# NOWE (22.09.2026, KOSZTY - real prod: 3621 wywolan AI-2/dzien, jedno na
+# KAZDE pytanie osobno): zamiast N osobnych wywolan (N pytan = N requestow),
+# JEDNO wywolanie weryfikuje do _BLIND_VERIFY_BATCH_SIZE pytan naraz -
+# ta sama persona/system prompt (wywolujacy grupuje kandydatow wg
+# problem_class PRZED wywolaniem tej funkcji, wiec jeden batch nigdy nie
+# miesza faktografii z obliczeniami), ten sam wymog "SAMODZIELNIE i OD
+# ZERA" na kazde pytanie z osobna. Klucz bezpieczenstwa: kazde pytanie w
+# batchu jest kluczowane WLASNYM NUMEREM w JSON (nie pozycja w liscie),
+# a caller (patrz openai_exam.py _blind_verify_chunk_closed_quiz) odrzuca
+# (fail-closed, tak jak dotychczas dla pojedynczego pytania) KAZDE pytanie
+# z osobna, ktorego numeru brakuje w odpowiedzi albo ktorego "odpowiedz"
+# sie nie parsuje - blad/niekompletnosc DLA JEDNEGO pytania w batchu nigdy
+# nie "pozycza" cudzej odpowiedzi ani nie zaleza od kolejnosci.
+def build_blind_verify_prompt_closed_batch(items: list, problem_class: str = None) -> str:
+    """`items` = lista (tresc, opcje) krotek. Zwraca JEDEN prompt dla calego batcha."""
+    letters = "abcdefghij"
+    blocks = []
+    for i, (tresc, opcje) in enumerate(items, start=1):
+        opcje_txt = "\n".join(
+            f"{letters[j]}) {_option_text(o)}" for j, o in enumerate(opcje or [])
+        )
+        blocks.append(f"Zadanie {i}: {tresc}\n\nOpcje:\n{opcje_txt}")
+    joined = "\n\n---\n\n".join(blocks)
+    detail_key = "uzasadnienie" if problem_class == "factual" else "rozwiazanie"
+    example = ", ".join(
+        f'"{i}": {{"{detail_key}": "...", "odpowiedz": "a"}}' for i in range(1, len(items) + 1)
+    )
+    if problem_class == "factual":
+        lead = (
+            "Ponizsze pytania dotycza faktow/wiedzy (NIE obliczen) - dla KAZDEGO z nich "
+            "odpowiedz na podstawie swojej wiedzy, calkowicie niezaleznie i SAMODZIELNIE "
+            "(nie znasz zadnej sugerowanej odpowiedzi, nie masz do niej dostepu)."
+        )
+    else:
+        lead = (
+            "Rozwiaz KAZDE z ponizszych zadan krok po kroku, calkowicie niezaleznie i "
+            "SAMODZIELNIE (traktuj kazde zadanie osobno - odpowiedz jednego NIE wplywa na inne)."
+        )
+    return (
+        f"{lead} Dla kazdego wskaz, KTORA z podanych opcji jest poprawna.\n\n{joined}\n\n"
+        f"Odpowiedz WYLACZNIE w formacie JSON, PODAJ WSZYSTKIE {len(items)} zadania, "
+        f'kluczami sa numery zadan jako stringi (dokladnie jak ponizej): {{{example}}} '
+        f'(pole "odpowiedz" w KAZDYM zadaniu = DOKLADNIE jedna litera spomiedzy '
+        f'podanych opcji TEGO zadania).'
+    )
+
+
 def build_blind_verify_prompt_open(tresc: str, problem_class: str = None) -> str:
     if problem_class == "factual":
         return (
