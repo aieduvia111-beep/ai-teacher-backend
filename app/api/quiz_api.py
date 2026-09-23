@@ -10,6 +10,7 @@ from ..openai_exam import (
 )
 from ..firebase_auth import require_feature_limit
 from ..models import User
+from ..quiz_pool import generate_quiz_pooled
 from ..job_store import create_job, set_done, set_error, get_job, pop_job, cleanup_old_jobs
 import os, base64, json
 import asyncio
@@ -170,10 +171,12 @@ async def quiz_from_topic(req: QuizTopicRequest, user: User = Depends(require_fe
         # w openai_exam.py juz to wszystko ma (plus priorytet tematu nad
         # poziomem, plus lepsza sanityzacja JSON) - wiec wolamy ja tutaj
         # zamiast utrzymywac dwie rozjezdzajace sie implementacje.
-        result = await generate_quiz_from_topic(
+        # 23.09.2026 (KOSZTY): darmowi userzy dostaja quiz z puli juz zweryfikowanych pytan
+        # (bez AI), gdy pula jest wystarczajaco duza; premium/trial zawsze swiezy z AI.
+        result = await generate_quiz_pooled(
             topic=req.topic, subject=req.subject, level=req.level,
             num_questions=req.num_questions, difficulty=req.difficulty,
-            wlasne_instrukcje=wlasne
+            wlasne_instrukcje=wlasne, use_pool=not user.is_premium
         )
         if result["success"]:
             quiz = result["quiz"]
@@ -261,12 +264,12 @@ async def quiz_from_image_status(job_id: str):
     return _quiz_job_status_response(job_id)
 
 
-async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, difficulty, wlasne_instrukcje):
+async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, difficulty, wlasne_instrukcje, use_pool=False):
     try:
-        result = await generate_quiz_from_topic(
+        result = await generate_quiz_pooled(
             topic=topic, subject=subject, level=level,
             num_questions=num_questions, difficulty=difficulty,
-            wlasne_instrukcje=wlasne_instrukcje
+            wlasne_instrukcje=wlasne_instrukcje, use_pool=use_pool
         )
         if not result["success"]:
             set_error(job_id, result.get("error") or "Nie udalo sie wygenerowac quizu")
@@ -287,7 +290,8 @@ async def quiz_from_topic_start(req: QuizTopicRequest, user: User = Depends(requ
         cleanup_old_jobs()
         job_id = create_job()
         asyncio.create_task(_run_quiz_topic_job(
-            job_id, req.topic, req.subject, req.level, req.num_questions, req.difficulty, wlasne
+            job_id, req.topic, req.subject, req.level, req.num_questions, req.difficulty, wlasne,
+            use_pool=not user.is_premium
         ))
         return {"success": True, "job_id": job_id}
     except Exception as e:
