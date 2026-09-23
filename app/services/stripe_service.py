@@ -137,6 +137,40 @@ def get_promo_status() -> dict:
     }
 
 
+# =============================================================================
+# 23.09.2026 (KOSZTY subskrypcji - real prod, potwierdzone kodem 400 w Stripe -> Developers ->
+# Webhooks -> ten endpoint -> Overview -> nieudane dostarczenie): API Stripe w wersji konta
+# (2026-01-28.clover) USUNELO 'current_period_start'/'current_period_end' z GORNEGO poziomu
+# obiektu Subscription - te pola istnieja TERAZ WYLACZNIE wewnatrz kazdej pozycji
+# (subscription['items']['data'][N][pole]), bo jedna subskrypcja moze miec rozne okresy
+# rozliczeniowe dla roznych pozycji (my mamy zawsze DOKLADNIE JEDNA pozycje/plan).
+#
+# _handle_subscription_updated robil subscription['current_period_end'] WPROST z gornego
+# poziomu -> KeyError przy KAZDYM webhooku customer.subscription.updated -> nieobsluzony
+# wyjatek -> endpoint zwracal 400 -> Stripe oznaczal dostarczenie jako NIEUDANE. Real prod:
+# 7 z 10 dostarczen nieudanych w 4h, subskrypcje #10/#11/#12 mialy zly status/is_premium w
+# naszej bazie przez godziny, do nastepnego recznego/automatycznego uzgodnienia (ktore
+# dzialalo, bo stripe.Subscription.retrieve()/list()/create() przez biblioteke Pythona
+# zwracaly obiekt ZE starym, kompatybilnym gornym poziomem - INNA sciezka niz surowy JSON
+# webhooka, stad dzialalo "czasami").
+#
+# Ta funkcja dziala NIEZALEZNIE od wersji API: probuje NAJPIERW gorny poziom (kompatybilnosc
+# ze starszymi/innymi wywolaniami), potem items[0] - dziala zarowno dla surowego dict z
+# webhooka jak i dla StripeObject (oba wspieraja .get() jak slownik). Uzyj WSZEDZIE, gdzie
+# odczytujemy current_period_start/end ze SWIEZEGO obiektu Stripe (NIE z naszego wlasnego
+# wiersza Subscription w bazie - tam to zwykla kolumna DateTime, bez zmian).
+def _sub_period(subscription, field: str):
+    val = subscription.get(field)
+    if val is not None:
+        return val
+    items = (subscription.get("items") or {}).get("data") or []
+    if items:
+        val = items[0].get(field)
+        if val is not None:
+            return val
+    raise ValueError(f"Brak pola '{field}' w obiekcie subskrypcji Stripe (id={subscription.get('id', '?')}) - ani na gornym poziomie, ani w items[0]")
+
+
 class StripeService:
     """Serwis do obslugi platnosci Stripe"""
 
@@ -391,7 +425,7 @@ class StripeService:
         user = db.query(User).filter(User.firebase_uid == user_id).first()
         if user:
             user.is_premium = True
-            user.premium_until = datetime.fromtimestamp(subscription.current_period_end)
+            user.premium_until = datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'))
             db.commit()
             _update_firebase_plan(user_id, True)  # <- JUZ BYLO OK
             print(f"User {user_id} ustawiony jako PREMIUM do {user.premium_until}")
@@ -402,8 +436,8 @@ class StripeService:
             stripe_customer_id=subscription.customer,
             stripe_price_id=subscription['items']['data'][0]['price']['id'],
             status=subscription.status,
-            current_period_start=datetime.fromtimestamp(subscription.current_period_start),
-            current_period_end=datetime.fromtimestamp(subscription.current_period_end)
+            current_period_start=datetime.fromtimestamp(_sub_period(subscription, 'current_period_start')),
+            current_period_end=datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'))
         )
         db.add(db_subscription)
         db.commit()
@@ -467,7 +501,7 @@ class StripeService:
 
         if db_sub:
             db_sub.status = subscription['status']
-            db_sub.current_period_end = datetime.fromtimestamp(subscription['current_period_end'])
+            db_sub.current_period_end = datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'))
             db_sub.cancel_at_period_end = subscription.get('cancel_at_period_end', False)
 
             user = db.query(User).filter(User.firebase_uid == db_sub.user_id).first()
@@ -612,15 +646,15 @@ class StripeService:
                 stripe_price_id=active_sub["items"]["data"][0]["price"]["id"],
                 status=active_sub.status,
                 cancel_at_period_end=True,
-                current_period_start=datetime.fromtimestamp(active_sub.current_period_start),
-                current_period_end=datetime.fromtimestamp(active_sub.current_period_end),
+                current_period_start=datetime.fromtimestamp(_sub_period(active_sub, 'current_period_start')),
+                current_period_end=datetime.fromtimestamp(_sub_period(active_sub, 'current_period_end')),
             ))
             db.commit()
 
             return {
                 "success": True,
                 "message": "Subskrypcja zostanie anulowana po zakonczeniu okresu rozliczeniowego",
-                "ends_at": datetime.fromtimestamp(active_sub.current_period_end).isoformat()
+                "ends_at": datetime.fromtimestamp(_sub_period(active_sub, 'current_period_end')).isoformat()
             }
 
         except Exception as e:

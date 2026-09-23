@@ -59,7 +59,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import User, Subscription
-from .stripe_service import _update_firebase_plan, get_trial_days, _fdb, _credit_affiliate_commission
+from .stripe_service import _update_firebase_plan, get_trial_days, _fdb, _credit_affiliate_commission, _sub_period
 
 # Ile dni odnawia sie okres BLIK po udanym obciazeniu - identyczne z
 # miesiecznym cyklem karty (Stripe Price ma interval="month", tutaj
@@ -258,7 +258,7 @@ class BlikService:
         )
 
         user.is_premium = True
-        user.premium_until = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+        user.premium_until = datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'), tz=timezone.utc)
         db.commit()
         _update_firebase_plan(user.firebase_uid, True)
 
@@ -269,8 +269,8 @@ class BlikService:
             stripe_customer_id=customer_id,
             stripe_price_id=settings.STRIPE_PRICE_ID,
             status=subscription.status,
-            current_period_start=datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc),
-            current_period_end=datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc),
+            current_period_start=datetime.fromtimestamp(_sub_period(subscription, 'current_period_start'), tz=timezone.utc),
+            current_period_end=datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'), tz=timezone.utc),
         ))
         db.commit()
         print(f"User {user.firebase_uid} ustawiony jako PREMIUM (karta, przez wspolny setup) do {user.premium_until}")
