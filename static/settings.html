@@ -258,6 +258,15 @@ button:active{transform:scale(.95)!important;}
           <div class="item-txt"><div class="item-title">Plan i subskrypcja</div><div class="item-sub" id="planSubSub">Odblokuj pełne możliwości AI</div></div>
           <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
+        <!-- NOWE (22.09.2026): samoobslugowa aktualizacja karty/BLIK-a (Stripe Customer Portal) -
+             ukryte domyslnie, pokazywane TYLKO Pro userom placacym przez Stripe (nie Apple),
+             patrz onAuthStateChanged ponizej. Real prod: klientowi 3x odrzucilo platnosc
+             odnowienia, a jedyna droga naprawy byl caly checkout od nowa. -->
+        <div class="item" id="billingPortalItem" style="display:none" onclick="openBillingPortal()">
+          <div class="item-ic ic-o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+          <div class="item-txt"><div class="item-title">Metoda płatności</div><div class="item-sub">Zaktualizuj kartę lub BLIK</div></div>
+          <div class="item-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
         <!-- NOWE (wrzesien 2026, App Store Guideline 5.1.1(v)): kazda apka
              z rejestracja MUSI oferowac samoobslugowe USUNIECIE konta -
              nie tylko wylogowanie. Widoczne wprost w sekcji "Konto"
@@ -483,6 +492,28 @@ function cancelSubscriptionFlow(){
   });
 }
 
+// NOWE (22.09.2026): otwiera Stripe Customer Portal (aktualizacja karty/BLIK-a bez
+// przechodzenia przez caly checkout od nowa) - patrz POST /api/v1/payments/billing-portal.
+async function openBillingPortal(){
+  const item=document.getElementById('billingPortalItem');
+  try{
+    const u=auth.currentUser;
+    if(!u)throw new Error('Nie jestes zalogowany.');
+    if(item)item.style.opacity='0.6';
+    const token=await u.getIdToken();
+    const res=await fetch(window.API_BASE+'/api/v1/payments/billing-portal',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const data=await res.json();
+    if(!data.success||!data.url)throw new Error(data.error||'Nie udalo sie otworzyc portalu platnosci.');
+    location.href=data.url;
+  }catch(e){
+    if(item)item.style.opacity='1';
+    window.showError(e.message||'Nie udalo sie otworzyc portalu platnosci.');
+  }
+}
+
 onAuthStateChanged(auth,async u=>{
   if(!u){window.location.href='https://ai-teacher-backend-inky.vercel.app/login.html';return;}
   const name=u.displayName||u.email?.split('@')[0]||'Użytkownik';
@@ -513,6 +544,12 @@ onAuthStateChanged(auth,async u=>{
           sub.textContent='Zarządzaj lub anuluj subskrypcję';
           item.onclick=cancelSubscriptionFlow;
         }
+        // Kafelek "Metoda platnosci" (Stripe Customer Portal) - patrz openBillingPortal().
+        // Pokazywany kazdemu Pro userowi; dla platnikow Apple backend zwraca czytelny blad
+        // ("zarzadzaj w App Store") zamiast rozroznienia providera juz tutaj (prosciej, jeden
+        // dodatkowy request mniej przy kazdym wejsciu w Ustawienia).
+        const billingItem=document.getElementById('billingPortalItem');
+        if(billingItem)billingItem.style.display='flex';
       }
       updateXPBar(d.xp||0,d);
     }

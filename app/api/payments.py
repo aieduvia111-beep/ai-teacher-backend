@@ -14,6 +14,7 @@ from ..services.blik_service import BlikService
 from ..models import User, Subscription
 from ..services.stripe_service import _update_firebase_plan, get_promo_status
 from ..firebase_auth import get_verified_firebase_user
+from ..config import settings
 import stripe
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
@@ -274,6 +275,53 @@ def create_checkout(
             "success": False,
             "error": str(e)
         }
+
+
+@router.post("/billing-portal")
+def create_billing_portal_session(
+    db: Session = Depends(get_db),
+    firebase_user: dict = Depends(get_verified_firebase_user),
+):
+    """
+    💳 Stripe Customer Portal - samoobslugowa aktualizacja metody platnosci (karta/BLIK)
+    bez przechodzenia przez caly checkout od nowa.
+
+    NOWE (22.09.2026, real prod: klientowi 3x z rzedu odrzucilo platnosc odnowienia -
+    subskrypcja wpadla w status "past_due", a jedyny sposob naprawy byl przejscie CALEGO
+    checkoutu jeszcze raz - myloce dla usera i ryzykowne, jesli create-checkout trial-guard
+    (jedna karta = jeden trial) go zablokuje. Stripe Customer Portal daje userowi jeden
+    przycisk "zaktualizuj karte", ktory dziala na ISTNIEJACEJ subskrypcji.
+
+    Wymaga naglowka: Authorization: Bearer <firebase_id_token>. Tylko dla providera "stripe" -
+    subskrypcje Apple (StoreKit) zarzadzane sa w ustawieniach App Store, nie tutaj.
+    """
+    try:
+        user_id = firebase_user["uid"]
+        user = db.query(User).filter(User.firebase_uid == user_id).first()
+        if not user or not user.stripe_customer_id:
+            return {
+                "success": False,
+                "error": "Nie znaleziono klienta Stripe. Jeśli płacisz przez Apple, zarządzaj płatnością w ustawieniach App Store na swoim urządzeniu.",
+            }
+        sub = (
+            db.query(Subscription)
+            .filter(Subscription.user_id == user_id, Subscription.provider == "stripe")
+            .order_by(Subscription.id.desc())
+            .first()
+        )
+        if sub is None:
+            return {
+                "success": False,
+                "error": "Nie znaleziono subskrypcji Stripe do zarządzania.",
+            }
+        session = stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=f"{settings.FRONTEND_URL}/settings.html",
+        )
+        return {"success": True, "url": session.url}
+    except Exception as e:
+        print(f"❌ Błąd billing-portal: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @router.post("/webhook")
