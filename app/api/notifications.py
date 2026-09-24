@@ -207,7 +207,7 @@ def _run_abandoned_checkout_reminder():
             )
             # Zapisujemy PROBE (niezaleznie od sukcesu wysylki) - brak tokenu FCM teraz nie
             # zmieni sie za 30 min, wiec nie probujemy ponownie tego samego checkoutu w kolko.
-            db.add(FunnelEvent(event='abandoned_checkout_notified', user_id=uid, meta={"push_sent": bool(result.get("success"))}))
+            db.add(FunnelEvent(event='abandoned_checkout_notified', user_id=uid, meta={"push_sent": bool(result.get("success")), "error": (None if result.get("success") else str(result.get("error"))[:80])}))
             db.commit()
             if result.get("success"):
                 sent += 1
@@ -261,7 +261,8 @@ def _run_past_due_reminder():
                 "Karta nie przeszła. Wejdź w Ustawienia → Metoda płatności i zaktualizuj kartę lub zapłać BLIK-iem, żeby odzyskać Pro.",
             )
             db.add(FunnelEvent(event='past_due_notified', user_id=uid,
-                               meta={"sub_id": sub.id, "push_sent": bool(result.get("success")), "n": len(prev) + 1}))
+                               meta={"sub_id": sub.id, "push_sent": bool(result.get("success")), "n": len(prev) + 1,
+                                     "error": (None if result.get("success") else str(result.get("error"))[:80])}))
             db.commit()
             if result.get("success"):
                 sent += 1
