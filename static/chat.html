@@ -674,17 +674,17 @@ function navTo(f){window.location.href=f;}
 // EDUVIA LIMITS MODULE - wklej do kazdego pliku
 // ============================================================
 const LIMITS_FREE = {
-  chat: 5,
+  chat: 4,
   
-  quiz: 3,
-  notes: 2,
+  quiz: 2,
+  notes: 1,
   exam: 1,
-  voice: 3,
-  lesson: 2,
+  voice: 2,
+  lesson: 1,
   // NAPRAWIONE: teraz zgodne z backendem (usage_limits.py FREE_DAILY_LIMITS)
   // - Fiszki maja WLASNY limit (patrz app/api/flashcards_api.py), nie
   // dziela juz puli z Quizem.
-  flashcards: 2
+  flashcards: 1
 };
 
 async function checkLimit(feature) {
