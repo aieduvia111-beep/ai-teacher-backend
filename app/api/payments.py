@@ -462,6 +462,14 @@ def get_subscription(
             "is_premium": user.is_premium,
             "premium_until": user.premium_until.isoformat() if user.premium_until else None,
         }
+        # 24.09.2026: nieudana platnosc (past_due) i brak Pro -> frontend (settings.html) pokazuje
+        # kafelek "Metoda platnosci" tez userom bez Pro, zeby mogli zaktualizowac karte/BLIK.
+        result["payment_issue"] = bool(
+            not user.is_premium
+            and db.query(Subscription.id).filter(
+                Subscription.user_id == user_id, Subscription.status == 'past_due'
+            ).first()
+        )
         
         if subscription:
             result["subscription"] = {

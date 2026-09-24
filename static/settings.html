@@ -554,6 +554,19 @@ onAuthStateChanged(auth,async u=>{
       updateXPBar(d.xp||0,d);
     }
   }catch(e){}
+  // 24.09.2026: user z nieudana platnoscia (past_due, bez Pro) tez widzi kafelek "Metoda platnosci".
+  try{
+    const tk=await u.getIdToken();
+    const sr=await fetch(window.API_BASE+'/api/v1/payments/subscription',{headers:{'Authorization':'Bearer '+tk}}).then(r=>r.json());
+    if(sr&&sr.payment_issue){
+      const bi=document.getElementById('billingPortalItem');
+      if(bi){
+        bi.style.display='flex';
+        const bs=bi.querySelector('.item-sub, .sub, small');
+        if(bs)bs.textContent='Płatność nie przeszła — zaktualizuj kartę lub BLIK';
+      }
+    }
+  }catch(e){}
   // Poziom edukacji - GET /users/me (nie pobierany dotad nigdzie na tej
   // stronie) zeby wypelnic picker aktualna wartoscia, zapis idzie przez
   // ten sam POST /users/onboarding co reszta apki uzywa do zmiany

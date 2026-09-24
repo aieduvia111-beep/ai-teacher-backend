@@ -222,6 +222,60 @@ def _run_abandoned_checkout_reminder():
 
 _scheduler.add_job(_run_abandoned_checkout_reminder, CronTrigger(minute='*/30'), id='abandoned_checkout_reminder', replace_existing=True, max_instances=1)
 
+
+# 24.09.2026 (ODZYSKIWANIE PLATNOSCI): real prod - 2 z 3 platnosci kartowych 20.09 nieudane
+# ("Insufficient funds", 58,82 zl), subskrypcje w statusie past_due, is_premium=False. Ci userzy
+# JUZ chcieli Pro i probowali zaplacic - wystarczy im powiedziec, ze karta nie przeszla.
+# Max 2 przypomnienia na subskrypcje (pierwsze od razu przy wykryciu, drugie po 72h, jesli nadal
+# past_due); tylko gdy user nie ma Pro. Zapis w funnel_events ('past_due_notified', meta.sub_id).
+def _run_past_due_reminder():
+    from ..database import SessionLocal
+    from ..models import FunnelEvent, Subscription, User
+    from datetime import datetime, timedelta
+    db = SessionLocal()
+    sent = skipped = 0
+    try:
+        subs = db.query(Subscription).filter(Subscription.status == 'past_due').all()
+        for sub in subs:
+            uid = sub.user_id
+            user = db.query(User).filter(User.firebase_uid == uid).first()
+            if not uid or (user and user.is_premium):
+                skipped += 1
+                continue
+            prev = [
+                e for e in db.query(FunnelEvent).filter(
+                    FunnelEvent.event == 'past_due_notified', FunnelEvent.user_id == uid
+                ).all()
+                if (e.meta or {}).get('sub_id') == sub.id
+            ]
+            if len(prev) >= 2:
+                skipped += 1
+                continue
+            if prev:
+                last = max(e.created_at for e in prev)
+                if last > datetime.utcnow() - timedelta(hours=72):
+                    skipped += 1
+                    continue
+            result = send_push_notification(
+                uid, "Nie udało się pobrać płatności za Pro 💳",
+                "Karta nie przeszła. Wejdź w Ustawienia → Metoda płatności i zaktualizuj kartę lub zapłać BLIK-iem, żeby odzyskać Pro.",
+            )
+            db.add(FunnelEvent(event='past_due_notified', user_id=uid,
+                               meta={"sub_id": sub.id, "push_sent": bool(result.get("success")), "n": len(prev) + 1}))
+            db.commit()
+            if result.get("success"):
+                sent += 1
+            else:
+                skipped += 1
+        print(f"[past_due] wyslano {sent}, pominieto {skipped}")
+    except Exception as e:
+        print(f"[past_due] blad zadania: {e}")
+    finally:
+        db.close()
+
+
+_scheduler.add_job(_run_past_due_reminder, CronTrigger(hour=16, minute=20), id='past_due_reminder', replace_existing=True, max_instances=1)
+
 # ═══ STRIPE - uzgadnianie subskrypcji co 2h (Europe/Warsaw) ═══
 # 20.09.2026: samonaprawa po zgubionym/opoznionym webhooku (patrz StripeService.reconcile_subscriptions).
 # ZAGESZCZONE (23.09.2026, KOSZTY subskrypcji, NIE API): user zglosil DRUGI real przypadek w tym
