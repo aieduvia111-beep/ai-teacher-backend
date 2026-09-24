@@ -470,6 +470,24 @@ def get_subscription(
                 Subscription.user_id == user_id, Subscription.status == 'past_due'
             ).first()
         )
+        # 24.09.2026: checkout zalozony w ostatnich 48h i bez platnosci -> baner "Dokoncz subskrypcje"
+        # na dashboardzie (push dla tych userow nie dochodzi: 21/21 bez tokenu FCM).
+        result["unfinished_checkout"] = False
+        if not user.is_premium and not result["payment_issue"]:
+            from datetime import datetime, timedelta
+            from ..models import FunnelEvent
+            since = datetime.utcnow() - timedelta(hours=48)
+            last_co = (
+                db.query(FunnelEvent.created_at)
+                .filter(FunnelEvent.user_id == user_id, FunnelEvent.event == 'checkout_created', FunnelEvent.created_at >= since)
+                .order_by(FunnelEvent.created_at.desc()).first()
+            )
+            if last_co:
+                paid_after = db.query(FunnelEvent.id).filter(
+                    FunnelEvent.user_id == user_id, FunnelEvent.event == 'payment_success',
+                    FunnelEvent.created_at >= last_co[0],
+                ).first()
+                result["unfinished_checkout"] = not paid_after
         
         if subscription:
             result["subscription"] = {

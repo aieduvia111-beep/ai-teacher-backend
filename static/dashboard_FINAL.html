@@ -681,9 +681,36 @@ import{getFirestore,doc,getDoc,setDoc,updateDoc,arrayUnion,increment}from"https:
 const app=initializeApp({apiKey:"AIzaSyBq9RSMSRWnVEkvMvIqtU4ZNemZhmJUiOU",authDomain:"eduvia-c69bc.firebaseapp.com",projectId:"eduvia-c69bc",storageBucket:"eduvia-c69bc.firebasestorage.app",messagingSenderId:"613529563678",appId:"1:613529563678:web:5028a3edfbd68969d4340f"});
 const auth=getAuth(app),db=getFirestore(app);
 let currentUser=null;
+// 24.09.2026: baner platnosci na dashboardzie. GET /payments/subscription zwraca payment_issue
+// (past_due, bez Pro) albo unfinished_checkout (checkout <48h bez platnosci). Push do tych userow
+// nie dochodzi (21/21 bez tokenu FCM), wiec pokazujemy to tu. Nie na iOS (platnosci przez App Store);
+// po zamknieciu ukryty na 12h.
+async function showPayBanner(user){
+  try{
+    if(/iPhone|iPad|iPod/.test(navigator.userAgent) || (window.webkit && window.webkit.messageHandlers)) return;
+    try{ if(Date.now()-(+localStorage.getItem('eduvia_paybanner_x')||0) < 12*3600*1000) return; }catch(e){}
+    const tk=await user.getIdToken();
+    const r=await fetch((window.DASH_BASE||location.origin)+'/api/v1/payments/subscription',{headers:{'Authorization':'Bearer '+tk}}).then(x=>x.json());
+    if(!r||!r.success||r.is_premium) return;
+    const b=document.getElementById('payBanner'); if(!b) return;
+    const t=document.getElementById('payBannerTitle'), s=document.getElementById('payBannerSub'), a=document.getElementById('payBannerBtn');
+    if(r.payment_issue){
+      t.textContent='Nie udało się pobrać płatności za Pro';
+      s.textContent='Zaktualizuj kartę lub zapłać BLIK-iem, żeby odzyskać Pro.';
+      a.textContent='Popraw płatność'; a.href='settings.html';
+    } else if(r.unfinished_checkout){
+      t.textContent='Dokończ subskrypcję Pro';
+      s.textContent='Zostało kilka kroków — dokończ w minutę i ucz się bez limitów.';
+      a.textContent='Dokończ'; a.href='pricing.html';
+    } else return;
+    b.style.display='flex';
+    document.getElementById('payBannerX').onclick=function(){ b.style.display='none'; try{ localStorage.setItem('eduvia_paybanner_x', String(Date.now())); }catch(e){} };
+  }catch(e){}
+}
 onAuthStateChanged(auth,async(user)=>{
   if(!user){window.location.href='login.html';return;}
   currentUser=user;
+  showPayBanner(user);
   loadStudentProfile(user);
   localStorage.setItem('eduvia_uid',user.uid);
   const snap=await getDoc(doc(db,'users',user.uid));
@@ -1149,6 +1176,16 @@ function getPlanBadgeHTML(plan) {
 <main class="main">
 
   <!-- 1. HEADER: patrz m-hdr (mobile) / sidebar (desktop) powyzej - bez zmian -->
+
+  <!-- 24.09.2026: baner platnosci (past_due / niedokonczony checkout) - pokazywany tylko gdy backend zwroci flage -->
+  <div id="payBanner" style="display:none;margin:0 0 14px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(124,106,255,.16),rgba(34,211,160,.10));border:1px solid rgba(124,106,255,.35);align-items:center;gap:12px;">
+    <div style="flex:1;min-width:0;">
+      <div id="payBannerTitle" style="font-weight:700;font-size:14px;color:var(--text);"></div>
+      <div id="payBannerSub" style="font-size:12.5px;color:var(--muted2);margin-top:2px;"></div>
+    </div>
+    <a id="payBannerBtn" href="#" style="flex-shrink:0;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;"></a>
+    <button id="payBannerX" aria-label="Zamknij" style="flex-shrink:0;background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;line-height:1;padding:2px 4px;">×</button>
+  </div>
 
   <!-- 2+3+4. HERO: powitanie + pierscien poziomu + panel XP -->
   <section class="dash-hero">
