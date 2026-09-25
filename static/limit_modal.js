@@ -291,7 +291,7 @@
       // starym, jednozdaniowym tekscie). Liczba dni triala z /trial-info (zmienna - promocje) pobrana z gory (_parentTrialDays, fallback 7),
       // zeby nie dokladac await miedzy klikaniem a navigator.share (gest uzytkownika wygasa).
       var days = _parentTrialDays;
-      var text = 'Cześć! Uczę się z Eduvia AI (robi mi quizy i notatki do szkoły) i dobiłem do darmowego limitu. Pro to 29 zł/mies., a pierwsze ' + days + ' dni jest za darmo, więc teraz nic nie płacisz i możesz anulować kiedy chcesz. Zobacz, jak się uczę, i włącz mi Pro tutaj: ' + data.url;
+      var text = 'Cześć! Uczę się z Eduvia AI (robi mi quizy i notatki do szkoły) i dobiłem do darmowego limitu. Pro to ' + PRO_PRICE + ' zł/mies., a pierwsze ' + days + ' dni jest za darmo, więc teraz nic nie płacisz i możesz anulować kiedy chcesz. Zobacz, jak się uczę, i włącz mi Pro tutaj: ' + data.url;
       if (navigator.share) {
         navigator.share({ title: 'Eduvia AI', text: text }).catch(function () {});
         btn.disabled = false;
