@@ -263,6 +263,9 @@
   // Messenger - dziecko samo wybiera odbiorce, apka NIGDZIE nie zapisuje
   // numeru/maila rodzica). Bez navigator.share (desktop/stare przegladarki)
   // - link trafia do schowka, zeby dziecko mogl wkleic go recznie.
+  var _parentTrialDays = 7;
+  try { fetch(BASE + '/api/v1/payments/trial-info').then(function (r) { return r.json(); }).then(function (t) { if (t && t.trial_days) _parentTrialDays = t.trial_days; }).catch(function () {}); } catch (e) {}
+
   function askParent(btn, featureName, customText) {
     track('ask_parent_click', { feature: featureName || 'pricing' });
     if (typeof window._getAuthToken !== 'function') {
@@ -284,7 +287,11 @@
       return r.json();
     }).then(function (data) {
       if (!data.success || !data.url) throw new Error('brak linku');
-      var text = customText ? (customText + ' ' + data.url) : ('Cześć! Uczę się w Eduvia AI i właśnie wykorzystałem dzisiejszy darmowy limit ' + featureName + '. Włączysz mi Pro? ' + data.url);
+      // 25.09.2026: wiadomosc do rodzica z argumentami (tylko 3 z 8 rodzicow otwieralo link przy
+      // starym, jednozdaniowym tekscie). Liczba dni triala z /trial-info (zmienna - promocje) pobrana z gory (_parentTrialDays, fallback 7),
+      // zeby nie dokladac await miedzy klikaniem a navigator.share (gest uzytkownika wygasa).
+      var days = _parentTrialDays;
+      var text = 'Cześć! Uczę się z Eduvia AI (robi mi quizy i notatki do szkoły) i dobiłem do darmowego limitu. Pro to 29 zł/mies., a pierwsze ' + days + ' dni jest za darmo, więc teraz nic nie płacisz i możesz anulować kiedy chcesz. Zobacz, jak się uczę, i włącz mi Pro tutaj: ' + data.url;
       if (navigator.share) {
         navigator.share({ title: 'Eduvia AI', text: text }).catch(function () {});
         btn.disabled = false;
