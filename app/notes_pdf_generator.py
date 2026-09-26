@@ -1221,6 +1221,61 @@ def _render_concept_png(pojecie, definicja, accent_color, width_px=240, height_p
         return None
 
 
+# 26.09.2026 (real prod, user: dal zdjecie cwiczenia z niemieckiego, a notatka wyszla PO POLSKU): sciezka
+# "notatka ze zdjecia" sprowadzala zdjecie do JEDNEGO polskiego tytulu tematu (np. "Planowanie letnich
+# wakacji"), a jezyk materialu i tresc cwiczenia byly gubione - notatka powstawala wylacznie po polsku,
+# bez slownictwa i przykladow w jezyku cwiczenia. Teraz vision zwraca tez jezyk materialu i krotki kontekst
+# (co jest na zdjeciu), a generator dla jezyka obcego pisze objasnienia po polsku, ale slownictwo i zdania
+# przykladowe W JEZYKU MATERIALU (z polskim tlumaczeniem) i opiera sie na tresci ze zdjecia.
+_FOREIGN_LANGS = {
+    "niemiecki": r"niemiec|deutsch|german",
+    "angielski": r"angiel|english",
+    "hiszpanski": r"hiszpan|espanol|spanish",
+    "francuski": r"francus|francais|french",
+    "wloski": r"wlosk|italian",
+    "rosyjski": r"rosyjsk|russian",
+    "lacina": r"lacin|latin",
+}
+
+
+def _detect_foreign_lang(temat: str, kontekst: str = "", jezyk: str = "") -> str:
+    """Zwraca nazwe jezyka obcego materialu (bez polskich znakow) albo '' (materialy polskie / przedmiot nie-jezykowy)."""
+    import re as _re
+    def _n(x):
+        x = (x or "").lower()
+        for a, b in (("ą", "a"), ("ć", "c"), ("ę", "e"), ("ł", "l"), ("ń", "n"), ("ó", "o"), ("ś", "s"), ("ź", "z"), ("ż", "z")):
+            x = x.replace(a, b)
+        return x
+    j = _n(jezyk)
+    for name, rx in _FOREIGN_LANGS.items():
+        if j and _re.search(rx, j):
+            return name
+    hay = _n(temat + " " + kontekst)
+    # tylko gdy wyraznie o nauce jezyka (a nie np. 'historia niemiec')
+    if _re.search(r"jezyk|po (niemiecku|angielsku|hiszpansku|francusku|wlosku|rosyjsku)|slownictw|gramatyk|czasownik|deklinacj|koniugacj", hay):
+        for name, rx in _FOREIGN_LANGS.items():
+            if _re.search(rx, hay):
+                return name
+    return ""
+
+
+def _build_lang_block(temat: str, kontekst: str = "", jezyk: str = "") -> str:
+    lang = _detect_foreign_lang(temat, kontekst, jezyk)
+    parts = []
+    if kontekst and kontekst.strip():
+        parts.append(
+            "\nMATERIAL ZE ZDJECIA (to jest zrodlo - OPRZYJ notatke na tej tresci, nie wymyslaj innego tematu): "
+            + kontekst.strip()[:700]
+        )
+    if lang:
+        parts.append(
+            f"\nJEZYK OBCY: materialem jest jezyk {lang}. Objasnienia i komentarze pisz PO POLSKU, ale WSZYSTKIE przyklady, "
+            f"slownictwo, zwroty i zdania przykladowe podawaj W JEZYKU {lang.upper()} z polskim tlumaczeniem w nawiasie. "
+            f"Dodaj tabele slownictwa (jezyk {lang} - polski) i typowe bledy polskich uczniow. ZAKAZ obliczen i wzorow matematycznych."
+        )
+    return "".join(parts)
+
+
 class PremiumNotesGenerator:
 
     def __init__(self, api_key: str):
@@ -1320,9 +1375,9 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> dict:
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "") -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
-        wlasne_blok = _build_wlasne_blok(wlasne_instrukcje)
+        wlasne_blok = _build_wlasne_blok(wlasne_instrukcje) + _build_lang_block(temat, kontekst, jezyk)
         rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
         rozmiar_info = f"\nROZMIAR NOTATKI: {rozmiar_map.get(num_sections, 'NORMALNA')} - dostosuj ilosc i szczegolowos tresci."
         zakaz_obliczen = f"""
@@ -1847,9 +1902,9 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "") -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "") -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje)
+        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()

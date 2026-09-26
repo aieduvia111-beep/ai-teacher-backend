@@ -43,9 +43,9 @@ def _log_notes_metrics(temat: str, klasa: str, t0: float, ok: bool, reason: str 
         print(f"[NotesMetrics] pominieto zapis statystyk: {_e}")
 
 
-def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "") -> str:
+def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "") -> str:
     gen = PremiumNotesGenerator(api_key)
-    return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje)
+    return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk)
 
 @router.post("/generate")
 async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_feature_limit("notes"))):
@@ -62,6 +62,8 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
             all_images = [req.image]
 
         temat = req.temat
+        kontekst = ""
+        jezyk = ""
 
         if all_images:
             from openai import OpenAI
@@ -76,28 +78,34 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
                 "type": "text",
                 "text": (
                     f"Przeanalizuj te {len(all_images)} zdjecia. "
+                    "Okresl jezyk, w ktorym jest napisany material na zdjeciach (np. polski, niemiecki, angielski). "
+                    "Temat podaj PO POLSKU, ale jesli to cwiczenie/tekst z jezyka obcego, wpisz w kontekscie konkretne "
+                    "slownictwo, zwroty i zagadnienia gramatyczne, ktore WIDAC na zdjeciu. "
                     "Odpowiedz TYLKO JSON: "
                     '{"temat": "Glowny temat max 60 znakow", '
-                    '"dodatkowy_kontekst": "Co widac, max 400 znakow"}'
+                    '"jezyk_materialu": "polski / niemiecki / angielski / ...", '
+                    '"dodatkowy_kontekst": "Co widac: zagadnienia, slownictwo, przyklady ze zdjecia, max 600 znakow"}'
                 )
             })
             vision_resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": content}],
-                max_tokens=400, timeout=12
+                max_tokens=600, timeout=15
             )
             txt = vision_resp.choices[0].message.content.strip()
             txt = txt.replace('```json','').replace('```','').strip()
             s = txt.find('{'); e = txt.rfind('}')
             vision_data = json.loads(txt[s:e+1])
             temat = vision_data.get('temat', req.temat)
+            kontekst = str(vision_data.get('dodatkowy_kontekst') or '')[:700]
+            jezyk = str(vision_data.get('jezyk_materialu') or '')
             print(f"[Vision] {len(all_images)} zdj -> temat: {temat}")
 
         # Bez limitu czasowego - czekamy ile trzeba
         loop = asyncio.get_event_loop()
         wlasne = req.wlasne_instrukcje or ""
         filename = await loop.run_in_executor(
-            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne
+            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne, kontekst, jezyk
         )
 
         if filename and os.path.exists(filename):
