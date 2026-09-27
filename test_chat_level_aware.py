@@ -20,12 +20,27 @@ from app.database import Base
 import app.models
 from app.models import GenerationRequestLog
 import app.api.chat as chat_mod
-from app.api.chat import chat_message, ChatRequest
+from app.api.chat import chat_message, ChatRequest, _sanitize_latex_environments
 
 FAILED = []
 def check(name, cond, detail=None):
     print(("  OK   " if cond else "  FAIL ") + name)
     if not cond: FAILED.append((name, str(detail)[:300]))
+
+# NAPRAWIONE (27.09.2026, real prod: user zglosil czerwony blad KaTeX DWA RAZY mimo
+# zakazu w prompcie - model czasem i tak uzywa \begin{...} niezaleznie od instrukcji).
+# Siatka bezpieczenstwa po stronie backendu: wycinamy \begin{...}...\end{...} PO FAKCIE,
+# niezaleznie od tego czy AI posluchalo prompta. Testowane osobno, bez OpenAI.
+check("sanityzator: array w \\[ \\] -> blok kodu, bez \\begin",
+      "```" in _sanitize_latex_environments(r"\[ \begin{array}{r} 0,50 \\ +0,25 \end{array} \]")
+      and "\\begin{" not in _sanitize_latex_environments(r"\[ \begin{array}{r} 0,50 \\ +0,25 \end{array} \]"))
+check("sanityzator: matrix w $$ $$ -> blok kodu, bez \\begin",
+      "```" in _sanitize_latex_environments(r"$$ \begin{matrix} 1 & 2 \\ 3 & 4 \end{matrix} $$")
+      and "\\begin{" not in _sanitize_latex_environments(r"$$ \begin{matrix} 1 & 2 \\ 3 & 4 \end{matrix} $$"))
+check("sanityzator: goly \\begin{aligned} bez wrappera tez wyciety",
+      "\\begin{" not in _sanitize_latex_environments(r"\begin{aligned} x &= 1 \\ y &= 2 \end{aligned}"))
+check("sanityzator: normalny $$wzor$$ NIETKNIETY (nie psuje poprawnego LaTeX-u)",
+      _sanitize_latex_environments("Tekst z $$x^2+1$$ wzorem.") == "Tekst z $$x^2+1$$ wzorem.")
 
 eng = create_engine("sqlite://"); Base.metadata.create_all(eng)
 SessionLocal = sessionmaker(bind=eng)

@@ -75,13 +75,19 @@ ZASADY dla pola text:
 - Używaj **pogrubień** dla kluczowych pojęć
 - Używaj ## dla nagłówków sekcji
 - Wzory matematyczne/chemiczne ZAWSZE w LaTeX: $$wzor$$ dla bloków, $wzor$ inline
-- NIGDY nie używaj \begin{array}, \begin{matrix} ani \begin{aligned} do pokazywania dodawania/odejmowania w słupku - ten zapis regularnie psuje się w renderowaniu (czerwony błąd). Zamiast tego pokaż działanie w słupku jako zwykły tekst w bloku kodu (potrójny apostrof), np.:
-  ```
-    0,50
-  + 0,25
-  ------
-    0,75
-  ```
+- ZAKAZ BEZWZGLĘDNY, bez wyjątków, niezależnie od kontekstu: NIGDY nie używaj \begin{array}, \begin{matrix}, \begin{aligned}, \begin{cases}, \begin{pmatrix} ani ŻADNEGO innego \begin{...}...\end{...} — te zapisy regularnie psują się w renderowaniu (czerwony błąd na ekranie ucznia), nawet gdy wydają się poprawne. Dotyczy to WSZYSTKICH sytuacji: działań w słupku, układów równań, macierzy, wyrównanych wzorów — wszystkiego.
+  Zamiast tego:
+  - działanie w słupku (dodawanie/odejmowanie/mnożenie pisemne) → zwykły tekst w bloku kodu (potrójny apostrof):
+    ```
+      0,50
+    + 0,25
+    ------
+      0,75
+    ```
+  - układ równań → osobne linijki ze zwykłym $wzor$ inline, bez \begin ani klamry LaTeX, np.:
+    $2x + y = 5$
+    $x - y = 1$
+  - jeśli naprawdę potrzebujesz czegoś w stylu macierzy — opisz to słownie albo pokaż jako blok kodu, NIGDY jako \begin{...}
 - Emoji są OK ale nie przesadzaj
 - Gdy uczeń wysyła zdjęcie z zadaniami lub listę zadań - ROZWIĄŻ KAŻDE z nich osobno krok po kroku
 - Gdy jest wiele zadań - numeruj je ## Zadanie 1, ## Zadanie 2 itd.
@@ -105,6 +111,34 @@ class ChatRequest(BaseModel):
     image: Optional[str] = None
     document: Optional[str] = None  # base64 PDF lub tekst z Word
     document_name: Optional[str] = None  # nazwa pliku
+
+import re as _re
+
+def _sanitize_latex_environments(text: str) -> str:
+    """Siatka bezpieczenstwa (27.09.2026, real prod: user zglosil czerwony blad
+    KaTeX DWA RAZY, mimo zakazu w SYSTEM_PROMPT - model czasem i tak uzywa
+    \\begin{array}/\\matrix/\\aligned itp., bo instrukcje w prompcie nie sa
+    100% gwarancja przy duzym modelu). Zamiast liczyc wylacznie na to, ze AI
+    posluchalo instrukcji, WYCINAMY kazdy \\begin{...}...\\end{...} po fakcie
+    i zamieniamy na czytelny blok kodu - user NIGDY nie zobaczy czerwonego
+    bledu renderowania, niezaleznie od tego co wygenerowal model."""
+    if "\\begin{" not in text:
+        return text
+
+    def _convert(match):
+        inner = match.group(2)
+        inner = inner.replace("\\\\", "\n").replace("&", "  ")
+        lines = [ln.strip() for ln in inner.split("\n") if ln.strip()]
+        return "\n```\n" + "\n".join(lines) + "\n```\n"
+
+    # najpierw zdejmij ewentualny otaczajacy wrapper wyswietlania ($$ ... $$ lub \[ ... \])
+    pattern_wrapped = _re.compile(r"(?:\$\$|\\\[)\s*\\begin\{(\w+)\}(.*?)\\end\{\1\}\s*(?:\$\$|\\\])", _re.DOTALL)
+    text = pattern_wrapped.sub(_convert, text)
+    # potem golusienki \begin{...}...\end{...} bez otoczki
+    pattern_bare = _re.compile(r"\\begin\{(\w+)\}(.*?)\\end\{\1\}", _re.DOTALL)
+    text = pattern_bare.sub(_convert, text)
+    return text
+
 
 def _build_response(ai_data: dict, user_message: str) -> dict:
     topic_en = ai_data.get("topic_en", user_message)
@@ -213,6 +247,9 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
             ai_data = json.loads(raw_response)
         except json.JSONDecodeError:
             ai_data = {"title": "Odpowiedź", "text": raw_response, "has_latex": False, "show_sources": False, "show_videos": False, "show_chart": False, "chart": None, "topic_en": req.text}
+
+        if ai_data.get("text"):
+            ai_data["text"] = _sanitize_latex_environments(ai_data["text"])
 
         # Generuj obrazek jesli AI poprosil
         image_url = None
