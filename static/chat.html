@@ -165,7 +165,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble ul,.bubble ol{padding-left:20px;margin:8px 0;}
 .bubble li{margin:4px 0;line-height:1.6;}
 .bubble code{background:rgba(124,106,255,0.12);padding:2px 7px;border-radius:5px;font-size:.88em;font-family:monospace;color:var(--accent2);}
-.bubble pre{background:rgba(255,255,255,.03);border:none;border-radius:8px;padding:8px 12px;margin:8px 0;overflow-x:auto;}
+.bubble pre{background:rgba(0,0,0,0.4);border:1px solid var(--border-hi);border-radius:10px;padding:14px;margin:10px 0;overflow-x:auto;}
 .bubble pre code{background:none;padding:0;color:var(--text);}
 .bubble p{margin:6px 0;}
 .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted2);margin:8px 0;font-style:italic;}
@@ -1053,54 +1053,6 @@ try{
 
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
-var _KATEX_DELIMS = [
-  { left: '$$', right: '$$', display: true },
-  { left: '$', right: '$', display: false },
-  { left: '\\[', right: '\\]', display: true },
-  { left: '\\(', right: '\\)', display: false }
-];
-
-// NAPRAWIONE (27.09.2026, real prod: user wielokrotnie zglaszal czerwone bledy
-// KaTeX - za kazdym razem inny zapis LaTeX-a od AI, wiec proby zakazania z
-// gory w SYSTEM_PROMPT/regexem na backendzie lapaly tylko TEN JEDEN wariant,
-// ktory juz widzielismy, a nie kolejne. Nie da sie przewidziec kazdego
-// mozliwego zlego zapisu, ktory model kiedykolwiek wygeneruje.
-// Profesjonalne podejscie: zamiast zgadywac z gory, lapiemy KAZDY faktyczny
-// blad renderowania PO FAKCIE - KaTeX z throwOnError:false sam oznacza kazdy
-// nieudany wzor klasa .katex-error (czerwony tekst). Po renderowaniu
-// przechodzimy po wszystkich takich elementach i podmieniamy je na zwykly,
-// czytelny tekst (kod/monospace) - user NIGDY nie widzi czerwonego bledu,
-// niezaleznie od tego, jaki dokladnie zapis AI wymysli. Dziala dla KAZDEGO
-// przypadku, nie tylko \begin{array} ktory juz naprawialismy dwa razy.
-function _cleanupKatexErrors(root) {
-  if (!root || !root.querySelectorAll) return;
-  root.querySelectorAll('.katex-error').forEach(function(node) {
-    var raw = node.textContent || node.getAttribute('title') || '';
-    // NAPRAWIONE (27.09.2026, user: "na tej ramce tylko 1 wynik, pisze tam
-    // wszystko" - surowy zrzut LaTeX-a jednym ciagiem, np. dla \begin{array},
-    // byl nieczytelny: "\begin{array}{r} 0,50 \ +0,25 \ \hline 0,75 \ \end{array}"
-    // w jednej linii). Zamiast dumpowac caly surowy zapis, wyciagamy TYLKO
-    // sensowna tresc: usuwamy \begin{...}/\end{...}/\hline, zamieniamy \\
-    // (separator wiersza w LaTeX-u) na prawdziwe nowe linie, zeby np. dzialanie
-    // w slupku bylo czytelne, a nie jednym pomieszanym zdaniem.
-    var cleaned = raw
-      .replace(/\\begin\{[a-zA-Z*]+\}(\{[^}]*\})?/g, '')
-      .replace(/\\end\{[a-zA-Z*]+\}/g, '')
-      .replace(/\\hline/g, '------')
-      .replace(/\\\\/g, '\n')
-      .replace(/&/g, '  ')
-      .split('\n').map(function(l){ return l.trim().replace(/\\+\s*$/, ''); }).filter(Boolean).join('\n')
-      .trim();
-    if (!cleaned) cleaned = raw.trim();
-    var hasNewline = cleaned.indexOf('\n') !== -1;
-    var el = document.createElement(hasNewline ? 'pre' : 'code');
-    el.textContent = cleaned;
-    el.style.cssText = hasNewline
-      ? 'background:rgba(255,255,255,.03);border-radius:8px;padding:8px 12px;margin:6px 0;font-size:.88em;color:var(--text,#eee);white-space:pre;overflow-x:auto;'
-      : 'background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-size:.88em;color:var(--text,#eee);';
-    node.replaceWith(el);
-  });
-}
 
 // NOWE (27.09.2026, user: "dlaczego nie ma ze pokazuje czy dobra odpowiedz czy
 // zla, przetestuj czy dobrze tlumaczy") - przycisk kciuk gora/dol pod kazda
@@ -1136,14 +1088,28 @@ function renderLatex(el) {
   if (bubbles.length > 0) {
     bubbles.forEach(function(b) {
       try {
-        renderMathInElement(b, { delimiters: _KATEX_DELIMS, throwOnError: false, strict: false, trust: true });
-        _cleanupKatexErrors(b);
+        renderMathInElement(b, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false, strict: false, trust: true
+        });
       } catch(e) {}
     });
   } else {
     try {
-      renderMathInElement(el, { delimiters: _KATEX_DELIMS, throwOnError: false, strict: false, trust: true });
-      _cleanupKatexErrors(el);
+      renderMathInElement(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false, strict: false, trust: true
+      });
     } catch(e) {}
   }
 }
