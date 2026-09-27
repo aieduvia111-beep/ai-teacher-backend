@@ -6,9 +6,11 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 import json
 from datetime import datetime
+from sqlalchemy.orm import Session
 from app.config import settings
 from app.firebase_auth import require_feature_limit
-from app.models import User
+from app.models import User, GenerationRequestLog
+from ..database import get_db
 from ..level_config import is_known_level, describe_level
 import urllib.parse
 
@@ -73,6 +75,13 @@ ZASADY dla pola text:
 - Używaj **pogrubień** dla kluczowych pojęć
 - Używaj ## dla nagłówków sekcji
 - Wzory matematyczne/chemiczne ZAWSZE w LaTeX: $$wzor$$ dla bloków, $wzor$ inline
+- NIGDY nie używaj \begin{array}, \begin{matrix} ani \begin{aligned} do pokazywania dodawania/odejmowania w słupku - ten zapis regularnie psuje się w renderowaniu (czerwony błąd). Zamiast tego pokaż działanie w słupku jako zwykły tekst w bloku kodu (potrójny apostrof), np.:
+  ```
+    0,50
+  + 0,25
+  ------
+    0,75
+  ```
 - Emoji są OK ale nie przesadzaj
 - Gdy uczeń wysyła zdjęcie z zadaniami lub listę zadań - ROZWIĄŻ KAŻDE z nich osobno krok po kroku
 - Gdy jest wiele zadań - numeruj je ## Zadanie 1, ## Zadanie 2 itd.
@@ -131,7 +140,7 @@ def _build_response(ai_data: dict, user_message: str) -> dict:
 
 
 @router.post("/message")
-async def chat_message(req: ChatRequest, user: User = Depends(require_feature_limit("chat"))):
+async def chat_message(req: ChatRequest, user: User = Depends(require_feature_limit("chat")), db: Session = Depends(get_db)):
     """HTTP endpoint - przyjmuje historię rozmowy i zwraca odpowiedź AI"""
     try:
         # NAPRAWIONE (klient sie poskarzyl 27.09.2026: "nie umie dobrze wytlumaczyc",
@@ -215,6 +224,21 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
         response = _build_response(ai_data, req.text)
         if image_url:
             response["image_url"] = image_url
+
+        # NOWE (27.09.2026, po skardze na "nie umie dobrze wytlumaczyc" - patrz
+        # komentarz przy system_prompt wyzej): logujemy TYLKO temat (krotki tytul
+        # od AI) + poziom ucznia, NIGDY tresc rozmowy - zeby dalo sie retrospektywnie
+        # sprawdzic z jakiego tematu/poziomu byla skarga, bez zapisywania pelnych
+        # wiadomosci (prywatnosc). Blad zapisu NIE moze wywalic odpowiedzi dla usera.
+        try:
+            db.add(GenerationRequestLog(
+                feature="chat", temat=ai_data.get("title"), poziom=level,
+                requested_count=1, accepted_count=1,
+            ))
+            db.commit()
+        except Exception as log_e:
+            print(f"[chat log] blad zapisu (nieistotny dla usera): {log_e}")
+
         return response
 
     except Exception as e:
