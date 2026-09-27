@@ -75,6 +75,16 @@ def fake_send(uid, title, body):
     return {"success": True, "message_id": "msg_" + uid}
 notif.send_push_notification = fake_send
 
+# NAPRAWIONE (27.09.2026): mail jako kanal zapasowy - patchujemy ZRODLO (email_notifier
+# to co faktycznie importuje notifications.py przez `from ..email_notifier import ...`
+# WEWNATRZ funkcji, wiec musimy podmienic atrybut na module, nie na juz-zaimportowanej referencji).
+import app.email_notifier as email_notifier_mod
+EMAILED_TO = []
+def fake_email(to_email, subject, body_text, body_html=None):
+    EMAILED_TO.append(to_email)
+    return True
+email_notifier_mod.send_user_email = fake_email
+
 notif._run_abandoned_checkout_reminder()
 
 db2 = SessionLocal()
@@ -92,6 +102,12 @@ notified_uids = [e.user_id for e in notified_events]
 check("u_no_token MIMO braku sukcesu ma zapisany event 'notified' (nie bedzie spamowany co 30 min)", "u_no_token" in notified_uids, notified_uids)
 check("u_warm ma zapisany event 'notified' z push_sent=True w meta", any(e.user_id == "u_warm" and e.meta.get("push_sent") is True for e in notified_events), [(e.user_id, e.meta) for e in notified_events])
 check("dokladnie 4 eventy 'notified' razem (1 wstepnie zaladowany dla u_notified + 3 nowe: u_warm, u_double_click, u_no_token)", len(notified_events) == 4, notified_uids)
+
+# NAPRAWIONE (27.09.2026): mail jako kanal zapasowy - probowany ZAWSZE, niezaleznie od push
+check("u_no_token (push zawiodl) -> DOSTAL mail zamiast tego (kanal zapasowy zadzialal)", "u_no_token@x.pl" in EMAILED_TO, EMAILED_TO)
+check("u_warm (push zadzialal) -> i tak DOSTAL rowniez mail (podwojny kanal, nie tylko fallback)", "u_warm@x.pl" in EMAILED_TO, EMAILED_TO)
+check("u_no_token ma email_sent=True w meta (mimo push_sent=False)", any(e.user_id == "u_no_token" and e.meta.get("push_sent") is False and e.meta.get("email_sent") is True for e in notified_events), [(e.user_id, e.meta) for e in notified_events])
+check("pominieci (juz zaplacili/juz powiadomieni) NIE dostali maila", not any(u in EMAILED_TO for u in ("u_paid", "u_already_premium", "u_notified", "u_too_recent", "u_too_old")), EMAILED_TO)
 check("u_notified ma TYLKO SWOJ WLASNY, wczesniejszy event 'notified' (jeden, nie drugi)", notified_uids.count("u_notified") == 1, notified_uids)
 
 # Druga runda tego samego zadania (symulacja kolejnego uruchomienia co 30 min) - u_warm NIE dostaje drugiego powiadomienia

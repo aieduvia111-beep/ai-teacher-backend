@@ -205,11 +205,29 @@ def _run_abandoned_checkout_reminder():
                 uid, "Twoja subskrypcja czeka 🎓",
                 "Zostało kilka kroków — dokończ w minutę i ucz się bez limitów.",
             )
+            # NAPRAWIONE (27.09.2026, real prod: 6/6 porzuconych checkoutow tego dnia mialo
+            # "Brak tokenu FCM dla tego uzytkownika" - push ma 0% dostarczalnosci, bo token
+            # to opt-in banner pokazywany RAZ w zyciu urzadzenia, przy czym w ogole nie dziala
+            # w WKWebView na iOS). Mail jest kanalem zapasowym, ktory nie zalezy od zadnej
+            # zgody/tokenu/platformy - probujemy go ZAWSZE, niezaleznie czy push wyszedl.
+            email_sent = False
+            if user and user.email and '@' in user.email:
+                from ..email_notifier import send_user_email
+                email_sent = send_user_email(
+                    user.email,
+                    "Twoja subskrypcja Eduvia AI czeka na dokończenie",
+                    "Zaczales/as zakladac subskrypcje Eduvia AI, ale platnosc nie zostala dokonczona.\n\n"
+                    "Zostalo kilka krokow - wroc do aplikacji i dokoncz w minute, zeby uczyc sie bez limitow.\n\n"
+                    "Jesli to byla pomylka albo juz sie rozmysliles/as, po prostu zignoruj te wiadomosc.",
+                    "<p>Zacząłeś/aś zakładać subskrypcję <b>Eduvia AI</b>, ale płatność nie została dokończona.</p>"
+                    "<p>Zostało kilka kroków — wróć do aplikacji i dokończ w minutę, żeby uczyć się bez limitów.</p>"
+                    "<p style='color:#888;font-size:13px'>Jeśli to była pomyłka albo już się rozmyśliłeś/aś, po prostu zignoruj tę wiadomość.</p>",
+                )
             # Zapisujemy PROBE (niezaleznie od sukcesu wysylki) - brak tokenu FCM teraz nie
             # zmieni sie za 30 min, wiec nie probujemy ponownie tego samego checkoutu w kolko.
-            db.add(FunnelEvent(event='abandoned_checkout_notified', user_id=uid, meta={"push_sent": bool(result.get("success")), "error": (None if result.get("success") else str(result.get("error"))[:80])}))
+            db.add(FunnelEvent(event='abandoned_checkout_notified', user_id=uid, meta={"push_sent": bool(result.get("success")), "email_sent": email_sent, "error": (None if result.get("success") else str(result.get("error"))[:80])}))
             db.commit()
-            if result.get("success"):
+            if result.get("success") or email_sent:
                 sent += 1
             else:
                 skipped += 1
