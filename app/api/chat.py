@@ -9,13 +9,14 @@ from datetime import datetime
 from app.config import settings
 from app.firebase_auth import require_feature_limit
 from app.models import User
+from ..level_config import is_known_level, describe_level
 import urllib.parse
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-SYSTEM_PROMPT = """Jesteś Learnio AI - najlepszym nauczycielem AI dla polskich uczniów szkół średnich.
+SYSTEM_PROMPT = """Jesteś Learnio AI - najlepszym nauczycielem AI dla polskich uczniów.
 Odpowiadasz po polsku, przystępnie i ciekawie jak najlepszy korepetytor.
 Zawsze czytaj całą historię rozmowy i rozumiej kontekst.
 Gdy uczeń pisze "dzięki", "ok", "super", "spoko" - odpowiedz naturalnie np "Nie ma za co! Pisz jak masz pytania." - ale zawsze wypełnij pole text.
@@ -133,8 +134,21 @@ def _build_response(ai_data: dict, user_message: str) -> dict:
 async def chat_message(req: ChatRequest, user: User = Depends(require_feature_limit("chat"))):
     """HTTP endpoint - przyjmuje historię rozmowy i zwraca odpowiedź AI"""
     try:
+        # NAPRAWIONE (klient sie poskarzyl 27.09.2026: "nie umie dobrze wytlumaczyc",
+        # konkretnie ulamki dziesietne - realny prod bug): Chat AI byl JEDYNA funkcja
+        # w calej appce ktora NIGDY nie wolala describe_level() - quiz, sprawdzian,
+        # notatki, glos, tablica, plan nauki - wszystkie dostosowuja jezyk/poziom
+        # wyjasnienia do klasy ucznia, tylko chat zawsze tlumaczyl tak jakby kazdy byl
+        # w liceum (stary SYSTEM_PROMPT mial to zaszyte na sztywno w pierwszym zdaniu).
+        # Dla ucznia szkoly podstawowej pytajacego o ulamki dziesietne (temat z 5-6
+        # klasy, nie liceum) to musialo wygladac jak zle/za trudne tlumaczenie.
+        system_prompt = SYSTEM_PROMPT
+        level = getattr(user, "education_level", None)
+        if level and is_known_level(level):
+            system_prompt = system_prompt + "\n\nKRYTYCZNE: " + describe_level(level, subject=getattr(user, "favorite_subject", None)) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
+
         # Buduj historię
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": system_prompt}]
 
         # Dodaj historię z frontendu
         for msg in (req.history or [])[-10:]:
