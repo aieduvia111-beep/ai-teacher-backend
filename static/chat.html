@@ -171,6 +171,12 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted2);margin:8px 0;font-style:italic;}
 .bubble .katex{font-size:1em;}.bubble .katex-display{margin:10px 0;overflow-x:auto;}
 .bubble hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
+.ai-feedback{display:flex;gap:6px;margin:6px 0 0 4px;}
+.fb-btn{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:.85em;cursor:pointer;opacity:.55;transition:opacity .15s,border-color .15s,background .15s;}
+.fb-btn:hover:not(:disabled){opacity:1;}
+.fb-btn.active{opacity:1;border-color:rgba(124,106,255,.5);background:rgba(124,106,255,.12);}
+.fb-btn:disabled{cursor:default;}
+.fb-btn:disabled:not(.active){opacity:.25;}
 .bubble-img{width:72px;height:72px;object-fit:cover;border-radius:10px;margin-top:6px;margin-right:4px;border:1px solid var(--border-hi);display:inline-block;vertical-align:top;cursor:pointer;transition:transform .15s;}
 .bubble-img:hover{transform:scale(1.05);}
 .bubble-imgs-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
@@ -1077,6 +1083,33 @@ function _cleanupKatexErrors(root) {
   });
 }
 
+// NOWE (27.09.2026, user: "dlaczego nie ma ze pokazuje czy dobra odpowiedz czy
+// zla, przetestuj czy dobrze tlumaczy") - przycisk kciuk gora/dol pod kazda
+// odpowiedzia AI, zeby wychwytywac slabe odpowiedzi natychmiast (a nie dopiero
+// jak rodzic napisze do dewelopera, tak jak z ulamkami dziesietnymi).
+function addFeedbackButtons(aiGroup, logId) {
+  const fb = document.createElement('div');
+  fb.className = 'ai-feedback';
+  fb.innerHTML = '<button class="fb-btn" data-v="up" title="Pomocne">👍</button><button class="fb-btn" data-v="down" title="Niepomocne">👎</button>';
+  aiGroup.appendChild(fb);
+  fb.querySelectorAll('.fb-btn').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      if (fb.dataset.sent) return; // jedna ocena na odpowiedz, nie da sie zmienic zdania w kolko
+      fb.dataset.sent = '1';
+      fb.querySelectorAll('.fb-btn').forEach(function(b){ b.disabled = true; });
+      btn.classList.add('active');
+      try {
+        const idTok = await window._getAuthToken();
+        await fetch(BACKEND_URL + '/api/v1/chat/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idTok },
+          body: JSON.stringify({ log_id: logId, helpful: btn.dataset.v === 'up' })
+        });
+      } catch(e) {}
+    });
+  });
+}
+
 function renderLatex(el) {
   if (typeof renderMathInElement === 'undefined') { setTimeout(() => renderLatex(el), 300); return; }
   // Renderuj każdą bąbelkę osobno — błąd w jednej nie zatrzyma reszty
@@ -1597,6 +1630,13 @@ async function sendMessage() {
 
     // renderLatex po enrichBubble — używamy requestAnimationFrame dla pewności
     requestAnimationFrame(() => renderLatex(aiGroup));
+
+    // NOWE (27.09.2026, user: "dlaczego nie ma ze pokazuje czy dobra odpowiedz
+    // czy zla") - kciuk gora/dol pod kazda odpowiedzia AI. Zamiast czekac az
+    // ktos napisze skarge tygodnie pozniej (tak jak z ulamkami dziesietnymi),
+    // user oznacza slaba odpowiedz OD RAZU - patrz POST /api/v1/chat/feedback,
+    // temat+poziom tej rozmowy sa juz zapisane w GenerationRequestLog.
+    if (response.log_id) addFeedbackButtons(aiGroup, response.log_id);
 
     // Pokaz wygenerowany obrazek
     if (response.image_url) {

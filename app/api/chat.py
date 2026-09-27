@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.config import settings
-from app.firebase_auth import require_feature_limit
+from app.firebase_auth import require_feature_limit, get_current_app_user
 from app.models import User, GenerationRequestLog
 from ..database import get_db
 from ..level_config import is_known_level, describe_level
@@ -231,11 +231,19 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
         # sprawdzic z jakiego tematu/poziomu byla skarga, bez zapisywania pelnych
         # wiadomosci (prywatnosc). Blad zapisu NIE moze wywalic odpowiedzi dla usera.
         try:
-            db.add(GenerationRequestLog(
+            log_row = GenerationRequestLog(
                 feature="chat", temat=ai_data.get("title"), poziom=level,
                 requested_count=1, accepted_count=1,
-            ))
+            )
+            db.add(log_row)
             db.commit()
+            db.refresh(log_row)
+            # NOWE (27.09.2026, user: "dlaczego nie ma ze pokazuje czy dobra
+            # odpowiedz czy zla"): zwracamy id logu, zeby front mogl podpiac
+            # przycisk kciuk gora/dol pod TA KONKRETNA odpowiedzia - patrz
+            # POST /feedback nizej. Bez tego nie dalo by sie polaczyc kliknietego
+            # przycisku z odpowiednim wierszem w bazie.
+            response["log_id"] = log_row.id
         except Exception as log_e:
             print(f"[chat log] blad zapisu (nieistotny dla usera): {log_e}")
 
@@ -407,6 +415,26 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
     except Exception as e:
         log_error("Chat", str(e))
         print(f"❌ Nieoczekiwany błąd: {e}")
+
+
+class ChatFeedbackRequest(BaseModel):
+    log_id: int
+    helpful: bool
+
+@router.post("/feedback")
+async def chat_feedback(req: ChatFeedbackRequest, user: User = Depends(get_current_app_user), db: Session = Depends(get_db)):
+    """NOWE (27.09.2026, user: "dlaczego nie ma ze pokazuje czy dobra odpowiedz
+    czy zla") - kciuk gora/dol pod odpowiedzia AI. Zamiast czekac az rodzic
+    napisze do dewelopera tygodnie pozniej (tak jak z ulamkami dziesietnymi),
+    user oznacza slaba odpowiedz OD RAZU, z tematem i poziomem juz gotowymi
+    w logu (patrz GenerationRequestLog w chat_message wyzej)."""
+    row = db.query(GenerationRequestLog).filter(GenerationRequestLog.id == req.log_id, GenerationRequestLog.feature == "chat").first()
+    if not row:
+        return {"success": False, "error": "Nie znaleziono rozmowy"}
+    row.accepted_count = 1 if req.helpful else 0
+    row.rejected_count = 0 if req.helpful else 1
+    db.commit()
+    return {"success": True}
 
 
 @router.get("/health")

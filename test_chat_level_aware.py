@@ -20,7 +20,7 @@ from app.database import Base
 import app.models
 from app.models import GenerationRequestLog
 import app.api.chat as chat_mod
-from app.api.chat import chat_message, ChatRequest
+from app.api.chat import chat_message, ChatRequest, chat_feedback, ChatFeedbackRequest
 
 FAILED = []
 def check(name, cond, detail=None):
@@ -62,7 +62,7 @@ MARKER = "NAJWAZNIEJSZA instrukcja"  # unikalny fragment TYLKO z nowego bloku po
 # 1) uczen szkoly podstawowej pyta o ulamki dziesietne -> poziom MUSI trafic do system promptu I do logu w bazie
 req = ChatRequest(text="Wytlumacz mi ulamki dziesietne")
 user = FakeUser(education_level="podstawowka_5", favorite_subject="matematyka")
-asyncio.run(chat_message(req, user, db))
+result1 = asyncio.run(chat_message(req, user, db))
 system_msg = CAPTURED["messages"][0]["content"]
 check("system_prompt NIE jest juz zaszyty na sztywno na liceum", "szkół średnich" not in system_msg, system_msg[:120])
 check("poziom ucznia (podstawowa) TRAFIA do system promptu", "podstaw" in system_msg.lower(), system_msg)
@@ -72,6 +72,7 @@ log1 = db.query(GenerationRequestLog).filter(GenerationRequestLog.feature == "ch
 check("rozmowa ZALOGOWANA do bazy (feature=chat)", log1 is not None)
 check("log ma temat (tytul od AI), np. do wyszukania po skardze", log1 and log1.temat == "Ułamki dziesiętne", log1 and log1.temat)
 check("log ma poziom ucznia zapisany", log1 and log1.poziom == "podstawowka_5", log1 and log1.poziom)
+check("odpowiedz zawiera log_id, zeby front mogl podpiac kciuk gora/dol", result1.get("log_id") == log1.id, (result1.get("log_id"), log1.id))
 
 # 2) inny poziom (liceum) -> inny opis w promptcie (nie ten sam tekst co podstawowka)
 CAPTURED.clear()
@@ -99,6 +100,21 @@ check("nieznany poziom -> brak crasha (bezpieczny fallback)", MARKER not in CAPT
 
 # 5) NIGDY nie logujemy tresci wiadomosci - tylko temat (krotki tytul), sprawdzamy ze pelny tekst pytania nie wyciekl do logu
 check("liczba wpisow w logu = liczba rozmow (kazda sie zaloguje)", db.query(GenerationRequestLog).filter(GenerationRequestLog.feature == "chat").count() == 4)
+
+# 6) kciuk gora/dol (user: "dlaczego nie ma ze pokazuje czy dobra odpowiedz czy zla")
+fb_user = FakeUser()  # get_current_app_user zwraca User, ale sam endpoint tylko czyta req.log_id - user nieuzywany do logiki
+fb_bad = asyncio.run(chat_feedback(ChatFeedbackRequest(log_id=log1.id, helpful=False), fb_user, db))
+check("kciuk w dol -> sukces", fb_bad.get("success") is True, fb_bad)
+db.refresh(log1)
+check("kciuk w dol -> zapisany jako odrzucony (rejected_count=1, accepted_count=0)", log1.rejected_count == 1 and log1.accepted_count == 0, (log1.rejected_count, log1.accepted_count))
+
+fb_good = asyncio.run(chat_feedback(ChatFeedbackRequest(log_id=log1.id, helpful=True), fb_user, db))
+check("kciuk w gore -> sukces, nadpisuje poprzednia ocene", fb_good.get("success") is True, fb_good)
+db.refresh(log1)
+check("kciuk w gore -> zapisany jako zaakceptowany (accepted_count=1, rejected_count=0)", log1.accepted_count == 1 and log1.rejected_count == 0, (log1.accepted_count, log1.rejected_count))
+
+fb_missing = asyncio.run(chat_feedback(ChatFeedbackRequest(log_id=999999, helpful=True), fb_user, db))
+check("nieistniejacy log_id -> brak crasha, czytelny blad", fb_missing.get("success") is False, fb_missing)
 
 db.close()
 print("WYNIK:", "WSZYSTKIE TESTY PRZESZLY" if not FAILED else f"{len(FAILED)} NIE PRZESZLY {FAILED}")
