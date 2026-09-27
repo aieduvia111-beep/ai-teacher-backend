@@ -5,6 +5,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import json
+import re
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.config import settings
@@ -105,6 +106,32 @@ class ChatRequest(BaseModel):
     image: Optional[str] = None
     document: Optional[str] = None  # base64 PDF lub tekst z Word
     document_name: Optional[str] = None  # nazwa pliku
+
+_STRAY_ESCAPE_RE = re.compile(r'(\\+)([trbf])')
+
+def _fix_stray_json_escapes(raw: str) -> str:
+    """NAPRAWIONE (27.09.2026, real prod: user testowal jakosc tlumaczenia po
+    fixie poziomu/LaTeX-a i zlapalismy $$F = m [TAB]imes a$$ zamiast \\times) -
+    model czasem pisze w JSON-ie POJEDYNCZY backslash przed komenda LaTeX
+    (\\times, \\text, \\frac, \\theta, \\tan...), zamiast wymaganego przez JSON
+    podwojnego. JSON parsuje \\t/\\r/\\b/\\f jako PRAWDZIWE znaki kontrolne
+    (tabulacja/CR/backspace/formfeed) i "zjada" te litery - \\times staje sie
+    tabulatorem + "imes". To NIE jest jeden przypadek do zalatania regexem
+    (jak \\begin{array} wczesniej) - kazda komenda LaTeX zaczynajaca sie na
+    t/r/b/f jest tak samo podatna (\\tan, \\to, \\theta, \\tau, \\beta, \\big,
+    \\binom, \\forall, \\frac, \\right, \\rangle...). Naprawiamy u ZRODLA:
+    przed parsowaniem JSON, kazdy NIEPARZYSTY ciag backslashy przed t/r/b/f
+    (czyli faktycznie bledna sekwencja ucieczki) dostaje jeszcze jeden
+    backslash, zeby po sparsowaniu JSON zostal prawdziwy \\<litera> (poczatek
+    komendy LaTeX), a nie znak kontrolny. Celowo NIE dotyka \\n (nowa linia -
+    normalnie i celowo uzywana przez model do akapitow w markdownie)."""
+    def _repl(m):
+        backslashes, letter = m.group(1), m.group(2)
+        if len(backslashes) % 2 == 1:
+            return backslashes + "\\" + letter
+        return m.group(0)
+    return _STRAY_ESCAPE_RE.sub(_repl, raw)
+
 
 def _build_response(ai_data: dict, user_message: str) -> dict:
     topic_en = ai_data.get("topic_en", user_message)
@@ -210,7 +237,7 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
         raw_response = response.choices[0].message.content
 
         try:
-            ai_data = json.loads(raw_response)
+            ai_data = json.loads(_fix_stray_json_escapes(raw_response))
         except json.JSONDecodeError:
             ai_data = {"title": "Odpowiedź", "text": raw_response, "has_latex": False, "show_sources": False, "show_videos": False, "show_chart": False, "chart": None, "topic_en": req.text}
 
@@ -316,7 +343,7 @@ async def chat_websocket(websocket: WebSocket, user_id: int = 1):
 
                 # Parsuj JSON od AI
                 try:
-                    ai_data = json.loads(raw_response)
+                    ai_data = json.loads(_fix_stray_json_escapes(raw_response))
                 except json.JSONDecodeError:
                     ai_data = {
                         "title": "Odpowiedź",
