@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..firebase_auth import get_current_app_user, _ensure_firebase_app
-from ..level_config import is_known_level, label_for_level
+from ..level_config import is_known_level, label_for_level, get_forced_fallback_topic
 from ..models import User, Lesson, Review, Subscription, UsageStats
 from ..openai_exam import generate_quiz_from_topic
 
@@ -75,9 +75,20 @@ async def _refresh_suggested_topic_if_stale(user: User, db: Session) -> None:
         user.suggested_topic_date = today
         db.commit()
 
+    def _apply_cached(cached_entry) -> None:
+        # cached_entry[1] moze byc None ("dzis juz probowalismy dla tej pary i AI nie
+        # dalo konkretnego tematu, brak fallbacku") - wtedy NIE nadpisujemy
+        # user.suggested_topic (zostaje stary/None), tylko oznaczamy dzien, zeby nie
+        # odpytywac AI ponownie w kolko dla tej samej pary (poziom, przedmiot).
+        if cached_entry[1]:
+            _apply(cached_entry[1])
+        else:
+            user.suggested_topic_date = today
+            db.commit()
+
     cached = _SUGGEST_CACHE.get(key)
     if cached and cached[0] == today:
-        _apply(cached[1])
+        _apply_cached(cached)
         return
 
     import asyncio
@@ -86,7 +97,7 @@ async def _refresh_suggested_topic_if_stale(user: User, db: Session) -> None:
         # Ktos mogl wygenerowac ten temat, gdy czekalismy na lock.
         cached = _SUGGEST_CACHE.get(key)
         if cached and cached[0] == today:
-            _apply(cached[1])
+            _apply_cached(cached)
             return
 
         # "Inny niz poprzednio": bierzemy wczorajszy temat tej pary (z cache),
@@ -137,6 +148,41 @@ async def _refresh_suggested_topic_if_stale(user: User, db: Session) -> None:
             title = short_title
         if not title:
             return
+
+        # NAPRAWIONE (27.09.2026, real prod, user: "widze temat dnia to matematyka
+        # temat to matematyka xd") - "AI samo wybiera" czasem po prostu ODBIJA nazwe
+        # przedmiotu jako "title" (np. "Matematyka - Quiz"), zamiast wybrac konkretny
+        # temat z zakresu. validate_generic_topic() tego NIE lapie, gdy dla danej pary
+        # (poziom, przedmiot) nie ma zdefiniowanych GENERIC_TOPIC_KEYWORDS - zwraca
+        # wtedy True ("brak danych do walidacji, nie blokujemy"), wiec bezuzyteczny
+        # tytul "Matematyka" trafial prosto na karte "Nastepny krok". Tu dodatkowo
+        # odrzucamy tytul, ktory (po normalizacji) jest tym samym slowem co sam
+        # przedmiot - i podmieniamy go na konkretny, juz sprawdzony temat z
+        # FORCED_FALLBACK_TOPICS (BEZ kolejnego wywolania AI - ten sam mechanizm,
+        # co awaryjny fallback w generate_quiz_from_topic).
+        def _norm(s: str) -> str:
+            s = s.strip().lower()
+            for a, b in (("ą", "a"), ("ć", "c"), ("ę", "e"), ("ł", "l"), ("ń", "n"), ("ó", "o"), ("ś", "s"), ("ź", "z"), ("ż", "z")):
+                s = s.replace(a, b)
+            return s
+
+        if _norm(title) == _norm(user.favorite_subject):
+            fallback_topic = get_forced_fallback_topic(user.education_level, user.favorite_subject)
+            if fallback_topic:
+                print(f"[SuggestedTopic] AI zwrocilo sam przedmiot ('{title}') dla usera {user.id} - podmieniam na fallback '{fallback_topic}'")
+                title = fallback_topic
+            else:
+                # Brak fallbacku dla tej pary (poziom, przedmiot) - i tak zapisujemy PUSTY
+                # wpis w cache na dzisiaj (klucz (poziom, przedmiot), nie per-user), zeby
+                # kolejni userzy tej samej pary w tym samym dniu NIE wywolywali ponownie AI
+                # tylko po to, zeby dostac ten sam bezuzyteczny wynik. user.suggested_topic
+                # zostaje niezmieniony (stary temat albo None) - frontend wtedy pokazuje
+                # sam przedmiot, tak jak wczesniej.
+                print(f"[SuggestedTopic] AI zwrocilo sam przedmiot ('{title}') dla usera {user.id}, brak fallbacku - pomijam (sprobujemy jutro)")
+                _SUGGEST_CACHE[key] = (today, None)
+                user.suggested_topic_date = today
+                db.commit()
+                return
 
         _SUGGEST_CACHE[key] = (today, title)
         _apply(title)
