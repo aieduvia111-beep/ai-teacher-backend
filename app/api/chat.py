@@ -76,13 +76,8 @@ ZASADY dla pola text:
 - Używaj **pogrubień** dla kluczowych pojęć
 - Używaj ## dla nagłówków sekcji
 - Wzory matematyczne/chemiczne ZAWSZE w LaTeX: $$wzor$$ dla bloków, $wzor$ inline
-- NIGDY nie używaj \begin{array}, \begin{matrix} ani \begin{aligned} do pokazywania dodawania/odejmowania w słupku - ten zapis regularnie psuje się w renderowaniu (czerwony błąd). Zamiast tego pokaż działanie w słupku jako zwykły tekst w bloku kodu (potrójny apostrof), np.:
-  ```
-    0,50
-  + 0,25
-  ------
-    0,75
-  ```
+- NIGDY nie używaj \begin{array}, \begin{matrix} ani \begin{aligned} - ten zapis regularnie psuje się w renderowaniu (czerwony błąd)
+- Działania pisemne (dodawanie/odejmowanie/mnożenie w słupku) NIE pokazuj jako blok kodu ani żadne "pudełko" - opisz krok po kroku zwykłym tekstem/listą, np. "Dodajemy jedności: 0+5=5, dodajemy dziesiąte: 5+2=7, wynik: 0,75" - dokładnie tak, jak tłumaczysz każdy inny krok
 - Emoji są OK ale nie przesadzaj
 - Gdy uczeń wysyła zdjęcie z zadaniami lub listę zadań - ROZWIĄŻ KAŻDE z nich osobno krok po kroku
 - Gdy jest wiele zadań - numeruj je ## Zadanie 1, ## Zadanie 2 itd.
