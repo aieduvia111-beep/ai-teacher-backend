@@ -1047,6 +1047,36 @@ try{
 
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
+var _KATEX_DELIMS = [
+  { left: '$$', right: '$$', display: true },
+  { left: '$', right: '$', display: false },
+  { left: '\\[', right: '\\]', display: true },
+  { left: '\\(', right: '\\)', display: false }
+];
+
+// NAPRAWIONE (27.09.2026, real prod: user wielokrotnie zglaszal czerwone bledy
+// KaTeX - za kazdym razem inny zapis LaTeX-a od AI, wiec proby zakazania z
+// gory w SYSTEM_PROMPT/regexem na backendzie lapaly tylko TEN JEDEN wariant,
+// ktory juz widzielismy, a nie kolejne. Nie da sie przewidziec kazdego
+// mozliwego zlego zapisu, ktory model kiedykolwiek wygeneruje.
+// Profesjonalne podejscie: zamiast zgadywac z gory, lapiemy KAZDY faktyczny
+// blad renderowania PO FAKCIE - KaTeX z throwOnError:false sam oznacza kazdy
+// nieudany wzor klasa .katex-error (czerwony tekst). Po renderowaniu
+// przechodzimy po wszystkich takich elementach i podmieniamy je na zwykly,
+// czytelny tekst (kod/monospace) - user NIGDY nie widzi czerwonego bledu,
+// niezaleznie od tego, jaki dokladnie zapis AI wymysli. Dziala dla KAZDEGO
+// przypadku, nie tylko \begin{array} ktory juz naprawialismy dwa razy.
+function _cleanupKatexErrors(root) {
+  if (!root || !root.querySelectorAll) return;
+  root.querySelectorAll('.katex-error').forEach(function(node) {
+    var raw = node.textContent || node.getAttribute('title') || '';
+    var span = document.createElement('code');
+    span.textContent = raw;
+    span.style.cssText = 'background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-size:.88em;color:var(--text,#eee);';
+    node.replaceWith(span);
+  });
+}
+
 function renderLatex(el) {
   if (typeof renderMathInElement === 'undefined') { setTimeout(() => renderLatex(el), 300); return; }
   // Renderuj każdą bąbelkę osobno — błąd w jednej nie zatrzyma reszty
@@ -1054,28 +1084,14 @@ function renderLatex(el) {
   if (bubbles.length > 0) {
     bubbles.forEach(function(b) {
       try {
-        renderMathInElement(b, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false }
-          ],
-          throwOnError: false, strict: false, trust: true
-        });
+        renderMathInElement(b, { delimiters: _KATEX_DELIMS, throwOnError: false, strict: false, trust: true });
+        _cleanupKatexErrors(b);
       } catch(e) {}
     });
   } else {
     try {
-      renderMathInElement(el, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false }
-        ],
-        throwOnError: false, strict: false, trust: true
-      });
+      renderMathInElement(el, { delimiters: _KATEX_DELIMS, throwOnError: false, strict: false, trust: true });
+      _cleanupKatexErrors(el);
     } catch(e) {}
   }
 }
