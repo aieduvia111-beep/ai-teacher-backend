@@ -65,6 +65,12 @@ body{font-family:var(--b);background:var(--bg);color:var(--text);min-height:100v
 .plan-cur{font-family:var(--h);font-size:1em;font-weight:700;color:var(--muted2);}
 .plan-period{font-size:0.78em;color:var(--muted);margin-bottom:24px;line-height:1.5;}
 
+.plan-toggle{display:flex;gap:4px;background:rgba(124,106,255,0.08);border:1px solid var(--border-hi);border-radius:11px;padding:4px;}
+.toggle-opt{flex:1;padding:8px 6px;border:none;border-radius:8px;background:transparent;color:var(--muted2);font-family:var(--h);font-size:0.74em;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.toggle-opt.active{background:linear-gradient(135deg,#7c6aff,#5b4fcf);color:white;}
+.toggle-save{font-size:0.88em;font-weight:800;color:#22d3a0;}
+.toggle-opt.active .toggle-save{color:#c9ffe9;}
+
 .plan-btn{width:100%;padding:13px;border-radius:13px;border:none;font-family:var(--h);font-size:0.84em;font-weight:700;cursor:pointer;transition:all 0.25s;letter-spacing:0.04em;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px;}
 .plan-btn.outline{background:transparent;border:1px solid var(--border-hi);color:var(--muted2);}
 .plan-btn.outline:hover{border-color:rgba(124,106,255,0.3);color:var(--text);background:rgba(124,106,255,0.04);}
@@ -321,8 +327,16 @@ window._currentUser=()=>currentUser;
          karty; wyrownano tekst DO realnej ceny, nie odwrotnie, bo zmiana
          Stripe Price zerwalaby istniejace subskrypcje). id="proAmt"
          zamiast twardej wartosci. -->
+    <!-- NOWE (plan roczny, Android/Web/karta) - przelacznik Miesiac/Rok.
+         Ukryty na natywnym iOS (patrz JS nizej, applyAnnualToggle) bo
+         StoreKit/Apple IAP nie ma jeszcze odpowiednika rocznego produktu. -->
+    <div class="plan-toggle" id="planToggle" style="display:none;margin-bottom:10px;">
+      <button type="button" class="toggle-opt active" id="toggleMonthlyBtn" onclick="selectPlan('monthly')">Miesiąc</button>
+      <button type="button" class="toggle-opt" id="toggleAnnualBtn" onclick="selectPlan('annual')">Rok <span class="toggle-save">-17%</span></button>
+    </div>
     <div class="plan-price"><span class="plan-amt pro-amt" id="proAmt">30</span><span class="plan-cur">zł</span></div>
-    <div class="plan-period">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
+    <div class="plan-period" id="proPeriod">miesięcznie po okresie próbnym · anuluj kiedy chcesz</div>
+    <div id="annualSaveNote" style="display:none;font-size:.78em;font-weight:700;color:#22d3a0;margin:-20px 0 14px;">Oszczędzasz 70 zł rocznie</div>
     <div style="font-size:.78em;font-weight:700;color:#22d3a0;margin:2px 0 14px;" id="badgeTrialDays">🎁 Pierwsze 7 dni za darmo</div>
     <!-- NAPRAWIONE (12.09.2026, user: "nie chcem miec wyboru pomiedzy
          blikiem jak i karta [w apce], ma to byc w Stripe") - usunieto
@@ -417,6 +431,15 @@ const API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.
 // "PWAShell" dodawany TYLKO przez natywny wrapper iOS (WebView.swift).
 const IOS_PRICE = '39,99';
 const ANDROID_WEB_PRICE = '30';
+// NOWE (plan roczny, Android/Web/karta): 290 zl/rok = ok. -17% wzgledem
+// 30*12=360 zl placonych miesiecznie. UWAGA: ta liczba jest TYLKO tekstem
+// na stronie - MUSI zgadzac sie co do grosza z rzeczywista cena Stripe
+// Price ustawiona jako STRIPE_PRICE_ID_ANNUAL w .env backendu, inaczej
+// powtorzymy dokladnie ten sam blad co wczesniej z 29 vs 30 zl (patrz
+// komentarz przy ANDROID_WEB_PRICE wyzej) - user zobaczy tu jedna cene,
+// a Stripe na checkoucie pobierze inna.
+const ANNUAL_PRICE = '290';
+let selectedPlan = 'monthly';
 // NAPRAWIONE (wrzesien 2026, patrz identyczna naprawa i pelne uzasadnienie
 // w login.html): poleganie WYLACZNIE na "PWAShell" w user-agencie bylo
 // zawodne na realnym urzadzeniu (user zgłosił falszywy komunikat "zainstaluj
@@ -483,8 +506,35 @@ function applyPlatformPrice(){
     if(ctaNoteEl) ctaNoteEl.textContent = '🔒 Bezpieczna płatność · Anuluj kiedy chcesz · Nic nie płacisz przez ' + TRIAL_DAYS + ' dni';
     if(window._noTrial) applyNoTrialTexts();
   }
+  // NOWE (plan roczny): przelacznik widoczny TYLKO na Android/Web - iOS
+  // (StoreKit) nie ma jeszcze produktu rocznego, patrz config.py.
+  const toggleEl = document.getElementById('planToggle');
+  if(toggleEl) toggleEl.style.display = isNativeIosApp ? 'none' : 'flex';
 }
 applyPlatformPrice();
+
+// NOWE (plan roczny): przelacza wyswietlana cene/opis miedzy miesiecznym a
+// rocznym - samo wyslanie do backendu (plan: selectedPlan) dzieje sie w
+// startCheckout() nizej. Nie zmienia TRIAL_DAYS/badge triala - trial 7 dni
+// dziala identycznie niezaleznie od wybranego planu (patrz get_trial_days()
+// w stripe_service.py, nie zalezy od price_id).
+function selectPlan(plan){
+  selectedPlan = plan;
+  document.getElementById('toggleMonthlyBtn').classList.toggle('active', plan === 'monthly');
+  document.getElementById('toggleAnnualBtn').classList.toggle('active', plan === 'annual');
+  const amtEl = document.getElementById('proAmt');
+  const periodEl = document.getElementById('proPeriod');
+  const saveEl = document.getElementById('annualSaveNote');
+  if(plan === 'annual'){
+    if(amtEl) amtEl.textContent = ANNUAL_PRICE;
+    if(periodEl) periodEl.textContent = 'rocznie po okresie próbnym · anuluj kiedy chcesz';
+    if(saveEl) saveEl.style.display = 'block';
+  } else {
+    if(amtEl) amtEl.textContent = ANDROID_WEB_PRICE;
+    if(periodEl) periodEl.textContent = 'miesięcznie po okresie próbnym · anuluj kiedy chcesz';
+    if(saveEl) saveEl.style.display = 'none';
+  }
+}
 
 // 19.09.2026: po zalogowaniu pytamy backend, czy user jeszcze ma prawo do triala.
 (async function(){
@@ -674,7 +724,8 @@ async function startCheckout() {
       body: JSON.stringify({
         user_id: window._currentUser() ? window._currentUser().uid : '',
         email: window._currentUser() ? window._currentUser().email : '',
-        affiliate_code: affCode || ''
+        affiliate_code: affCode || '',
+        plan: selectedPlan
       })
     });
     const checkoutData = await checkoutRes.json();

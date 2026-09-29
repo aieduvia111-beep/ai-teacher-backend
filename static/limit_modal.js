@@ -25,6 +25,9 @@
   // (obecnosc mostka window.webkit.messageHandlers), niezalezny od UA.
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
   var PRO_PRICE = isIosApp ? '39,99' : '30';
+  // NOWE (plan roczny, Android/Web/karta) - iOS nie ma jeszcze odpowiednika
+  // (StoreKit), wiec ten wiersz sie tam po prostu nie pokazuje (patrz uzycie nizej).
+  var PRO_PRICE_ANNUAL_NOTE = 'lub 290 zł/rok (oszczędzasz 70 zł)';
 
   // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
   // app/services/stripe_service.py): identyczny mechanizm co
@@ -187,7 +190,9 @@
       '</p>' +
       valueRecapHtml() +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:left;">' +
-      '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies</div>' +
+      '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies' +
+      (isIosApp ? '' : ' <span style="color:#22d3a0;text-transform:none;letter-spacing:0;">(' + PRO_PRICE_ANNUAL_NOTE + ')</span>') +
+      '</div>' +
       '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2.5" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Nieograniczony Chat, Fiszki, Quiz' +

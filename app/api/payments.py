@@ -139,6 +139,9 @@ class CreateCheckoutRequest(BaseModel):
     user_id: str
     email: str
     affiliate_code: str = ""
+    # NOWE (plan roczny): "monthly" (domyslnie) albo "annual". Dotyczy TYLKO
+    # sciezki Android/Web/Stripe - iOS (StoreKit) nie ma jeszcze odpowiednika.
+    plan: str = "monthly"
 
 class CheckoutResponse(BaseModel):
     """Response z checkout URL"""
@@ -173,7 +176,7 @@ def verify_session(request: VerifySessionRequest):
         return {"success": False, "error": str(e)}
 
 def _run_checkout(verified_uid: str, verified_email: str, db: Session, affiliate_code: str = "",
-                  success_url: str = None, cancel_url: str = None, payer_email: str = None) -> dict:
+                  success_url: str = None, cancel_url: str = None, payer_email: str = None, plan: str = "monthly") -> dict:
     """Wspolna sciezka tworzenia checkoutu (przycisk "Kup Pro" ORAZ zakup rodzica
     spod linku - patrz parent_share.py). Opcjonalne URL-e pozwalaja odeslac
     rodzica z powrotem na jego strone, a nie na dashboard dziecka (na ktorym
@@ -199,10 +202,19 @@ def _run_checkout(verified_uid: str, verified_email: str, db: Session, affiliate
         success_url=success_url,
         cancel_url=cancel_url,
         payer_email=payer_email,
+        plan=plan,
     )
     _first_error = None if result.get("success") else str(result.get("error", ""))[:120]
     _used_fallback = False
     if not result.get("success") and not result.get("already_subscribed"):
+        # NOWE (plan roczny): fallback (BlikService.create_setup_session) nie zna
+        # pojecia "plan" i zawsze aktywuje MIESIECZNA cene (settings.STRIPE_PRICE_ID
+        # na sztywno, patrz _activate_card_subscription) - gdyby user wybral roczny,
+        # cichy spadek na fallback sprzedalby mu inny plan niz kliknal, bez ostrzezenia.
+        # Lepiej jawny blad niz nieoczekiwana cena na koncu checkoutu.
+        if plan == "annual":
+            print(f"create_checkout_session (annual) nieudane ({result.get('error')}) - fallback pominiety, BLIK nie wspiera planu rocznego")
+            return {"success": False, "error": "Nie udalo sie utworzyc platnosci za plan roczny. Sprobuj ponownie za chwile albo wybierz plan miesieczny."}
         print(f"create_checkout_session nieudane ({result.get('error')}), fallback: setup session")
         # Fallback (mode=setup) ZAWSZE daje trial - nie dla kogos, kto juz go mial.
         _u = db.query(User).filter(User.firebase_uid == verified_uid).first()
@@ -266,7 +278,8 @@ def create_checkout(
         verified_email = firebase_user.get("email") or request.email
         print(f"💳 Request checkout dla user {verified_uid}")
 
-        result = _run_checkout(verified_uid, verified_email, db, request.affiliate_code)
+        plan = request.plan if request.plan in ("monthly", "annual") else "monthly"
+        result = _run_checkout(verified_uid, verified_email, db, request.affiliate_code, plan=plan)
         return result
         
     except Exception as e:

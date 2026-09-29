@@ -16,6 +16,14 @@ class Settings:
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
     STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
     STRIPE_PRICE_ID: str = os.getenv("STRIPE_PRICE_ID", "")
+    # NOWE (plan roczny, Android/Web/karta - patrz stripe_service.py
+    # create_checkout_session). Opcjonalne: jesli puste, przycisk "Rok" na
+    # pricing.html po prostu sie nie pokazuje (patrz applyPlatformPrice()).
+    # Roczny Price MUSI byc utworzony recznie w Stripe Dashboard (Products ->
+    # istniejacy produkt Pro -> Add another price -> Recurring, yearly),
+    # potem wklejony tutaj jako zmienna srodowiskowa - nie tworzony automatycznie
+    # przez kod, zeby user swiadomie ustalil cene roczna w swoim koncie Stripe.
+    STRIPE_PRICE_ID_ANNUAL: str = os.getenv("STRIPE_PRICE_ID_ANNUAL", "")
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
     # Apple In-App Purchase (wrzesien 2026, App Store Guideline 2.1(b) -

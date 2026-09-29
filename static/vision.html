@@ -510,6 +510,9 @@ function showLimitPopup(feature, limit) {
   const isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
   // NAPRAWIONE 11.09.2026: 30 zl (nie 29) - wyrownano do realnej ceny Stripe Price.
   const PRO_PRICE = isIosApp ? '39,99' : '30';
+  // NOWE (plan roczny, Android/Web/karta) - brak odpowiednika na iOS (StoreKit),
+  // wiec pusty string tam i wiersz ponizej sie nie pokazuje.
+  const PRO_PRICE_ANNUAL_NOTE = isIosApp ? '' : ' <span style="color:#22d3a0;text-transform:none;letter-spacing:0;">(lub 290 zł/rok, oszczędzasz 70 zł)</span>';
 
   const names = {
     chat: 'Chatu AI', vision: 'Vision AI', quiz: 'Quizu AI',
@@ -541,7 +544,7 @@ function showLimitPopup(feature, limit) {
         Wykorzystałeś ${limit} darmowych użyć dzisiaj. Odnawia się o północy.<br>Kup <strong style="color:#a78bfa">Pro</strong> i ucz się bez limitów!
       </p>
       <div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:12px;padding:12px 16px;margin-bottom:20px;text-align:left;">
-        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ${PRO_PRICE} zł/mies</div>
+        <div style="font-size:.75em;color:#55556a;margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Plan Pro — ${PRO_PRICE} zł/mies${PRO_PRICE_ANNUAL_NOTE}</div>
         <div style="font-size:.8em;color:#a78bfa;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Nieograniczony Chat, Vision, Quiz

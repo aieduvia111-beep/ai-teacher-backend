@@ -57,7 +57,7 @@ from ..models import User, Subscription, TrialCardFingerprint, FunnelEvent
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-def _credit_affiliate_commission(affiliate_code: str, buyer_uid: str) -> None:
+def _credit_affiliate_commission(affiliate_code: str, buyer_uid: str, price_id: str = None) -> None:
     """Nalicza prowizje partnerska (30%) w Firestore - wydzielone
     (12.09.2026) z _handle_checkout_completed, zeby ta sama, JEDNA
     implementacja obslugiwala zarowno stara sciezke karty (mode=
@@ -66,11 +66,17 @@ def _credit_affiliate_commission(affiliate_code: str, buyer_uid: str) -> None:
     tego wydzielenia druga kopia tej logiki mogłaby latwo wypasc z
     synchronizacji, dokladnie jak stalo sie wczesniej z hardkodowana
     kwota "26.10" tutaj. Kwota pobierana z REALNEJ ceny Stripe Price,
-    nigdy nie hardkodowana."""
+    nigdy nie hardkodowana.
+
+    NOWE (plan roczny): `price_id` to Price FAKTYCZNIE uzyty w danym
+    checkoucie (przekazywany z wywolania). Bez tego prowizja od rocznej
+    subskrypcji liczylaby sie od ceny MIESIECZNEJ (settings.STRIPE_PRICE_ID
+    na sztywno) - partner dostalby ~12x za nisko naliczona prowizje.
+    Fallback na settings.STRIPE_PRICE_ID zachowany dla starych wywolan."""
     if not _fdb:
         return
     try:
-        price = stripe.Price.retrieve(settings.STRIPE_PRICE_ID)
+        price = stripe.Price.retrieve(price_id or settings.STRIPE_PRICE_ID)
         amount = price.unit_amount / 100
         commission = round(amount * 0.30, 2)
         aff_ref = _fdb.collection('affiliates').document(affiliate_code)
@@ -209,9 +215,15 @@ class StripeService:
         return {"has_active": has_active, "trial_allowed": not had_any}
 
     @staticmethod
-    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "", success_url: str = None, cancel_url: str = None, payer_email: str = None) -> Dict:
+    def create_checkout_session(user_id: str, email: str, db: Session, affiliate_code: str = "", success_url: str = None, cancel_url: str = None, payer_email: str = None, plan: str = "monthly") -> Dict:
+        """NOWE (plan roczny): `plan` = "monthly" (domyslnie, settings.STRIPE_PRICE_ID)
+        albo "annual" (settings.STRIPE_PRICE_ID_ANNUAL). Nieznana wartosc planu i
+        pusty STRIPE_PRICE_ID_ANNUAL (Price roczny jeszcze nie utworzony w Stripe
+        Dashboard) -> cichy fallback na miesieczny, zeby literowka w froncie nigdy
+        nie wywalila checkoutu z 500, tylko sprzedala plan domyslny."""
         try:
-            print(f"Tworze checkout session dla user {user_id} ({email})")
+            print(f"Tworze checkout session dla user {user_id} ({email}), plan={plan}")
+            price_id = settings.STRIPE_PRICE_ID_ANNUAL if (plan == "annual" and settings.STRIPE_PRICE_ID_ANNUAL) else settings.STRIPE_PRICE_ID
 
             user = db.query(User).filter(User.firebase_uid == user_id).first()
 
@@ -281,7 +293,7 @@ class StripeService:
                 return stripe.checkout.Session.create(
                     **({"customer_email": payer_email} if payer_email else {"customer": customer_id}),
                     payment_method_types=methods,
-                    line_items=[{"price": settings.STRIPE_PRICE_ID, "quantity": 1}],
+                    line_items=[{"price": price_id, "quantity": 1}],
                     mode="subscription",
                     **({"subscription_data": {"trial_period_days": trial_days}} if trial_days else {}),
                     success_url=success_url or f"{settings.FRONTEND_URL}/dashboard_FINAL.html?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
@@ -430,11 +442,12 @@ class StripeService:
             _update_firebase_plan(user_id, True)  # <- JUZ BYLO OK
             print(f"User {user_id} ustawiony jako PREMIUM do {user.premium_until}")
 
+        used_price_id = subscription['items']['data'][0]['price']['id']
         db_subscription = Subscription(
             user_id=user_id,
             stripe_subscription_id=subscription.id,
             stripe_customer_id=subscription.customer,
-            stripe_price_id=subscription['items']['data'][0]['price']['id'],
+            stripe_price_id=used_price_id,
             status=subscription.status,
             current_period_start=datetime.fromtimestamp(_sub_period(subscription, 'current_period_start')),
             current_period_end=datetime.fromtimestamp(_sub_period(subscription, 'current_period_end'))
@@ -447,7 +460,7 @@ class StripeService:
 
         affiliate_code = session.get('metadata', {}).get('affiliate_code')
         if affiliate_code:
-            _credit_affiliate_commission(affiliate_code, user_id)
+            _credit_affiliate_commission(affiliate_code, user_id, price_id=used_price_id)
 
         return {"success": True, "message": "Subscription created"}
 

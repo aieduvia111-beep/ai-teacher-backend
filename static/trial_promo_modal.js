@@ -44,6 +44,8 @@
   var isIosApp = navigator.userAgent.includes('PWAShell') || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.print);
   // NAPRAWIONE 11.09.2026: 30 zl (nie 29) - wyrownano do realnej ceny Stripe Price.
   var PRO_PRICE = isIosApp ? '39,99' : '30';
+  // NOWE (plan roczny, Android/Web/karta) - brak odpowiednika na iOS (StoreKit).
+  var PRO_PRICE_ANNUAL_NOTE = isIosApp ? '' : ' <span style="color:#22d3a0;text-transform:none;letter-spacing:0;">(lub 290 zł/rok, oszczędzasz 70 zł)</span>';
 
   // NOWE (07.09.2026, promocja ograniczona czasowo - patrz PROMO_DEADLINE w
   // app/services/stripe_service.py): domyslnie 7 (dotyczy TYLKO Android/Web,
@@ -143,7 +145,7 @@
       TRIAL_DAYS + ' dni pełnego dostępu <strong style="color:#a78bfa">za darmo</strong>, bez zobowiązań.<br>Anulujesz jednym kliknięciem — jeśli zrobisz to przed końcem triala, nie zapłacisz ani grosza.' +
       '</p>' +
       '<div style="background:rgba(124,106,255,.06);border:1px solid rgba(124,106,255,.15);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:left;">' +
-      '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)</div>' +
+      '<div style="font-size:.72em;color:#55556a;margin-bottom:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Plan Pro — ' + PRO_PRICE + ' zł/mies (po triale)' + PRO_PRICE_ANNUAL_NOTE + '</div>' +
       '<div style="font-size:.83em;color:#eeeef5;display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3a0" stroke-width="2.5" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>' +
       'Anulujesz jednym kliknięciem — zero zobowiązań' +
