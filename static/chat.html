@@ -280,11 +280,20 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .fc-level-cancel{padding:8px;border:none;background:none;color:var(--muted);font-size:.75em;cursor:pointer;font-family:var(--b);transition:.2s;}
 .fc-level-cancel:hover{color:var(--text);}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-.fc-card{margin-top:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(34,211,160,.06),rgba(34,211,160,.02));border:1px solid rgba(34,211,160,.2);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .2s,background .2s;}
-.fc-card:hover{border-color:rgba(34,211,160,.35);background:linear-gradient(135deg,rgba(34,211,160,.1),rgba(34,211,160,.04));}
-.fc-card-left{display:flex;flex-direction:column;gap:3px;}
-.fc-card-label{font-size:.65em;color:rgba(34,211,160,.6);letter-spacing:.06em;text-transform:uppercase;font-weight:700;font-family:var(--h);}
-.fc-card-text{font-size:.85em;color:var(--text);font-weight:500;}
+/* NAPRAWIONE (01.10.2026, user: "nie wyglada jak AI" o tej karcie): plaski
+   gradient-wash + sam tekst + przycisk to dokladnie szablon, po ktorym
+   widac "AI defaults" (patrz tez .face-front/.face-back w flashcards.html -
+   TAM jest realna glebia: inset highlight, warstwowy box-shadow, ikona).
+   Dociagnieto te sama jakosc tutaj: ikona "stosu kart" w osobnym kafelku,
+   inset highlight + warstwowy cien zamiast plaskiego tla. */
+.fc-card{margin-top:14px;padding:14px 16px;background:linear-gradient(145deg,rgba(34,211,160,.1),rgba(16,100,78,.05));border:1px solid rgba(34,211,160,.22);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.06);transition:border-color .2s,background .2s,transform .2s;}
+.fc-card:hover{border-color:rgba(34,211,160,.4);background:linear-gradient(145deg,rgba(34,211,160,.15),rgba(16,100,78,.08));transform:translateY(-1px);}
+.fc-card-body{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+.fc-card-icon{width:38px;height:38px;flex-shrink:0;border-radius:11px;background:rgba(34,211,160,.14);border:1px solid rgba(34,211,160,.28);display:flex;align-items:center;justify-content:center;color:#22d3a0;}
+.fc-card-icon svg{width:18px;height:18px;}
+.fc-card-left{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.fc-card-label{font-size:.65em;color:rgba(34,211,160,.75);letter-spacing:.06em;text-transform:uppercase;font-weight:700;font-family:var(--h);}
+.fc-card-text{font-size:.85em;color:var(--text);font-weight:500;line-height:1.4;}
 .fc-card-btn{flex-shrink:0;padding:8px 16px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;border-radius:10px;color:#000;font-size:.78em;font-weight:700;font-family:var(--b);cursor:pointer;transition:transform .2s,box-shadow .2s;white-space:nowrap;box-shadow:0 4px 14px rgba(34,211,160,.25);}
 .fc-card-btn:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 6px 20px rgba(34,211,160,.4);}
 .fc-card-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -1394,6 +1403,8 @@ const SUBJECT_GENITIVE = {
   polski: 'polskiego', geografia: 'geografii',
 };
 
+const FC_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="4" width="14" height="10" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h9"/></svg>';
+
 
 let _fcWaitingTopic = null;
 
@@ -1817,13 +1828,13 @@ async function sendMessage() {
         else if(topicLow.match(/chemi|reakcja|pierwiastek/)) subject='chemia';
         else if(topicLow.match(/fizyk|energia|siła/)) subject='fizyka';
         else if(topicLow.match(/historia|wojna/)) subject='historia';
-        fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Fiszki gotowe</div><div class="fc-card-text">${fcTopic} • 10 fiszek</div></div><button class="fc-card-btn" onclick="openFlashcardsWithLevel('${fcTopic}','${subject}')">Otwórz</button>`;
+        fcCard.innerHTML = `<div class="fc-card-body"><div class="fc-card-icon">${FC_ICON_SVG}</div><div class="fc-card-left"><div class="fc-card-label">Fiszki gotowe</div><div class="fc-card-text">${fcTopic} • 10 fiszek</div></div></div><button class="fc-card-btn" onclick="openFlashcardsWithLevel('${fcTopic}','${subject}')">Otwórz</button>`;
         aiGroup.appendChild(fcCard);
       } else {
         // Brak tematu - pokaz info
         const fcCard = document.createElement('div');
         fcCard.className = 'fc-card';
-        fcCard.innerHTML = '<div class="fc-card-left"><div class="fc-card-label">Fiszki AI</div><div class="fc-card-text">Podaj temat np. "fiszki z fotosynteza"</div></div>';
+        fcCard.innerHTML = `<div class="fc-card-body"><div class="fc-card-icon">${FC_ICON_SVG}</div><div class="fc-card-left"><div class="fc-card-label">Fiszki AI</div><div class="fc-card-text">Podaj temat np. "fiszki z fotosynteza"</div></div></div>`;
         aiGroup.appendChild(fcCard);
       }
     } else {
@@ -1845,7 +1856,7 @@ async function sendMessage() {
           const subjGen = SUBJECT_GENITIVE[subj] || subj;
           const fcCard = document.createElement('div');
           fcCard.className = 'fc-card';
-          fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Zauważyłem wzorzec</div><div class="fc-card-text">Wracasz do ${subjGen} — chcesz zestaw fiszek do powtórki z „${fcTopic}”?</div></div><div class="fc-card-actions"><button class="fc-card-btn" onclick="goFlashcards('${encodeURIComponent(fcTopic)}','${subj}','${fcLevel}')">Zrób fiszki</button><button class="fc-card-dismiss" aria-label="Zamknij sugestię" onclick="this.closest('.fc-card').remove()">✕</button></div>`;
+          fcCard.innerHTML = `<div class="fc-card-body"><div class="fc-card-icon">${FC_ICON_SVG}</div><div class="fc-card-left"><div class="fc-card-label">Zauważyłem wzorzec</div><div class="fc-card-text">Wracasz do ${subjGen} — chcesz zestaw fiszek do powtórki z „${fcTopic}”?</div></div></div><div class="fc-card-actions"><button class="fc-card-btn" onclick="goFlashcards('${encodeURIComponent(fcTopic)}','${subj}','${fcLevel}')">Zrób fiszki</button><button class="fc-card-dismiss" aria-label="Zamknij sugestię" onclick="this.closest('.fc-card').remove()">✕</button></div>`;
           aiGroup.appendChild(fcCard);
         }
       }
