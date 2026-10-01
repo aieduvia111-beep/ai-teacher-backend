@@ -645,6 +645,29 @@ onAuthStateChanged(auth, async(user) => {
     document.querySelectorAll('.plan-badge-slot').forEach(el => el.innerHTML = getPlanBadgeHTML(plan));
   }, 100);
 
+  // NOWE (01.10.2026, user: "zrob zapytanie, bedzie bardziej profesjonalnie" -
+  // dociagniecie edge case'u z poprzedniego fixu): eduvia_student_level byl
+  // dotad zapisywany DOPIERO przy pierwszej normalnej odpowiedzi czatu, wiec
+  // user ktorego PIERWSZA wiadomosc w ogole to "fiszki <temat>" dostawal
+  // fallback 'liceum' nawet jesli jego prawdziwy poziom byl inny. Jedno
+  // dodatkowe zapytanie tutaj (raz na wejscie w chat, nie per wiadomosc)
+  // pobiera prawdziwy poziom z profilu OD RAZU, zanim user zdazy cokolwiek
+  // napisac - /users/me jest juz i tak uzywany/cache'owany przez dashboard
+  // (patrz komentarz przy _SUGGEST_CACHE w app/api/users.py), wiec to zwykle
+  // tani odczyt z cache, nie nowe obciazenie.
+  (async () => {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch((window.BACKEND_URL || location.origin) + '/users/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const d = await r.json();
+      if (d.success && d.profile && d.profile.education_level) {
+        localStorage.setItem('eduvia_student_level', d.profile.education_level);
+      }
+    } catch (e) { console.warn('[Fiszki] nie udalo sie pobrac poziomu z profilu:', e); }
+  })();
+
   // Sprawdź payment=success
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('payment') === 'success') {
