@@ -101,6 +101,47 @@ def _angles_for_subject(subject: str) -> list:
     return _SUBJECT_ANGLE_SETS.get((subject or "").strip().lower(), _ANGLES_DEFAULT)
 
 
+# NAPRAWIONE (01.10.2026, user: "sprawdz czy fiszki sa zajebiste" -> test
+# pokazal 9/10 unikalnych, nie 10/10: dwa pytania o ta sama definicje w
+# dwoch roznych "katach", np. "Czym jest fotosynteza?" i "Co to jest
+# fotosynteza?" - kąty ograniczaja NAKLADANIE SIE TEMATOW, ale nie gwarantuja
+# ze dwa rozne katy nigdy nie zjada do tego samego podstawowego pytania dla
+# prostych tematow). Lekki, szybki filtr podobienstwa (nakladanie sie slow
+# kluczowych, bez kolejnego wywolania AI) + JEDNO uzupelniajace wywolanie
+# TYLKO gdy faktycznie znaleziono duplikaty - w normalnym przypadku (bez
+# duplikatow) nie dodaje ZADNEGO czasu.
+_STOPWORDS = {"co","to","jest","są","czym","jakie","jaki","jaka","jakich",
+              "dla","w","z","i","na","o","do","się","jak","po","oraz","aby",
+              "przy","od","za","bez","the","a","an","is","are","what"}
+
+
+def _keywords(text: str) -> set:
+    import re
+    words = re.findall(r"[\wąćęłńóśźż]+", (text or "").lower())
+    return {w for w in words if w not in _STOPWORDS and len(w) > 2}
+
+
+def _is_near_duplicate(q1: str, q2: str, threshold: float = 0.6) -> bool:
+    w1, w2 = _keywords(q1), _keywords(q2)
+    if not w1 or not w2:
+        return False
+    overlap = len(w1 & w2) / min(len(w1), len(w2))
+    return overlap >= threshold
+
+
+def _dedupe_cards(cards: list, kept: list = None) -> list:
+    """Zwraca `cards` z odfiltrowanymi fiszkami, ktorych pytanie jest
+    bliskim duplikatem czegos juz w `kept` (domyslnie: samych siebie,
+    kolejno)."""
+    result = list(kept) if kept else []
+    for c in cards:
+        q = c.get("question", "")
+        if q and any(_is_near_duplicate(q, k.get("question", "")) for k in result):
+            continue
+        result.append(c)
+    return result
+
+
 async def _generate_flashcards_batch(topic: str, subject: str, level_line: str, extra: str, n: int, angle: str, client) -> list:
     """Jedno wywolanie AI na `n` kart skupionych na jednym `angle` (kacie
     tematu) - patrz _generate_flashcards_fast nizej, ktora wola to
@@ -156,7 +197,19 @@ async def _generate_flashcards_fast(topic: str, subject: str, level: str, num_ca
         for n, angle in zip(sizes, angles)
     ])
     cards = [c for batch in results for c in batch]
-    return cards[:num_cards]
+
+    unique_cards = _dedupe_cards(cards)
+    shortfall = num_cards - len(unique_cards)
+    if shortfall > 0:
+        existing_qs = "; ".join(c.get("question", "") for c in unique_cards if c.get("question"))
+        avoid_note = f"\nUNIKAJ pytan podobnych do juz istniejacych: {existing_qs}" if existing_qs else ""
+        backfill = await _generate_flashcards_batch(
+            topic, subject, level_line, extra + avoid_note, shortfall,
+            "dodatkowe, inne aspekty tematu niz juz wykorzystane", client,
+        )
+        unique_cards = _dedupe_cards(backfill, kept=unique_cards)
+
+    return unique_cards[:num_cards]
 
 
 class FlashcardsRequest(BaseModel):
