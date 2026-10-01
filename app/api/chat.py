@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.firebase_auth import require_feature_limit, get_current_app_user
-from app.models import User, GenerationRequestLog
+from app.models import User, GenerationRequestLog, StudentWeakPoint
 from ..database import get_db
 from ..level_config import is_known_level, describe_level
 import urllib.parse
@@ -50,8 +50,12 @@ ZAWSZE zwracaj odpowiedź jako JSON w dokładnie tym formacie (nic poza JSONem!)
   "chart": null,
   "diagram": null,
   "generate_image": null,
-  "topic_en": "temat po angielsku do YouTube i Wolfram"
+  "topic_en": "temat po angielsku do YouTube i Wolfram",
+  "misconception": null
 }
+
+POLE "misconception" — PAMIĘĆ SŁABYCH PUNKTÓW UCZNIA MIĘDZY SESJAMI. Ustaw na obiekt {"subject": "...", "topic": "...", "description": "..."} TYLKO gdy w TEJ odpowiedzi poprawiasz u ucznia konkretny, merytoryczny błąd/nieporozumienie (nie literówkę, nie drobną pomyłkę rachunkową) - coś co warto zapamiętać i do czego wrócić przy następnej okazji. "subject" to przedmiot (matematyka/fizyka/chemia/biologia/historia/polski/angielski/geografia/informatyka), "topic" to krótka nazwa konkretnego zagadnienia (np. "przenoszenie wyrazów w równaniach", "mylenie prędkości ze przyspieszeniem"), "description" to 1 zdanie co dokładnie umyka uczniowi. Jeśli nie ma błędu do zapamiętania - zostaw null. NIE ustawiaj tego dla pytań ogólnych/pierwszego kontaktu z tematem - tylko dla faktycznie POPRAWIANEGO błędu.
+Jeśli w sekcji "KONTEKST UCZNIA" niżej (gdy jest obecna) widzisz wcześniejsze słabe punkty, a bieżący temat się z nimi łączy - subtelnie do tego nawiąż (np. krótkim przypomnieniem), ale NIE wymuszaj tego gdy temat nie pasuje.
 
 KIEDY ustawiać flagi:
 - has_latex: true gdy odpowiedź zawiera wzory matematyczne lub chemiczne w LaTeX
@@ -156,6 +160,27 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
         if level and is_known_level(level):
             system_prompt = system_prompt + "\n\nKRYTYCZNE: " + describe_level(level, subject=getattr(user, "favorite_subject", None)) + " To jest NAJWAZNIEJSZA instrukcja - dostosuj CALY jezyk, terminologie i sposob wyjasniania do tego poziomu."
 
+        # NOWE (01.10.2026, user: "pamiec slabych punktow ucznia miedzy sesjami"):
+        # doklada do promptu do 3 najczesciej/najswiezej powtarzajacych sie
+        # slabych punktow tego ucznia (patrz StudentWeakPoint w models.py).
+        # Blad odczytu NIE moze wywalic odpowiedzi dla usera - to tylko
+        # dodatkowy kontekst, nie krytyczna funkcja.
+        try:
+            weak_points = (
+                db.query(StudentWeakPoint)
+                .filter(StudentWeakPoint.user_id == user.firebase_uid)
+                .order_by(StudentWeakPoint.times_seen.desc(), StudentWeakPoint.last_seen_at.desc())
+                .limit(3)
+                .all()
+            )
+            if weak_points:
+                lines = "\n".join(
+                    f"- ({wp.subject or 'ogólne'}) {wp.topic}: {wp.description or ''}" for wp in weak_points
+                )
+                system_prompt = system_prompt + "\n\nKONTEKST UCZNIA (wcześniejsze słabe punkty, nawiąż TYLKO jeśli bieżący temat faktycznie się z nimi łączy):\n" + lines
+        except Exception as wp_e:
+            print(f"[chat weak_points] blad odczytu (nieistotny dla usera): {wp_e}")
+
         # Buduj historię
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -246,6 +271,39 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
             response["log_id"] = log_row.id
         except Exception as log_e:
             print(f"[chat log] blad zapisu (nieistotny dla usera): {log_e}")
+
+        # NOWE (01.10.2026, user: "pamiec slabych punktow ucznia miedzy
+        # sesjami"): AI oznaczyl w tej odpowiedzi konkretny, merytoryczny
+        # blad (patrz pole "misconception" w SYSTEM_PROMPT) - zapisz/podbij
+        # w StudentWeakPoint, zeby wrocic do tego przy nastepnej okazji.
+        # Upsert po (user_id, topic) - to samo zagadnienie u tego samego
+        # ucznia podbija licznik zamiast tworzyc duplikat.
+        misconception = ai_data.get("misconception")
+        if isinstance(misconception, dict) and misconception.get("topic"):
+            try:
+                existing = (
+                    db.query(StudentWeakPoint)
+                    .filter(
+                        StudentWeakPoint.user_id == user.firebase_uid,
+                        StudentWeakPoint.topic == misconception["topic"][:200],
+                    )
+                    .first()
+                )
+                if existing:
+                    existing.times_seen = (existing.times_seen or 1) + 1
+                    existing.last_seen_at = datetime.now()
+                    if misconception.get("description"):
+                        existing.description = misconception["description"][:1000]
+                else:
+                    db.add(StudentWeakPoint(
+                        user_id=user.firebase_uid,
+                        subject=(misconception.get("subject") or None),
+                        topic=misconception["topic"][:200],
+                        description=(misconception.get("description") or "")[:1000],
+                    ))
+                db.commit()
+            except Exception as wp_save_e:
+                print(f"[chat weak_points] blad zapisu (nieistotny dla usera): {wp_save_e}")
 
         return response
 

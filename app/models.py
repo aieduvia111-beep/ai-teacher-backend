@@ -367,3 +367,34 @@ class CancellationFeedback(Base):
     details = Column(Text, nullable=True)
     sub_status = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class StudentWeakPoint(Base):
+    """Pamiec slabych punktow ucznia w Chat AI, miedzy sesjami (01.10.2026,
+    user: "co dalej" po dodaniu pytan kontrolnych -> "pamiec slabych
+    punktow ucznia miedzy sesjami"). Gdy AI w odpowiedzi chatu wykryje i
+    poprawi KONKRETNY blad merytoryczny (nie literowke), zapisuje tu krotki
+    opis - patrz pole "misconception" w SYSTEM_PROMPT (app/api/chat.py).
+    Kolejne wystapienie TEGO SAMEGO tematu u tego samego ucznia podbija
+    times_seen zamiast tworzyc duplikat (patrz upsert w chat_message).
+    Przy kolejnych rozmowach chat_message doklada do system promptu
+    najczestsze/najswiezsze wpisy, zeby AI mogl naturalnie do nich wrocic
+    zamiast zaczynac za kazdym razem od zera.
+
+    user_id to Firebase UID (string) - TA SAMA konwencja co Subscription.user_id
+    i Lesson.user_id, NIE integer User.id (patrz komentarz przy Subscription
+    wyzej o prawdziwym bledzie produkcyjnym z pomylenia tych dwoch)."""
+    __tablename__ = "student_weak_points"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(128), nullable=False, index=True)
+    subject = Column(String(50), nullable=True)
+    topic = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    times_seen = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_weak_point_user_topic", "user_id", "topic"),
+    )
