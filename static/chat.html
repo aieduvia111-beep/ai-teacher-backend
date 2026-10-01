@@ -287,6 +287,9 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .fc-card-text{font-size:.85em;color:var(--text);font-weight:500;}
 .fc-card-btn{flex-shrink:0;padding:8px 16px;background:linear-gradient(135deg,#22d3a0,#0ea572);border:none;border-radius:10px;color:#000;font-size:.78em;font-weight:700;font-family:var(--b);cursor:pointer;transition:transform .2s,box-shadow .2s;white-space:nowrap;box-shadow:0 4px 14px rgba(34,211,160,.25);}
 .fc-card-btn:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 6px 20px rgba(34,211,160,.4);}
+.fc-card-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.fc-card-dismiss{background:none;border:none;color:var(--muted);font-size:1.1em;line-height:1;cursor:pointer;padding:4px 6px;opacity:.6;transition:opacity .2s,color .2s;}
+.fc-card-dismiss:hover{opacity:1;color:var(--text);}
 
 .fc-bubble{margin-top:14px;padding:20px;background:linear-gradient(135deg,rgba(34,211,160,.05),rgba(34,211,160,.01));border:1px solid rgba(34,211,160,.18);border-radius:18px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden;}
 .fc-bubble::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(34,211,160,.12),transparent 70%);pointer-events:none;}
@@ -719,6 +722,22 @@ async function checkLimit(feature) {
   return { allowed: true, remaining };
 }
 
+// CICHA wersja checkLimit - BEZ pokazywania popupu "limit wyczerpany" jesli
+// brak miejsca. Uzywana do decyzji "czy POKAZAC przycisk-sugestie" (np.
+// proaktywna karta fiszek) - pokazanie przycisku ktory po kliknieciu od
+// razu wybucha popupem limitu wygladaloby na zepsute, nie profesjonalne.
+function hasRemainingQuiet(feature) {
+  const plan = localStorage.getItem('eduvia_plan') || 'free';
+  if (plan !== 'free') return true;
+  const uid = localStorage.getItem('eduvia_uid');
+  if (!uid) return true;
+  const today = new Date().toISOString().split('T')[0];
+  const key = `eduvia_limit_${feature}_${uid}_${today}`;
+  const used = parseInt(localStorage.getItem(key) || '0');
+  const limit = LIMITS_FREE[feature] || 5;
+  return (limit - used) > 0;
+}
+
 function getPlanBadgeHTML(plan) {
   if (plan === 'pro') return '<span style="padding:3px 10px;background:rgba(124,106,255,.15);border:1px solid rgba(124,106,255,.3);border-radius:100px;font-size:.65em;font-weight:700;color:#a78bfa;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">PRO</span>';
   return '<span style="padding:3px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;font-size:.65em;font-weight:700;color:#55556a;font-family:\'Inter\',sans-serif;letter-spacing:.06em;">FREE</span>';
@@ -1052,6 +1071,34 @@ try{
   if(saved){ chatHistory = JSON.parse(saved); }
 }catch(e){}
 
+// NOWE (01.10.2026, user: "jak się powtarzają to może fiszki proponuje" -
+// fiszki wczesniej byly odkrywalne WYLACZNIE gdy user sam wpisal slowo
+// "fiszki" w chacie, patrz detectFlashcards() - 0.23% userow kiedykolwiek
+// tam trafilo, bo nic w UI o tym nie mowilo). Zamiast dokladac stale
+// miejsce w nawigacji (user: "nie bedzie tego za duzo"), chat sledzi
+// PRZEDMIOT ostatnich odpowiedzi w biezacej sesji (ten sam klasyfikator co
+// juz uzywany przy przycisku "Zrob quiz z tego") i PROAKTYWNIE proponuje
+// fiszki dopiero gdy ten sam przedmiot powtorzyl sie 3+ razy - czyli uczen
+// faktycznie cos powtarza/utrwala, nie przy pojedynczym pytaniu. Pokazuje
+// sie raz na sesje (fcProactiveShown), zeby nie meczyc tym samym kafelkiem
+// po kazdej kolejnej wiadomosci z tego przedmiotu.
+let fcSubjectHistory = [];
+let fcProactiveShown = false;
+
+function detectSubjectFromTopic(topic){
+  const t = (topic || '').toLowerCase();
+  if(t.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz|grzyb|roślina|zwierzę|ssak/)) return 'biologia';
+  if(t.match(/reakcja|pierwiastek|mol|kwas|zasada|atom|układ okresowy|chemi/)) return 'chemia';
+  if(t.match(/energia|prędkość|siła|ruch|fala|elektr|magnet|optyk|fizyk/)) return 'fizyka';
+  if(t.match(/historia|wojna|rewolucja|cesarz|królestwo|bitwa|dynastia/)) return 'historia';
+  if(t.match(/python|java|kod|programow|algorytm|html|css|javascript|baza danych/)) return 'informatyka';
+  if(t.match(/równan|funkcj|pochodn|całk|trygon|geometr|algebra|liczb/)) return 'matematyka';
+  if(t.match(/english|grammar|tense|vocabulary|angielski|czasownik ang/)) return 'angielski';
+  if(t.match(/wiersz|lektura|literatura|czytanka|polski|grammatyk|ortograf/)) return 'polski';
+  if(t.match(/geografia|kontynent|klimat|rzeka|góry|kraj|stolica/)) return 'geografia';
+  return null;
+}
+
 
 // ═══ LATEX RENDER — identyczny z vision.html ═══
 function renderLatex(el) {
@@ -1333,9 +1380,19 @@ function openFlashcardsWithLevel(topic, subject){
 }
 
 function goFlashcards(topic, subject, level){
-  document.getElementById('fcLevelPopup').remove();
+  // NAPRAWIONE: popup ('fcLevelPopup') teraz NIE zawsze istnieje - proaktywna
+  // karta (nizej) woła goFlashcards() bezposrednio, z poziomem juz znanym z
+  // profilu ucznia, bez pokazywania popupu z pytaniem o poziom. .remove()
+  // na null (gdy popup nie istnieje) wywalaloby blad bez optional chaining.
+  document.getElementById('fcLevelPopup')?.remove();
   navTo('flashcards.html?topic='+topic+'&subject='+subject+'&level='+level);
 }
+
+const SUBJECT_GENITIVE = {
+  matematyka: 'matematyki', biologia: 'biologii', chemia: 'chemii', fizyka: 'fizyki',
+  historia: 'historii', informatyka: 'informatyki', angielski: 'angielskiego',
+  polski: 'polskiego', geografia: 'geografii',
+};
 
 
 let _fcWaitingTopic = null;
@@ -1768,6 +1825,29 @@ async function sendMessage() {
         fcCard.className = 'fc-card';
         fcCard.innerHTML = '<div class="fc-card-left"><div class="fc-card-label">Fiszki AI</div><div class="fc-card-text">Podaj temat np. "fiszki z fotosynteza"</div></div>';
         aiGroup.appendChild(fcCard);
+      }
+    } else {
+      // NOWE (01.10.2026, user: "jak się powtarzają to może fiszki
+      // proponuje" + "ogarnij to profesjonalnie"): proaktywna sugestia -
+      // BEZ popupu z pytaniem o poziom (uzywa response.user_level, juz
+      // znanego z profilu), z mozliwoscia zamkniecia (X), pokazywana
+      // TYLKO raz na sesje i TYLKO gdy limit fiszek jeszcze pozwala na
+      // wygenerowanie (inaczej przycisk konczylby sie popupem "limit
+      // wyczerpany" zaraz po kliknieciu - wygladaloby na zepsute).
+      const subj = detectSubjectFromTopic(response.title || '');
+      if (subj) {
+        fcSubjectHistory.push(subj);
+        const repeatCount = fcSubjectHistory.filter(s => s === subj).length;
+        if (repeatCount >= 3 && !fcProactiveShown && hasRemainingQuiet('flashcards')) {
+          fcProactiveShown = true;
+          const fcTopic = response.title || subj;
+          const fcLevel = response.user_level || 'liceum';
+          const subjGen = SUBJECT_GENITIVE[subj] || subj;
+          const fcCard = document.createElement('div');
+          fcCard.className = 'fc-card';
+          fcCard.innerHTML = `<div class="fc-card-left"><div class="fc-card-label">Zauważyłem wzorzec</div><div class="fc-card-text">Wracasz do ${subjGen} — chcesz zestaw fiszek do powtórki z „${fcTopic}”?</div></div><div class="fc-card-actions"><button class="fc-card-btn" onclick="goFlashcards('${encodeURIComponent(fcTopic)}','${subj}','${fcLevel}')">Zrób fiszki</button><button class="fc-card-dismiss" aria-label="Zamknij sugestię" onclick="this.closest('.fc-card').remove()">✕</button></div>`;
+          aiGroup.appendChild(fcCard);
+        }
       }
     }
 

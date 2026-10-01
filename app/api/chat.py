@@ -110,7 +110,7 @@ class ChatRequest(BaseModel):
     document: Optional[str] = None  # base64 PDF lub tekst z Word
     document_name: Optional[str] = None  # nazwa pliku
 
-def _build_response(ai_data: dict, user_message: str) -> dict:
+def _build_response(ai_data: dict, user_message: str, user_level: str = None) -> dict:
     topic_en = ai_data.get("topic_en", user_message)
     topic_pl = user_message
     enc_en = urllib.parse.quote(topic_en)
@@ -139,6 +139,11 @@ def _build_response(ai_data: dict, user_message: str) -> dict:
         "videos": videos,
         "chart": ai_data.get("chart") if ai_data.get("show_chart", False) else None,
         "diagram": ai_data.get("diagram", None),
+        # NOWE (01.10.2026, user: "przycisk gdzie odrazu generuje na
+        # podstawie poziomu" - sugestia fiszek pod odpowiedzia ma uzywac
+        # JUZ ZNANEGO poziomu ucznia z profilu, bez dodatkowego popupu z
+        # pytaniem o poziom, patrz static/chat.html fcSubjectHistory).
+        "user_level": user_level,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -246,7 +251,7 @@ async def chat_message(req: ChatRequest, user: User = Depends(require_feature_li
             safe = _up.quote(str(ai_data["generate_image"]))
             image_url = f"https://image.pollinations.ai/prompt/{safe}?width=800&height=600&nologo=true"
         
-        response = _build_response(ai_data, req.text)
+        response = _build_response(ai_data, req.text, user_level=level)
         if image_url:
             response["image_url"] = image_url
 
