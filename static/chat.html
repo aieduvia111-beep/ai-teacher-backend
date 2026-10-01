@@ -150,16 +150,23 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .msg-meta.user{flex-direction:row-reverse;}
 .msg-group.user{align-items:flex-end;}
 .msg-group.ai{align-items:flex-start;}
-.ai-topic-title{font-family:var(--h);font-size:.95em;font-weight:800;letter-spacing:-.02em;color:var(--accent2);padding:0 4px;margin-bottom:2px;display:flex;align-items:center;gap:7px;}
+.ai-topic-title{font-family:var(--h);font-size:1.05em;font-weight:800;letter-spacing:-.02em;color:var(--accent2);padding:0 4px;margin-bottom:2px;display:flex;align-items:center;gap:7px;}
 .ai-topic-title::before{content:'';width:3px;height:1em;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent2));flex-shrink:0;}
-.bubble{max-width:72%;min-width:280px;padding:13px 17px;font-size:.86em;line-height:1.68;word-wrap:break-word;border-radius:18px;position:relative;}
+/* NAPRAWIONE (01.10.2026, user: "za mala czcionka, chce aby wygladalo jak w
+   profesjonalnej apce edukacyjnej"): bylo .86em (~13.8px) - podniesione do
+   1em (~16px). Pokazane najpierw jako makieta w Artifact (suwak 14-20px),
+   user zaakceptowal domyslna wartosc 16px. */
+.bubble{max-width:72%;min-width:280px;padding:15px 19px;font-size:1em;line-height:1.72;word-wrap:break-word;border-radius:18px;position:relative;}
 .msg-group.user .bubble{background:linear-gradient(135deg,rgba(124,106,255,0.3),rgba(100,80,220,0.18));border:1px solid rgba(124,106,255,0.35);border-bottom-right-radius:5px;box-shadow:0 4px 20px rgba(124,106,255,0.14);}
 .msg-group.ai .bubble{background:linear-gradient(135deg,rgba(22,22,40,0.95),rgba(15,15,28,0.95));border:1px solid rgba(255,255,255,0.08);border-bottom-left-radius:5px;box-shadow:0 4px 20px rgba(0,0,0,0.35);max-width:92%;}
 .bubble.typing::after{content:'';display:inline-block;width:2px;height:1em;background:var(--accent2);margin-left:3px;vertical-align:text-bottom;animation:cur .6s step-end infinite;opacity:.8;}
 @keyframes cur{0%,100%{opacity:.8;}50%{opacity:0;}}
 .bubble h1,.bubble h2,.bubble h3{font-family:var(--h);font-weight:700;margin:14px 0 6px;letter-spacing:-.02em;}
-.bubble h2{font-size:1em;color:var(--accent2);}
-.bubble h3{font-size:.92em;color:var(--muted2);}
+/* NAPRAWIONE: h2/h3 mialy font-size .92em-1em, czyli byly TAKIEJ SAMEJ
+   wielkosci lub MNIEJSZE niz zwykly tekst akapitu (odwrotna hierarchia -
+   naglowek kroku nie byl realnie wiekszy od tresci). */
+.bubble h2{font-size:1.22em;color:var(--accent2);}
+.bubble h3{font-size:1.06em;color:var(--muted2);}
 .bubble strong{color:var(--text);font-weight:600;}
 .bubble em{color:var(--accent2);}
 .bubble ul,.bubble ol{padding-left:20px;margin:8px 0;}
@@ -204,7 +211,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .bubble .step-card{margin:8px 0;padding:12px 14px;background:rgba(22,22,40,0.8);border:1px solid var(--border-hi);border-radius:12px;display:flex;gap:12px;align-items:flex-start;}
 .bubble .step-num{width:24px;height:24px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),#5040c8);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.72em;font-weight:700;color:white;margin-top:1px;}
 .bubble .step-content{flex:1;}
-.bubble .step-title{font-family:var(--h);font-weight:700;color:#fff;font-size:.95em;margin-bottom:5px;letter-spacing:-.01em;}
+.bubble .step-title{font-family:var(--h);font-weight:700;color:#fff;font-size:1.06em;margin-bottom:5px;letter-spacing:-.01em;}
 .bubble .step-body{font-size:.84em;color:var(--muted2);line-height:1.6;}
 .bubble .highlight-block{margin:12px 0;padding:11px 14px;background:rgba(34,211,160,0.06);border:1px solid rgba(34,211,160,0.18);border-radius:10px;display:flex;gap:10px;align-items:flex-start;}
 .bubble .highlight-icon{font-size:1.1em;flex-shrink:0;margin-top:1px;}
@@ -240,7 +247,7 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .att-del:hover{background:rgba(248,113,113,0.4);}
 .input-box{display:flex;align-items:flex-end;gap:10px;background:var(--s1);border:1px solid var(--border-hi);border-radius:16px;padding:10px 12px;transition:border-color .2s,box-shadow .2s;}
 .input-box:focus-within{border-color:rgba(124,106,255,0.4);box-shadow:0 0 0 3px rgba(124,106,255,0.08);}
-.input-box textarea{flex:1;background:none;border:none;outline:none;font-family:var(--b);font-size:.87em;color:var(--text);resize:none;max-height:180px;line-height:1.6;padding:3px 0;}
+.input-box textarea{flex:1;background:none;border:none;outline:none;font-family:var(--b);font-size:.95em;color:var(--text);resize:none;max-height:180px;line-height:1.6;padding:3px 0;}
 .input-box textarea::placeholder{color:var(--muted);}
 .ibtns{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .ibtn{width:34px;height:34px;border-radius:9px;border:none;background:transparent;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
