@@ -14,38 +14,61 @@ ten losowy, mylacy wzorzec "limit wyczerpany" na funkcji, ktorej user
 
 Fiszki dostaja teraz WLASNY, prawdziwy, serwerowy limit
 (require_feature_limit("flashcards") - patrz usage_limits.py), calkowicie
-niezalezny od Quizu. Reuzywamy TA SAMA, juz zweryfikowana logike
-generowania (generate_quiz_from_topic w openai_exam.py - Diversity Engine,
-weryfikacja sympy, wszystko) - zero duplikacji, zero nowego ryzyka -
-jedyna roznica to KTORY licznik limitu jest sprawdzany, co decyduje
-WYLACZNIE endpoint (nie dane od klienta), wiec nie da sie tego obejsc
-podajac inna nazwe feature'a w body requestu (bezpieczne z zalozenia)."""
+niezalezny od Quizu.
+
+ZMIENIONE (01.10.2026, user: "nie moze sie 5 sekund generowac"): wczesniej
+Fiszki reuzywaly CALY ciezki pipeline Quizu (generate_quiz_from_topic w
+openai_exam.py - buforowane batche, archetypy "safe parameter generation",
+weryfikacja sympy, Diversity Engine, petle dogenerowania) - ten sam
+mechanizm zaprojektowany pod OCENIANE pytania quizowe/egzaminacyjne,
+gdzie bledna odpowiedz ma realna cene (zly wynik testu). Fiszki to
+niskostawkowa pomoc do samodzielnej nauki - uczen SAM ocenia czy umial
+odpowiedz, nic nie jest "oceniane" - nie potrzebuja tego samego rygoru
+weryfikacji, a placily za niego czasem generowania. Teraz: JEDNO proste
+wywolanie AI (_generate_flashcards_fast ponizej), bez retry/weryfikacji -
+wyraznie szybciej, kosztem (akceptowalnym dla fiszek) braku formalnej
+weryfikacji poprawnosci kazdej karty."""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from ..openai_exam import generate_quiz_from_topic
+import json
+from ..config import settings
 from ..firebase_auth import require_feature_limit
 from ..models import User
+from ..level_config import is_known_level, describe_level
 
 router = APIRouter(prefix="/api/v1/flashcards", tags=["flashcards"])
 
 
-def _shortfall_response(quiz: dict, requested_count: int):
-    """Identyczny mechanizm co quiz_api._shortfall_response - bez tego
-    niepelna generacja (mniej fiszek niz zamowiono) wygladalaby cicho
-    jak pelny sukces, tak jak to bylo w Quizie PRZED naprawa (patrz
-    ETAP 2, Punkt 2 w quiz_api.py)."""
-    warning = quiz.get("_shortfall_warning")
-    if not warning:
-        return None
-    accepted = len(quiz.get("questions", []))
-    return {
-        "success": False,
-        "status": "incomplete_generation",
-        "message": warning,
-        "requested_count": requested_count,
-        "accepted_count": accepted,
-        "quiz": quiz,
-    }
+async def _generate_flashcards_fast(topic: str, subject: str, level: str, num_cards: int, wlasne_instrukcje: str = "") -> list:
+    """Szybka, lekka generacja fiszek - jedno wywolanie gpt-4o-mini, zero
+    petli weryfikacyjnych (patrz uzasadnienie w docstringu modulu wyzej).
+    Zwraca liste dictow {"question":..., "explanation":...} - DOKLADNIE
+    ksztalt, jakiego oczekuje static/flashcards.html (patrz
+    `d.quiz.questions.map(q=>({f:q.question,b:q.explanation}))`)."""
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+    level_line = describe_level(level, subject=subject) if is_known_level(level) else f"Poziom ucznia: {level}."
+    extra = f"\nDodatkowe instrukcje: {wlasne_instrukcje}" if wlasne_instrukcje.strip() else ""
+
+    prompt = f"""Stworz {num_cards} fiszek edukacyjnych do nauki na temat: "{topic}" (przedmiot: {subject}).
+{level_line}{extra}
+
+Kazda fiszka: KROTKIE pytanie/pojecie (przod) + ZWIEZLA, konkretna odpowiedz/definicja (tyl, max 2-3 zdania).
+Fiszki maja pokrywac ROZNE aspekty tematu - nie powtarzaj tego samego pytania innymi slowami.
+
+Zwroc WYLACZNIE JSON w formacie:
+{{"questions": [{{"question": "...", "explanation": "..."}}]}}"""
+
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=2500,
+        temperature=0.7,
+        response_format={"type": "json_object"},
+    )
+    data = json.loads(response.choices[0].message.content)
+    return (data.get("questions") or [])[:num_cards]
 
 
 class FlashcardsRequest(BaseModel):
@@ -61,17 +84,13 @@ class FlashcardsRequest(BaseModel):
 async def flashcards_generate(req: FlashcardsRequest, user: User = Depends(require_feature_limit("flashcards"))):
     try:
         wlasne = (req.wlasne_instrukcje or "").strip()
-        result = await generate_quiz_from_topic(
+        questions = await _generate_flashcards_fast(
             topic=req.topic, subject=req.subject, level=req.level,
-            num_questions=req.num_questions, difficulty=req.difficulty,
-            wlasne_instrukcje=wlasne,
+            num_cards=req.num_questions, wlasne_instrukcje=wlasne,
         )
-        if result["success"]:
-            quiz = result["quiz"]
-            shortfall = _shortfall_response(quiz, req.num_questions)
-            if shortfall:
-                return shortfall
-            return {"success": True, "quiz": quiz}
-        return {"success": False, "error": result.get("error")}
+        if not questions:
+            return {"success": False, "error": "Nie udało się wygenerować fiszek, spróbuj ponownie."}
+        return {"success": True, "quiz": {"questions": questions}}
     except Exception as e:
+        log_error("Flashcards", str(e))
         return {"success": False, "error": str(e)}
