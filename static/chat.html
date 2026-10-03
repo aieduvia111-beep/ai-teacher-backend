@@ -1767,29 +1767,14 @@ async function sendMessage() {
       img.src = imgUrl;
     }
 
-    // Generowanie obrazka
-    if (response.generate_image) {
-      const imgWrap = document.createElement('div');
-      imgWrap.className = 'ai-image-wrap';
-      imgWrap.innerHTML = '<div class="ai-image-inner"><div class="ai-image-shimmer"></div></div>';
-      aiGroup.appendChild(imgWrap);
-      
-      const prompt = encodeURIComponent(response.generate_image + ', educational, clean, colorful');
-      const imgUrl = `https://image.pollinations.ai/prompt/${prompt}?width=600&height=400&nologo=true`;
-      
-      const img = new Image();
-      img.onload = () => {
-        imgWrap.innerHTML = `<div class="ai-image-inner"><img src="${imgUrl}" alt="${response.generate_image}" loading="lazy"><div class="ai-image-footer"><div class="ai-image-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>Wygenerowany przez AI</div><div class="ai-image-model">Pollinations</div></div></div>`;
-      };
-      img.onerror = () => { imgWrap.remove(); };
-      img.src = imgUrl;
-    }
-
-    if (response.quiz_topic) {
+    // Przycisk quizu tylko pod merytoryczna odpowiedzia (nie pod bledem, powitaniem
+    // ani jednozdaniowa odpowiedzia) + temat bez dopiskow typu "krok po kroku".
+    const _qTopic = (response.quiz_topic || '').replace(/\s*[-–—:]?\s*(krok po kroku|wyjaśnienie|wyjaśnienia|prosto|w pigułce)\s*$/i, '').trim();
+    if (_qTopic && !/^(błąd|odpowiedź)$/i.test(_qTopic) && (response.text || '').length >= 180) {
       const qBtn = document.createElement('button'); qBtn.className = 'quiz-shortcut-btn';
       qBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Zrób quiz z tego';
       qBtn.onclick = () => { 
-  const topic = response.quiz_topic || '';
+  const topic = _qTopic;
   const topicLow = topic.toLowerCase();
   let subject = 'inne';
   if(topicLow.match(/fotosynteza|komórka|dna|ewolucja|ekologia|biolog|genetyk|mitoz|grzyb|roślina|zwierzę|ssak/)) subject='biologia';
