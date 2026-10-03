@@ -718,7 +718,7 @@ async function loadReviewTile(user){
     const n=d.due, w=(n===1?'pytanie':(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14)?'pytania':'pytań'));
     const sess=Math.min(n,10); // jedna sesja = max 10 pytan, reszta czeka na kolejne podejscie
     document.getElementById('rvTitle').textContent=(n>10?'Powtórka: 10 z '+n+' pytań':n+' '+w+' do powtórki');
-    document.getElementById('rvDesc').textContent='To Twoje dawne błędy — ok. '+Math.max(1,Math.ceil(sess*0.4))+' min'+(n>10?' · reszta czeka na kolejne podejście':'')+(d.mastered>0?' · opanowane: '+d.mastered:'');
+    document.getElementById('rvDesc').textContent='Twoje dawne błędy · ok. '+Math.max(1,Math.ceil(sess*0.4))+' min'+(d.mastered>0?' · opanowane: '+d.mastered:'');
     document.getElementById('reviewDueSec').style.display='';
   }catch(e){}
 }
@@ -1286,8 +1286,8 @@ function getPlanBadgeHTML(plan) {
 
   <!-- 4b. POWTORKA DNIA (03.10.2026) - pokazuje sie TYLKO gdy sa zalegle pytania z bledow -->
   <section class="next-step-sec" id="reviewDueSec" style="display:none;">
-    <a href="quiz_app.html?review=1" class="next-step-card" style="text-decoration:none;color:inherit;">
-      <div class="ns-info">
+    <a href="quiz_app.html?review=1" class="next-step-card" style="text-decoration:none;color:inherit;flex-wrap:nowrap!important;">
+      <div class="ns-info" style="min-width:0;">
         <div class="ns-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>Powtórka dnia</div>
         <div class="ns-title" id="rvTitle">Powtórka</div>
         <div class="ns-desc" id="rvDesc"></div>
