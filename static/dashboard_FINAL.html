@@ -716,8 +716,9 @@ async function loadReviewTile(user){
     const d=await r.json();
     if(!d||!d.success||!(d.due>0))return;
     const n=d.due, w=(n===1?'pytanie':(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14)?'pytania':'pytań'));
-    document.getElementById('rvTitle').textContent=n+' '+w+' do powtórki';
-    document.getElementById('rvDesc').textContent='To Twoje dawne błędy — ok. '+Math.max(1,Math.ceil(Math.min(n,10)*0.4))+' min'+(d.mastered>0?' · opanowane: '+d.mastered:'');
+    const sess=Math.min(n,10); // jedna sesja = max 10 pytan, reszta czeka na kolejne podejscie
+    document.getElementById('rvTitle').textContent=(n>10?'Powtórka: 10 z '+n+' pytań':n+' '+w+' do powtórki');
+    document.getElementById('rvDesc').textContent='To Twoje dawne błędy — ok. '+Math.max(1,Math.ceil(sess*0.4))+' min'+(n>10?' · reszta czeka na kolejne podejście':'')+(d.mastered>0?' · opanowane: '+d.mastered:'');
     document.getElementById('reviewDueSec').style.display='';
   }catch(e){}
 }
