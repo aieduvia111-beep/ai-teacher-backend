@@ -57,7 +57,7 @@
   var NAMES = {
     chat: 'Chatu AI', quiz: 'Quizu AI',
     notes: 'Notatek AI', exam: 'Sprawdzianów AI', voice: 'Voice AI', lesson: 'Planu nauki',
-    lessonDay: 'odznaczania dni planu', flashcards: 'Fiszek AI'
+    lessonDay: 'odznaczania dni planu', flashcards: 'Fiszek AI', explain: 'wyjaśnień z quizu'
   };
 
   // Poprawna polska odmiana liczebnika przy "darmowych uzyc" - user zglosil

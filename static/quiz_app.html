@@ -1069,7 +1069,9 @@ const BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'h
 // generowania kasuje job i /status zwraca 404. Wtedy raz startujemy generowanie od
 // nowa zamiast pokazywac uczniowi techniczny blad.
 async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body, _retried){
-  const startRes=await fetch(BASE+startUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify(body)});
+  const _startHdrs={'Content-Type':'application/json','Authorization':'Bearer '+idToken};
+  if(_retried)_startHdrs['X-Eduvia-Retry']='1'; // ponowny start po zgubionym zadaniu - serwer raz dziennie nie nalicza limitu
+  const startRes=await fetch(BASE+startUrl,{method:'POST',headers:_startHdrs,body:JSON.stringify(body)});
   if(!startRes.ok){
     let _detail='';try{const d=await startRes.json();_detail=d.detail||d.error||'';}catch(_){}
     throw new Error(_detail||('Błąd serwera '+startRes.status));

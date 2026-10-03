@@ -41,6 +41,9 @@ FREE_DAILY_LIMITS = {
     # endpoint /api/v1/flashcards/generate w app/api/flashcards_api.py
     # (reuzywa TA SAMA logike generowania co Quiz, ale liczy sie osobno).
     "flashcards": 1,  # bylo 2
+    # NOWE (03.10.2026): "Wyjasnij mi to w czacie" z quizu liczy sie do WLASNEJ puli,
+    # nie do 4 wiadomosci czatu - inaczej 4 klikniecia w jednym quizie wyzerowalyby caly czat.
+    "explain": 5,
 }
 
 LIMIT_MESSAGES = {
@@ -56,6 +59,7 @@ LIMIT_MESSAGES = {
     "vision": "Wykorzystałeś już dzisiejszy darmowy limit Vision AI (1 analiza). Kup Pro i ucz się bez limitów!",
     "voice": "Wykorzystałeś już dzisiejszy darmowy limit Voice AI (2 sesje). Kup Pro i ucz się bez limitów!",
     "flashcards": "Wykorzystałeś już dzisiejszy darmowy limit Fiszek AI (1 zestaw). Kup Pro i ucz się bez limitów!",
+    "explain": "Wykorzystałeś już dzisiejszy darmowy limit wyjaśnień z quizu (5). Kup Pro i ucz się bez limitów!",
 }
 
 def _load_usage(user: User) -> dict:
@@ -66,7 +70,10 @@ def _load_usage(user: User) -> dict:
     except (json.JSONDecodeError, TypeError):
         return {}
 
-def check_and_use_limit(user: User, db: Session, feature: str):
+def check_and_use_limit(user: User, db: Session, feature: str, free_retry: bool = False):
+    """free_retry (03.10.2026): ponowny start generowania po tym, jak serwer zgubil zadanie
+    (restart/deploy) - raz dziennie na funkcje NIE zuzywa kolejnego slotu. Limit 1x/dzien
+    sprawia, ze nie da sie tego uzyc do omijania limitow."""
     if user.is_premium:
         return True, None
     limit = FREE_DAILY_LIMITS.get(feature, 5)
@@ -76,6 +83,12 @@ def check_and_use_limit(user: User, db: Session, feature: str):
     if feature_data.get("date") != today:
         feature_data = {"date": today, "count": 0}
     used = feature_data.get("count", 0)
+    if free_retry and not feature_data.get("retry_used"):
+        feature_data["retry_used"] = True
+        usage[feature] = feature_data
+        user.daily_usage = json.dumps(usage)
+        db.commit()
+        return True, max(limit - used, 0)
     remaining = limit - used
     if remaining <= 0:
         return False, 0
@@ -94,3 +107,27 @@ def get_remaining(user: User, feature: str) -> dict:
     feature_data = usage.get(feature, {})
     used = feature_data.get("count", 0) if feature_data.get("date") == today else 0
     return {"is_premium": False, "unlimited": False, "used": used, "limit": limit, "remaining": max(limit - used, 0)}
+
+
+def refund_limit(user_id: int, feature: str) -> None:
+    """Zwraca 1 uzycie, gdy generowanie sie NIE udalo z winy serwera (blad, pusty wynik).
+    Wlasna sesja bazy, bo wola to zadanie w tle po zakonczeniu requestu. Nigdy nie rzuca."""
+    try:
+        from .database import SessionLocal
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user or user.is_premium:
+                return
+            usage = _load_usage(user)
+            fd = usage.get(feature, {})
+            if fd.get("date") != date.today().isoformat() or fd.get("count", 0) <= 0:
+                return
+            fd["count"] = fd["count"] - 1
+            usage[feature] = fd
+            user.daily_usage = json.dumps(usage)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[Limits] refund_limit({user_id},{feature}) nieudany: {e}")

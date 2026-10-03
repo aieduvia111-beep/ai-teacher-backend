@@ -6,7 +6,7 @@ import threading
 import time
 
 import firebase_admin
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
 from sqlalchemy.orm import Session
@@ -140,14 +140,22 @@ def require_feature_limit(feature: str):
     lapie)."""
 
     def _dependency(
+        request: Request,
         user: User = Depends(get_current_app_user),
         db: Session = Depends(get_db),
     ):
-        allowed, _remaining = check_and_use_limit(user, db, feature)
+        # 03.10.2026: "Wyjasnij mi to w czacie" (quiz -> czat) ma wlasna pule 'explain'
+        # zamiast 4 wiadomosci czatu. Naglowek sam nie wystarcza - chat_message dodatkowo
+        # sprawdza, czy tresc to naprawde wiadomosc z quizu (inaczej nalicza zwykly czat).
+        eff_feature = feature
+        if feature == "chat" and request.headers.get("x-eduvia-explain") == "1":
+            eff_feature = "explain"
+        _free_retry = request.headers.get("x-eduvia-retry") == "1"
+        allowed, _remaining = check_and_use_limit(user, db, eff_feature, free_retry=_free_retry)
         if not allowed:
             raise HTTPException(
                 status_code=429,
-                detail=LIMIT_MESSAGES.get(feature, "Wykorzystales dzisiejszy darmowy limit."),
+                detail=LIMIT_MESSAGES.get(eff_feature, "Wykorzystales dzisiejszy darmowy limit."),
             )
         if feature in _CONCURRENCY_GUARDED_FEATURES and not _check_rate_limit(user.id, feature):
             raise HTTPException(

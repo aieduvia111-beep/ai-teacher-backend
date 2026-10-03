@@ -228,21 +228,33 @@ def _quiz_job_status_response(job_id: str):
 # /result jak w exam_api.py.
 # ══════════════════════════════════════════════════════════════════════
 
-async def _run_quiz_image_job(job_id, image, num_questions, difficulty, level, subject, topic, wlasne_instrukcje):
+def _refund_failed_quiz(user_id):
+    """03.10.2026: limit schodzi przy STARCIE generowania - gdy zadanie padnie z winy
+    serwera/AI, uczen dostaje swoje uzycie z powrotem."""
+    if user_id:
+        from ..usage_limits import refund_limit
+        refund_limit(user_id, "quiz")
+
+
+async def _run_quiz_image_job(job_id, image, num_questions, difficulty, level, subject, topic, wlasne_instrukcje, user_id=None):
     try:
         result = await generate_quiz_from_image(
             image, num_questions, difficulty, level=level, subject=subject, topic=topic
         )
         if not result["success"]:
+            _refund_failed_quiz(user_id)
             set_error(job_id, result.get("error") or "Nie udalo sie wygenerowac quizu")
             return
         quiz = result["quiz"]
+        if not (quiz or {}).get("questions"):
+            _refund_failed_quiz(user_id)
         if wlasne_instrukcje and wlasne_instrukcje.strip():
             quiz["_instrukcje"] = wlasne_instrukcje.strip()
         set_done(job_id, {"quiz": quiz, "requested_count": num_questions})
     except Exception as e:
         import traceback
         traceback.print_exc()
+        _refund_failed_quiz(user_id)
         set_error(job_id, str(e))
 
 
@@ -252,7 +264,8 @@ async def quiz_from_image_start(req: QuizImageRequest, user: User = Depends(requ
         cleanup_old_jobs()
         job_id = create_job()
         asyncio.create_task(_run_quiz_image_job(
-            job_id, req.image, req.num_questions, req.difficulty, req.level, req.subject, req.topic, req.wlasne_instrukcje
+            job_id, req.image, req.num_questions, req.difficulty, req.level, req.subject, req.topic, req.wlasne_instrukcje,
+            user_id=user.id
         ))
         return {"success": True, "job_id": job_id}
     except Exception as e:
@@ -264,7 +277,7 @@ async def quiz_from_image_status(job_id: str):
     return _quiz_job_status_response(job_id)
 
 
-async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, difficulty, wlasne_instrukcje, use_pool=False):
+async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, difficulty, wlasne_instrukcje, use_pool=False, user_id=None):
     try:
         result = await generate_quiz_pooled(
             topic=topic, subject=subject, level=level,
@@ -272,13 +285,17 @@ async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, diff
             wlasne_instrukcje=wlasne_instrukcje, use_pool=use_pool
         )
         if not result["success"]:
+            _refund_failed_quiz(user_id)
             set_error(job_id, result.get("error") or "Nie udalo sie wygenerowac quizu")
             return
         quiz = result["quiz"]
+        if not (quiz or {}).get("questions"):
+            _refund_failed_quiz(user_id)
         set_done(job_id, {"quiz": quiz, "requested_count": num_questions})
     except Exception as e:
         import traceback
         traceback.print_exc()
+        _refund_failed_quiz(user_id)
         set_error(job_id, str(e))
 
 
@@ -291,7 +308,7 @@ async def quiz_from_topic_start(req: QuizTopicRequest, user: User = Depends(requ
         job_id = create_job()
         asyncio.create_task(_run_quiz_topic_job(
             job_id, req.topic, req.subject, req.level, req.num_questions, req.difficulty, wlasne,
-            use_pool=not user.is_premium
+            use_pool=not user.is_premium, user_id=user.id
         ))
         return {"success": True, "job_id": job_id}
     except Exception as e:

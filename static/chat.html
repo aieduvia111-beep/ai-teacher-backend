@@ -725,7 +725,9 @@ const LIMITS_FREE = {
   // NAPRAWIONE: teraz zgodne z backendem (usage_limits.py FREE_DAILY_LIMITS)
   // - Fiszki maja WLASNY limit (patrz app/api/flashcards_api.py), nie
   // dziela juz puli z Quizem.
-  flashcards: 1
+  flashcards: 1,
+  // 03.10.2026: wlasna pula dla "Wyjasnij mi to w czacie" z quizu (backend: 'explain')
+  explain: 5
 };
 
 async function checkLimit(feature) {
@@ -1243,9 +1245,12 @@ async function callAIhttp(text, hist, imgs=[]) {
   }
 
   const _idToken = await window._getAuthToken();
+  const _hdrs = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _idToken };
+  if (window._explainHdr) { _hdrs['X-Eduvia-Explain'] = '1'; }
+  window._explainHdr = false;
   const res = await fetch(BACKEND_URL + '/api/v1/chat/message', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _idToken },
+    headers: _hdrs,
     body: JSON.stringify(payload)
   });
 
@@ -1523,10 +1528,15 @@ async function sendMessage() {
   const text0 = input0.value.trim();
   const isFlashcardRequest = detectFlashcards(text0) && attachments.filter(a=>a.type.startsWith("image/")).length===0;
   const isFlashcardFlow = isFlashcardRequest || (_fcWaitingTopic && !detectFlashcards(text0));
+  // Wiadomosc z quizu ("Wyjasnij mi to w czacie") liczy sie do osobnej puli 'explain',
+  // zeby 4 klikniecia w quizie nie zjadly calego dziennego limitu czatu.
+  const _isExplain = !!window._explainNext;
+  window._explainNext = false;
+  const _limFeature = _isExplain ? 'explain' : 'chat';
   if(!isFlashcardFlow){
-    const _lim = await checkLimit("chat");
+    const _lim = await checkLimit(_limFeature);
     if(!_lim.allowed) return;
-    useLimit("chat");
+    useLimit(_limFeature);
   }
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
@@ -1626,6 +1636,7 @@ async function sendMessage() {
   toggleExplainLevels();
 
   try {
+    window._explainHdr = _isExplain;
     const response = await callAI(fullText, chatHistory, imageUrls);
     const aiBubble = document.getElementById(thId);
     if (!aiBubble) throw new Error('Błąd renderowania');
@@ -1864,7 +1875,7 @@ async function sendMessage() {
     // klikalny popup z Pro niezaleznie od funkcji, w ktorej trafil na limit.
     if (err.message && err.message.includes('limit')) {
       aiGroup.remove();
-      showLimitPopup('chat', LIMITS_FREE.chat);
+      showLimitPopup(_limFeature, LIMITS_FREE[_limFeature]);
     } else {
       const aiBubble = document.getElementById(thId) || aiGroup.querySelector('.bubble');
       if (aiBubble) { aiBubble.removeAttribute('id'); aiBubble.innerHTML = `<span style="color:var(--red)">⚠️ ${err.message || 'Coś poszło nie tak. Sprawdź czy backend działa.'}</span>`; }
@@ -2694,6 +2705,7 @@ window.go = go;
     if(!p||!p.text||!p.ts||Date.now()-p.ts>10*60*1000)return;
     var inp=document.getElementById('msgInput');if(!inp)return;
     inp.value=p.text;try{autoResize(inp);}catch(e){}
+    window._explainNext=true;
     sendMessage();
   }
   function run(){showReturnBar();setTimeout(autoSendPrefill,400);}

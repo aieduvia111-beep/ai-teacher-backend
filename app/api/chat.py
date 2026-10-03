@@ -1,5 +1,5 @@
 from ..error_logger import log_error
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
@@ -103,6 +103,8 @@ class ChatMessage(BaseModel):
     role: str
     content: str
 
+EXPLAIN_PREFIX = "Nie rozumiem tego pytania z quizu."
+
 class ChatRequest(BaseModel):
     text: str
     history: Optional[List[ChatMessage]] = []
@@ -149,8 +151,17 @@ def _build_response(ai_data: dict, user_message: str, user_level: str = None) ->
 
 
 @router.post("/message")
-async def chat_message(req: ChatRequest, user: User = Depends(require_feature_limit("chat")), db: Session = Depends(get_db)):
+async def chat_message(request: Request, req: ChatRequest, user: User = Depends(require_feature_limit("chat")), db: Session = Depends(get_db)):
     """HTTP endpoint - przyjmuje historię rozmowy i zwraca odpowiedź AI"""
+    # Naglowek "explain" daje wlasna pule (5/dzien) TYLKO dla prawdziwej wiadomosci
+    # "Wyjasnij mi to w czacie" z quizu. Inna tresc z tym naglowkiem = zwykly czat:
+    # oddajemy slot 'explain' i naliczamy czat (nie da sie obejsc limitu czatu).
+    if request.headers.get("x-eduvia-explain") == "1" and not (req.text or "").startswith(EXPLAIN_PREFIX):
+        from ..usage_limits import refund_limit, check_and_use_limit, LIMIT_MESSAGES
+        refund_limit(user.id, "explain")
+        _ok, _ = check_and_use_limit(user, db, "chat")
+        if not _ok:
+            raise HTTPException(status_code=429, detail=LIMIT_MESSAGES["chat"])
     try:
         # NAPRAWIONE (klient sie poskarzyl 27.09.2026: "nie umie dobrze wytlumaczyc",
         # konkretnie ulamki dziesietne - realny prod bug): Chat AI byl JEDYNA funkcja
