@@ -98,10 +98,13 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
                     "zagadnienia gramatyczne, ktore WIDAC."
                 )
             })
+            # gpt-4o (nie mini) TYLKO do czytania zdjec (03.10.2026, user zaakceptowal
+            # ~+0.05 zl/notatke): mini blednie przepisywal nazwy ("Drawsko" -> "Drowo"),
+            # a notatka ma sluzyc do nauki. Generowanie samej notatki zostaje na mini.
             vision_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[{"role": "user", "content": content}],
-                max_tokens=1500, timeout=30
+                max_tokens=1500, timeout=40
             )
             txt = vision_resp.choices[0].message.content.strip()
             txt = txt.replace('```json','').replace('```','').strip()
