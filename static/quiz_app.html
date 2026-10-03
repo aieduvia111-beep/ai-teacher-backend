@@ -1116,7 +1116,11 @@ async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body, _retrie
 
 async function startQuiz(){
   REVIEW_MODE=false;_reviewWrongSaved=0;
-  const _lim=await checkLimit('quiz');if(!_lim.allowed)return;
+  const _lim=await checkLimit('quiz');
+  // 03.10.2026 (user: "limit wyczerpany, klikam Moze pozniej i quiz sie generuje"): przy autostart=1
+  // (karta z dashboardu / 'Zrob quiz z tego') ekran ladowania jest juz pokazany - po odmowie
+  // limitem zostawal na wierzchu jako wiecznie 'generujacy sie' quiz. Wracamy do formularza.
+  if(!_lim.allowed){showPage('pageSetup');return;}
   let err=document.getElementById('errMsg');err.style.display='none';
   let topic=document.getElementById('topic').value.trim();
   let num=parseInt(document.getElementById('numSlider').value);
