@@ -240,6 +240,14 @@ body::after{content:'';position:fixed;inset:0;opacity:0.5;background-image:url("
 .thinking span:nth-child(3){animation:th .9s ease-in-out infinite .3s;}
 @keyframes th{0%,80%,100%{transform:scale(1);opacity:.4;}40%{transform:scale(1.4);opacity:1;}}
 .input-area{flex-shrink:0;padding:14px 30px 20px;border-top:1px solid var(--border);background:linear-gradient(to top,rgba(7,7,13,0.95),transparent);}
+.quiz-return-bar{display:flex;align-items:center;gap:8px;padding:0 30px 10px;flex-shrink:0;}
+.quiz-return-btn{display:inline-flex;align-items:center;gap:8px;flex:1;padding:10px 14px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.35);border-radius:12px;color:var(--accent2);font-family:var(--h);font-size:.82em;font-weight:700;cursor:pointer;transition:all .2s;text-align:left;}
+.quiz-return-btn span{margin-left:auto;font-weight:500;color:var(--muted2);font-size:.92em;}
+.quiz-return-btn:hover{background:rgba(124,106,255,.18);border-color:rgba(124,106,255,.55);}
+.quiz-return-btn svg{width:15px;height:15px;flex-shrink:0;}
+.quiz-return-x{background:none;border:none;color:var(--muted);font-size:1.1em;line-height:1;cursor:pointer;padding:6px 8px;opacity:.7;transition:opacity .2s,color .2s;}
+.quiz-return-x:hover{opacity:1;color:var(--text);}
+@media(max-width:768px){.quiz-return-bar{padding:0 14px 8px;}}
 .attachments-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
 .att-preview{display:flex;align-items:center;gap:6px;padding:5px 8px 5px 5px;border-radius:10px;background:var(--s2);border:1px solid var(--border-hi);font-size:.72em;color:var(--muted2);position:relative;max-width:160px;}
 .att-preview img{width:30px;height:30px;object-fit:cover;border-radius:6px;flex-shrink:0;}
@@ -2670,6 +2678,42 @@ window.handleKey = handleKey;
 window.autoResize = autoResize;
 window.navTo = navTo;
 window.go = go;
+
+/* ── QUIZ -> CZAT -> POWROT DO QUIZU (03.10.2026) ──
+   Quiz (przycisk "Wyjasnij mi to w czacie") zapisuje stan quizu i gotowe
+   pytanie w localStorage. Tutaj: (1) pytanie wysyla sie samo, (2) nad polem
+   pisania wisi pasek "Wroc do quizu", ktory odtwarza quiz dokladnie w tym
+   miejscu (quiz_app.html?resume=1). Dane wygasaja po 6h / 10 min. */
+(function(){
+  var RESUME_KEY='eduvia_quiz_resume',PREFILL_KEY='eduvia_chat_prefill',TTL=6*3600*1000;
+  function readResume(){
+    try{var st=JSON.parse(localStorage.getItem(RESUME_KEY)||'null');if(st&&st.ts&&Date.now()-st.ts<TTL&&Array.isArray(st.questions))return st;}catch(e){}
+    try{localStorage.removeItem(RESUME_KEY);}catch(e){}
+    return null;
+  }
+  window.goBackToQuiz=function(){navTo('quiz_app.html?resume=1');};
+  window.dismissQuizReturn=function(){
+    try{localStorage.removeItem(RESUME_KEY);}catch(e){}
+    var b=document.getElementById('quizReturnBar');if(b)b.remove();
+  };
+  function showReturnBar(){
+    var st=readResume();if(!st||document.getElementById('quizReturnBar'))return;
+    var area=document.querySelector('.input-area');if(!area)return;
+    var bar=document.createElement('div');bar.id='quizReturnBar';bar.className='quiz-return-bar';
+    bar.innerHTML='<button type="button" class="quiz-return-btn" onclick="goBackToQuiz()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Wróć do quizu<span>pytanie '+(st.currentQ+1)+' z '+st.questions.length+'</span></button><button type="button" class="quiz-return-x" aria-label="Zamknij" onclick="dismissQuizReturn()">✕</button>';
+    area.parentNode.insertBefore(bar,area);
+  }
+  function autoSendPrefill(){
+    var p=null;
+    try{p=JSON.parse(localStorage.getItem(PREFILL_KEY)||'null');localStorage.removeItem(PREFILL_KEY);}catch(e){}
+    if(!p||!p.text||!p.ts||Date.now()-p.ts>10*60*1000)return;
+    var inp=document.getElementById('msgInput');if(!inp)return;
+    inp.value=p.text;try{autoResize(inp);}catch(e){}
+    sendMessage();
+  }
+  function run(){showReturnBar();setTimeout(autoSendPrefill,400);}
+  if(document.readyState==='complete')run();else window.addEventListener('load',run);
+})();
 </script>
 
 <script>

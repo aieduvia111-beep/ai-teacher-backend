@@ -223,6 +223,9 @@ body::after{content:'';position:fixed;inset:0;opacity:.5;background-image:url("d
 .correct-h{color:var(--green);}.wrong-h{color:var(--red);}
 .feedback-explain{font-size:.85em;line-height:1.7;color:var(--text);}
 .feedback-motivation{margin-top:7px;font-size:.8em;color:var(--muted2);font-style:italic;}
+.explain-chat-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 14px;background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.3);border-radius:10px;color:var(--accent2);font-family:var(--h);font-size:.8em;font-weight:700;cursor:pointer;transition:all .2s;}
+.explain-chat-btn:hover{background:rgba(124,106,255,.16);border-color:rgba(124,106,255,.5);transform:translateY(-1px);}
+.explain-chat-btn svg{width:15px;height:15px;flex-shrink:0;}
 .xp-pop{display:none;font-family:var(--h);font-weight:800;font-size:.95em;color:var(--gold);text-align:right;}
 .next-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#5040c8);border:none;border-radius:13px;color:white;font-family:var(--h);font-size:.92em;font-weight:700;cursor:pointer;transition:all .25s;display:none;box-shadow:0 4px 16px rgba(124,106,255,.25);}
 .next-btn.show{display:block;animation:fadeUp .25s ease;}
@@ -781,6 +784,7 @@ function getPlanBadgeHTML(plan) {
             <div class="feedback-header" id="feedbackHeader"></div>
             <div class="feedback-explain" id="feedbackExplain"></div>
             <div class="feedback-motivation" id="feedbackMotivation"></div>
+            <button type="button" class="explain-chat-btn" id="explainChatBtn" onclick="askChatAboutQuestion()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Wyjaśnij mi to w czacie</button>
           </div>
           <div style="display:flex;justify-content:flex-end;height:22px;margin-bottom:4px;"><div class="xp-pop" id="xpPop"></div></div>
           <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Następne pytanie →</button>
@@ -1302,6 +1306,62 @@ function answer(idx){
 
 function nextQuestion(){if(currentQ<questions.length-1){currentQ++;renderQuestion();}else showResults();}
 
+/* ── WYJASNIJ W CZACIE + POWROT DO QUIZU (03.10.2026) ──
+   Przycisk pod wyjasnieniem zapisuje CALY stan quizu (pytania po tasowaniu,
+   odpowiedzi, XP, seria) i pytanie do czatu, a po powrocie (?resume=1)
+   odtwarza dokladnie ten sam ekran - bez nowego generowania i bez limitu. */
+var RESUME_KEY='eduvia_quiz_resume',PREFILL_KEY='eduvia_chat_prefill',RESUME_TTL=6*3600*1000;
+function askChatAboutQuestion(){
+  var q=questions[currentQ];if(!q)return;
+  var L=['A','B','C','D'],ua=answers[currentQ];
+  var lines=['Nie rozumiem tego pytania z quizu. Wytłumacz mi je krok po kroku, prostym językiem.','','Pytanie: '+q.question];
+  q.options.forEach(function(o,i){lines.push(L[i]+') '+o);});
+  lines.push('');
+  if(ua!==null&&ua!==undefined&&ua!==q.correct)lines.push('Wybrałem: '+L[ua]+') '+q.options[ua]+' (to było źle)');
+  else if(ua===q.correct)lines.push('Wybrałem poprawną odpowiedź, ale chcę zrozumieć dlaczego.');
+  lines.push('Poprawna odpowiedź: '+L[q.correct]+') '+q.options[q.correct]);
+  if(q.explanation)lines.push('Wyjaśnienie z quizu: '+q.explanation);
+  lines.push('','Wyjaśnij, dlaczego poprawna jest właśnie ta odpowiedź i w którym miejscu łatwo się pomylić.');
+  try{
+    localStorage.setItem(RESUME_KEY,JSON.stringify({ts:Date.now(),title:(quiz&&quiz.title)||document.getElementById('quizTitle').textContent||'Quiz',questions:questions,currentQ:currentQ,answers:answers,xp:xp,streak:streak,maxStreak:maxStreak,wrongIndexes:wrongIndexes,isRetry:isRetry,vals:VALS,subject:(document.getElementById('subject')||{}).value||''}));
+    localStorage.setItem(PREFILL_KEY,JSON.stringify({ts:Date.now(),text:lines.join('\n')}));
+  }catch(e){alert('Nie udało się zapisać quizu przed przejściem do czatu.');return;}
+  window.location.href='chat.html';
+}
+function resumeQuizFromChat(){
+  var st=null;
+  try{st=JSON.parse(localStorage.getItem(RESUME_KEY)||'null');}catch(e){}
+  if(!st||!Array.isArray(st.questions)||!st.questions.length||!st.ts||Date.now()-st.ts>RESUME_TTL||st.currentQ>=st.questions.length){
+    try{localStorage.removeItem(RESUME_KEY);}catch(e){}
+    return false;
+  }
+  quiz={title:st.title};questions=st.questions;answers=st.answers||[];currentQ=st.currentQ;
+  xp=st.xp||0;streak=st.streak||0;maxStreak=st.maxStreak||0;wrongIndexes=st.wrongIndexes||[];isRetry=!!st.isRetry;
+  if(st.vals){VALS.level=st.vals.level||VALS.level;VALS.diff=st.vals.diff||VALS.diff;}
+  if(st.subject&&document.getElementById('subject'))document.getElementById('subject').value=st.subject;
+  document.getElementById('quizTitle').textContent=st.title||'Quiz';
+  var bd=document.getElementById('quizBadge');if(bd)bd.textContent=isRetry?'Powtórka':'✦ Quiz';
+  document.getElementById('retryBanner').style.display=isRetry?'flex':'none';
+  document.getElementById('xpTotal').textContent=xp;
+  showPage('pageQuiz');renderQuestion();
+  var idx=answers[currentQ];
+  if(idx!==null&&idx!==undefined){
+    /* odtworz ekran PO odpowiedzi - answer() zmienia XP/serie/bledy, wiec
+       zapamietujemy stan i przywracamy go zaraz po (bez podwojnego liczenia) */
+    var keep={xp:xp,streak:streak,maxStreak:maxStreak,wrong:wrongIndexes.slice()};
+    var hap=window._haptic;window._haptic=function(){};
+    try{answer(idx);}finally{window._haptic=hap;}
+    xp=keep.xp;streak=keep.streak;maxStreak=keep.maxStreak;wrongIndexes=keep.wrong;
+    document.getElementById('xpTotal').textContent=xp;
+    if(document.getElementById('qiXP'))document.getElementById('qiXP').textContent=xp;
+    if(document.getElementById('qiStreak'))document.getElementById('qiStreak').textContent=streak>=2?'🔥 x'+streak:'—';
+    document.getElementById('streakTxt').textContent=streak>=2?'🔥 Seria: '+streak:'';
+    document.getElementById('xpPop').style.display='none';
+  }
+  try{localStorage.removeItem(RESUME_KEY);}catch(e){}
+  return true;
+}
+
 function showResults(){
   let total=questions.length;
   let correct=answers.filter(function(a,i){return a===questions[i].correct;}).length;
@@ -1378,6 +1438,7 @@ window.addEventListener('DOMContentLoaded',function(){
   updateSlider(document.getElementById('numSlider'));
   renderSidebarStats();
   let params=new URLSearchParams(window.location.search);
+  if(params.get('resume')==='1'&&resumeQuizFromChat())return;
   let topic=params.get('topic');
   let subjectParam=params.get('subject');
   let levelParam=params.get('level');
