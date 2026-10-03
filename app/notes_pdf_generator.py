@@ -1395,6 +1395,24 @@ def _build_lang_block(temat: str, kontekst: str = "", jezyk: str = "") -> str:
     return "".join(parts)
 
 
+def _l2u(s):
+    """LaTeX -> zwykly tekst Unicode (komorki tabeli, opcje quizu).
+    NAPRAWIONE (03.10.2026): to byla funkcja ZAGNIEZDZONA wewnatrz bloku "tabela
+    porownawcza" w _build_content_pages, a uzywana tez w sekcji quizu - gdy model
+    nie zwrocil tabeli (albo pusta), UnboundLocalError wywalal CALY PDF przy
+    renderowaniu opcji quizu. Teraz na poziomie modulu, zawsze dostepna."""
+    import re as _r2; s = str(s).strip()
+    s = _r2.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'\1/\2', s)
+    for src, dst in [('\\int','∫'),('\\infty','∞'),('\\pi','π'),
+                     ('\\alpha','α'),('\\beta','β'),('\\gamma','γ'),
+                     ('\\Delta','Δ'),('\\delta','δ'),('\\sigma','σ'),
+                     ('\\leq','≤'),('\\geq','≥'),('\\neq','≠'),
+                     ('\\rightarrow','\\to'),('\\cdot','·'),('→','\\to')]:
+        s = s.replace(src, dst)
+    s = _r2.sub(r'[\\{}_^]','',s).replace('$','').strip()
+    return s
+
+
 class PremiumNotesGenerator:
 
     def __init__(self, api_key: str):
@@ -1494,7 +1512,7 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None) -> dict:
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None) -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje) + _build_lang_block(temat, kontekst, jezyk)
         rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
@@ -1519,6 +1537,27 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         styl_info = f"\nSTYL: dostosuj jezyk i ton do poziomu ucznia - {describe_level(klasa)}"
         prompt = prompt_template.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg)
         max_tok = {2: 2800, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
+        # NOWE (03.10.2026, "tak zrob to" - wlasne zdjecia stron jako zrodlo prawdy):
+        # dotad generator widzial tylko streszczenie z kroku wizji (kontekst) i
+        # resztę dopowiadal sam. Teraz dostaje tez SAME zdjecia (do 6), wiec
+        # trzyma sie naglowkow, definicji, danych i zadan, ktore faktycznie sa
+        # w podreczniku. Streszczenie zostaje jako pomoc.
+        if images:
+            prompt += (
+                "\n\nDO TEJ WIADOMOSCI DOLACZONE SA ZDJECIA STRON MATERIALU - to PIERWSZE zrodlo prawdy. "
+                "Opieraj notatke na tym, co NA NICH widac (naglowki, definicje, fakty, daty, dane liczbowe, "
+                "przyklady i zadania z podrecznika). Streszczenie tekstowe powyzej jest tylko pomocnicze. "
+                "Nie dodawaj tresci spoza zdjec poza krotkim wyjasnieniem pojec. "
+                "NAZWY WLASNE (miejsca, osoby, pojecia) i LICZBY przepisuj DOKLADNIE tak, jak sa na zdjeciu, litera w litere. "
+                "Jesli cos jest nieczytelne albo niepewne - POMIN to, nie zgaduj. "
+                "W tabelach NIGDY nie wstawiaj znakow zapytania ani pustych komorek - pomin caly wiersz, jesli brakuje danych."
+            )
+            user_content = [{"type": "text", "text": prompt}] + [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}", "detail": "high"}}
+                for img in images[:6]
+            ]
+        else:
+            user_content = prompt
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
             "Wzory TYLKO w formacie $...$. "
@@ -1538,7 +1577,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                     model="gpt-4o" if wlasne_instrukcje and wlasne_instrukcje.strip() else "gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": system_msg},
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": user_content}
                     ],
                     temperature=0.5 if mode == "opisowy" else 0.7, max_tokens=max_tok,
                 )
@@ -1767,17 +1806,6 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
             nagl = tab.get('naglowki', []); wiersze = tab.get('wiersze', [])
             if nagl and wiersze:
                 col_w = W / len(nagl)
-                def _l2u(s):
-                    import re as _r2; s = str(s).strip()
-                    s = _r2.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'\1/\2', s)
-                    for src, dst in [('\\int','∫'),('\\infty','∞'),('\\pi','π'),
-                                     ('\\alpha','α'),('\\beta','β'),('\\gamma','γ'),
-                                     ('\\Delta','Δ'),('\\delta','δ'),('\\sigma','σ'),
-                                     ('\\leq','≤'),('\\geq','≥'),('\\neq','≠'),
-                                     ('\\rightarrow','\\to'),('\\cdot','·'),('→','\\to')]:
-                        s = s.replace(src, dst)
-                    s = _r2.sub(r'[\\{}_^]','',s).replace('$','').strip()
-                    return s
                 def _cell(val):
                     s = str(val).strip()
                     # Wzory LaTeX - renderuj przez matplotlib
@@ -2035,9 +2063,9 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None) -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None) -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia)
+        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()

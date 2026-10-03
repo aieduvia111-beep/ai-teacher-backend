@@ -43,9 +43,9 @@ def _log_notes_metrics(temat: str, klasa: str, t0: float, ok: bool, reason: str 
         print(f"[NotesMetrics] pominieto zapis statystyk: {_e}")
 
 
-def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None) -> str:
+def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None) -> str:
     gen = PremiumNotesGenerator(api_key)
-    return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia)
+    return gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images)
 
 @router.post("/generate")
 async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_feature_limit("notes"))):
@@ -119,7 +119,7 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
         loop = asyncio.get_event_loop()
         wlasne = req.wlasne_instrukcje or ""
         filename = await loop.run_in_executor(
-            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne, kontekst, jezyk, przedmiot, czy_obliczenia
+            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne, kontekst, jezyk, przedmiot, czy_obliczenia, (all_images[:6] if all_images else None)
         )
 
         if filename and os.path.exists(filename):
