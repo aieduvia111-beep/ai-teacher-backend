@@ -707,10 +707,25 @@ async function showPayBanner(user){
     document.getElementById('payBannerX').onclick=function(){ b.style.display='none'; try{ localStorage.setItem('eduvia_paybanner_x', String(Date.now())); }catch(e){} };
   }catch(e){}
 }
+// POWTORKA DNIA (03.10.2026): kafelek tylko gdy uczen ma zalegle pytania z wlasnych bledow.
+async function loadReviewTile(user){
+  try{
+    const tk=await user.getIdToken();
+    const r=await fetch((window.DASH_BASE||location.origin)+'/api/v1/review/summary',{headers:{'Authorization':'Bearer '+tk}});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(!d||!d.success||!(d.due>0))return;
+    const n=d.due, w=(n===1?'pytanie':(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14)?'pytania':'pytań'));
+    document.getElementById('rvTitle').textContent=n+' '+w+' do powtórki';
+    document.getElementById('rvDesc').textContent='To Twoje dawne błędy — ok. '+Math.max(1,Math.ceil(Math.min(n,10)*0.4))+' min'+(d.mastered>0?' · opanowane: '+d.mastered:'');
+    document.getElementById('reviewDueSec').style.display='';
+  }catch(e){}
+}
 onAuthStateChanged(auth,async(user)=>{
   if(!user){window.location.href='login.html';return;}
   currentUser=user;
   showPayBanner(user);
+  loadReviewTile(user);
   loadStudentProfile(user);
   localStorage.setItem('eduvia_uid',user.uid);
   const snap=await getDoc(doc(db,'users',user.uid));
@@ -1266,6 +1281,20 @@ function getPlanBadgeHTML(plan) {
       </div>
       <div class="xpbar-label" id="hsXPNext">0 / 100 XP do następnego poziomu</div>
     </div>
+  </section>
+
+  <!-- 4b. POWTORKA DNIA (03.10.2026) - pokazuje sie TYLKO gdy sa zalegle pytania z bledow -->
+  <section class="next-step-sec" id="reviewDueSec" style="display:none;">
+    <a href="quiz_app.html?review=1" class="next-step-card" style="text-decoration:none;color:inherit;">
+      <div class="ns-info">
+        <div class="ns-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>Powtórka dnia</div>
+        <div class="ns-title" id="rvTitle">Powtórka</div>
+        <div class="ns-desc" id="rvDesc"></div>
+      </div>
+      <span class="ns-arrow-btn" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </span>
+    </a>
   </section>
 
   <!-- 5. NASTEPNY KROK (sugerowany quiz z ankiety) -->

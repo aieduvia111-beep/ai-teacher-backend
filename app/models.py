@@ -417,3 +417,31 @@ class GenerationJob(Base):
     attempts = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ReviewItem(Base):
+    """Pytanie do "Powtorki dnia" (03.10.2026) - zle odpowiedziane pytanie z quizu, ktore
+    wraca w odstepach 1/3/7/14 dni (patrz app/api/review_api.py). user_id to Firebase UID
+    (string), TA SAMA konwencja co Subscription/StudentWeakPoint, NIE integer User.id."""
+    __tablename__ = "review_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(128), nullable=False, index=True)
+    qhash = Column(String(40), nullable=False)
+    question = Column(Text, nullable=False)
+    options = Column(Text, nullable=False)  # JSON: lista odpowiedzi
+    correct = Column(Integer, nullable=False)
+    explanation = Column(Text, nullable=True)
+    subject = Column(String(50), nullable=True)
+    topic = Column(String(200), nullable=True)
+    streak = Column(Integer, default=0)  # poprawne odpowiedzi z rzedu
+    times_wrong = Column(Integer, default=0)
+    times_right = Column(Integer, default=0)
+    mastered = Column(Boolean, default=False)
+    next_review = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "qhash", name="uq_review_user_qhash"),
+    )

@@ -61,6 +61,13 @@ except Exception as e:
     print(f"❌ chat: {e}")
 
 try:
+    from .api.review_api import router as review_router
+    app.include_router(review_router)
+    print("✅ review OK")
+except Exception as e:
+    print(f"❌ review: {e}")
+
+try:
     from .api.auth import router as auth_router
     app.include_router(auth_router)
     print("✅ auth OK")
