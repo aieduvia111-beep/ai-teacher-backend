@@ -398,3 +398,22 @@ class StudentWeakPoint(Base):
     __table_args__ = (
         Index("ix_weak_point_user_topic", "user_id", "topic"),
     )
+
+
+class GenerationJob(Base):
+    """Zadanie generowania w tle (Quiz/Sprawdzian) - 03.10.2026. Wczesniej zylo tylko w
+    pamieci procesu, wiec restart/deploy Rendera w trakcie generowania kasowal je
+    ("Nieznane zadanie generowania"). Patrz app/job_store.py: parametry startu sa tu
+    zapisane, dzieki czemu nowy proces moze WZNOWIC przerwane generowanie."""
+    __tablename__ = "generation_jobs"
+
+    job_id = Column(String(32), primary_key=True)
+    kind = Column(String(30), nullable=True)
+    status = Column(String(10), nullable=False, default="pending", index=True)
+    params = Column(Text, nullable=True)
+    result = Column(Text, nullable=True)
+    error = Column(Text, nullable=True)
+    user_id = Column(Integer, nullable=True)
+    attempts = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

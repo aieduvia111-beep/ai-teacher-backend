@@ -1,7 +1,17 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 from .models import User
+
+def today_pl() -> str:
+    """Dzien limitow wg czasu polskiego (03.10.2026). Wczesniej date.today() na serwerze
+    (UTC) - limity odnawialy sie o 2:00 w nocy, a popup obiecuje polnoc."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Europe/Warsaw")).date().isoformat()
+    except Exception:
+        return date.today().isoformat()
+
 
 FREE_DAILY_LIMITS = {
     # OBNIZONE (22.09.2026, KOSZTY): analiza pokazala 1313 darmowych kont vs 11 platnych (0.8%) -
@@ -77,7 +87,7 @@ def check_and_use_limit(user: User, db: Session, feature: str, free_retry: bool 
     if user.is_premium:
         return True, None
     limit = FREE_DAILY_LIMITS.get(feature, 5)
-    today = date.today().isoformat()
+    today = today_pl()
     usage = _load_usage(user)
     feature_data = usage.get(feature, {})
     if feature_data.get("date") != today:
@@ -102,7 +112,7 @@ def get_remaining(user: User, feature: str) -> dict:
     if user.is_premium:
         return {"is_premium": True, "unlimited": True}
     limit = FREE_DAILY_LIMITS.get(feature, 5)
-    today = date.today().isoformat()
+    today = today_pl()
     usage = _load_usage(user)
     feature_data = usage.get(feature, {})
     used = feature_data.get("count", 0) if feature_data.get("date") == today else 0
@@ -121,7 +131,7 @@ def refund_limit(user_id: int, feature: str) -> None:
                 return
             usage = _load_usage(user)
             fd = usage.get(feature, {})
-            if fd.get("date") != date.today().isoformat() or fd.get("count", 0) <= 0:
+            if fd.get("date") != today_pl() or fd.get("count", 0) <= 0:
                 return
             fd["count"] = fd["count"] - 1
             usage[feature] = fd

@@ -471,7 +471,7 @@ async function checkLimit(feature) {
   const uid = localStorage.getItem('eduvia_uid');
   if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   // NAPRAWIONE: user zglosil - "logowalem sie na rozne konta i limit byl
   // ten sam". Klucz NIE byl scope'owany per-user (tylko feature+data) -
   // dwa rozne konta zalogowane w TEJ SAMEJ przegladarce dzielily jeden,
@@ -489,7 +489,7 @@ async function checkLimit(feature) {
 }
 
 function useLimit(feature) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   const uid = localStorage.getItem('eduvia_uid') || 'anon';
   const key = `eduvia_limit_${feature}_${uid}_${today}`;
   const used = parseInt(localStorage.getItem(key) || '0');

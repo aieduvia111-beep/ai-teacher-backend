@@ -425,7 +425,7 @@ function playFlip(){
 function checkFlashcardsLimit(){
   const plan = localStorage.getItem('eduvia_plan') || 'free';
   if(plan !== 'free') return true;
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   // NAPRAWIONE: klucz NIE byl scope'owany per-user (tylko feature+data) -
   // patrz identyczny fix w exam_generator.html/chat.html/itd.
   const uid = localStorage.getItem('eduvia_uid') || 'anon';

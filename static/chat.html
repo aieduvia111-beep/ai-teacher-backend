@@ -738,7 +738,7 @@ async function checkLimit(feature) {
   const uid = localStorage.getItem('eduvia_uid');
   if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   // NAPRAWIONE: user zglosil - "logowalem sie na rozne konta i limit byl
   // ten sam". Klucz NIE byl scope'owany per-user (tylko feature+data) -
   // dwa rozne konta zalogowane w TEJ SAMEJ przegladarce dzielily jeden,
@@ -764,7 +764,7 @@ function hasRemainingQuiet(feature) {
   if (plan !== 'free') return true;
   const uid = localStorage.getItem('eduvia_uid');
   if (!uid) return true;
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   const key = `eduvia_limit_${feature}_${uid}_${today}`;
   const used = parseInt(localStorage.getItem(key) || '0');
   const limit = LIMITS_FREE[feature] || 5;

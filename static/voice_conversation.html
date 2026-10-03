@@ -570,7 +570,7 @@ async function checkLimit(feature) {
   const uid = localStorage.getItem('eduvia_uid');
   if (!uid) return { allowed: true, remaining: LIMITS_FREE[feature] };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   // NAPRAWIONE (ta sama poprawka co juz jest w exam_generator.html/quiz_app.html
   // /notes_generator.html/lesson_planner.html - tu brakowalo jej do tej pory):
   // klucz bez uid oznaczal, ze dwa rozne konta zalogowane w tej samej

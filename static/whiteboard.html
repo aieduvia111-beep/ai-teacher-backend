@@ -1096,7 +1096,7 @@ async function checkLimit(feature){
   if(plan!=='free')return{allowed:true,remaining:999};
   const uid=localStorage.getItem('eduvia_uid');
   if(!uid)return{allowed:true,remaining:LIMITS_FREE[feature]};
-  const today=new Date().toISOString().split('T')[0];
+  const today=new Date().toLocaleDateString('sv-SE');
   const key=`eduvia_limit_${feature}_${today}`;
   const used=parseInt(localStorage.getItem(key)||'0');
   const limit=LIMITS_FREE[feature]||15;
@@ -1105,7 +1105,7 @@ async function checkLimit(feature){
   return{allowed:true,remaining};
 }
 function useLimit(feature){
-  const today=new Date().toISOString().split('T')[0];
+  const today=new Date().toLocaleDateString('sv-SE');
   const key=`eduvia_limit_${feature}_${today}`;
   const used=parseInt(localStorage.getItem(key)||'0');
   localStorage.setItem(key,used+1);

@@ -8,7 +8,7 @@ from ..exam_pdf_generator import ExamGenerator
 from ..openai_vision import analyze_image_with_gpt4_vision
 from ..firebase_auth import require_feature_limit
 from ..models import User
-from ..job_store import create_job, set_done, set_error, get_job, pop_job, cleanup_old_jobs
+from ..job_store import create_job, set_done, set_error, get_job, get_or_resume, restart_job, pop_job, cleanup_old_jobs, register_resumer
 import os, json, zipfile, tempfile
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -247,7 +247,14 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
 # tym, czego uzywa teraz exam_generator.html.
 # ══════════════════════════════════════════════════════════════════════
 
-async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wariant, wlasne_instrukcje):
+def _refund_failed_exam(user_id):
+    """03.10.2026: limit schodzi przy starcie - przy bledzie z winy serwera oddajemy uzycie."""
+    if user_id:
+        from ..usage_limits import refund_limit
+        refund_limit(user_id, "exam")
+
+
+async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wariant, wlasne_instrukcje, user_id=None):
     try:
         loop = asyncio.get_event_loop()
         if wariant == "AB":
@@ -271,6 +278,7 @@ async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wari
             if shortfall_a or shortfall_b:
                 set_done(job_id, {"kind": "shortfall_only", "shortfall": shortfall_a or shortfall_b})
                 return
+            _refund_failed_exam(user_id)
             set_error(job_id, "Nie udalo sie wygenerowac PDF")
             return
 
@@ -284,11 +292,16 @@ async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wari
         if shortfall:
             set_done(job_id, {"kind": "shortfall_only", "shortfall": shortfall})
             return
+        _refund_failed_exam(user_id)
         set_error(job_id, "Nie udalo sie wygenerowac PDF")
     except Exception as e:
         import traceback
         traceback.print_exc()
+        _refund_failed_exam(user_id)
         set_error(job_id, str(e))
+
+
+register_resumer("exam", _run_exam_job)
 
 
 @router.post("/generate/start")
@@ -310,9 +323,14 @@ async def generate_exam_start(req: ExamRequest, user: User = Depends(require_fea
 
         pelny_temat = f"{przedmiot}: {temat}"
         cleanup_old_jobs()
-        job_id = create_job()
+        job_id = create_job(kind="exam", user_id=user.id, params={
+            "pelny_temat": pelny_temat, "klasa": req.klasa, "trudnosc": req.trudnosc,
+            "liczba_pytan": req.liczba_pytan, "wariant": req.wariant,
+            "wlasne_instrukcje": req.wlasne_instrukcje, "user_id": user.id,
+        })
         asyncio.create_task(_run_exam_job(
-            job_id, pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, req.wariant, req.wlasne_instrukcje
+            job_id, pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, req.wariant, req.wlasne_instrukcje,
+            user_id=user.id
         ))
         return {"success": True, "job_id": job_id}
     except HTTPException:
@@ -325,7 +343,7 @@ async def generate_exam_start(req: ExamRequest, user: User = Depends(require_fea
 
 @router.get("/generate/status/{job_id}")
 async def generate_exam_status(job_id: str):
-    job = get_job(job_id)
+    job = get_or_resume(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Nieznane zadanie generowania (mogło wygasnąć)")
     if job["status"] == "pending":
@@ -339,6 +357,12 @@ async def generate_exam_status(job_id: str):
     if result.get("kind") == "shortfall_only":
         pop_job(job_id)
         return _shortfall_response(result["shortfall"])
+    # Gotowy plik lezy na dysku serwera - po deployu/restarcie moze zniknac (dysk Rendera
+    # jest nietrwaly). Wtedy generujemy ponownie zamiast oddawac uczniowi bledny link.
+    if not (result.get("path") and os.path.exists(result["path"])):
+        restarted = restart_job(job_id)
+        if restarted and restarted["status"] == "pending":
+            return {"status": "pending"}
     return {"status": "done"}
 
 

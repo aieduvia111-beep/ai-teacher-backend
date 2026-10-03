@@ -79,8 +79,8 @@ FREE_VOICE_SECONDS_PER_DAY = 5 * 60
 def check_voice_limit(user, db):
     if user.is_premium:
         return True, None
-    from datetime import date
-    today = date.today().isoformat()
+    from ..usage_limits import today_pl
+    today = today_pl()
     if user.voice_usage_date != today:
         user.voice_seconds_today = 0
         user.voice_usage_date = today

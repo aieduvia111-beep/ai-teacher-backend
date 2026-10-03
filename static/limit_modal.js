@@ -76,7 +76,7 @@
   }
 
   function useLimit(feature) {
-    var today = new Date().toISOString().split('T')[0];
+    var today = new Date().toLocaleDateString('sv-SE');
     var uid = localStorage.getItem('eduvia_uid') || 'anon';
     var key = 'eduvia_limit_' + feature + '_' + uid + '_' + today;
     var used = parseInt(localStorage.getItem(key) || '0');

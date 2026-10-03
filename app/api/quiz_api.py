@@ -11,7 +11,7 @@ from ..openai_exam import (
 from ..firebase_auth import require_feature_limit
 from ..models import User
 from ..quiz_pool import generate_quiz_pooled
-from ..job_store import create_job, set_done, set_error, get_job, pop_job, cleanup_old_jobs
+from ..job_store import create_job, set_done, set_error, get_job, get_or_resume, pop_job, cleanup_old_jobs, register_resumer
 import os, base64, json
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -193,7 +193,7 @@ def _quiz_job_status_response(job_id: str):
     ten sam ksztalt odpowiedzi niezaleznie od tego, ktory sposob
     generowania (obraz czy temat) stworzyl job. Patrz uzasadnienie
     calego mechanizmu nad _run_quiz_image_job ponizej."""
-    job = get_job(job_id)
+    job = get_or_resume(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Nieznane zadanie generowania (mogło wygasnąć)")
     if job["status"] == "pending":
@@ -262,7 +262,7 @@ async def _run_quiz_image_job(job_id, image, num_questions, difficulty, level, s
 async def quiz_from_image_start(req: QuizImageRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
         cleanup_old_jobs()
-        job_id = create_job()
+        job_id = create_job(kind="quiz_image", user_id=user.id)
         asyncio.create_task(_run_quiz_image_job(
             job_id, req.image, req.num_questions, req.difficulty, req.level, req.subject, req.topic, req.wlasne_instrukcje,
             user_id=user.id
@@ -299,16 +299,25 @@ async def _run_quiz_topic_job(job_id, topic, subject, level, num_questions, diff
         set_error(job_id, str(e))
 
 
+register_resumer("quiz_topic", _run_quiz_topic_job)
+
+
 @router.post("/generate-topic/start")
 async def quiz_from_topic_start(req: QuizTopicRequest, user: User = Depends(require_feature_limit("quiz"))):
     try:
         wlasne = (req.wlasne_instrukcje or "").strip()
         print(f"[Quiz-Topic-Start] temat='{req.topic}' wlasne='{wlasne[:60] if wlasne else 'BRAK'}'")
         cleanup_old_jobs()
-        job_id = create_job()
+        _use_pool = not user.is_premium
+        # Parametry zapisane w bazie -> po restarcie serwera job zostanie WZNOWIONY (job_store).
+        job_id = create_job(kind="quiz_topic", user_id=user.id, params={
+            "topic": req.topic, "subject": req.subject, "level": req.level,
+            "num_questions": req.num_questions, "difficulty": req.difficulty,
+            "wlasne_instrukcje": wlasne, "use_pool": _use_pool, "user_id": user.id,
+        })
         asyncio.create_task(_run_quiz_topic_job(
             job_id, req.topic, req.subject, req.level, req.num_questions, req.difficulty, wlasne,
-            use_pool=not user.is_premium, user_id=user.id
+            use_pool=_use_pool, user_id=user.id
         ))
         return {"success": True, "job_id": job_id}
     except Exception as e:
