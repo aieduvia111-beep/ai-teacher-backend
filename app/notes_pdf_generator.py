@@ -1010,6 +1010,124 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 - KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
 
 
+# NOWE (03.10.2026, user: "zrobilem zdjecia podrecznika z geografii, tam gdzie
+# obliczen nie bylo, a w notatce wzory i przyklady"). Przyczyna: PROMPT wyzej
+# jest zbudowany WOKOL obliczen (kazda sekcja = wzor + przyklad krok po kroku z
+# konkretnymi liczbami, quiz "OBLICZENIOWY", pole "wzory" w schemacie), a zakaz
+# obliczen dla geografii/historii byl TYLKO dopiskiem na koncu ("SAM ZDECYDUJ")
+# - model mini sluchal schematu, nie dopisku, i wymyslal wzory. Teraz tryb jest
+# wybierany KODEM (_notes_mode) i dla przedmiotow opisowych uzywany jest
+# osobny prompt BEZ nakazu wzorow/liczb, z zakazem zmyslania faktow.
+PROMPT_OPISOWY = """Jestes doswiadczonym nauczycielem i autorem materialow edukacyjnych.
+Tworzysz PROFESJONALNA notatke premium dla ucznia na poziomie: {klasa}
+TEMAT: {temat}
+
+{wlasne_blok}
+
+Zwroc TYLKO czysty JSON (bez markdown, bez backticks, bez komentarzy).
+
+=== TRYB OPISOWY - KRYTYCZNE ===
+To jest przedmiot OPISOWY (np. geografia, historia, biologia, jezyk, literatura).
+ZAKAZ: wymyslania wzorow, rownan, obliczen i zadan liczbowych, ktorych NIE ma w materiale zrodlowym. Pole "wzory" zawsze pusta lista [].
+ZAKAZ: zmyslania dat, liczb, nazw i faktow. Liczby i dane podawaj TYLKO gdy sa w materiale zrodlowym albo to powszechnie znany, pewny fakt. Gdy nie jestes pewien - pomin, nie zgaduj.
+Jesli podano MATERIAL ZRODLOWY - notatka ma wynikac z jego tresci i zakresu, nie z innego tematu.
+
+=== STYL PISANIA - ABSOLUTNY NAKAZ ===
+ZAKAZ: "jest kluczowy", "jest fundamentem", "odgrywa role", "stanowi podstawe", "warto wiedziec", "nalezy pamietac"
+ZAKAZ: suchych definicji bez intuicji i bez przykladu
+NAKAZ: pisz jak NAUCZYCIEL ktory siedzi obok ucznia i go PROWADZI - tlumacz PRZYCZYNY i ZWIAZKI ("dlaczego tak jest"), nie tylko wymieniaj fakty
+NAKAZ: kazda sekcja = wprowadzenie + wyjasnienie przyczyn i zwiazkow + PRZYKLAD OPISOWY z materialu + komentarz
+NAKAZ: "przyklad" to konkretne miejsce, zjawisko, proces lub wydarzenie z materialu, w formacie: "Sytuacja: ...\\nCo się dzieje: ...\\nDlaczego: ...\\nWniosek: ..." (BEZ obliczen)
+NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
+
+=== STRUKTURA JSON ===
+{{
+  "tytul": "Tytul (max 45 znakow)",
+  "podtytul": "Podtytul (max 75 znakow)",
+  "kluczowe_pojecia": [
+    {{"pojecie": "Nazwa pojecia","definicja": "Precyzyjna definicja + CO TO ZNACZY DLA UCZNIA + konkretny przyklad z materialu (bez obliczen)."}}
+  ],
+  "sekcje": [
+    {{
+      "tytul": "Tytul sekcji (konkretny)",
+      "tresc": "3-4 zdania wprowadzenia stylem nauczyciela.",
+      "wzory": [],
+      "przyklad": "OBOWIAZKOWY format:\\nSytuacja: [konkretne miejsce/zjawisko/wydarzenie]\\nCo się dzieje: [opis]\\nDlaczego: [przyczyna/mechanizm]\\nWniosek: [czego to uczy]",
+      "ciekawostka": "Zaskakujacy, PEWNY fakt LUB typowy blad. Pusty string jesli nie ma."
+    }}
+  ],
+  "bledy_uczniow": [
+    {{"blad": "Typowe mylne przekonanie lub pomylka ucznia (bez liczb, chyba ze sa w materiale)","dlaczego": "Skad sie bierze ta pomylka","jak_zapamietac": "Trick lub mnemonik"}}
+  ],
+  "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania lub znaczenia.",
+  "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
+  "timeline": [{{"rok": "Rok lub etap","opis": "Co sie stalo, max 85 znakow"}}],
+  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}},{{"poziom": 1,"tekst": "Galaz 1"}},{{"poziom": 2,"tekst": "Podpojecie"}},{{"poziom": 1,"tekst": "Galaz 2"}},{{"poziom": 1,"tekst": "Galaz 3"}}],
+  "quiz": [
+    {{
+      "pytanie": "[E] Pytanie na ROZUMIENIE (przyczyny, zwiazki, rozpoznawanie) - bez obliczen.",
+      "opcje": ["A) odpowiedz","B) odpowiedz","C) odpowiedz","D) odpowiedz"],
+      "odpowiedz": "B",
+      "wyjasnienie": "Dlaczego B jest poprawna i czemu pozostale odpadaja.",
+      "poziom": "egzaminacyjny"
+    }}
+  ],
+  "podsumowanie": "3 zdania: co umiesz, jakie zwiazki rozumiesz, gdzie to widac w swiecie.",
+  "do_zapamietania": [
+    "[P] Kluczowy fakt z krotkim przykladem",
+    "[E] Zwiazek przyczynowo-skutkowy",
+    "[E] Najczestszy blad: POKAZ blad i poprawke",
+    "[A] Nieintuicyjny, pewny fakt",
+    "[P] Trick pamieciowy (mnemonik)"
+  ]
+}}
+
+=== WYMAGANIA ===
+- kluczowe_pojecia: {n_pojecia}, KAZDE z intuicja + przykladem
+- sekcje: DOKLADNIE {n_sekcje}, KAZDA z przykladem opisowym
+- bledy_uczniow: DOKLADNIE {n_bledy}
+- quiz: DOKLADNIE {n_quiz} pytania
+- do_zapamietania: DOKLADNIE {n_zapamietaj}
+- Caly tekst PO POLSKU
+- KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
+
+
+_COMPUTATIONAL_SUBJECTS = {"matematyka", "fizyka", "chemia", "informatyka"}
+_DESCRIPTIVE_SUBJECTS = {"geografia", "historia", "biologia", "polski", "angielski", "niemiecki", "hiszpanski", "francuski", "wos", "religia", "etyka", "przyroda"}
+_COMPUTATIONAL_HINT_RE = re.compile(
+    r"matemat|fizyk|chemi|rownan|równan|wzor|wzór|oblicz|geometri|algebr|u[lł]amk|procent|pochodn|ca[lł]k|"
+    r"trygonom|funkcj|logarytm|ci[aą]g|prawdopodob|stechiometr|zadani|skal[aeiy]|g[eę]sto[sś][cć]|przyrost|"
+    r"stref\w* czasow|mol\b|reakcj",
+    re.IGNORECASE,
+)
+_DESCRIPTIVE_HINT_RE = re.compile(
+    r"geografi|histori|biologi|polsk|j[eę]zyk|wos|wiedza o spo|religi|etyk|przyrod|lektur|gramatyk|"
+    r"s[lł]ownictw|literatur|ekologi|ustr[oó]j|wojn|powstani|klimat|ukszta[lł]t",
+    re.IGNORECASE,
+)
+
+
+def _notes_mode(temat: str, kontekst: str = "", przedmiot: str = "", czy_obliczenia=None, wlasne_instrukcje: str = "") -> str:
+    """"obliczeniowy" (wzory + przyklady z liczbami) albo "opisowy" (bez
+    wymyslonych wzorow). Wybor w KODZIE, nie przez model. Domyslnie, gdy nie
+    wiadomo, zostaje "obliczeniowy" (dotychczasowe zachowanie - zeby nie
+    zepsuc notatek z matematyki/fizyki/chemii, glownego uzycia)."""
+    subj = (przedmiot or "").strip().lower()
+    wlasne = wlasne_instrukcje or ""
+    if _COMPUTATIONAL_HINT_RE.search(wlasne):
+        return "obliczeniowy"          # user sam prosi o obliczenia/wzory/zadania
+    if subj in _COMPUTATIONAL_SUBJECTS:
+        return "obliczeniowy"
+    if subj in _DESCRIPTIVE_SUBJECTS:
+        return "obliczeniowy" if czy_obliczenia is True else "opisowy"
+    hay = f"{temat or ''} {kontekst or ''}"
+    if _COMPUTATIONAL_HINT_RE.search(hay):
+        return "obliczeniowy"
+    if _DESCRIPTIVE_HINT_RE.search(hay):
+        return "opisowy"
+    return "obliczeniowy"
+
+
 def _build_wlasne_blok(wlasne_instrukcje: str) -> str:
     """Buduje sekcje wlasnych instrukcji do prompta."""
     if not wlasne_instrukcje or not wlasne_instrukcje.strip():
@@ -1264,8 +1382,9 @@ def _build_lang_block(temat: str, kontekst: str = "", jezyk: str = "") -> str:
     parts = []
     if kontekst and kontekst.strip():
         parts.append(
-            "\nMATERIAL ZE ZDJECIA (to jest zrodlo - OPRZYJ notatke na tej tresci, nie wymyslaj innego tematu): "
-            + kontekst.strip()[:700]
+            "\nMATERIAL ZE ZDJECIA (to jest zrodlo - OPRZYJ notatke na tej tresci, nie wymyslaj innego tematu; "
+            "nie dodawaj faktow, wzorow ani liczb, ktorych nie ma w materiale i ktorych nie jestes pewien): "
+            + kontekst.strip()[:2500]
         )
     if lang:
         parts.append(
@@ -1375,20 +1494,30 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "") -> dict:
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None) -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje) + _build_lang_block(temat, kontekst, jezyk)
         rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
         rozmiar_info = f"\nROZMIAR NOTATKI: {rozmiar_map.get(num_sections, 'NORMALNA')} - dostosuj ilosc i szczegolowos tresci."
-        zakaz_obliczen = f"""
+        mode = _notes_mode(temat, kontekst, przedmiot, czy_obliczenia, wlasne_instrukcje)
+        print(f"[Notes] tryb notatki: {mode} (przedmiot={przedmiot or '?'}, obliczenia_na_zdjeciu={czy_obliczenia})")
+        if mode == "opisowy":
+            # tryb opisowy ma zakaz wymyslania wzorow WBUDOWANY w prompt i schemat
+            # (PROMPT_OPISOWY) - dodatkowy blok "SAM ZDECYDUJ" byl sprzeczny ze
+            # schematem starego promptu i wlasnie to powodowalo wymyslone wzory.
+            zakaz_obliczen = ""
+            prompt_template = PROMPT_OPISOWY
+        else:
+            zakaz_obliczen = f"""
 WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
 - matematyka/fizyka/chemia/algebra/geometria -> mozesz uzyc obliczen i wzorow
 - biologia/historia/geografia/jezyk/literatura -> ZAKAZ obliczen, pisz OPISOWO
 - geografia ze skala/procentami -> mozesz uzyc obliczen
 - jesli watpisz -> pisz opisowo bez obliczen
 """
+            prompt_template = PROMPT
         styl_info = f"\nSTYL: dostosuj jezyk i ton do poziomu ucznia - {describe_level(klasa)}"
-        prompt = PROMPT.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg)
+        prompt = prompt_template.format(temat=temat, klasa=klasa, wlasne_blok=wlasne_blok+zakaz_obliczen+rozmiar_info+styl_info, **cfg)
         max_tok = {2: 2800, 3: 3500, 4: 5000, 5: 7000}.get(num_sections, 3500)
         system_msg = (
             "Jestes ekspertem edukacyjnym. Odpowiadasz TYLKO czystym JSON bez zadnych komentarzy. "
@@ -1411,9 +1540,13 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                         {"role": "system", "content": system_msg},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.7, max_tokens=max_tok,
+                    temperature=0.5 if mode == "opisowy" else 0.7, max_tokens=max_tok,
                 )
                 data = self._robust_json_parse(r.choices[0].message.content.strip())
+                if mode == "opisowy":
+                    for _s in data.get('sekcje', []) or []:
+                        if isinstance(_s, dict):
+                            _s['wzory'] = []   # tryb opisowy: nigdy nie renderuj wzorow, nawet gdyby model je dopisal
                 if data.get('sekcje') or data.get('kluczowe_pojecia'):
                     return data
                 last_error = ValueError("AI zwrocilo pusta notatke (brak sekcji tresci)")
@@ -1902,9 +2035,9 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "") -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None) -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk)
+        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()
