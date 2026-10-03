@@ -1064,7 +1064,11 @@ const BASE=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'h
 // zeby dostarczyc PELNY komplet pytan, bo nic go juz nie "timeoutuje" w
 // trakcie oczekiwania. Wspoldzielone miedzy trybem "ze zdjeciem" (startUrl=
 // /quiz/generate/start) i "z tematem" (startUrl=/quiz/generate-topic/start).
-async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body){
+// 03.10.2026 (user: "nieznane zadanie generowania" po wpisaniu tematu): magazyn jobow
+// jest w pamieci jednego procesu, wiec RESTART serwera (np. deploy Rendera) w trakcie
+// generowania kasuje job i /status zwraca 404. Wtedy raz startujemy generowanie od
+// nowa zamiast pokazywac uczniowi techniczny blad.
+async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body, _retried){
   const startRes=await fetch(BASE+startUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify(body)});
   if(!startRes.ok){
     let _detail='';try{const d=await startRes.json();_detail=d.detail||d.error||'';}catch(_){}
@@ -1093,6 +1097,11 @@ async function _quizStartAndPoll(idToken, startUrl, statusUrlBase, body){
     await new Promise(function(r){setTimeout(r,POLL_INTERVAL_MS);});
     const statusRes=await fetch(BASE+statusUrlBase+jobId,{headers:{'Authorization':'Bearer '+idToken}});
     if(!statusRes.ok){
+      if((statusRes.status===404||statusRes.status===502||statusRes.status===503)&&!_retried){
+        if(_loadingP)_loadingP.textContent='Serwer się odświeżył — startuję generowanie jeszcze raz…';
+        await new Promise(function(r){setTimeout(r,3000);});
+        return _quizStartAndPoll(idToken,startUrl,statusUrlBase,body,true);
+      }
       let _detail='';try{const d=await statusRes.json();_detail=d.detail||d.error||'';}catch(_){}
       throw new Error(_detail||('Błąd serwera '+statusRes.status));
     }
