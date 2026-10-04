@@ -1006,6 +1006,10 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 - bledy_uczniow: DOKLADNIE {n_bledy}, KAZDY z przykladem
 - quiz: DOKLADNIE {n_quiz} pytania
 - do_zapamietania: DOKLADNIE {n_zapamietaj}
+- timeline: wypelnij TYLKO gdy temat ma prawdziwa, pewna historie (daty, odkrycia, wydarzenia znane Ci NA PEWNO lub podane w materiale). W przeciwnym razie ustaw "timeline": []. NIGDY nie wymyslaj dat, odkrywcow ani wydarzen.
+- sekcje[].tresc: 5-7 zdan w tej kolejnosci: (1) INTUICJA - jedno obrazowe zdanie lub analogia z zycia, (2) DLACZEGO TO DZIALA - skad bierze sie wzor/regula/zwiazek, (3) KIEDY to stosowac i na co uwazac. ZAKAZ zdan-wypelniaczy ("Przyjrzyjmy sie przykladowi", "Jest to bardzo wazne").
+- przyklad musi FAKTYCZNIE ilustrowac temat notatki (np. dla rownan kwadratowych: uloz i ROZWIAZ rownanie, a nie samo podstawienie liczby do funkcji).
+- bledy_uczniow: kazdy z KONKRETNYM zapisem "zamiast X uczen pisze Y, bo ..." (z przykladem), bez ogolnikow.
 - Caly tekst PO POLSKU
 - KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
 
@@ -1088,6 +1092,10 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
 - bledy_uczniow: DOKLADNIE {n_bledy}
 - quiz: DOKLADNIE {n_quiz} pytania
 - do_zapamietania: DOKLADNIE {n_zapamietaj}
+- timeline: wypelnij TYLKO gdy temat ma prawdziwa, pewna historie (daty, odkrycia, wydarzenia znane Ci NA PEWNO lub podane w materiale). W przeciwnym razie ustaw "timeline": []. NIGDY nie wymyslaj dat, odkrywcow ani wydarzen.
+- sekcje[].tresc: 5-7 zdan w tej kolejnosci: (1) INTUICJA - jedno obrazowe zdanie lub analogia z zycia, (2) DLACZEGO TO DZIALA - skad bierze sie wzor/regula/zwiazek, (3) KIEDY to stosowac i na co uwazac. ZAKAZ zdan-wypelniaczy ("Przyjrzyjmy sie przykladowi", "Jest to bardzo wazne").
+- przyklad musi FAKTYCZNIE ilustrowac temat notatki (np. dla rownan kwadratowych: uloz i ROZWIAZ rownanie, a nie samo podstawienie liczby do funkcji).
+- bledy_uczniow: kazdy z KONKRETNYM zapisem "zamiast X uczen pisze Y, bo ..." (z przykladem), bez ogolnikow.
 - Caly tekst PO POLSKU
 - KRYTYCZNE: Znaki nowej linii w stringach zapisuj jako \\n (escape)"""
 
@@ -1413,6 +1421,48 @@ def _l2u(s):
     return s
 
 
+async def build_verified_quiz(temat: str, klasa: str, przedmiot: str, n: int):
+    """03.10.2026 (test na prawdziwym AI: w notatce o rownaniach kwadratowych pytanie
+    'Rozwiaz 3x^2-12x+9=0' mialo klucz '2' (pierwiastki to 1 i 3), a inne 'delta dla
+    x^2-5x+6' klucz '16' (delta to 1)): quiz pisany przez model w ramach notatki byl jedyna
+    czescia aplikacji BEZ weryfikacji, a drugi AI-solver tez sie mylil. Zamiast tego quiz
+    notatki pochodzi z TEGO SAMEGO zweryfikowanego potoku co zakladka Quiz (final_answer +
+    sympy + slepy AI-2). MUSI byc wolane w glownej petli zdarzen aplikacji (wspolny klient
+    AsyncOpenAI). Zwraca liste pytan w formacie notatki albo None."""
+    from .openai_exam import generate_quiz_from_topic
+    subj = (przedmiot or '').strip().lower()
+    if subj not in _COMPUTATIONAL_SUBJECTS:
+        low = (temat or '').lower()
+        subj = 'fizyka' if 'fizyk' in low else ('chemia' if 'chemi' in low else 'matematyka')
+    res = await generate_quiz_from_topic(
+        topic=temat, subject=subj, level=klasa, num_questions=max(2, n),
+        # quiz po notatce sprawdza PODSTAWY tematu: 'medium' dalo 4 warianty zadania z parametrem
+        # (test 03.10.2026), 'easy' daje rozne, proste rownania pasujace do tresci notatki
+        difficulty='medium' if any(k in (klasa or '') for k in ('matura', 'studia')) else 'easy',
+        wlasne_instrukcje=(
+            "To quiz na koncu NOTATKI - ma sprawdzic, czy uczen zrozumial PODSTAWY tematu. "
+            "Rozne typy pytan (obliczenie, interpretacja wyniku, rozpoznanie bledu w rozwiazaniu). "
+            "NIE zadawaj zadan z parametrem ani zadan olimpijskich; pytania maja byc rozne, nie warianty jednego schematu."))
+    if not res or not res.get('success'):
+        return None
+    out = []
+    for q in (res.get('quiz') or {}).get('questions') or []:
+        opts = list(q.get('options') or [])
+        c = q.get('correct')
+        if len(opts) < 2 or not isinstance(c, int) or not (0 <= c < len(opts)):
+            continue
+        letters = 'ABCDEF'
+        clean = [re.sub(r'^[A-F][\)\.]\s*', '', str(o)) for o in opts]
+        out.append({
+            'pytanie': '[E] ' + str(q.get('question', '')),
+            'opcje': [f"{letters[i]}) {o}" for i, o in enumerate(clean)],
+            'odpowiedz': letters[c],
+            'wyjasnienie': str(q.get('explanation', '')),
+            'poziom': 'egzaminacyjny',
+        })
+    return out or None
+
+
 class PremiumNotesGenerator:
 
     def __init__(self, api_key: str):
@@ -1512,7 +1562,7 @@ class PremiumNotesGenerator:
         except: pass
         raise ValueError(f"JSON parse failed:\n{raw[:300]}")
 
-    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None) -> dict:
+    def _get_content_from_gpt(self, temat: str, klasa: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None) -> dict:
         cfg = SIZE_CONFIG.get(num_sections, SIZE_CONFIG[3])
         wlasne_blok = _build_wlasne_blok(wlasne_instrukcje) + _build_lang_block(temat, kontekst, jezyk)
         rozmiar_map = {2: 'KROTKA (~4 strony)', 3: 'NORMALNA (~8 stron)', 4: 'SZCZEGOLOWA (~11 stron)', 5: 'MEGA (~15 stron)'}
@@ -1570,6 +1620,11 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 f" {wlasne_instrukcje.strip()}"
                 f" Dostosuj CALA notatke do tych wskazowek."
             )
+        # Quiz notatki w trybie obliczeniowym pochodzi ze zweryfikowanego potoku quizu (patrz
+        # build_verified_quiz); liczony rownolegle w glownej petli aplikacji i przekazany tu jako Future.
+        quiz_future = verified_quiz_future if mode != "opisowy" else None
+        import time as _time
+        _t_start = _time.monotonic()  # budzet czasu: przegladarka przerywa zadanie po 120 s (notes_generator.html)
         last_error = None
         for attempt in range(2):
             try:
@@ -1587,11 +1642,75 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                         if isinstance(_s, dict):
                             _s['wzory'] = []   # tryb opisowy: nigdy nie renderuj wzorow, nawet gdyby model je dopisal
                 if data.get('sekcje') or data.get('kluczowe_pojecia'):
+                    if mode != "opisowy":
+                        data = self._verify_examples(data)
+                    if quiz_future is not None:
+                        try:
+                            data['quiz'] = quiz_future.result(timeout=max(3, 75 - (_time.monotonic() - _t_start))) or []
+                        except Exception as _qe:
+                            print(f"[Notes] zweryfikowany quiz niedostepny, notatka bez quizu: {_qe}")
+                            data['quiz'] = []
+                        if not data['quiz']:
+                            print("[Notes] quiz notatki pominiety (brak zweryfikowanych pytan)")
                     return data
                 last_error = ValueError("AI zwrocilo pusta notatke (brak sekcji tresci)")
             except Exception as e:
                 last_error = e
         raise last_error if last_error else ValueError("Nie udalo sie wygenerowac tresci notatki")
+
+    def _verify_examples(self, data: dict) -> dict:
+        """03.10.2026 (test na prawdziwym AI: przyklad 'x^2+6x+5=0' mial odpowiedz x1=1, x2=-7,
+        a poprawnie to -1 i -5): rozwiazane przyklady krok po kroku pisal tani model i nikt ich
+        nie sprawdzal - a zly przyklad uczy zlego rachunku. Drugi przebieg mocniejszego modelu
+        (gpt-4o, temperatura 0) rozwiazuje kazdy przyklad niezaleznie i przepisuje TYLKO te,
+        w ktorych jest realny blad. (Sekcji 'bledy uczniow' celowo NIE sprawdzamy - tam zapis
+        jest blednie z zalozenia i korekta by go 'naprawila'.) Nigdy nie psuje notatki: przy
+        dowolnym bledzie zwraca dane bez zmian."""
+        def _norm(t):
+            return re.sub(r'\s+', ' ', (t or '').replace('\\n', ' ')).strip()
+        try:
+            sekcje = data.get('sekcje') or []
+            ex = [(i, sec.get('przyklad') or '') for i, sec in enumerate(sekcje)
+                  if isinstance(sec, dict) and (sec.get('przyklad') or '').strip()]
+            if not ex:
+                return data
+            parts = []
+            for n, (_, text) in enumerate(ex, 1):
+                parts.append(f"[{n}]\n{text}")
+            prompt = (
+                "Jestes surowym korektorem matematyki, fizyki i chemii. Ponizej rozwiazane przyklady z notatki dla ucznia. "
+                "Dla KAZDEGO przykladu rozwiaz zadanie SAMODZIELNIE, krok po kroku, i porownaj z podanym rozwiazaniem. "
+                "Zwroc ok=true, jesli odpowiedz koncowa i rachunki sa poprawne (nie poprawiaj stylu ani komentarza). "
+                "Zwroc ok=false TYLKO gdy jest REALNY blad rachunkowy lub merytoryczny; wtedy w polu 'poprawiony' wpisz caly przyklad "
+                "przepisany POPRAWNIE w tym samym formacie (Zadanie: ... / Krok 1: ... / Odpowiedz: ... / Komentarz: ...), "
+                "to samo zadanie i TA SAMA METODA rozwiazania (np. dopelnianie do kwadratu zostaje dopelnianiem do kwadratu) - popraw tylko bledne kroki i wynik; kazda linia w osobnej linii. "
+                "Odpowiedz TYLKO JSON: {\"przyklady\": [{\"nr\": 1, \"ok\": true, \"poprawiony\": \"\"}]}\n\n" + "\n".join(parts)
+            )
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0, max_tokens=2000, timeout=60,
+            )
+            res = self._robust_json_parse(r.choices[0].message.content.strip())
+            fixed = 0
+            for item in res.get('przyklady', []) or []:
+                try:
+                    n = int(item.get('nr')) - 1
+                except Exception:
+                    continue
+                txt = (item.get('poprawiony') or '').strip()
+                if item.get('ok') is False and txt and 0 <= n < len(ex):
+                    # model bywa zwraca literalne "\n" zamiast nowej linii
+                    txt = txt.replace('\\n', '\n')
+                    if _norm(txt) == _norm(ex[n][1]):
+                        continue  # tylko formatowanie - bez zmiany
+                    sekcje[ex[n][0]]['przyklad'] = txt
+                    fixed += 1
+            if fixed:
+                print(f"[Notes] korekta rachunkow: poprawiono {fixed} z {len(ex)} przykladow")
+        except Exception as e:
+            print(f"[Notes] korekta rachunkow pominieta: {e}")
+        return data
 
     def _build_content_pages(self, data: dict) -> bytes:
         S = self.styles; W = PW - 80; story = []
@@ -2063,9 +2182,9 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None) -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None) -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images)
+        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images, verified_quiz_future)
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()
