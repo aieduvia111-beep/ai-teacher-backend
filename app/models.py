@@ -445,3 +445,17 @@ class ReviewItem(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "qhash", name="uq_review_user_qhash"),
     )
+
+
+class NotesCache(Base):
+    """Gotowe tresci notatek popularnych tematow (03.10.2026) - patrz app/notes_cache.py."""
+    __tablename__ = "notes_cache"
+
+    cache_key = Column(String(40), primary_key=True)
+    temat = Column(String(200), nullable=False)
+    klasa = Column(String(40), nullable=True)
+    num_sections = Column(Integer, nullable=False)
+    data = Column(Text, nullable=False)  # JSON tresci notatki
+    hits = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used_at = Column(DateTime(timezone=True), server_default=func.now())

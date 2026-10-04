@@ -980,7 +980,6 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania.",
   "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
   "timeline": [{{"rok": "Rok","opis": "Co odkryto, max 85 znakow"}}],
-  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}},{{"poziom": 1,"tekst": "Galaz 1"}},{{"poziom": 2,"tekst": "Podpojecie"}},{{"poziom": 1,"tekst": "Galaz 2"}},{{"poziom": 1,"tekst": "Galaz 3"}}],
   "quiz": [
     {{
       "pytanie": "[E] Pytanie OBLICZENIOWE z konkretnymi liczbami.",
@@ -1066,7 +1065,6 @@ NAKAZ: oznaczaj trudnosc: [P] podstawowy, [E] egzaminacyjny, [A] ambitny
   "dlaczego_wazne": "2-3 zdania z konkretnymi przykladami zastosowania lub znaczenia.",
   "tabela_porownawcza": {{"naglowki": ["K1","K2","K3"],"wiersze": [["w","w","w"]]}},
   "timeline": [{{"rok": "Rok lub etap","opis": "Co sie stalo, max 85 znakow"}}],
-  "schemat_myslowy": [{{"poziom": 0,"tekst": "GLOWNE POJECIE"}},{{"poziom": 1,"tekst": "Galaz 1"}},{{"poziom": 2,"tekst": "Podpojecie"}},{{"poziom": 1,"tekst": "Galaz 2"}},{{"poziom": 1,"tekst": "Galaz 3"}}],
   "quiz": [
     {{
       "pytanie": "[E] Pytanie na ROZUMIENIE (przyczyny, zwiazki, rozpoznawanie) - bez obliczen.",
@@ -1623,6 +1621,10 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         # Quiz notatki w trybie obliczeniowym pochodzi ze zweryfikowanego potoku quizu (patrz
         # build_verified_quiz); liczony rownolegle w glownej petli aplikacji i przekazany tu jako Future.
         quiz_future = verified_quiz_future if mode != "opisowy" else None
+        if quiz_future is not None:
+            # quiz powstaje osobno w zweryfikowanym potoku - model nie traci ~5 s na pisanie wlasnego
+            prompt = prompt.replace(f"- quiz: DOKLADNIE {cfg.get('n_quiz', 4)} pytania", "- quiz: pusta lista [] (pytania powstaja osobno - NIE pisz ich)")
+            prompt += "\n\nWAZNE: pole \"quiz\" ustaw jako pusta liste []. Nie pisz pytan quizu."
         import time as _time
         _t_start = _time.monotonic()  # budzet czasu: przegladarka przerywa zadanie po 120 s (notes_generator.html)
         last_error = None
@@ -2182,9 +2184,14 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
-    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None) -> str:
+    def generate_pdf(self, temat: str, klasa: str = "liceum", num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None, cached_data=None) -> str:
         print(f"[Eduvia] Generuje: '{temat}' | {klasa}")
-        data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images, verified_quiz_future)
+        if cached_data is not None:
+            print("[Eduvia] notatka z pamieci (bez wywolan AI)")
+            data = cached_data
+        else:
+            data = self._get_content_from_gpt(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images, verified_quiz_future)
+        self.last_data = data
         print(f"[Eduvia] GPT: '{data.get('tytul','?')}'")
 
         cover_buf = io.BytesIO()
