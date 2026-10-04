@@ -2,13 +2,14 @@
 telemetrii generowania (GenerationRequestLog) bez logowania sie
 bezposrednio do bazy produkcyjnej. Chroniony osobnym kluczem (ADMIN_STATS_KEY),
 tak samo jak istniejacy wzorzec w api/affiliates.py (AFFILIATE_ADMIN_KEY)."""
+import hmac
 import os
 
 from fastapi import APIRouter
 from sqlalchemy import func
 
 from ..database import SessionLocal
-from ..models import GenerationRequestLog
+from ..models import GenerationRequestLog, NotesCache, NotesReport
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -66,6 +67,48 @@ def generation_stats(admin_key: str, feature: str = None, limit: int = 20):
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                 }
                 for r in recent
+            ],
+        }
+    finally:
+        db.close()
+
+
+@router.get("/notes-reports")
+def notes_reports(admin_key: str, limit: int = 50):
+    """Zgloszenia bledow w notatkach + statystyki pamieci notatek (03.10.2026). Ten sam klucz
+    (ADMIN_STATS_KEY) co /admin/generation-stats. Tylko odczyt."""
+    expected = os.environ.get("ADMIN_STATS_KEY", "")
+    if not expected or not hmac.compare_digest(str(admin_key), expected):
+        return {"success": False, "error": "Brak uprawnien - wymagany poprawny admin_key"}
+    db = SessionLocal()
+    try:
+        total_reports = db.query(NotesReport).count()
+        by_topic = (
+            db.query(NotesReport.temat, func.count(NotesReport.id).label("c"), func.max(NotesReport.created_at))
+            .group_by(NotesReport.temat)
+            .order_by(func.count(NotesReport.id).desc())
+            .limit(30)
+            .all()
+        )
+        recent = (
+            db.query(NotesReport).order_by(NotesReport.created_at.desc()).limit(max(1, min(limit, 200))).all()
+        )
+        cache_entries = db.query(NotesCache).count()
+        cache_hits = db.query(func.coalesce(func.sum(NotesCache.hits), 0)).scalar() or 0
+        top_cached = db.query(NotesCache).order_by(NotesCache.hits.desc()).limit(10).all()
+        return {
+            "success": True,
+            "zgloszen_lacznie": total_reports,
+            "pamiec_notatek": {
+                "notatek_w_pamieci": cache_entries,
+                "trafien_lacznie": int(cache_hits),
+                "najczesciej_uzywane": [{"temat": r.temat, "klasa": r.klasa, "trafien": r.hits} for r in top_cached],
+            },
+            "tematy_z_najwieksza_liczba_zgloszen": [
+                {"temat": t, "zgloszen": int(c), "ostatnie": str(last)} for t, c, last in by_topic
+            ],
+            "ostatnie_zgloszenia": [
+                {"temat": r.temat, "komentarz": r.comment, "kiedy": str(r.created_at)} for r in recent
             ],
         }
     finally:

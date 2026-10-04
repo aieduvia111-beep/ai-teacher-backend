@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timezone
 
 # Podbij, gdy zmieniasz prompty/weryfikacje notatek - stare wpisy przestana pasowac.
-NOTES_CACHE_VERSION = "v2"  # v2: kontrola faktow w notatkach opisowych
+NOTES_CACHE_VERSION = "v3"  # v2: kontrola faktow w notatkach opisowych; v3: klucz tematu odporny na odmiane
 
 
 def _norm(temat: str) -> str:
@@ -22,8 +22,23 @@ def _norm(temat: str) -> str:
     return t.strip(" .,!?;:-")
 
 
+_PL = str.maketrans("ąćęłńóśźż", "acelnoszz")
+_STOP = {"w", "z", "na", "do", "o", "dla", "oraz", "jak", "czyli", "ze", "od"}
+
+
+def _topic_signature(temat: str) -> str:
+    """Klucz tematu odporny na odmiane, wielkosc liter, kolejnosc slow i polskie znaki
+    (03.10.2026): 'Rownania kwadratowe', 'rownanie kwadratowe', 'Kwadratowe rownania' to
+    ten sam temat. Slowa skracane do 5 znakow (proste ciecie koncowek), a krotkie tokeny
+    - w tym cyfry i rzymskie (I/II wojna swiatowa) - zostaja bez zmian, wiec rozne tematy
+    sie nie zlewaja."""
+    t = _norm(temat).translate(_PL)
+    words = [w for w in re.findall(r"[a-z0-9]+", t) if w not in _STOP]
+    return " ".join(sorted(w[:5] for w in words))
+
+
 def cache_key(temat: str, klasa: str, num_sections: int) -> str:
-    raw = f"{NOTES_CACHE_VERSION}|{_norm(temat)}|{(klasa or '').strip().lower()}|{int(num_sections)}"
+    raw = f"{NOTES_CACHE_VERSION}|{_topic_signature(temat)}|{(klasa or '').strip().lower()}|{int(num_sections)}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
