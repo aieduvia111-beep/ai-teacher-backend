@@ -558,6 +558,23 @@ onAuthStateChanged(auth,async u=>{
   try{
     const tk=await u.getIdToken();
     const sr=await fetch(window.API_BASE+'/api/v1/payments/subscription',{headers:{'Authorization':'Bearer '+tk}}).then(r=>r.json());
+    // KARTA PLANU (04.10.2026, user: "Premium ma czuc, ze jest premium"): zamiast ogolnego "Zarzadzaj lub
+    // anuluj" pokazujemy konkretnie, co user ma i do kiedy.
+    if(sr&&sr.is_premium&&sr.subscription){
+      const sub=sr.subscription, item=document.getElementById('planSubItem');
+      const el=document.getElementById('planSubSub');
+      const end=sub.current_period_end?new Date(sub.current_period_end):null;
+      const endTxt=end&&!isNaN(end)?end.toLocaleDateString('pl-PL',{day:'numeric',month:'long',year:'numeric'}):null;
+      let txt=null;
+      if(endTxt){
+        if(sub.cancel_at_period_end)txt='Pro aktywny do '+endTxt+' · nie odnowi się';
+        else if(sub.status==='trialing')txt='Okres próbny do '+endTxt+' · potem odnowienie';
+        else txt='Pro aktywny · odnowienie '+endTxt;
+      }
+      if(el&&txt)el.textContent=txt;
+      const ttl=item&&item.querySelector('.item-title');
+      if(ttl)ttl.textContent='Eduvia Pro';
+    }
     if(sr&&sr.payment_issue){
       const bi=document.getElementById('billingPortalItem');
       if(bi){

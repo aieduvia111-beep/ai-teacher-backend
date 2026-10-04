@@ -1240,7 +1240,7 @@ function beginQuiz(qs,retry){
   questions=shuffled;currentQ=0;answers=new Array(shuffled.length).fill(null);
   xp=retry?xp:0;streak=0;answered=false;isRetry=retry;wrongIndexes=[];
   document.getElementById('quizTitle').textContent=quiz.title||'Quiz';
-  document.getElementById('quizBadge')&&(document.getElementById('quizBadge').textContent=retry?'Powtórka':'✦ Quiz');
+  document.getElementById('quizBadge')&&(document.getElementById('quizBadge').textContent=retry?'Powtórka':'✦ Quiz'+((localStorage.getItem('eduvia_plan')||'free')!=='free'?' PRO':''));
   document.getElementById('retryBanner').style.display=retry?'flex':'none';
   document.getElementById('xpTotal').textContent=xp;
   showPage('pageQuiz');renderQuestion();
@@ -1406,7 +1406,7 @@ function resumeQuizFromChat(){
   if(st.vals){VALS.level=st.vals.level||VALS.level;VALS.diff=st.vals.diff||VALS.diff;}
   if(st.subject&&document.getElementById('subject'))document.getElementById('subject').value=st.subject;
   document.getElementById('quizTitle').textContent=st.title||'Quiz';
-  var bd=document.getElementById('quizBadge');if(bd)bd.textContent=isRetry?'Powtórka':'✦ Quiz';
+  var bd=document.getElementById('quizBadge');if(bd)bd.textContent=isRetry?'Powtórka':'✦ Quiz'+((localStorage.getItem('eduvia_plan')||'free')!=='free'?' PRO':'');
   document.getElementById('retryBanner').style.display=isRetry?'flex':'none';
   document.getElementById('xpTotal').textContent=xp;
   showPage('pageQuiz');renderQuestion();
@@ -1791,5 +1791,6 @@ window.addEventListener('popstate', function() {
   window.location.href = 'dashboard_FINAL.html';
 });
 </script>
+<script src="pro_label.js?v=1"></script>
 </body>
 </html>
