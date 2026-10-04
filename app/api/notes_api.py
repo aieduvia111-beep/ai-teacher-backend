@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from ..config import settings
 from ..notes_pdf_generator import PremiumNotesGenerator
-from ..firebase_auth import require_feature_limit
+from ..firebase_auth import require_feature_limit, get_current_app_user
 from ..models import User
 import os, json
 import asyncio
@@ -23,6 +23,22 @@ class NotesRequest(BaseModel):
     image: Optional[str] = None
     images: Optional[List[str]] = None
     wlasne_instrukcje: Optional[str] = None
+
+class NotesReportRequest(BaseModel):
+    key: str
+    comment: Optional[str] = None
+
+
+@router.post("/report")
+async def report_notes_error(req: NotesReportRequest, user: User = Depends(get_current_app_user)):
+    """Uczen zglasza blad w notatce -> notatka znika z pamieci (patrz app/notes_cache.py)."""
+    from .. import notes_cache
+    try:
+        res = notes_cache.report_note(user.firebase_uid, req.key, req.comment or "")
+        return {"success": bool(res.get("ok")), "removed": bool(res.get("removed"))}
+    except Exception as e:
+        print(f"[NotesReport] blad: {e}")
+        return {"success": False}
 
 def _log_notes_metrics(temat: str, klasa: str, t0: float, ok: bool, reason: str = None, from_image: bool = False):
     """Statystyki notatek (19.09.2026): Quiz i Sprawdzian mialy tabele
@@ -152,11 +168,15 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
 
         if filename and os.path.exists(filename):
             _log_notes_metrics(temat, req.klasa, _t0, True, from_image=_img)
+            _hdrs = {"Content-Disposition": "attachment; filename=notatka.pdf"}
+            if cache_ok:
+                # klucz notatki - frontend uzywa go do przycisku "Zglos blad w notatce"
+                _hdrs["X-Notes-Key"] = notes_cache.cache_key(temat, req.klasa, req.num_sections)
             return FileResponse(
                 path=filename,
                 media_type="application/pdf",
                 filename=filename.encode('ascii', 'ignore').decode('ascii'),
-                headers={"Content-Disposition": "attachment; filename=notatka.pdf"}
+                headers=_hdrs
             )
         _log_notes_metrics(temat, req.klasa, _t0, False, "no_pdf", from_image=_img)
         return {"success": False, "error": "Nie udalo sie wygenerowac PDF"}

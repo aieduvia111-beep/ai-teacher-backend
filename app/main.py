@@ -50,6 +50,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Notes-Key"],  # klucz notatki do zgloszenia bledu (notes_generator.html)
 )
 
 # ══ ROUTERY ══

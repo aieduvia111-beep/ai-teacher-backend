@@ -89,3 +89,32 @@ def store(temat: str, klasa: str, num_sections: int, data: dict) -> None:
             db.close()
     except Exception as e:
         print(f"[NotesCache] zapis pominiety: {e}")
+
+
+def report_note(user_uid: str, key: str, comment: str = "") -> dict:
+    """Zgloszenie bledu: zapisuje zgloszenie (1 na uzytkownika i notatke, max 20 dziennie na
+    uzytkownika) i USUWA notatke z pamieci. Zwraca {"ok": bool, "removed": bool}."""
+    from datetime import timedelta
+    from .database import SessionLocal
+    from .models import NotesCache, NotesReport
+    if not user_uid or not re.fullmatch(r"[0-9a-f]{40}", key or ""):
+        return {"ok": False, "removed": False}
+    db = SessionLocal()
+    try:
+        day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+        if db.query(NotesReport).filter(NotesReport.user_id == user_uid, NotesReport.created_at >= day_ago).count() >= 20:
+            return {"ok": False, "removed": False}
+        row = db.query(NotesCache).filter(NotesCache.cache_key == key).first()
+        temat = row.temat if row is not None else None
+        if db.query(NotesReport).filter(NotesReport.user_id == user_uid, NotesReport.cache_key == key).first() is None:
+            db.add(NotesReport(user_id=user_uid, cache_key=key, temat=temat,
+                               comment=((comment or "").strip()[:500] or None)))
+        removed = False
+        if row is not None:
+            db.delete(row)
+            removed = True
+        db.commit()
+        print(f"[NotesReport] zgloszono notatke '{temat}' (usunieta z pamieci: {removed})")
+        return {"ok": True, "removed": removed}
+    finally:
+        db.close()

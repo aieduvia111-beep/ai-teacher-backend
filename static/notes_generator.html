@@ -765,6 +765,9 @@ function getPlanBadgeHTML(plan) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           Wygeneruj kolejną notatkę
         </button>
+        <button id="reportNoteBtn" class="reset-btn" style="display:none;margin-top:8px;" onclick="reportNote()">
+          Znalazłem błąd w notatce
+        </button>
       </div>
     </div>
 
@@ -993,6 +996,9 @@ async function generate(){
       const blob=await res.blob(),url=URL.createObjectURL(blob),link=document.getElementById('dlLink');
       const dlFilename=`Notatka_${topicName.replace(/\s+/g,'_')}.pdf`;
       link.href=url;link.download=dlFilename;finishProgress();
+      // klucz notatki (tylko zwykle tematy) - pozwala zglosic blad; zgloszona notatka znika z pamieci
+      window._notesKey=res.headers.get('X-Notes-Key')||null;
+      (function(){var b=document.getElementById('reportNoteBtn');if(b){b.style.display=window._notesKey?'':'none';b.disabled=false;b.textContent='Znalazłem błąd w notatce';}})();
       // Zapisz do historii i XP
       // NAPRAWIONE: lokalnie doliczalo +50, ale do Firestore synchronizowalo
       // tylko +30 - rozjazd miedzy tym co user widzial a tym co bylo w
@@ -1028,7 +1034,23 @@ async function generate(){
     showErr(msg);
   }
 }
+async function reportNote(){
+  var b=document.getElementById('reportNoteBtn');
+  if(!window._notesKey||!b)return;
+  b.disabled=true;b.textContent='Wysyłam…';
+  try{
+    var tk=await window._getAuthToken();
+    var h=location.hostname;
+    var lan=h.indexOf('192.168.')===0||h.indexOf('10.')===0;
+    var base=(h==='localhost'||h==='127.0.0.1'||location.protocol==='file:')?'http://localhost:8000':lan?location.origin:'https://eduvia-backend-2.onrender.com';
+    var r=await fetch(base+'/api/v1/notes-pdf/report',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({key:window._notesKey})});
+    var d=await r.json();
+    b.textContent=d&&d.success?'Dzięki! Sprawdzimy tę notatkę.':'Nie udało się wysłać zgłoszenia';
+    if(!(d&&d.success))b.disabled=false;
+  }catch(e){b.textContent='Nie udało się wysłać zgłoszenia';b.disabled=false;}
+}
 function reset(){
+  window._notesKey=null;var _rb=document.getElementById('reportNoteBtn');if(_rb)_rb.style.display='none';
   document.getElementById('successView').style.display='none';document.getElementById('formView').style.display='block';
   document.getElementById('temat').value='';
   if(document.getElementById('wlasneInstrukcje'))document.getElementById('wlasneInstrukcje').value='';

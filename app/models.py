@@ -459,3 +459,21 @@ class NotesCache(Base):
     hits = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_used_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class NotesReport(Base):
+    """Zgloszenie bledu w notatce przez ucznia (03.10.2026). Zgloszenie usuwa notatke z pamieci
+    (app/notes_cache.py), wiec nastepny uczen dostaje swiezo wygenerowana i sprawdzona. user_id to
+    Firebase UID (string)."""
+    __tablename__ = "notes_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(128), nullable=False, index=True)
+    cache_key = Column(String(40), nullable=False, index=True)
+    temat = Column(String(200), nullable=True)
+    comment = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "cache_key", name="uq_notes_report_user_key"),
+    )
