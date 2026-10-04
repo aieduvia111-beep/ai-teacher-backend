@@ -418,6 +418,19 @@ def smart_para(tekst, styl, width_pt=515, fontsize=10.5, color=TXT_MAIN, bg=BG_P
 # ============================================================
 # TŁO STRON — PREMIUM REDESIGN
 # ============================================================
+def _draw_pro_chip(c, x, y, size=7):
+    """Maly plaski znacznik PRO (04.10.2026) - tylko w PDF-ach generowanych dla kont Premium."""
+    wtxt = pdfmetrics.stringWidth("PRO", FB, size)
+    padx, h_ = size * 0.55, size * 1.6
+    c.saveState()
+    c.setFillColor(colors.HexColor(ACC_PURPLE))
+    c.roundRect(x, y - size * 0.45, wtxt + 2 * padx, h_, 3, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont(FB, size)
+    c.drawString(x + padx, y, "PRO")
+    c.restoreState()
+
+
 def add_page_bg(c, doc):
     w, h = A4
     c.saveState()
@@ -447,6 +460,8 @@ def add_page_bg(c, doc):
     c.drawString(14, h-22, "EDUVIA")
     c.setFont(FN, 7); c.setFillColor(colors.HexColor(TXT_MUTED))
     c.drawString(60, h-22, "AI PREMIUM NOTES")
+    if getattr(doc, '_eduvia_pro', False):
+        _draw_pro_chip(c, 60 + pdfmetrics.stringWidth("AI PREMIUM NOTES", FN, 7) + 6, h-22, 6.5)
     # Numer strony
     c.setFont(FN, 7.5); c.setFillColor(colors.HexColor(TXT_MUTED))
     c.drawRightString(w-14, h-22, "str. " + str(doc.page))
@@ -466,7 +481,7 @@ def add_page_bg(c, doc):
 # ============================================================
 # OKŁADKA — PREMIUM REDESIGN
 # ============================================================
-def draw_cover(c, tytul, podtytul, klasa):
+def draw_cover(c, tytul, podtytul, klasa, pro=False):
     w, h = PW, PH
 
     # TLO: glebokie granatowe
@@ -513,6 +528,8 @@ def draw_cover(c, tytul, podtytul, klasa):
     c.drawString(16, h-33, "EDUVIA")
     c.setFont(FN, 8); c.setFillColor(colors.HexColor('#666699'))
     c.drawString(70, h-33, "AI PREMIUM NOTES")
+    if pro:
+        _draw_pro_chip(c, 70 + pdfmetrics.stringWidth("AI PREMIUM NOTES", FN, 8) + 8, h-33, 7.5)
     # Poziom badge - prawy
     c.setFillColor(colors.HexColor('#151530'))
     c.roundRect(w-120, h-46, 106, 22, 11, fill=1, stroke=0)
@@ -2230,6 +2247,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         story.append(Spacer(1, 30))
         # Gradient banner zamykający
         from reportlab.platypus.flowables import Flowable as _Flowable
+        _pro_notes = bool(getattr(self, 'is_pro', False))
         class _ClosingBanner(_Flowable):
             def __init__(self, w):
                 super().__init__(); self.width = w; self.height = 90
@@ -2246,7 +2264,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 c.setFillColor(colors.HexColor(ACC_CYAN)); c.rect(W*0.4, H-4, W*0.3, 4, fill=1, stroke=0)
                 c.setFillColor(colors.HexColor(ACC_GOLD)); c.rect(W*0.8, H-4, W*0.2, 4, fill=1, stroke=0)
                 # Tekst
-                _canvas_draw_text(c, "EDUVIA AI PREMIUM NOTES", W*0.05, H - 18, W*0.9,
+                _canvas_draw_text(c, "EDUVIA PRO • AI PREMIUM NOTES" if _pro_notes else "EDUVIA AI PREMIUM NOTES", W*0.05, H - 18, W*0.9,
                                   fontsize=11, color=ACC_PURPLE, bold=True, align='center')
                 _canvas_draw_text(c, "Notatka wygenerowana przez AI • eduvia.pl", W*0.05, H - 42, W*0.9,
                                   fontsize=9, color=TXT_MUTED, align='center')
@@ -2261,6 +2279,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
         doc = SimpleDocTemplate(buf, pagesize=A4,
                                 leftMargin=44, rightMargin=44,
                                 topMargin=55, bottomMargin=35)
+        doc._eduvia_pro = _pro_notes  # znacznik PRO w naglowku stron (add_page_bg)
         doc.build(story, onFirstPage=add_page_bg, onLaterPages=add_page_bg)
         return buf.getvalue()
 
@@ -2276,7 +2295,7 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
 
         cover_buf = io.BytesIO()
         c = canvas_module.Canvas(cover_buf, pagesize=A4)
-        draw_cover(c, data.get('tytul', temat), data.get('podtytul','Notatka edukacyjna'), klasa)
+        draw_cover(c, data.get('tytul', temat), data.get('podtytul','Notatka edukacyjna'), klasa, pro=bool(getattr(self, 'is_pro', False)))
         c.save(); cover_buf.seek(0)
 
         content_bytes = self._build_content_pages(data)

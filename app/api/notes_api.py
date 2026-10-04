@@ -59,8 +59,9 @@ def _log_notes_metrics(temat: str, klasa: str, t0: float, ok: bool, reason: str 
         print(f"[NotesMetrics] pominieto zapis statystyk: {_e}")
 
 
-def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None, cached_data=None, store_mode=None) -> str:
+def _generate_blocking(temat: str, klasa: str, api_key: str, num_sections: int = 3, wlasne_instrukcje: str = "", kontekst: str = "", jezyk: str = "", przedmiot: str = "", czy_obliczenia=None, images=None, verified_quiz_future=None, cached_data=None, store_mode=None, is_pro=False) -> str:
     gen = PremiumNotesGenerator(api_key)
+    gen.is_pro = bool(is_pro)  # znacznik PRO w naglowkach PDF (Premium)
     filename = gen.generate_pdf(temat, klasa, num_sections, wlasne_instrukcje, kontekst, jezyk, przedmiot, czy_obliczenia, images, verified_quiz_future, cached_data)
     # Zwykly temat tekstowy: zapisz kompletna, sprawdzona tresc do pamieci (nastepny uczen dostanie ja od reki)
     if store_mode is not None and cached_data is None:
@@ -163,7 +164,7 @@ async def generate_notes_pdf(req: NotesRequest, user: User = Depends(require_fea
             except Exception as _e:
                 print(f"[Notes] nie udalo sie uruchomic zweryfikowanego quizu: {_e}")
         filename = await loop.run_in_executor(
-            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne, kontekst, jezyk, przedmiot, czy_obliczenia, (all_images[:6] if all_images else None), quiz_future, cached_data, store_mode
+            _executor, _generate_blocking, temat, req.klasa, settings.OPENAI_API_KEY, req.num_sections, wlasne, kontekst, jezyk, przedmiot, czy_obliczenia, (all_images[:6] if all_images else None), quiz_future, cached_data, store_mode, bool(getattr(user, 'is_premium', False))
         )
 
         if filename and os.path.exists(filename):
