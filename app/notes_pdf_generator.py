@@ -1646,6 +1646,8 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 if data.get('sekcje') or data.get('kluczowe_pojecia'):
                     if mode != "opisowy":
                         data = self._verify_examples(data)
+                    elif not images:
+                        data = self._verify_facts(data, temat, klasa)
                     if quiz_future is not None:
                         try:
                             data['quiz'] = quiz_future.result(timeout=max(3, 75 - (_time.monotonic() - _t_start))) or []
@@ -1712,6 +1714,84 @@ WAZNA DECYZJA - SAM ZDECYDUJ na podstawie tematu "{temat}":
                 print(f"[Notes] korekta rachunkow: poprawiono {fixed} z {len(ex)} przykladow")
         except Exception as e:
             print(f"[Notes] korekta rachunkow pominieta: {e}")
+        return data
+
+    def _verify_facts(self, data: dict, temat: str, klasa: str) -> dict:
+        """03.10.2026: notatki OPISOWE (biologia, historia, geografia...) nie mialy zadnej
+        kontroli faktow, a notatka z pamieci trafia do wielu uczniow. Drugi przebieg mocniejszego
+        modelu (gpt-4o, temperatura 0) sprawdza daty, liczby, nazwy i zwiazki przyczynowe
+        i poprawia TYLKO to, co jest wyraznie bledne (przy watpliwosci nie rusza tekstu);
+        niepewne wpisy osi czasu usuwa. Stosowane wylacznie bez zdjec (przy zdjeciach zrodlem
+        prawdy jest podrecznik ucznia). Bezpieczniki: poprawka musi byc PODOBNA do oryginalu
+        (minimalna zmiana) - inaczej odrzucana, bo model potrafi pomylic numer fragmentu i
+        nadpisac nim inny tekst. Nigdy nie psuje notatki: przy bledzie zwraca dane bez zmian."""
+        import difflib
+        try:
+            items = []  # (rodzaj, setter lub None, oryginalny tekst)
+            for p_ in data.get('kluczowe_pojecia') or []:
+                if isinstance(p_, dict) and isinstance(p_.get('definicja'), str) and p_['definicja'].strip():
+                    items.append(('txt', (lambda t, p_=p_: p_.__setitem__('definicja', t)), p_['definicja']))
+            for sec in data.get('sekcje') or []:
+                if not isinstance(sec, dict):
+                    continue
+                for field in ('tresc', 'przyklad', 'ciekawostka'):
+                    if isinstance(sec.get(field), str) and sec[field].strip():
+                        items.append(('txt', (lambda t, sec=sec, field=field: sec.__setitem__(field, t)), sec[field]))
+            zap = data.get('do_zapamietania') or []
+            for i, z in enumerate(zap):
+                if isinstance(z, str) and z.strip():
+                    items.append(('txt', (lambda t, i=i: zap.__setitem__(i, t)), z))
+            tl = data.get('timeline') or []
+            for i, t_ in enumerate(tl):
+                if isinstance(t_, dict):
+                    items.append(('tl', i, f"{t_.get('rok', '')}: {t_.get('opis', '')}"))
+            if not items:
+                return data
+            listing = "\n".join(f"[{n}] {it[2]}" for n, it in enumerate(items, 1))
+            prompt = (
+                f"Jestes surowym korektorem merytorycznym podrecznikow szkolnych (temat: {temat}, poziom: {klasa}). "
+                "Ponizej ponumerowane fragmenty notatki dla ucznia. Sprawdz POPRAWNOSC FAKTOW: daty, liczby, nazwy wlasne, definicje, "
+                "zwiazki przyczynowo-skutkowe. Zwroc ok=true, gdy tekst jest poprawny albo gdy NIE jestes pewien (nie poprawiaj na sile, "
+                "nie zmieniaj stylu). Zwroc ok=false TYLKO gdy jest WYRAZNY blad faktyczny - wtedy w 'poprawiony' wpisz TEN SAM tekst "
+                "z minimalna poprawka (zachowaj uklad linii, format i znacznik trudnosci [P]/[E]/[A] na poczatku, jesli byl; "
+                "NIE wpisuj numeru fragmentu). Numer 'nr' MUSI byc dokladnie numerem fragmentu, ktory poprawiasz. "
+                "Dla wpisow osi czasu (format 'rok: opis'): ok=false i pusty 'poprawiony', jesli data lub zdarzenie jest nieprawdziwe "
+                "albo watpliwe (taki wpis zostanie usuniety). "
+                "Odpowiedz TYLKO JSON: {\"wyniki\": [{\"nr\": 1, \"ok\": true, \"poprawiony\": \"\"}]}\n\n" + listing
+            )
+            r = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0, max_tokens=3000, timeout=60,
+            )
+            res = self._robust_json_parse(r.choices[0].message.content.strip())
+            fixed, dropped = 0, set()
+            for item in res.get('wyniki', []) or []:
+                try:
+                    n = int(item.get('nr')) - 1
+                except Exception:
+                    continue
+                if item.get('ok') is not False or not (0 <= n < len(items)):
+                    continue
+                kind, target, original = items[n]
+                if kind == 'tl':
+                    dropped.add(target)
+                    continue
+                txt = (item.get('poprawiony') or '').strip().replace('\\n', '\n')
+                txt = re.sub(r'^\s*\[\d+\]\s*', '', txt)  # model bywa przepisuje numer fragmentu
+                if not txt or txt == original.strip():
+                    continue
+                if difflib.SequenceMatcher(None, original.lower(), txt.lower()).ratio() < 0.6:
+                    print("[Notes] kontrola faktow: odrzucono poprawke niepodobna do oryginalu (pomylony numer?)")
+                    continue
+                target(txt)
+                fixed += 1
+            if dropped:
+                data['timeline'] = [t for i, t in enumerate(tl) if i not in dropped]
+            if fixed or dropped:
+                print(f"[Notes] kontrola faktow: poprawiono {fixed} fragmentow, usunieto {len(dropped)} wpisow osi czasu")
+        except Exception as e:
+            print(f"[Notes] kontrola faktow pominieta: {e}")
         return data
 
     def _build_content_pages(self, data: dict) -> bytes:

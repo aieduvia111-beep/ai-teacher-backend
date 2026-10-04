@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timezone
 
 # Podbij, gdy zmieniasz prompty/weryfikacje notatek - stare wpisy przestana pasowac.
-NOTES_CACHE_VERSION = "v1"
+NOTES_CACHE_VERSION = "v2"  # v2: kontrola faktow w notatkach opisowych
 
 
 def _norm(temat: str) -> str:
