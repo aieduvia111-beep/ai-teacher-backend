@@ -34,14 +34,35 @@ class ExamRequest(BaseModel):
     image: Optional[str] = None
     images: Optional[List[str]] = None
 
-def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wariant, wlasne_instrukcje=None):
+def _is_pro_user(user_id) -> bool:
+    """Czy konto jest Premium (do znacznika PRO w PDF). Wlasna sesja bazy; blad = nie-Pro."""
+    if not user_id:
+        return False
+    try:
+        from ..database import SessionLocal
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.id == user_id).first()
+            return bool(u and u.is_premium)
+        finally:
+            db.close()
+    except Exception:
+        return False
+
+
+def _generate_blocking(pelny_temat, klasa, trudnosc, liczba_pytan, api_key, wariant, wlasne_instrukcje=None, is_pro=False):
     """Zwraca (fname, shortfall_info) - patrz ExamGenerator.generate_exam."""
-    gen = ExamGenerator(api_key)
-    return gen.generate_exam(
-        temat=pelny_temat, klasa=klasa,
-        trudnosc=trudnosc, liczba_pytan=liczba_pytan,
-        wariant=wariant, wlasne_instrukcje=wlasne_instrukcje
-    )
+    from ..exam_pdf_generator import set_pro_mode
+    set_pro_mode(is_pro)  # znacznik PRO w PDF dla Premium (flaga per watek)
+    try:
+        gen = ExamGenerator(api_key)
+        return gen.generate_exam(
+            temat=pelny_temat, klasa=klasa,
+            trudnosc=trudnosc, liczba_pytan=liczba_pytan,
+            wariant=wariant, wlasne_instrukcje=wlasne_instrukcje
+        )
+    finally:
+        set_pro_mode(False)
 
 
 def _shortfall_response(shortfall_info: dict):
@@ -169,11 +190,11 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
             (filename_a, shortfall_a), (filename_b, shortfall_b) = await asyncio.gather(
                 loop.run_in_executor(
                     _executor, _generate_blocking,
-                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje
+                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "A", req.wlasne_instrukcje, bool(getattr(user, "is_premium", False))
                 ),
                 loop.run_in_executor(
                     _executor, _generate_blocking,
-                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje
+                    pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, "B", req.wlasne_instrukcje, bool(getattr(user, "is_premium", False))
                 ),
             )
             # NAPRAWIONE (patrz _shortfall_headers - "bez jaj czekac 5 minut"):
@@ -198,7 +219,7 @@ async def generate_exam(req: ExamRequest, user: User = Depends(require_feature_l
 
         filename, shortfall = await loop.run_in_executor(
             _executor, _generate_blocking,
-            pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje
+            pelny_temat, req.klasa, req.trudnosc, req.liczba_pytan, settings.OPENAI_API_KEY, req.wariant, req.wlasne_instrukcje, bool(getattr(user, "is_premium", False))
         )
         # NAPRAWIONE (patrz _shortfall_headers powyzej): jesli PDF FAKTYCZNIE
         # powstal (generate_exam buduje go normalnie nawet przy niedoborze),
@@ -257,15 +278,16 @@ def _refund_failed_exam(user_id):
 async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wariant, wlasne_instrukcje, user_id=None):
     try:
         loop = asyncio.get_event_loop()
+        _pro = _is_pro_user(user_id)
         if wariant == "AB":
             (filename_a, shortfall_a), (filename_b, shortfall_b) = await asyncio.gather(
                 loop.run_in_executor(
                     _executor, _generate_blocking,
-                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "A", wlasne_instrukcje
+                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "A", wlasne_instrukcje, _pro
                 ),
                 loop.run_in_executor(
                     _executor, _generate_blocking,
-                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "B", wlasne_instrukcje
+                    pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, "B", wlasne_instrukcje, _pro
                 ),
             )
             if filename_a and os.path.exists(filename_a) and filename_b and os.path.exists(filename_b):
@@ -284,7 +306,7 @@ async def _run_exam_job(job_id, pelny_temat, klasa, trudnosc, liczba_pytan, wari
 
         filename, shortfall = await loop.run_in_executor(
             _executor, _generate_blocking,
-            pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, wariant, wlasne_instrukcje
+            pelny_temat, klasa, trudnosc, liczba_pytan, settings.OPENAI_API_KEY, wariant, wlasne_instrukcje, _pro
         )
         if filename and os.path.exists(filename):
             set_done(job_id, {"kind": "pdf", "path": filename, "shortfall": shortfall})

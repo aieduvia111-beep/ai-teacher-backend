@@ -6,6 +6,7 @@ Na tym samym poziomie co generator notatek.
 
 import io, re, json, os, tempfile, datetime, time, random
 import concurrent.futures as _cf
+import threading as _threading
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib as _mpl
@@ -898,6 +899,19 @@ class SectionHeader(Flowable):
 # ============================================================
 # OKŁADKA SPRAWDZIANU
 # ============================================================
+# 04.10.2026: znacznik PRO w naglowkach PDF sprawdzianu dla kont Premium. Flaga jest per WATEK (nie
+# globalna) - kilka sprawdzianow generuje sie rownolegle w puli watkow (wariant A i B naraz, roznych userow).
+_PRO_MODE = _threading.local()
+
+
+def set_pro_mode(flag: bool) -> None:
+    _PRO_MODE.on = bool(flag)
+
+
+def _is_pro_mode() -> bool:
+    return bool(getattr(_PRO_MODE, 'on', False))
+
+
 def _draw_cover_icon(c, kind: str, cx: float, cy: float, color):
     """Ikony okladki rysowane WEKTOROWO (19.09.2026). Wczesniej emoji
     (zegar/wykres/kalendarz) - czcionka PDF (DejaVu) ich nie ma, wiec na
@@ -945,7 +959,7 @@ def _draw_exam_cover(c, data: dict, wariant: str = "A"):
     c.roundRect(w/2 - 80, h - 80, 160, 34, 17, fill=1, stroke=0)
     c.setFillColor(C_ACCENT)
     c.setFont(FB, 10)
-    c.drawCentredString(w/2, h - 58, "✦  EDUVIA AI  ✦")
+    c.drawCentredString(w/2, h - 58, "✦  EDUVIA PRO  ✦" if _is_pro_mode() else "✦  EDUVIA AI  ✦")
 
     # Wariant
     c.setFillColor(C_ACCENT)
@@ -1194,7 +1208,7 @@ def _add_page_bg(c, doc):
     c.rect(0, h-4, w, 4, fill=1, stroke=0)
     # Nagłówek strony
     c.setFont(FN, 8); c.setFillColor(C_MUTED)
-    _canvas_pl(c, "Eduvia AI — Sprawdzian", 20, h - 20, 200, fontsize=8, color='#6B7280')
+    _canvas_pl(c, "Eduvia PRO — Sprawdzian" if _is_pro_mode() else "Eduvia AI — Sprawdzian", 20, h - 20, 200, fontsize=8, color='#6B7280')
     c.setFont(FN, 8); c.setFillColor(C_MUTED)
     _canvas_pl(c, f"Strona {doc.page}", w - 220, h - 20, 200, fontsize=8, color='#6B7280', align='right')
     # Dolna linia
