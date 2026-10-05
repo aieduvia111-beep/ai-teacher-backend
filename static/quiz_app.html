@@ -982,19 +982,40 @@ function math(raw){
     const re=new RegExp('(?<![a-zA-Z\\\\])'+cmd+'(?=[^a-zA-Z]|$)','g');
     t=t.replace(re,'\\'+cmd);
   });
-  // Zamien unicode symbole na LaTeX
-  t=t.replace(/∫/g,'$\\int$');
-  t=t.replace(/∑/g,'$\\sum$');
-  t=t.replace(/√/g,'$\\sqrt{}$');
-  t=t.replace(/≤/g,'$\\leq$');
-  t=t.replace(/≥/g,'$\\geq$');
-  t=t.replace(/≠/g,'$\\neq$');
-  t=t.replace(/→/g,'$\\to$');
-  t=t.replace(/∞/g,'$\\infty$');
-  // Owij caly ciagly fragment matematyczny (od pierwszej komendy LaTeX
-  // do konca zdania) - naprawia dlugie, zlozone wzory ktore wczesniej
-  // byly dzielone na kawalki i renderowane tylko czesciowo.
-  t=t.replace(/(?<!\$)([-−]?\\(?:frac|sqrt|int|iint|iiint|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|delta|Delta|epsilon|zeta|eta|sigma|Sigma|mu|nu|rho|tau|phi|Phi|chi|psi|omega|Omega|pi|theta|Theta|infty|text|sin|cos|tan|ln|log|vec|det|begin|end|binom|approx)(?:[^.!?$]|\.\d)*?)(?=[.!?](?!\d)|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|,\s*[a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
+  // NAPRAWIONE (04.10.2026, user: czerwone "\frac{64$\sqrt{3}}{3}" i "\text{\sin}" w Quizie): ponizsze kroki
+  // dzialaly na CALYM tekscie, wiec 'owijanie gołych wzorow' dopisywalo dodatkowe $ ROWNIEZ w srodku
+  // wzoru, ktory juz byl w $...$ (np. $\frac{64\sqrt{3}}{3}, Pole: ...$ -> $ w srodku \frac{...}). Teraz tekst
+  // dzielimy po $: parzyste fragmenty to zwykly tekst (tu wolno owijac), nieparzyste to juz matematyka
+  // (tu tylko podmieniamy symbole unicode na komendy, BEZ dodawania dolarow).
+  // \text{\sin} (komenda wewnatrz \text) jest niepoprawne w KaTeX - zamieniamy na sama komende.
+  t=t.replace(/\\text\{\s*(\\[a-zA-Z]+)\s*\}/g,'$1');
+  const _WORD=/(?<![\\a-zA-Z{])([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{4,}(?:\s+[A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,})*:?)/;
+  const _parts=t.split('$'), _out=[];
+  for(let _i=0;_i<_parts.length;_i++){
+    let seg=_parts[_i];
+    if(_i%2===1){
+      // matematyka: symbole unicode -> komendy; slowa (min. 4 litery) wypadaja ZA dolary jako zwykly
+      // tekst ("Objetosc: $\frac..$, Pole powierzchni: $48+24\sqrt3$"), bo w trybie matematycznym KaTeX
+      // zjada spacje i pisze kursywa ("Polepowierzchni")
+      seg=seg.replace(/∫/g,'\\int ').replace(/∑/g,'\\sum ').replace(/√/g,'\\sqrt').replace(/≤/g,'\\leq ').replace(/≥/g,'\\geq ').replace(/≠/g,'\\neq ').replace(/→/g,'\\to ').replace(/∞/g,'\\infty ');
+      if(/\\text\{/.test(seg)){ _out.push('$'+seg+'$'); continue; }
+      const pieces=seg.split(new RegExp(_WORD.source,'g'));
+      let acc='';
+      for(let k=0;k<pieces.length;k++){
+        const pc=pieces[k];
+        if(k%2===1){ acc+=pc; }
+        else if(/[\\0-9=+\-*\/^_{}()]|[a-zA-Z]/.test(pc)){ acc+=(/^\s/.test(pc)?' ':'')+'$'+pc.trim()+'$'+(/\s$/.test(pc)?' ':''); }
+        else { acc+=pc; }
+      }
+      _out.push(acc);
+    }else{
+      seg=seg.replace(/∫/g,'$\\int$').replace(/∑/g,'$\\sum$').replace(/√/g,'$\\sqrt{}$').replace(/≤/g,'$\\leq$').replace(/≥/g,'$\\geq$').replace(/≠/g,'$\\neq$').replace(/→/g,'$\\to$').replace(/∞/g,'$\\infty$');
+      // Owij caly ciagly fragment matematyczny (od pierwszej komendy LaTeX do konca zdania) - TYLKO poza $...$
+      seg=seg.replace(/(?<!\$)([-−]?\\(?:frac|sqrt|int|iint|iiint|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|delta|Delta|epsilon|zeta|eta|sigma|Sigma|mu|nu|rho|tau|phi|Phi|chi|psi|omega|Omega|pi|theta|Theta|infty|text|sin|cos|tan|ln|log|vec|det|begin|end|binom|approx)(?:[^.!?$]|\.\d)*?)(?=[.!?](?!\d)|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|,\s*[a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
+      _out.push(seg);
+    }
+  }
+  t=_out.join('');
   if(typeof renderMathInElement==='undefined'){
     let _mathRetryCount = 0;
     const _mathRetry = () => {
