@@ -751,6 +751,59 @@ async function startCheckout() {
   }
 }
 
+
+// ANKIETA WYJSCIA Z PLATNOSCI (06.10.2026, user: "ktos anulowal, dlaczego - zrobimy ankiete"): po powrocie z
+// okna Stripe bez zakupu pytamy jednym kliknieciem, co przeszkodzilo. 21 z 23 osob zakladajacych platnosc nie
+// kupuje, a z samej bazy nie widac dlaczego. Odpowiedz leci jako zdarzenie 'checkout_exit_reason'.
+function showExitSurvey(){
+  try{
+    var KEY='eduvia_exit_survey_ts';
+    var last=+(localStorage.getItem(KEY)||0);
+    if(Date.now()-last<12*3600*1000) return; // najwyzej raz na 12 godzin
+    var opts=[
+      ['no_card_or_blik','Nie mam karty albo BLIK nie przeszedł'],
+      ['price','Za drogo'],
+      ['no_pay_after_trial','Nie chcę płacić po tygodniu'],
+      ['ask_parent','Muszę zapytać rodzica'],
+      ['thinking','Chcę jeszcze pomyśleć'],
+      ['other','Coś innego']
+    ];
+    var box=document.createElement('div');
+    box.id='exitSurvey';
+    box.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9998;background:#0f0f18;border-top:1px solid rgba(255,255,255,.1);border-radius:18px 18px 0 0;padding:18px 18px 22px;box-shadow:0 -12px 40px rgba(0,0,0,.5);max-width:520px;margin:0 auto;font-family:Inter,sans-serif;';
+    var title=document.createElement('div');
+    title.textContent='Co Ci przeszkodziło?';
+    title.style.cssText='font-weight:800;font-size:1em;color:#eeeef5;margin-bottom:4px;';
+    var sub=document.createElement('div');
+    sub.textContent='Jedno kliknięcie. Dzięki temu poprawimy to, co nie działa.';
+    sub.style.cssText='font-size:.8em;color:#8888a0;margin-bottom:12px;';
+    box.appendChild(title); box.appendChild(sub);
+    function done(msg){ localStorage.setItem(KEY,String(Date.now())); box.innerHTML=''; var d=document.createElement('div'); d.textContent=msg; d.style.cssText='padding:14px 4px;color:#eeeef5;font-weight:700;'; box.appendChild(d); setTimeout(function(){box.remove();},1800); }
+    function send(reason,text){ var m={reason:reason}; if(text)m.text=text; trackEvent('checkout_exit_reason',m); }
+    opts.forEach(function(o){
+      var b=document.createElement('button');
+      b.type='button'; b.textContent=o[1];
+      b.style.cssText='display:block;width:100%;text-align:left;margin:0 0 8px;padding:12px 14px;border-radius:12px;background:#161622;border:1px solid rgba(255,255,255,.08);color:#eeeef5;font:600 .88em Inter,sans-serif;cursor:pointer;';
+      b.onclick=function(){
+        if(o[0]==='other'){
+          box.innerHTML='';
+          var t=document.createElement('div'); t.textContent='Napisz krótko, co poszło nie tak'; t.style.cssText='font-weight:800;color:#eeeef5;margin-bottom:10px;'; box.appendChild(t);
+          var ta=document.createElement('textarea'); ta.maxLength=200; ta.rows=3; ta.style.cssText='width:100%;box-sizing:border-box;padding:10px;border-radius:10px;background:#161622;border:1px solid rgba(255,255,255,.1);color:#eeeef5;font:500 .9em Inter,sans-serif;resize:none;'; box.appendChild(ta);
+          var s=document.createElement('button'); s.type='button'; s.textContent='Wyślij'; s.style.cssText='margin-top:10px;width:100%;padding:12px;border:none;border-radius:12px;background:#7c6aff;color:#fff;font:700 .9em Inter,sans-serif;cursor:pointer;';
+          s.onclick=function(){ send('other',ta.value.trim()); done('Dzięki!'); };
+          box.appendChild(s);
+        } else { send(o[0]); done('Dzięki!'); }
+      };
+      box.appendChild(b);
+    });
+    var x=document.createElement('button'); x.type='button'; x.textContent='Nie teraz';
+    x.style.cssText='background:none;border:none;color:#8888a0;font:600 .8em Inter,sans-serif;padding:6px 2px;cursor:pointer;';
+    x.onclick=function(){ localStorage.setItem(KEY,String(Date.now())); box.remove(); };
+    box.appendChild(x);
+    document.body.appendChild(box);
+  }catch(e){}
+}
+
 // Obsługa powrotu po płatności
 (function(){
   const p = new URLSearchParams(window.location.search);
@@ -771,12 +824,14 @@ async function startCheckout() {
     // (ktory dostal wlasny, POPRAWNY parametr 'blik_setup=cancelled'
     // ponizej - stad ta literowka byla widoczna dopiero przy porownaniu).
     showToast('Płatność anulowana.', '');
+    setTimeout(showExitSurvey, 1200);
   } else if(p.get('blik_setup') === 'cancelled'){
     trackEvent('blik_setup_cancelled');
     // NOWE (BLIK recurring) - powrot z Checkout mode="setup" bez
     // zatwierdzenia mandatu (np. bank nie wspiera BLIK recurring, user
     // zrezygnowal). Zasugeruj karte jako alternatywe, skoro juz tu jest.
     showToast('Nie udało się skonfigurować BLIK-a. Możesz spróbować kartą.', 'error');
+    setTimeout(showExitSurvey, 1200);
   }
 })();
 

@@ -24,7 +24,12 @@ _ALLOWED_EVENTS = {
     "payment_cancelled", "blik_setup_cancelled",
     # 20.09.2026: sciezka "Popros rodzica" i wyczerpanie limitu (patrz limit_modal.js, rodzic.html)
     "limit_hit", "ask_parent_click", "parent_page_view", "parent_checkout_click",
+    # 06.10.2026: ankieta "Co Ci przeszkodzilo?" po wyjsciu z okna platnosci (pricing.html)
+    "checkout_exit_reason",
 }
+
+# Dozwolone powody w ankiecie wyjscia z platnosci (kody, nie wolny tekst).
+_EXIT_REASONS = {"no_card_or_blik", "price", "no_pay_after_trial", "ask_parent", "thinking", "other"}
 
 
 class TrackEventRequest(BaseModel):
@@ -45,8 +50,18 @@ def track_event(request: TrackEventRequest, db: Session = Depends(get_db)):
     wywalila UI usera)."""
     if request.event not in _ALLOWED_EVENTS:
         return {"success": False, "ignored": True}
+    meta = request.meta or {}
+    if request.event == "checkout_exit_reason":
+        # whitelist kodu powodu + opcjonalny krotki komentarz (max 200 znakow)
+        reason = str(meta.get("reason", ""))
+        if reason not in _EXIT_REASONS:
+            return {"success": False, "ignored": True}
+        meta = {"reason": reason}
+        text = str((request.meta or {}).get("text", "")).strip()[:200]
+        if text:
+            meta["text"] = text
     try:
-        db.add(FunnelEvent(event=request.event, user_id=request.user_id, meta=request.meta or {}))
+        db.add(FunnelEvent(event=request.event, user_id=request.user_id, meta=meta))
         db.commit()
     except Exception as e:
         print(f"[analytics] blad zapisu eventu '{request.event}': {e}")
