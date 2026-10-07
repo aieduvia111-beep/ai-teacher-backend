@@ -297,12 +297,19 @@
       // zeby nie dokladac await miedzy klikaniem a navigator.share (gest uzytkownika wygasa).
       var days = _parentTrialDays;
       var text = 'Cześć! Uczę się z Eduvia AI (robi mi quizy i notatki do szkoły) i dobiłem do darmowego limitu. Pro to ' + PRO_PRICE + ' zł/mies., a pierwsze ' + days + ' dni jest za darmo, więc teraz nic nie płacisz i możesz anulować kiedy chcesz. Zobacz, jak się uczę, i włącz mi Pro tutaj: ' + data.url;
+      // 07.10.2026: mierzymy, czy uczen FAKTYCZNIE wyslal wiadomosc (27 osob w tydzien klika "Poproś rodzica",
+      // a link otwieraja ok. 2 razy - nie wiemy, czy problem jest przed czy po wyslaniu). navigator.share
+      // rozwiazuje obietnice po udostepnieniu, a odrzuca przy anulowaniu (AbortError).
+      var feat = featureName || 'pricing';
       if (navigator.share) {
-        navigator.share({ title: 'Eduvia AI', text: text }).catch(function () {});
+        navigator.share({ title: 'Eduvia AI', text: text })
+          .then(function () { track('parent_share_completed', { feature: feat, via: 'share' }); })
+          .catch(function (e) { track('parent_share_cancelled', { feature: feat, error: (e && e.name) || '' }); });
         btn.disabled = false;
         btn.innerHTML = originalHtml;
       } else {
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        track('parent_share_completed', { feature: feat, via: 'wa_link' });
         btn.disabled = false;
         btn.innerHTML = originalHtml;
       }

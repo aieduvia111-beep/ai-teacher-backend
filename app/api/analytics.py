@@ -26,6 +26,8 @@ _ALLOWED_EVENTS = {
     "limit_hit", "ask_parent_click", "parent_page_view", "parent_checkout_click",
     # 06.10.2026: ankieta "Co Ci przeszkodzilo?" po wyjsciu z okna platnosci (pricing.html)
     "checkout_exit_reason",
+    # 07.10.2026: czy uczen faktycznie wyslal wiadomosc do rodzica (limit_modal.js askParent)
+    "parent_share_completed", "parent_share_cancelled",
 }
 
 # Dozwolone powody w ankiecie wyjscia z platnosci (kody, nie wolny tekst).

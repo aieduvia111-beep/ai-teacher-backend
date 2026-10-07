@@ -165,7 +165,7 @@ async function main(){
 
   // Dlugosc darmowego triala jest zmienna (promocje - patrz get_trial_days()
   // w app/services/stripe_service.py) - to samo zrodlo prawdy, co juz czyta
-  // limit_modal.js, zeby ta strona nigdy nie obiecala rodzicowi innej
+  // limit_modal.js?v=20261007, zeby ta strona nigdy nie obiecala rodzicowi innej
   // liczby dni niz faktycznie dostanie po kliknieciu.
   try{
     const tr=await fetch(BACKEND_URL+'/api/v1/payments/trial-info').then(function(r){return r.json();});
