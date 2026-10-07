@@ -565,6 +565,32 @@ function trackEvent(event, meta){
 // 20.09.2026: czekamy na odczyt sesji (max 3 s), zeby zdarzenie mialo user_id.
 (window._authReady ? Promise.race([window._authReady, new Promise(function(r){setTimeout(r,3000);})]) : Promise.resolve()).then(function(){ trackEvent('view_pricing'); }).catch(function(){ trackEvent('view_pricing'); });
 
+
+// MASZ JUZ PRO (07.10.2026): klient z aktywna subskrypcja, ktory wszedl na cennik i kliknal "Kup Pro",
+// dostawal czerwony "Blad platnosci: Masz juz aktywna subskrypcje" (zdarzenie checkout_failed -
+// udokumentowane u osoby, ktora potem zrezygnowala z "bledy"). Teraz cennik od razu pokazuje
+// "Masz juz Pro" i prowadzi do Ustawien (zarzadzanie / anulowanie).
+function markAlreadyPro(){
+  try{
+    ['proBuyBtn','bottomCtaBtn'].forEach(function(id){
+      var b=document.getElementById(id); if(!b) return;
+      var t=b.querySelector('#btnText'); var label='Masz już Pro — zarządzaj w Ustawieniach';
+      if(t&&id==='proBuyBtn') t.textContent=label; else b.textContent=label;
+      b.disabled=false; b.onclick=function(){ window.location.href='settings.html'; };
+    });
+    ['badgeTrialDays','askParentPricingBtn'].forEach(function(id){var e=document.getElementById(id); if(e) e.style.display='none';});
+  }catch(e){}
+}
+(window._authReady ? Promise.race([window._authReady, new Promise(function(r){setTimeout(r,3000);})]) : Promise.resolve()).then(async function(){
+  try{
+    if(!window._currentUser || !window._currentUser()) return;
+    var tk=await window._getAuthToken();
+    var r=await fetch(API_BASE+'/api/v1/payments/subscription',{headers:{'Authorization':'Bearer '+tk}});
+    var d=await r.json();
+    if(d && d.is_premium) markAlreadyPro();
+  }catch(e){}
+});
+
 // NOWE (07.09.2026, promocja): pobiera aktualny status promocji z backendu
 // (jedno, wspolne zrodlo prawdy - patrz get_promo_status w stripe_service.py)
 // i dopiero WTEDY aktualizuje wszystkie miejsca z liczba dni + pokazuje
@@ -736,7 +762,12 @@ async function startCheckout() {
       btn.disabled = false;
       btnText.textContent = trialButtonLabel();
       loader.style.display = 'none';
-      showToast('Blad platnosci: ' + (checkoutData.error || 'sprobuj ponownie'), 'error');
+      if(checkoutData.already_subscribed){
+        showToast('Masz już aktywne Pro. Przenoszę do Ustawień.', 'success');
+        setTimeout(function(){ window.location.href='settings.html'; }, 1500);
+      } else {
+        showToast('Blad platnosci: ' + (checkoutData.error || 'sprobuj ponownie'), 'error');
+      }
     }
   } catch (e) {
     btn.disabled = false;
