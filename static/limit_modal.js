@@ -271,6 +271,82 @@
   var _parentTrialDays = 7;
   try { fetch(BASE + '/api/v1/payments/trial-info').then(function (r) { return r.json(); }).then(function (t) { if (t && t.trial_days) _parentTrialDays = t.trial_days; }).catch(function () {}); } catch (e) {}
 
+  // EKRAN "WYSLIJ WIADOMOSC DO RODZICA" (08.10.2026): dane z pomiaru pokazaly, ze uczniowie klikaja
+  // "Poproś rodzica", systemowe okno udostepniania sie otwiera, a oni zamykaja je bez wyslania
+  // (6 z 7 osob jednego dnia, 0 wyslanych). Zamiast listy wszystkich aplikacji: krotka, gotowa wiadomosc
+  // (2 zdania), jeden duzy przycisk "Wyslij na WhatsApp" i "Skopiuj wiadomosc". Przycisk WhatsApp otwiera sie
+  // OD RAZU po dotknieciu (swiezy gest uzytkownika), a link jest juz wczesniej utworzony.
+  function showParentSheet(url, feat) {
+    var old = document.getElementById('parentSheet');
+    if (old) old.remove();
+    var text = 'Cześć! Uczę się z Eduvia AI (quizy i notatki do szkoły) i skończył mi się darmowy limit. ' +
+      'Włączysz mi Pro? Pierwsze ' + _parentTrialDays + ' dni jest za darmo, potem ' + PRO_PRICE +
+      ' zł/mies., anulujesz kiedy chcesz: ' + url;
+    var finished = false;
+    var wrap = document.createElement('div');
+    wrap.id = 'parentSheet';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.65);font-family:Inter,sans-serif;';
+    var box = document.createElement('div');
+    box.style.cssText = 'width:100%;max-width:480px;box-sizing:border-box;background:#0f0f18;border:1px solid rgba(255,255,255,.1);border-radius:20px 20px 0 0;padding:20px 18px 24px;color:#eeeef5;';
+    function el(tag, css, txt) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (txt) e.textContent = txt; return e; }
+    box.appendChild(el('div', 'font-weight:800;font-size:1.05em;margin-bottom:4px;', 'Wyślij wiadomość do rodzica'));
+    box.appendChild(el('div', 'font-size:.82em;color:#8888a0;margin-bottom:12px;', 'Gotowe — wybierz rodzica w WhatsAppie i wyślij.'));
+    box.appendChild(el('div', 'font-size:.82em;line-height:1.55;color:#c8c8d8;background:#161622;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;margin-bottom:14px;white-space:pre-wrap;word-break:break-word;', text));
+
+    function done(how) {
+      if (finished) return;
+      finished = true;
+      track('parent_share_completed', { feature: feat, via: how });
+    }
+    function close(cancelled) {
+      if (cancelled && !finished) { finished = true; track('parent_share_cancelled', { feature: feat, error: 'closed_sheet' }); }
+      wrap.remove();
+    }
+    var btnCss = 'display:block;width:100%;box-sizing:border-box;padding:14px;border-radius:12px;font:700 .92em Inter,sans-serif;cursor:pointer;margin-bottom:10px;border:none;';
+    var wa = el('button', btnCss + 'background:#25D366;color:#06130b;', 'Wyślij na WhatsApp');
+    wa.type = 'button';
+    wa.onclick = function () {
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+      done('whatsapp');
+      setTimeout(function () { close(false); }, 400);
+    };
+    var cp = el('button', btnCss + 'background:#161622;color:#eeeef5;border:1px solid rgba(255,255,255,.12);', 'Skopiuj wiadomość');
+    cp.type = 'button';
+    cp.onclick = function () {
+      function ok() { cp.textContent = 'Skopiowano — wklej do rozmowy'; done('copy'); }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(ok).catch(fallback);
+        } else { fallback(); }
+      } catch (e) { fallback(); }
+      function fallback() {
+        var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); ok(); } catch (e) { cp.textContent = 'Nie udało się skopiować'; }
+        ta.remove();
+      }
+    };
+    box.appendChild(wa);
+    box.appendChild(cp);
+    if (navigator.share) {
+      var other = el('button', 'background:none;border:none;color:#a78bfa;font:600 .85em Inter,sans-serif;padding:6px 2px;cursor:pointer;margin-right:14px;', 'Inne aplikacje');
+      other.type = 'button';
+      other.onclick = function () {
+        navigator.share({ title: 'Eduvia AI', text: text })
+          .then(function () { done('share'); close(false); })
+          .catch(function () {});
+      };
+      box.appendChild(other);
+    }
+    var x = el('button', 'background:none;border:none;color:#8888a0;font:600 .85em Inter,sans-serif;padding:6px 2px;cursor:pointer;', 'Zamknij');
+    x.type = 'button';
+    x.onclick = function () { close(true); };
+    box.appendChild(x);
+    wrap.appendChild(box);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) close(true); });
+    document.body.appendChild(wrap);
+  }
+
   function askParent(btn, featureName, customText) {
     track('ask_parent_click', { feature: featureName || 'pricing' });
     if (typeof window._getAuthToken !== 'function') {
@@ -292,27 +368,10 @@
       return r.json();
     }).then(function (data) {
       if (!data.success || !data.url) throw new Error('brak linku');
-      // 25.09.2026: wiadomosc do rodzica z argumentami (tylko 3 z 8 rodzicow otwieralo link przy
-      // starym, jednozdaniowym tekscie). Liczba dni triala z /trial-info (zmienna - promocje) pobrana z gory (_parentTrialDays, fallback 7),
-      // zeby nie dokladac await miedzy klikaniem a navigator.share (gest uzytkownika wygasa).
-      var days = _parentTrialDays;
-      var text = 'Cześć! Uczę się z Eduvia AI (robi mi quizy i notatki do szkoły) i dobiłem do darmowego limitu. Pro to ' + PRO_PRICE + ' zł/mies., a pierwsze ' + days + ' dni jest za darmo, więc teraz nic nie płacisz i możesz anulować kiedy chcesz. Zobacz, jak się uczę, i włącz mi Pro tutaj: ' + data.url;
-      // 07.10.2026: mierzymy, czy uczen FAKTYCZNIE wyslal wiadomosc (27 osob w tydzien klika "Poproś rodzica",
-      // a link otwieraja ok. 2 razy - nie wiemy, czy problem jest przed czy po wyslaniu). navigator.share
-      // rozwiazuje obietnice po udostepnieniu, a odrzuca przy anulowaniu (AbortError).
-      var feat = featureName || 'pricing';
-      if (navigator.share) {
-        navigator.share({ title: 'Eduvia AI', text: text })
-          .then(function () { track('parent_share_completed', { feature: feat, via: 'share' }); })
-          .catch(function (e) { track('parent_share_cancelled', { feature: feat, error: (e && e.name) || '' }); });
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-      } else {
-        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-        track('parent_share_completed', { feature: feat, via: 'wa_link' });
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-      }
+      // 08.10.2026: zamiast natychmiastowego okna udostepniania - ekran z gotowa wiadomoscia (showParentSheet)
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      showParentSheet(data.url, featureName || 'pricing');
     }).catch(function () {
       btn.disabled = false;
       btn.textContent = 'Nie udało się — spróbuj ponownie';
