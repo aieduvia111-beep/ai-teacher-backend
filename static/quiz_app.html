@@ -1688,7 +1688,12 @@ async function openCamera(){
 async function startCamera(){
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}},audio:false});
-    document.getElementById('cameraVideo').srcObject=cameraStream;
+    var _camV=document.getElementById('cameraVideo');
+    _camV.srcObject=cameraStream;
+    // iOS (WKWebView): samo autoplay po programowym ustawieniu srcObject bywa niewystarczajace - podglad kamery
+    // byl caly czarny (zgloszone z prawdziwego iPhone'a 07.09.2026, naprawione wtedy TYLKO w vision.html).
+    // Jawne .play() to bezpieczny no-op, jesli wideo juz gra.
+    try{ var _pp=_camV.play(); if(_pp&&_pp.catch)_pp.catch(function(){}); }catch(_e){}
   }catch(e){
     closeCamera();
     showErr('Brak dostepu do kamery. Wybierz zdjecie z galerii.');
