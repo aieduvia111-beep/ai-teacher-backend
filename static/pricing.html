@@ -346,6 +346,7 @@ window._currentUser=()=>currentUser;
       <span id="btnText">Wypróbuj 7 dni za darmo →</span>
       <div class="btn-loader" id="btnLoader"></div>
     </button>
+    <button id="restoreBtn" type="button" onclick="restorePurchases()" style="display:none;width:100%;margin:-4px 0 12px;padding:10px;background:none;border:none;color:#a78bfa;font:600 .85em Inter,sans-serif;cursor:pointer;">Przywróć zakupy</button>
     <button class="plan-btn outline" id="askParentPricingBtn" style="display:none;margin-top:-10px;" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
       Nie masz karty? Poproś rodzica
@@ -688,6 +689,28 @@ window.onNativeIAPError=function(message){
   if(loader)loader.style.display='none';
   if(message!=='cancel')showToast('Zakup nie powiódł się: '+(message||'sprobuj ponownie'), 'error');
 };
+
+
+// PRZYWRACANIE ZAKUPOW (iOS, 10.10.2026): wymog Apple 3.1.1 dla subskrypcji. Natywna czesc: IAPManager.swift
+// (restoreIAPPurchases). Znaleziona aktywna subskrypcja wraca tym samym kanalem co zwykly zakup
+// (window.onNativeIAPSuccess -> backend weryfikuje podpis); brak subskrypcji -> onNativeIAPRestoreEmpty.
+function restorePurchases(){
+  var btn=document.getElementById('restoreBtn');
+  if(!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.restoreIAPPurchases)){
+    showToast('Przywracanie zakupów jest dostępne w aplikacji na iPhone.', 'error');
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Sprawdzam zakupy…'; }
+  trackEvent('restore_purchases_click');
+  window.webkit.messageHandlers.restoreIAPPurchases.postMessage({});
+  setTimeout(function(){ if(btn && btn.disabled){ btn.disabled=false; btn.textContent='Przywróć zakupy'; } }, 20000);
+}
+window.onNativeIAPRestoreEmpty=function(){
+  var btn=document.getElementById('restoreBtn');
+  if(btn){ btn.disabled=false; btn.textContent='Przywróć zakupy'; }
+  showToast('Nie znaleziono aktywnej subskrypcji na tym koncie Apple.', 'error');
+};
+(function(){ try{ if(isNativeIosApp){ var b=document.getElementById('restoreBtn'); if(b) b.style.display='block'; } }catch(e){} })();
 
 async function startCheckout() {
   trackEvent('click_upgrade', {payment_method: isNativeIosApp ? 'ios_iap' : 'stripe_unified'});

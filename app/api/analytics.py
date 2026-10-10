@@ -28,6 +28,8 @@ _ALLOWED_EVENTS = {
     "checkout_exit_reason",
     # 07.10.2026: czy uczen faktycznie wyslal wiadomosc do rodzica (limit_modal.js askParent)
     "parent_share_completed", "parent_share_cancelled",
+    # 10.10.2026: klik "Przywroc zakupy" w aplikacji iOS (pricing.html)
+    "restore_purchases_click",
 }
 
 # Dozwolone powody w ankiecie wyjscia z platnosci (kody, nie wolny tekst).
