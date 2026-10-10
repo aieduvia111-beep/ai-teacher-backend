@@ -10,7 +10,8 @@
     'color:#fff!important;-webkit-text-fill-color:#fff!important;animation:none!important;' +
     'font-family:Inter,sans-serif;font-size:.36em;font-weight:800;letter-spacing:.08em;line-height:1.5;' +
     'vertical-align:middle;text-transform:uppercase;}' +
-    '.m-hdr-title .pro-chip{font-size:.62em;margin-left:6px;}';
+    '.m-hdr-title .pro-chip{font-size:.62em;margin-left:6px;}' +
+    '.prog-meta .pro-chip{font-size:.7em;margin:0 0 0 8px;order:2;}';
 
   function isPro() {
     try { return (localStorage.getItem('eduvia_plan') || 'free') !== 'free'; } catch (e) { return false; }
@@ -18,7 +19,7 @@
 
   function apply() {
     var pro = isPro();
-    var targets = document.querySelectorAll('.page-h1, .m-hdr-title');
+    var targets = document.querySelectorAll('.page-h1, .m-hdr-title, .topbar .prog-meta');
     for (var i = 0; i < targets.length; i++) {
       var el = targets[i];
       var chip = el.querySelector('.pro-chip');
