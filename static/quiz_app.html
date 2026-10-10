@@ -973,49 +973,63 @@ let MOT_OK=["Świetnie!","Idealnie!","Perfekcja!","Brawo!","Doskonale!"];
 let MOT_ERR=["Teraz już wiesz!","Zapamiętaj to!","Każdy błąd to nauka!","Nie poddawaj się!"];
 let XP_MAP={easy:10,medium:20,hard:35};
 
+// Dzieli fragment matematyki na naprzemienne kawalki: 'm' (matematyka) i 'w' (zwykle slowa, min. 4 litery,
+// np. "Pole powierzchni:"). BEZ regex lookbehind - iOS 15 .. 16.3 nie wspiera (?<!...), a to wywalalo
+// caly Quiz na starszych iPhone'ach (cel wdrozenia aplikacji: iOS 15).
+function _mathWordSplit(seg){
+  const re=/[A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{4,}(?:\s+[A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,})*:?/g;
+  const res=[];let last=0,m;
+  while((m=re.exec(seg))!==null){
+    const prev=m.index>0?seg.charAt(m.index-1):'';
+    if(prev==='\\'||/[a-zA-Z{]/.test(prev))continue;
+    res.push({t:'m',s:seg.slice(last,m.index)});
+    res.push({t:'w',s:m[0]});
+    last=m.index+m[0].length;
+  }
+  res.push({t:'m',s:seg.slice(last)});
+  return res;
+}
 function math(raw){
   if(!raw)return'';
   let t=String(raw);
-  // Napraw brakujace backslashe przed komendami
+  // Napraw brakujace backslashe przed komendami (bez lookbehind: prefiks przechwytujemy)
   const cmds=['frac','sqrt','int','sum','lim','cdot','times','div','pm','leq','geq','neq','alpha','beta','gamma','pi','theta','infty','left','right','begin','end','text','sin','cos','tan','ln','log'];
   cmds.forEach(cmd=>{
-    const re=new RegExp('(?<![a-zA-Z\\\\])'+cmd+'(?=[^a-zA-Z]|$)','g');
-    t=t.replace(re,'\\'+cmd);
+    const re=new RegExp('(^|[^a-zA-Z\\\\])'+cmd+'(?=[^a-zA-Z]|$)','g');
+    t=t.replace(re,function(m,pre){return pre+'\\'+cmd;});
   });
-  // NAPRAWIONE (04.10.2026, user: czerwone "\frac{64$\sqrt{3}}{3}" i "\text{\sin}" w Quizie): ponizsze kroki
-  // dzialaly na CALYM tekscie, wiec 'owijanie gołych wzorow' dopisywalo dodatkowe $ ROWNIEZ w srodku
-  // wzoru, ktory juz byl w $...$ (np. $\frac{64\sqrt{3}}{3}, Pole: ...$ -> $ w srodku \frac{...}). Teraz tekst
-  // dzielimy po $: parzyste fragmenty to zwykly tekst (tu wolno owijac), nieparzyste to juz matematyka
-  // (tu tylko podmieniamy symbole unicode na komendy, BEZ dodawania dolarow).
   // \text{\sin} (komenda wewnatrz \text) jest niepoprawne w KaTeX - zamieniamy na sama komende.
   t=t.replace(/\\text\{\s*(\\[a-zA-Z]+)\s*\}/g,'$1');
-  const _WORD=/(?<![\\a-zA-Z{])([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{4,}(?:\s+[A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,})*:?)/;
-  const _parts=t.split('$'), _out=[];
-  for(let _i=0;_i<_parts.length;_i++){
-    let seg=_parts[_i];
-    if(_i%2===1){
-      // matematyka: symbole unicode -> komendy; slowa (min. 4 litery) wypadaja ZA dolary jako zwykly
-      // tekst ("Objetosc: $\frac..$, Pole powierzchni: $48+24\sqrt3$"), bo w trybie matematycznym KaTeX
-      // zjada spacje i pisze kursywa ("Polepowierzchni")
+  // Przebieg 1: owijanie "nagich" wzorow w $...$ - TYLKO w tekscie poza istniejacymi $...$
+  // (parzyste fragmenty po split('$')), zeby nie dopisywac $ w srodku juz otoczonego wzoru.
+  let parts=t.split('$');
+  for(let i=0;i<parts.length;i+=2){
+    parts[i]=parts[i].replace(/([-−]?\\(?:frac|sqrt|int|iint|iiint|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|delta|Delta|epsilon|zeta|eta|sigma|Sigma|mu|nu|rho|tau|phi|Phi|chi|psi|omega|Omega|pi|theta|Theta|infty|text|sin|cos|tan|ln|log|vec|det|begin|end|binom|approx)(?:[^.!?$]|\.\d)*?)(?=[.!?](?!\d)|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|,\s*[a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
+  }
+  t=parts.join('$');
+  // Przebieg 2: symbole unicode + slowa w srodku matematyki (jako zwykly tekst). Poza matematyka
+  // symbol dostaje wlasne $...$, w srodku - tylko komende (bez dodatkowych dolarow).
+  parts=t.split('$');
+  const _o=[];
+  for(let i=0;i<parts.length;i++){
+    let seg=parts[i];
+    if(i%2===1){
       seg=seg.replace(/∫/g,'\\int ').replace(/∑/g,'\\sum ').replace(/√/g,'\\sqrt').replace(/≤/g,'\\leq ').replace(/≥/g,'\\geq ').replace(/≠/g,'\\neq ').replace(/→/g,'\\to ').replace(/∞/g,'\\infty ');
-      if(/\\text\{/.test(seg)){ _out.push('$'+seg+'$'); continue; }
-      const pieces=seg.split(new RegExp(_WORD.source,'g'));
+      if(/\\text\{/.test(seg)){_o.push('$'+seg+'$');continue;}
+      const pieces=_mathWordSplit(seg);
       let acc='';
       for(let k=0;k<pieces.length;k++){
         const pc=pieces[k];
-        if(k%2===1){ acc+=pc; }
-        else if(/[\\0-9=+\-*\/^_{}()]|[a-zA-Z]/.test(pc)){ acc+=(/^\s/.test(pc)?' ':'')+'$'+pc.trim()+'$'+(/\s$/.test(pc)?' ':''); }
-        else { acc+=pc; }
+        if(pc.t==='w'){acc+=pc.s;}
+        else if(/[\\0-9=+\-*\/^_{}()]|[a-zA-Z]/.test(pc.s)){acc+=(/^\s/.test(pc.s)?' ':'')+'$'+pc.s.trim()+'$'+(/\s$/.test(pc.s)?' ':'');}
+        else{acc+=pc.s;}
       }
-      _out.push(acc);
+      _o.push(acc);
     }else{
-      seg=seg.replace(/∫/g,'$\\int$').replace(/∑/g,'$\\sum$').replace(/√/g,'$\\sqrt{}$').replace(/≤/g,'$\\leq$').replace(/≥/g,'$\\geq$').replace(/≠/g,'$\\neq$').replace(/→/g,'$\\to$').replace(/∞/g,'$\\infty$');
-      // Owij caly ciagly fragment matematyczny (od pierwszej komendy LaTeX do konca zdania) - TYLKO poza $...$
-      seg=seg.replace(/(?<!\$)([-−]?\\(?:frac|sqrt|int|iint|iiint|sum|lim|left|right|cdot|times|div|pm|leq|geq|neq|alpha|beta|gamma|delta|Delta|epsilon|zeta|eta|sigma|Sigma|mu|nu|rho|tau|phi|Phi|chi|psi|omega|Omega|pi|theta|Theta|infty|text|sin|cos|tan|ln|log|vec|det|begin|end|binom|approx)(?:[^.!?$]|\.\d)*?)(?=[.!?](?!\d)|\s[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|,\s*[a-ząćęłńóśźż]{3,}|$)/g,'$$$1$$');
-      _out.push(seg);
+      _o.push(seg.replace(/∫/g,'$\\int$').replace(/∑/g,'$\\sum$').replace(/√/g,'$\\sqrt{}$').replace(/≤/g,'$\\leq$').replace(/≥/g,'$\\geq$').replace(/≠/g,'$\\neq$').replace(/→/g,'$\\to$').replace(/∞/g,'$\\infty$'));
     }
   }
-  t=_out.join('');
+  t=_o.join('');
   if(typeof renderMathInElement==='undefined'){
     let _mathRetryCount = 0;
     const _mathRetry = () => {
